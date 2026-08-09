@@ -48,13 +48,13 @@ class Intervals:
             },
         )
 
-
-    def wellness(self, start):
+    def wellness(self, start, end):
 
         return self.get(
             "wellness",
             {
                 "oldest": start.isoformat(),
+                "newest": end.isoformat(),
             },
         )
 
@@ -91,6 +91,16 @@ def fmt_time(seconds):
 
     return f"{m}min"
 
+def fmt_zones(zone_times):
+
+    if not zone_times:
+        return "-"
+
+    return " | ".join(
+        f"Z{i+1} {fmt_time(t)}"
+        for i, t in enumerate(zone_times)
+        if t
+    )
 
 
 def pace(activity):
@@ -119,11 +129,28 @@ def pace(activity):
 # Analysis
 # -------------------------------------------------
 
+def last_four_nights(wellness):
+
+    wellness = sorted(
+        wellness,
+        key=lambda x: x.get("id", ""),
+        reverse=True,
+    )
+
+    return wellness[:4]
+
+def zone_3_4_time(zone_times):
+    """Return combined time spent in zones 3 and 4."""
+    if not zone_times:
+        return 0
+
+    return sum(zone_times[2:4])
+
 def summarize_training(activities):
 
     run_types = {
         "Run",
-        "Trail Run",
+        "TrailRun",
     }
 
     result = {
@@ -135,6 +162,7 @@ def summarize_training(activities):
         "cross_load": 0,
 
         "quality": [],
+        "z3_z4_time": 0,
     }
 
 
@@ -159,7 +187,6 @@ def summarize_training(activities):
 
 
         if sport in run_types:
-
             result["run_time"] += time
             result["run_distance"] += distance
             result["run_load"] += load
@@ -185,6 +212,16 @@ def summarize_training(activities):
             ):
                 result["quality"].append(a)
 
+        if sport == "Run":
+            result["z3_z4_time"] += zone_3_4_time(
+                a.get("pace_zone_times")
+            )
+
+        elif sport == "TrailRun":
+
+            result["z3_z4_time"] += zone_3_4_time(
+                a.get("icu_hr_zone_times")
+            )
 
         else:
 
@@ -268,11 +305,14 @@ def daily():
 
     activities = api.activities(
         yesterday,
-        today
+        yesterday 
     )
-
+#    import json
+#    print(json.dumps(activities[0], indent=2))
     wellness = api.wellness(
-        yesterday
+        today-timedelta(days=4),
+        today
+
     )
 
     events = api.events(
@@ -338,7 +378,7 @@ def daily():
 
             if a.get("type") in (
                 "Run",
-                "Trail Run"
+                "TrailRun"
             ):
 
                 lines.append(
@@ -361,6 +401,13 @@ def daily():
                     f"{a['icu_training_load']:.0f}"
                 )
 
+            if a.get("pace_zone_times"):
+            #if 1:
+
+                lines.append(
+                    f"- Pace zones: "
+                    f"{fmt_zones(a['pace_zone_times'])}"
+                )
 
     else:
 
@@ -372,32 +419,35 @@ def daily():
     # -----------------------------
     # Recovery
     # -----------------------------
+    lines.append("\n## Night")
 
-    lines.append(
-        "\n## Night"
-    )
+    nights = last_four_nights(wellness)
 
+    for w in reversed(nights):
 
-    lines.append(
-        f"- HRV: {recovery['hrv']} ms"
-    )
+        night_date = w.get("id", "")
 
-    lines.append(
-        f"- RHR: {recovery['rhr']} bpm"
-    )
+        hrv = w.get("hrv")
+        rhr = w.get("restingHR")
+        sleep = w.get("sleepSecs")
 
-    lines.append(
-        f"- Sleep: "
-        f"{fmt_time(recovery['sleep'])}"
-    )
-
+        lines.append(
+            f"- {night_date}: "
+            f"HRV {hrv:.0f} ms, "
+            f"RHR {rhr:.0f} bpm"
+            + (
+                f", Sleep {fmt_time(sleep)}"
+                if sleep
+                else ""
+            )
+        )
 
     # -----------------------------
     # Planned
     # -----------------------------
 
     lines.append(
-        "\n## Today"
+        "\n## Planned Today"
     )
 
 
@@ -456,17 +506,18 @@ def summary(period):
     yesterday = date.today() - timedelta(days=1)
 
     if period == "weekly":
-
-        start = today - timedelta(days=8)
+        ndays = 7
 
     elif period == "monthly":
+        ndays = 30
 
-        start = today - timedelta(days=30)
+    elif period == "yearly":
+        ndays = 365
 
     else:
-
         raise ValueError(period)
 
+    start = today - timedelta(days=ndays)
 
     api = Intervals()
 
@@ -476,7 +527,7 @@ def summary(period):
     )
 
     recovery = recovery_summary(
-        api.wellness(start)
+        api.wellness(start, yesterday)
     )
 
 
@@ -498,15 +549,36 @@ def summary(period):
     )
 
     lines.append(
+        f"- Avg. daily Time: {fmt_time(training['run_time']/ndays)}"
+    )
+
+    lines.append(
         f"- Distance: "
         f"{training['run_distance']/1000:.1f} km"
+    )
+
+    lines.append(
+        f"- Avg. daily distance: "
+        f"{training['run_distance']/1000/ndays:.1f} km"
     )
 
     lines.append(
         f"- Load: "
         f"{training['run_load']:.0f}"
     )
+    lines.append(
+        f"- Avg. daily Load: "
+        f"{training['run_load']/ndays:.0f}"
+    )
+    lines.append(
+        f"- Time in Zones 3 and 4: "
+        f"{fmt_time(training['z3_z4_time'])}"
+    )
 
+    lines.append(
+        f"- Avg. daily Time in Zones 3 and 4: "
+        f"{fmt_time(training['z3_z4_time']/ndays)}"
+    )
 
     lines.append("\n## Cross training")
 
@@ -515,20 +587,29 @@ def summary(period):
     )
 
     lines.append(
+        f"- Avg. Daily Time: {fmt_time(training['cross_time']/ndays)}"
+    )
+
+    lines.append(
         f"- Load: "
         f"{training['cross_load']:.0f}"
     )
 
+    lines.append(
+        f"- Avg. daily Load: "
+        f"{training['cross_load']/ndays:.0f}"
+    )
 
-    lines.append("\n## Quality sessions")
+    if len(training["quality"])<10:
+        lines.append("\n## Quality sessions")
 
-    for q in training["quality"]:
+        for q in training["quality"]:
 
-        lines.append(
-            f"- {q.get('name','')}: "
-            f"{fmt_time(q.get('moving_time'))}, "
-            f"{pace(q)}"
-        )
+            lines.append(
+                f"- {q.get('name','')}: "
+                f"{fmt_time(q.get('moving_time'))}, "
+                f"{pace(q)}"
+            )
 
 
     lines.append("\n## Recovery")
@@ -561,12 +642,12 @@ if __name__ == "__main__":
     if mode == "daily":
         report = daily()
 
-    elif mode in ("weekly","monthly"):
+    elif mode in ("weekly","monthly", "yearly"):
         report = summary(mode)
 
     else:
         raise SystemExit(
-            "usage: intervals_report.py daily|weekly|monthly"
+            "usage: intervals_report.py daily|weekly|monthly|yearly"
         )
 
 
