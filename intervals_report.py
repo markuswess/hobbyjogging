@@ -3,6 +3,7 @@
 import os
 import sys
 import requests
+import json
 
 from datetime import date, timedelta
 
@@ -163,6 +164,7 @@ def summarize_training(activities):
 
         "quality": [],
         "z3_z4_time": 0,
+        "rpe": 0,
     }
 
 
@@ -185,11 +187,17 @@ def summarize_training(activities):
             or 0
         )
 
+        rpe = (
+            a.get("icu_rpe")
+            or 0
+        )
+
 
         if sport in run_types:
             result["run_time"] += time
             result["run_distance"] += distance
             result["run_load"] += load
+            result["rpe"] += rpe 
 
 
             name = a.get(
@@ -293,6 +301,65 @@ def latest_recovery(wellness):
 # -------------------------------------------------
 # Reports
 # -------------------------------------------------
+def debug():
+
+    api = Intervals()
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    activities = api.activities(
+        yesterday,
+        today,
+    )
+
+    wellness = api.wellness(
+        yesterday - timedelta(days=3),
+        today
+    )
+
+    events = api.events(
+        today,
+        today + timedelta(days=1),
+    )
+
+    resource = (
+        sys.argv[2]
+        if len(sys.argv) > 2
+        else "all"
+    )
+
+    if resource == "activities":
+        data = activities
+
+    elif resource == "wellness":
+        data = wellness
+
+    elif resource == "events":
+        data = events
+
+    elif resource == "all":
+        data = {
+            "activities": activities,
+            "wellness": wellness,
+            "events": events,
+        }
+
+    else:
+        raise SystemExit(
+            "usage: intervals_report.py debug "
+            "[activities|wellness|events]"
+        )
+
+    print(
+        json.dumps(
+            data,
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def daily():
 
     today = date.today()
@@ -401,12 +468,27 @@ def daily():
                     f"{a['icu_training_load']:.0f}"
                 )
 
+            if a.get("icu_rpe"):
+
+                lines.append(
+                    f"- RPE: "
+                    f"{a['icu_rpe']:.0f}"
+                )
+
             if a.get("pace_zone_times"):
             #if 1:
 
                 lines.append(
                     f"- Pace zones: "
                     f"{fmt_zones(a['pace_zone_times'])}"
+                )
+
+            if a.get("description"):
+            #if 1:
+
+                lines.append(
+                    f"- Description: "
+                    f"{a['description']}"
                 )
 
     else:
@@ -545,39 +627,27 @@ def summary(period):
     lines.append("\n## Running")
 
     lines.append(
-        f"- Time: {fmt_time(training['run_time'])}"
+        f"- Avg. weekly Time: {fmt_time(training['run_time']/ndays*7)}"
     )
 
     lines.append(
-        f"- Avg. daily Time: {fmt_time(training['run_time']/ndays)}"
+        f"- Avg. weekly distance: "
+        f"{training['run_distance']/1000/ndays*7:.1f} km"
     )
 
     lines.append(
-        f"- Distance: "
-        f"{training['run_distance']/1000:.1f} km"
+        f"- Avg. weekly Load: "
+        f"{training['run_load']/ndays*7:.0f}"
     )
 
     lines.append(
-        f"- Avg. daily distance: "
-        f"{training['run_distance']/1000/ndays:.1f} km"
+        f"- Avg. weekly RPE: "
+        f"{training['rpe']/ndays*7:.0f}"
     )
 
     lines.append(
-        f"- Load: "
-        f"{training['run_load']:.0f}"
-    )
-    lines.append(
-        f"- Avg. daily Load: "
-        f"{training['run_load']/ndays:.0f}"
-    )
-    lines.append(
-        f"- Time in Zones 3 and 4: "
-        f"{fmt_time(training['z3_z4_time'])}"
-    )
-
-    lines.append(
-        f"- Avg. daily Time in Zones 3 and 4: "
-        f"{fmt_time(training['z3_z4_time']/ndays)}"
+        f"- Avg. weekly Time in Zones 3 and 4: "
+        f"{fmt_time(training['z3_z4_time']/ndays*7)}"
     )
 
     lines.append("\n## Cross training")
@@ -587,7 +657,7 @@ def summary(period):
     )
 
     lines.append(
-        f"- Avg. Daily Time: {fmt_time(training['cross_time']/ndays)}"
+        f"- Avg. weekly Time: {fmt_time(training['cross_time']/ndays*7)}"
     )
 
     lines.append(
@@ -596,8 +666,8 @@ def summary(period):
     )
 
     lines.append(
-        f"- Avg. daily Load: "
-        f"{training['cross_load']/ndays:.0f}"
+        f"- Avg. weekly Load: "
+        f"{training['cross_load']/ndays*7:.0f}"
     )
 
     if len(training["quality"])<10:
@@ -642,12 +712,25 @@ if __name__ == "__main__":
     if mode == "daily":
         report = daily()
 
+    elif mode == "all":
+        report = daily()
+        report+="\n\n"
+        report+=summary("weekly")
+        report+="\n\n"
+        report+=summary("monthly")
+        report+="\n\n"
+        report+=summary("yearly")
+
     elif mode in ("weekly","monthly", "yearly"):
         report = summary(mode)
 
+    elif mode == "debug":
+        debug()
+        sys.exit(0)
+
     else:
         raise SystemExit(
-            "usage: intervals_report.py daily|weekly|monthly|yearly"
+            "usage: intervals_report.py daily|weekly|monthly|yearly|debug|all"
         )
 
 
