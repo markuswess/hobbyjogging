@@ -56,6 +56,36 @@ def run_subt_chart(output: str) -> None:
     print(path)
 
 
+def run_classify(days: int = 30) -> None:
+    """Print the category of recent activities."""
+    from datetime import date, timedelta
+
+    from .classify import classify
+    from .sources.intervals_api import IntervalsSource
+
+    end = date.today()
+    start = end - timedelta(days=days)
+
+    source = IntervalsSource()
+    activities = source.activities(start, end)
+
+    for activity in sorted(activities, key=lambda a: a.date):
+        intervals = []
+
+        if "subt" in f"{activity.name} {activity.description}".lower():
+            intervals = source.activity_intervals(activity.id)
+
+        category = classify(activity, intervals)
+
+        print(
+            f"{activity.date} "
+            f"{activity.duration_s / 60:5.0f}min "
+            f"rpe={activity.rpe} "
+            f"{category.path:36s} "
+            f"{activity.name}"
+        )
+
+
 def main():
     mode = sys.argv[1]
 
@@ -88,11 +118,15 @@ def main():
         )
         sys.exit(0)
 
+    elif mode == "classify":
+        run_classify(int(sys.argv[2]) if len(sys.argv) > 2 else 30)
+        sys.exit(0)
+
     else:
         raise SystemExit(
             "usage: python -m intervals_report "
             "daily|weekly|monthly|yearly|debug|all"
-            "|chart [output.png]|subt-chart [output.png]"
+            "|chart [output.png]|subt-chart [output.png]|classify [days]"
         )
 
     print(report)

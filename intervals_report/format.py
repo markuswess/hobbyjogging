@@ -1,3 +1,7 @@
+from .classify import classify
+from .sources.intervals_api import to_activity
+
+
 def fmt_time(seconds):
 
     if not seconds:
@@ -137,24 +141,7 @@ def summarize_training(activities):
             result["rpe"] += rpe 
 
 
-            name = a.get(
-                "name",
-                ""
-            ).lower()
-
-
-            if any(
-                x in name
-                for x in [
-                    "interval",
-                    "tempo",
-                    "threshold",
-                    "subt",
-                    "lt1",
-                    "race",
-                    "berg",
-                ]
-            ):
+            if classify(to_activity(a)).quality:
                 result["quality"].append(a)
 
         if sport == "Run":

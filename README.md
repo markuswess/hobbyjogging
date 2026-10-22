@@ -22,6 +22,8 @@ training reports:
 - **subt-chart** — subT work interval pace per category
   (short/medium/long) over the last 365 days, with per-session dots
   and rolling averages.
+- **classify** — Print the workout category for each activity over
+  the last N days (default 30).
 
 ## Setup
 
@@ -44,6 +46,37 @@ Run:
     uv run --env-file .env python -m intervals_report debug
     uv run --env-file .env python -m intervals_report chart [output.png]
     uv run --env-file .env python -m intervals_report subt-chart [output.png]
+    uv run --env-file .env python -m intervals_report classify [days]
+
+## Workout categories
+
+```
+quality
+├── intervals
+│   ├── subt-short   (avg rep <= 4:00)
+│   ├── subt-medium  (avg rep 4:01-5:50)
+│   ├── subt-long    (avg rep > 5:50)
+│   ├── lt1
+│   └── other
+├── longrun          (> 90 min)
+├── race
+└── tempo
+non-quality
+├── easy
+└── recovery
+unknown
+```
+
+Rules (`classify.py`):
+
+- **quality**: RPE >= 4. If RPE is missing, infer from intensity
+  (IF >= 0.85 or >= 25% of time in Z3+); if impossible -> `unknown`.
+- **longrun**: activity longer than 90 min, even with RPE < 4 —
+  unless race/subt/lt1/tempo content takes precedence.
+- **recovery**: RPE <= 2, or RPE 3 with short duration and low load.
+- Sub-type keywords come from the activity name/description (which
+  usually reflects the planned session); execution (RPE/duration)
+  decides *whether* the session was quality.
 
 ## Architecture
 

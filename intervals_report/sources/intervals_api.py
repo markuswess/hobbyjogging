@@ -36,6 +36,7 @@ def to_activity(raw: dict) -> Activity:
         avg_hr=raw.get("average_heartrate"),
         training_load=raw.get("icu_training_load"),
         rpe=raw.get("icu_rpe"),
+        intensity=raw.get("icu_intensity"),
         pace_zone_times=list(raw.get("pace_zone_times") or []),
         hr_zone_times=list(raw.get("icu_hr_zone_times") or []),
     )

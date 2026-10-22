@@ -22,6 +22,7 @@ class Activity:
     avg_hr: float | None = None
     training_load: float | None = None
     rpe: float | None = None
+    intensity: float | None = None  # fraction of threshold (ICU intensity)
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
 
