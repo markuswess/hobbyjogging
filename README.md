@@ -31,9 +31,9 @@ Create environment (`.env`):
 
 Run:
 
-    uv run --env-file .env intervals_report.py daily
-    uv run --env-file .env intervals_report.py weekly
-    uv run --env-file .env intervals_report.py monthly
-    uv run --env-file .env intervals_report.py yearly
-    uv run --env-file .env intervals_report.py all
-    uv run --env-file .env intervals_report.py debug
+    uv run --env-file .env python -m intervals_report daily
+    uv run --env-file .env python -m intervals_report weekly
+    uv run --env-file .env python -m intervals_report monthly
+    uv run --env-file .env python -m intervals_report yearly
+    uv run --env-file .env python -m intervals_report all
+    uv run --env-file .env python -m intervals_report debug
