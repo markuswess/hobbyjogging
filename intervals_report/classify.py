@@ -85,6 +85,29 @@ class Category:
 UNKNOWN = Category("unknown")
 CROSS_TRAINING = Category("cross-training")
 
+GROUP_ORDER = {
+    "quality": 0,
+    "non-quality": 1,
+    "cross-training": 2,
+    "unknown": 3,
+}
+
+
+@dataclass
+class CategoryStat:
+    """Aggregated training volume for one category."""
+
+    category: Category
+    sessions: int = 0
+    time_s: float = 0
+    load: float = 0
+    time_share: float = 0
+    load_share: float = 0
+
+    @property
+    def path(self) -> str:
+        return self.category.path
+
 
 def classify(
     activity: Activity,
@@ -204,3 +227,44 @@ def _is_recovery(activity: Activity) -> bool:
 
 def _has(text: str, words: tuple[str, ...]) -> bool:
     return any(word in text for word in words)
+
+
+# --- aggregation ----------------------------------------------------------
+
+def category_breakdown(
+    activities: list[Activity],
+    intervals_by_id: dict[str, list[Interval]] | None = None,
+) -> list[CategoryStat]:
+    """Aggregate activities by category, grouped and sorted by time.
+
+    ``intervals_by_id`` is optional; when provided it refines subT rep
+    lengths. Without it, subT sessions collapse into ``intervals/subt``.
+    """
+    intervals_by_id = intervals_by_id or {}
+    stats: dict[str, CategoryStat] = {}
+
+    for activity in activities:
+        category = classify(activity, intervals_by_id.get(activity.id))
+        stat = stats.get(category.path)
+
+        if stat is None:
+            stat = stats[category.path] = CategoryStat(category)
+
+        stat.sessions += 1
+        stat.time_s += activity.duration_s or 0
+        stat.load += activity.training_load or 0
+
+    total_time = sum(stat.time_s for stat in stats.values())
+    total_load = sum(stat.load for stat in stats.values())
+
+    for stat in stats.values():
+        stat.time_share = stat.time_s / total_time if total_time else 0
+        stat.load_share = stat.load / total_load if total_load else 0
+
+    return sorted(
+        stats.values(),
+        key=lambda stat: (
+            GROUP_ORDER.get(stat.category.group, len(GROUP_ORDER)),
+            -stat.time_s,
+        ),
+    )

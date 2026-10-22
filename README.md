@@ -69,6 +69,10 @@ cross-training
 unknown
 ```
 
+Weekly, monthly and yearly reports include a **category breakdown**
+table: sessions, time, load, and each category's share of the period.
+SubT sessions are refined by rep length when interval data is available.
+
 Rules (`classify.py`):
 
 - **quality**: RPE >= 4. If RPE is missing, infer from intensity

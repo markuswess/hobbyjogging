@@ -31,6 +31,48 @@ def fmt_zones(zone_times):
     )
 
 
+def fmt_share(share):
+
+    if share <= 0:
+        return "0%"
+
+    if share < 0.01:
+        return "<1%"
+
+    return f"{share:.0%}"
+
+
+def format_category_table(stats):
+
+    if not stats:
+        return ["- No activities"]
+
+    lines = [
+        "| Category | Sessions | Time | Load | Time % | Load % |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+
+    for stat in stats:
+        lines.append(
+            f"| {stat.path} | {stat.sessions} | {fmt_time(stat.time_s)} | "
+            f"{stat.load:.0f} | {fmt_share(stat.time_share)} | "
+            f"{fmt_share(stat.load_share)} |"
+        )
+
+    total_sessions = sum(stat.sessions for stat in stats)
+    total_time = sum(stat.time_s for stat in stats)
+    total_load = sum(stat.load for stat in stats)
+
+    load_share = "100%" if total_load else "-"
+
+    lines.append(
+        f"| **Total** | {total_sessions} | {fmt_time(total_time)} | "
+        f"{total_load:.0f} | 100% | {load_share} |"
+    )
+
+    return lines
+
+
 def pace(activity):
 
     try:
@@ -141,7 +183,11 @@ def summarize_training(activities):
             result["rpe"] += rpe 
 
 
-            if classify(to_activity(a)).quality:
+            category = classify(to_activity(a))
+
+            # Warm-ups/cool-downs are quality in the breakdown, but they
+            # would clutter the per-session detail list.
+            if category.quality and category.kind != "race-support":
                 result["quality"].append(a)
 
         if sport == "Run":

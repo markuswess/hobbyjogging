@@ -3,9 +3,11 @@ import sys
 from datetime import date, timedelta
 
 from .api import Intervals
+from .classify import category_breakdown
 from .format import (
     fmt_time,
     format_activity,
+    format_category_table,
     get_subt_summary,
     last_four_nights,
     latest_recovery,
@@ -14,6 +16,7 @@ from .format import (
     summarize_training,
     subt_summary_for_activity,
 )
+from .sources.intervals_api import to_activity, to_interval
 
 
 def debug():
@@ -305,9 +308,30 @@ def summary(period):
     api = Intervals()
 
 
-    training = summarize_training(
-        api.activities(start,yesterday)
-    )
+    raw_activities = api.activities(start, yesterday)
+
+    training = summarize_training(raw_activities)
+
+    activities = [to_activity(a) for a in raw_activities]
+
+    # Only subT names need intervals to refine their rep-length category.
+    intervals_by_id = {}
+
+    for activity in activities:
+
+        if "subt" not in activity.name.lower():
+            continue
+
+        try:
+            raw_intervals = api.get_activity_intervals(activity.id)
+        except Exception:
+            continue
+
+        intervals_by_id[activity.id] = [
+            to_interval(i) for i in raw_intervals
+        ]
+
+    breakdown = category_breakdown(activities, intervals_by_id)
 
     recovery = recovery_summary(
         api.wellness(start, yesterday)
@@ -360,6 +384,12 @@ def summary(period):
     lines.append(
         f"- Load: "
         f"{training['cross_load']/ndays*7:.0f}"
+    )
+
+    lines.append("\n## Categories (period totals)")
+
+    lines.extend(
+        format_category_table(breakdown)
     )
 
     if len(training["quality"])<10:
