@@ -73,7 +73,7 @@ Rules (`classify.py`):
   (IF >= 0.85 or >= 25% of time in Z3+); if impossible -> `unknown`.
 - **longrun**: activity longer than 90 min, even with RPE < 4 —
   unless race/subt/lt1/tempo content takes precedence.
-- **recovery**: RPE <= 2, or RPE 3 with short duration and low load.
+- **recovery**: RPE = 1 and shorter than 40 min.
 - Sub-type keywords come from the activity name/description (which
   usually reflects the planned session); execution (RPE/duration)
   decides *whether* the session was quality.

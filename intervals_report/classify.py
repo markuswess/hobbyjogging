@@ -23,7 +23,7 @@ Rules
   (IF >= 0.85 or >= 25% of time in Z3+); if that is impossible -> unknown.
 - A session > 90 min is a longrun even with RPE < 4, unless its content
   (race/subt/lt1/tempo) says otherwise.
-- recovery: RPE <= 2, or RPE 3 with short duration and low load.
+- recovery: RPE = 1 and shorter than 40 min.
 - Sub-type keywords come from name/description, which usually encodes the
   planned session. Execution (RPE/duration) decides *whether* it was quality.
 """
@@ -40,9 +40,8 @@ LONGRUN_S = 90 * 60
 INTENSITY_QUALITY = 0.85      # IF at/above this implies quality
 QUALITY_ZONE_SHARE = 0.25     # share of time in Z3+
 
-RECOVERY_MAX_RPE = 2
-RECOVERY_MAX_DURATION_S = 45 * 60
-RECOVERY_MAX_LOAD = 30
+RECOVERY_RPE = 1
+RECOVERY_MAX_DURATION_S = 40 * 60
 
 TEMPO_BLOCK_S = 10 * 60
 
@@ -176,14 +175,10 @@ def _has_sustained_block(work: list[Interval]) -> bool:
 # --- non-quality ----------------------------------------------------------
 
 def _is_recovery(activity: Activity) -> bool:
-    if activity.rpe is not None and activity.rpe <= RECOVERY_MAX_RPE:
-        return True
-
-    if activity.duration_s <= RECOVERY_MAX_DURATION_S:
-        if (activity.training_load or 0) <= RECOVERY_MAX_LOAD:
-            return True
-
-    return False
+    return (
+        activity.rpe == RECOVERY_RPE
+        and activity.duration_s < RECOVERY_MAX_DURATION_S
+    )
 
 
 # --- helpers --------------------------------------------------------------
