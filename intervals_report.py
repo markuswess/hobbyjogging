@@ -637,6 +637,44 @@ def debug():
     )
 
 
+def format_activity(api, a, heading):
+
+    lines = [
+        f"\n### {heading}",
+        f"- Duration: {fmt_time(a.get('moving_time'))}",
+    ]
+
+    if a.get("distance"):
+        lines.append(f"- Distance: {a['distance']/1000:.1f} km")
+
+    if a.get("type") in ("Run", "TrailRun"):
+        lines.append(f"- Pace: {pace(a)}")
+
+    if a.get("average_heartrate"):
+        lines.append(f"- HR: {a['average_heartrate']:.0f} avg")
+
+    if a.get("icu_training_load"):
+        lines.append(f"- Load: {a['icu_training_load']:.0f}")
+
+    if a.get("icu_rpe"):
+        lines.append(f"- RPE: {a['icu_rpe']:.0f}")
+
+    if a.get("pace_zone_times"):
+        lines.append(f"- Pace zones: {fmt_zones(a['pace_zone_times'])}")
+
+    if a.get("description"):
+        lines.append(f"- Description: {a['description']}")
+
+    subt = get_subt_summary(api, a)
+
+    if subt:
+        lines.append("\n### subT report")
+        for line in subt:
+            lines.append(f"- {line}")
+
+    return lines
+
+
 def daily():
 
     today = date.today()
@@ -704,83 +742,14 @@ def daily():
 
         for a in activities:
 
-            lines.append(
-                f"\n### {a.get('type','')} "
+            heading = (
+                f"{a.get('type','')} "
                 f"{a.get('name','')}"
             )
 
-
-            lines.append(
-                f"- Duration: "
-                f"{fmt_time(a.get('moving_time'))}"
+            lines.extend(
+                format_activity(api, a, heading)
             )
-
-
-            if a.get("distance"):
-
-                lines.append(
-                    f"- Distance: "
-                    f"{a['distance']/1000:.1f} km"
-                )
-
-
-            if a.get("type") in (
-                "Run",
-                "TrailRun"
-            ):
-
-                lines.append(
-                    f"- Pace: {pace(a)}"
-                )
-
-
-            if a.get("average_heartrate"):
-
-                lines.append(
-                    f"- HR: "
-                    f"{a['average_heartrate']:.0f} avg"
-                )
-
-
-            if a.get("icu_training_load"):
-
-                lines.append(
-                    f"- Load: "
-                    f"{a['icu_training_load']:.0f}"
-                )
-
-            if a.get("icu_rpe"):
-
-                lines.append(
-                    f"- RPE: "
-                    f"{a['icu_rpe']:.0f}"
-                )
-
-            if a.get("pace_zone_times"):
-            #if 1:
-
-                lines.append(
-                    f"- Pace zones: "
-                    f"{fmt_zones(a['pace_zone_times'])}"
-                )
-
-            if a.get("description"):
-            #if 1:
-
-                lines.append(
-                    f"- Description: "
-                    f"{a['description']}"
-                )
-
-
-            subt = get_subt_summary(api, a)
-
-            if subt:
-                lines.append(
-                    "\n### subT report"
-                )
-                for line in subt:
-                    lines.append(f"- {line}")
 
     else:
 
@@ -834,83 +803,14 @@ def daily():
 
         for a in activities_today:
 
-            lines.append(
-                f"\n### Today:  {a.get('type','')} "
+            heading = (
+                f"Today:  {a.get('type','')} "
                 f"{a.get('name','')}"
             )
 
-
-            lines.append(
-                f"- Duration: "
-                f"{fmt_time(a.get('moving_time'))}"
+            lines.extend(
+                format_activity(api, a, heading)
             )
-
-
-            if a.get("distance"):
-
-                lines.append(
-                    f"- Distance: "
-                    f"{a['distance']/1000:.1f} km"
-                )
-
-
-            if a.get("type") in (
-                "Run",
-                "TrailRun"
-            ):
-
-                lines.append(
-                    f"- Pace: {pace(a)}"
-                )
-
-
-            if a.get("average_heartrate"):
-
-                lines.append(
-                    f"- HR: "
-                    f"{a['average_heartrate']:.0f} avg"
-                )
-
-
-            if a.get("icu_training_load"):
-
-                lines.append(
-                    f"- Load: "
-                    f"{a['icu_training_load']:.0f}"
-                )
-
-            if a.get("icu_rpe"):
-
-                lines.append(
-                    f"- RPE: "
-                    f"{a['icu_rpe']:.0f}"
-                )
-
-            if a.get("pace_zone_times"):
-            #if 1:
-
-                lines.append(
-                    f"- Pace zones: "
-                    f"{fmt_zones(a['pace_zone_times'])}"
-                )
-
-            if a.get("description"):
-            #if 1:
-
-                lines.append(
-                    f"- Description: "
-                    f"{a['description']}"
-                )
-
-
-            subt = get_subt_summary(api, a)
-
-            if subt:
-                lines.append(
-                    "\n### subT report"
-                )
-                for line in subt:
-                    lines.append(f"- {line}")
 
     else:
         lines.append(
