@@ -11,10 +11,12 @@ quality
 │   └── other
 ├── longrun          (> 90 min)
 ├── race
+├── race-support     (warmup / cooldown)
 └── tempo
 non-quality
 ├── easy
 └── recovery
+cross-training
 unknown
 
 Rules
@@ -24,12 +26,19 @@ Rules
 - A session > 90 min is a longrun even with RPE < 4, unless its content
   (race/subt/lt1/tempo) says otherwise.
 - recovery: RPE = 1 and shorter than 40 min.
-- Sub-type keywords come from name/description, which usually encodes the
-  planned session. Execution (RPE/duration) decides *whether* it was quality.
+- Sub-type keywords come from the activity name only. Descriptions often
+  mention alternatives ("did 3x10@LT1 instead of subT") and would mislead.
+- LT1 wins over subT when both appear (subT was sometimes added to a name
+  only to include a session in the subT report).
+- Rep length ignores work intervals shorter than 60 s (strides).
+- Race warm-ups and cool-downs are quality/race-support, identified by
+  name; this overrides the RPE rule (they are usually RPE 1-3).
+- Non-run activities are cross-training.
 """
 
 from dataclasses import dataclass
 
+from .analysis import RUN_TYPES, classify_interval
 from .model import Activity, Interval
 
 # --- thresholds -----------------------------------------------------------
@@ -44,13 +53,13 @@ RECOVERY_RPE = 1
 RECOVERY_MAX_DURATION_S = 40 * 60
 
 TEMPO_BLOCK_S = 10 * 60
-
-SHORT_MAX_S = 240
-MEDIUM_MAX_S = 350
+SUBT_MIN_REP_S = 60           # ignore strides when measuring subT reps
 
 # --- keywords -------------------------------------------------------------
 
 RACE_WORDS = ("race", "wettkampf")
+WARMUP_WORDS = ("warm up", "warm-up", "warmup")
+COOLDOWN_WORDS = ("cool down", "cool-down", "cooldown")
 SUBT_WORDS = ("subt",)
 LT1_WORDS = ("lt1", "lt 1")
 TEMPO_WORDS = ("tempo", "threshold", "schwelle")
@@ -59,23 +68,22 @@ TEMPO_WORDS = ("tempo", "threshold", "schwelle")
 @dataclass(frozen=True)
 class Category:
 
-    group: str                  # "quality" | "non-quality" | "unknown"
-    kind: str                   # "intervals" | "longrun" | "race" | "tempo" | "easy" | "recovery" | "unknown"
+    group: str                  # "quality" | "non-quality" | "cross-training" | "unknown"
+    kind: str = ""              # "intervals" | "longrun" | "race" | "race-support" | "tempo" | "easy" | "recovery"
     detail: str | None = None   # "subt-short" | "subt-medium" | "subt-long" | "lt1" | "other"
 
     @property
     def path(self) -> str:
-        parts = [self.group, self.kind]
-        if self.detail:
-            parts.append(self.detail)
-        return "/".join(parts)
+        parts = (self.group, self.kind, self.detail)
+        return "/".join(part for part in parts if part)
 
     @property
     def quality(self) -> bool:
         return self.group == "quality"
 
 
-UNKNOWN = Category("unknown", "unknown")
+UNKNOWN = Category("unknown")
+CROSS_TRAINING = Category("cross-training")
 
 
 def classify(
@@ -83,12 +91,19 @@ def classify(
     intervals: list[Interval] | None = None,
 ) -> Category:
     """Classify one activity, optionally using its interval structure."""
+    if activity.type not in RUN_TYPES:
+        return CROSS_TRAINING
+
     intervals = intervals or []
-    text = f"{activity.name} {activity.description}".lower()
+    text = activity.name.lower()
     work = [
         i for i in intervals
         if i.type == "WORK" and i.duration_s > 0
     ]
+
+    support = _race_support(text)
+    if support is not None:
+        return Category("quality", "race-support", support)
 
     quality = _is_quality(activity)
 
@@ -136,12 +151,12 @@ def _quality_category(
     if _has(text, RACE_WORDS):
         return Category("quality", "race")
 
+    if _has(text, LT1_WORDS):
+        return Category("quality", "intervals", "lt1")
+
     subt = _subt_detail(text, work)
     if subt is not None:
         return Category("quality", "intervals", subt)
-
-    if _has(text, LT1_WORDS):
-        return Category("quality", "intervals", "lt1")
 
     if _has(text, TEMPO_WORDS) or _has_sustained_block(work):
         return Category("quality", "tempo")
@@ -156,20 +171,24 @@ def _subt_detail(text: str, work: list[Interval]) -> str | None:
     if not _has(text, SUBT_WORDS):
         return None
 
-    if not work:
+    reps = [i.duration_s for i in work if i.duration_s >= SUBT_MIN_REP_S]
+    if not reps:
         return "subt"
 
-    avg_rep = sum(i.duration_s for i in work) / len(work)
-
-    if avg_rep <= SHORT_MAX_S:
-        return "subt-short"
-    if avg_rep <= MEDIUM_MAX_S:
-        return "subt-medium"
-    return "subt-long"
+    return f"subt-{classify_interval(sum(reps) / len(reps))}"
 
 
 def _has_sustained_block(work: list[Interval]) -> bool:
     return any(i.duration_s >= TEMPO_BLOCK_S for i in work)
+
+
+def _race_support(text: str) -> str | None:
+    """Warmup/cooldown label, matched by name before the RPE rule."""
+    if _has(text, WARMUP_WORDS):
+        return "warmup"
+    if _has(text, COOLDOWN_WORDS):
+        return "cooldown"
+    return None
 
 
 # --- non-quality ----------------------------------------------------------

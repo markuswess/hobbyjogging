@@ -60,10 +60,12 @@ quality
 │   └── other
 ├── longrun          (> 90 min)
 ├── race
+├── race-support     (warmup / cooldown)
 └── tempo
 non-quality
 ├── easy
 └── recovery
+cross-training
 unknown
 ```
 
@@ -74,9 +76,15 @@ Rules (`classify.py`):
 - **longrun**: activity longer than 90 min, even with RPE < 4 —
   unless race/subt/lt1/tempo content takes precedence.
 - **recovery**: RPE = 1 and shorter than 40 min.
-- Sub-type keywords come from the activity name/description (which
-  usually reflects the planned session); execution (RPE/duration)
-  decides *whether* the session was quality.
+- **race-support**: race warm-ups and cool-downs, identified by name
+  (`warm up` / `cool down`); overrides the RPE rule, since they are
+  usually RPE 1–3.
+- **cross-training**: any non-run activity (hiking, cycling, kayaking).
+- Sub-type keywords come from the activity **name** only; descriptions
+  often mention alternatives (e.g. "did 3x10@LT1 instead of subT").
+  Execution (RPE/duration) decides *whether* the session was quality.
+- **LT1 wins over subT** when both appear in the name.
+- Rep length ignores work intervals shorter than 60 s (strides).
 
 ## Architecture
 
@@ -90,6 +98,8 @@ analysis or chart code:
 - `sources/intervals_api.py` — the only module that knows raw
   Intervals.icu field names.
 - `analysis.py` — pure metrics over model objects (no API, no plotting).
+- `classify.py` — workout categorization (quality / non-quality /
+  cross-training / unknown).
 - `charts.py` — matplotlib rendering of analysis output.
 - `reports.py` — the Markdown reports.
 

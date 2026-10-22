@@ -49,8 +49,12 @@ def weekly_training_load(activities: list[Activity]) -> list[tuple[date, float]]
 
 
 def is_subt_activity(a: Activity) -> bool:
-    """True if the activity looks like a subT workout."""
-    return "subt" in f"{a.name} {a.description}".lower()
+    """True if the name marks the session as a subT workout.
+
+    Only the name is used: descriptions often mention alternatives
+    ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in.
+    """
+    return "subt" in a.name.lower()
 
 
 def classify_interval(duration_s: float) -> str:
