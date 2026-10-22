@@ -15,14 +15,16 @@ training reports:
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
+- **report** — A summary report for an arbitrary inclusive date range
+  (`--days`, `--from`, `--to`).
 - **session <date>** — One day's activities with category, totals,
   and subT/LT1 work-interval details.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
-- **chart** — Weekly running distance chart (matplotlib) for the
-  last 90 days.
+- **chart** — Weekly running distance chart (matplotlib); last 90
+  days by default.
 - **subt-chart** — subT and LT1 work interval pace over the last 365
-  days, with per-session dots color-coded by rep length
+  days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
   slowest work interval, plus rolling averages.
 - **subt-hr-chart** — the same work-interval chart using average
@@ -48,12 +50,46 @@ Run:
     uv run --env-file .env python -m intervals_report monthly
     uv run --env-file .env python -m intervals_report yearly
     uv run --env-file .env python -m intervals_report all
+    uv run --env-file .env python -m intervals_report report --days 90
     uv run --env-file .env python -m intervals_report session 2026-02-22
     uv run --env-file .env python -m intervals_report debug
     uv run --env-file .env python -m intervals_report chart [output.png]
     uv run --env-file .env python -m intervals_report subt-chart [output.png]
     uv run --env-file .env python -m intervals_report subt-hr-chart [output.png]
     uv run --env-file .env python -m intervals_report classify [days]
+
+### Date ranges
+
+`report`, `chart`, `subt-chart`, `subt-hr-chart` and `classify` accept:
+
+    --days N              look back N days from today
+    --from YYYY-MM-DD     start date (inclusive)
+    --to YYYY-MM-DD       end date (inclusive)
+
+The chart commands also accept:
+
+    --output FILE         chart output path
+
+Examples:
+
+    uv run --env-file .env python -m intervals_report report --days 90
+    uv run --env-file .env python -m intervals_report report --from 2026-01-01 --to 2026-03-31
+    uv run --env-file .env python -m intervals_report classify --days 90
+    uv run --env-file .env python -m intervals_report classify --from 2026-01-01 --to 2026-03-31
+    uv run --env-file .env python -m intervals_report subt-chart --from 2026-02-01
+    uv run --env-file .env python -m intervals_report subt-hr-chart --to 2026-06-30 --days 120 --output hr.png
+
+Rules:
+
+- `--from` and `--to` together select exactly that inclusive range.
+- `--from` alone runs from that date through today.
+- `--to` alone counts back `--days` (or the command default) from that date.
+- With neither, count back `--days` (or the command default) from today.
+- The old forms still work: `classify 30` and `subt-chart out.png`.
+  An explicit `--days` / `--output` wins when both are supplied.
+- The fixed presets (`daily`, `weekly`, `monthly`, `yearly`, `all`)
+  keep their existing windows; use `report` for a custom range.
+  `report` defaults to the last 30 days when no range is given.
 
 ## Workout categories
 
@@ -114,6 +150,7 @@ analysis or chart code:
 
 - `model.py` — source-agnostic types (`Activity`, `WellnessDay`,
   `Event`, `Interval`).
+- `cli.py` — shared command-line date-range parsing.
 - `sources/base.py` — the `DataSource` protocol.
 - `sources/intervals_api.py` — the only module that knows raw
   Intervals.icu field names.

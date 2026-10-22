@@ -301,28 +301,20 @@ def daily():
 
     return "\n".join(lines)
 
-def summary(period):
+def period_report(
+    start: date,
+    end: date,
+    title: str,
+    source: IntervalsSource | None = None,
+) -> str:
+    """Render a summary for an inclusive date range."""
+    if start > end:
+        raise ValueError("start must not be after end")
 
-    today = date.today()
-    yesterday = date.today() - timedelta(days=1)
+    ndays = (end - start).days + 1
+    source = source or IntervalsSource()
 
-    if period == "weekly":
-        ndays = 7
-
-    elif period == "monthly":
-        ndays = 30
-
-    elif period == "yearly":
-        ndays = 365
-
-    else:
-        raise ValueError(period)
-
-    start = today - timedelta(days=ndays)
-
-    source = IntervalsSource()
-
-    activities = source.activities(start, yesterday)
+    activities = source.activities(start, end)
 
     training = summarize_training(activities)
 
@@ -347,20 +339,18 @@ def summary(period):
     breakdown = category_breakdown(activities, intervals_by_id)
 
     recovery = recovery_summary(
-        source.wellness(start, yesterday)
+        source.wellness(start, end)
     )
-
 
     lines = []
 
     lines.append(
-        f"# {period.title()} Training Report"
+        f"# {title}"
     )
 
     lines.append(
-        f"{start} → {yesterday}"
+        f"{start} → {end}"
     )
-
 
     lines.append("\n## Running (avg. per week)")
 
@@ -405,7 +395,7 @@ def summary(period):
         format_category_table(breakdown)
     )
 
-    if len(training["quality"])<10:
+    if len(training["quality"]) < 10:
         lines.append("\n## Quality sessions")
 
         for q in training["quality"]:
@@ -424,10 +414,13 @@ def summary(period):
                 f"\n    Totals: {fmt_time(q.duration_s)}, "
                 f"{pace(q)},"
                 f" {hr} BpM")
+
             if work:
                 lines.append(f"    Work intervals done:")
+
                 for line in work:
                     lines.append(f"    - {line}")
+
             lines.append(f"    Comments: {q.description}")
 
     lines.append("\n## Recovery")
@@ -444,5 +437,30 @@ def summary(period):
         f"- Sleep avg: {fmt_time(recovery['sleep'])}"
     )
 
-
     return "\n".join(lines)
+
+
+def summary(period):
+    """Render one of the fixed weekly, monthly or yearly reports."""
+    today = date.today()
+    end = today - timedelta(days=1)
+
+    if period == "weekly":
+        ndays = 7
+
+    elif period == "monthly":
+        ndays = 30
+
+    elif period == "yearly":
+        ndays = 365
+
+    else:
+        raise ValueError(period)
+
+    start = today - timedelta(days=ndays)
+
+    return period_report(
+        start,
+        end,
+        f"{period.title()} Training Report",
+    )

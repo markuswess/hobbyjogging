@@ -1,19 +1,25 @@
 import sys
 from datetime import date
 
-from .reports import daily, debug, session_report, summary
+from .cli import (
+    parse_chart_args,
+    parse_classify_args,
+    parse_report_args,
+)
+from .reports import (
+    daily,
+    debug,
+    period_report,
+    session_report,
+    summary,
+)
 
 
-def run_chart(output: str) -> None:
-    """Render a weekly running distance chart for the last 90 days."""
-    from datetime import date, timedelta
-
+def run_chart(output: str, start: date, end: date) -> None:
+    """Render a weekly running distance chart for the given range."""
     from .analysis import weekly_run_distance
     from .charts import plot_weekly_bars
     from .sources.intervals_api import IntervalsSource
-
-    end = date.today()
-    start = end - timedelta(days=90)
 
     activities = IntervalsSource().activities(start, end)
 
@@ -27,10 +33,13 @@ def run_chart(output: str) -> None:
     print(path)
 
 
-def run_subt_chart(output: str, heart_rate: bool = False) -> None:
-    """Render subT and LT1 work interval pace or HR for the last 365 days."""
-    from datetime import date, timedelta
-
+def run_subt_chart(
+    output: str,
+    start: date,
+    end: date,
+    heart_rate: bool = False,
+) -> None:
+    """Render subT and LT1 work interval pace or HR for the given range."""
     from .analysis import (
         is_lt1_activity,
         is_subt_activity,
@@ -38,9 +47,6 @@ def run_subt_chart(output: str, heart_rate: bool = False) -> None:
     )
     from .charts import plot_subt_hr, plot_subt_paces
     from .sources.intervals_api import IntervalsSource
-
-    end = date.today()
-    start = end - timedelta(days=365)
 
     source = IntervalsSource()
     activities = source.activities(start, end)
@@ -69,16 +75,11 @@ def run_subt_chart(output: str, heart_rate: bool = False) -> None:
     print(path)
 
 
-def run_classify(days: int = 30) -> None:
-    """Print the category of recent activities."""
-    from datetime import date, timedelta
-
+def run_classify(start: date, end: date) -> None:
+    """Print the category of activities in the given range."""
     from .analysis import is_subt_activity
     from .classify import classify
     from .sources.intervals_api import IntervalsSource
-
-    end = date.today()
-    start = end - timedelta(days=days)
 
     source = IntervalsSource()
     activities = source.activities(start, end)
@@ -137,31 +138,69 @@ def main():
         debug()
         sys.exit(0)
 
+    elif mode == "report":
+        try:
+            start, end = parse_report_args(sys.argv[2:])
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
+        report = period_report(start, end, "Custom Training Report")
+
     elif mode == "chart":
-        run_chart(sys.argv[2] if len(sys.argv) > 2 else "chart.png")
+        try:
+            output, start, end = parse_chart_args(
+                sys.argv[2:],
+                default_output="chart.png",
+                default_days=90,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
+        run_chart(output, start, end)
         sys.exit(0)
 
     elif mode in ("subt-chart", "subt-hr-chart"):
         is_hr_chart = mode == "subt-hr-chart"
+        default_output = (
+            "subt-hr-chart.png" if is_hr_chart else "subt-chart.png"
+        )
+
+        try:
+            output, start, end = parse_chart_args(
+                sys.argv[2:],
+                default_output=default_output,
+                default_days=365,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
         run_subt_chart(
-            sys.argv[2]
-            if len(sys.argv) > 2
-            else ("subt-hr-chart.png" if is_hr_chart else "subt-chart.png"),
+            output,
+            start,
+            end,
             heart_rate=is_hr_chart,
         )
         sys.exit(0)
 
     elif mode == "classify":
-        run_classify(int(sys.argv[2]) if len(sys.argv) > 2 else 30)
+        try:
+            start, end = parse_classify_args(sys.argv[2:])
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
+        run_classify(start, end)
         sys.exit(0)
 
     else:
         raise SystemExit(
             "usage: python -m intervals_report "
             "daily|weekly|monthly|yearly|debug|all"
-            "|session YYYY-MM-DD|chart [output.png]"
+            "|session YYYY-MM-DD|report [--days N]"
+            "|chart [output.png]"
             "|subt-chart [output.png]|subt-hr-chart [output.png]"
             "|classify [days]"
+            "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
+            "[--to YYYY-MM-DD]"
         )
 
     print(report)
