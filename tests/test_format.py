@@ -111,13 +111,14 @@ class FormattingTests(unittest.TestCase):
         intervals = [
             Interval(
                 type="WORK", group_id="g",
-                duration_s=300, distance_m=1000, avg_hr=160,
+                duration_s=300, distance_m=1000,
+                avg_hr=160, max_hr=172,
             )
             for _ in range(5)
         ]
 
         self.assertEqual(
-            ["5x5:00 subT-medium: 5:00/km, 160 bpm"],
+            ["5x5:00 subT-medium: 5:00/km, 160 avg / 172 max bpm"],
             subt_summary_for_activity(a, intervals),
         )
 

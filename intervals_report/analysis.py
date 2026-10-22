@@ -180,12 +180,18 @@ def _subt_point(
             / sum(t for _, t in hr_pairs)
         )
 
+    max_hr = max(
+        (i.max_hr for i in intervals if i.max_hr is not None),
+        default=None,
+    )
+
     return SubtPoint(
         date=activity.date,
         category=category or classify_interval(total_time / len(intervals)),
         pace_s_per_km=pace,
         count=len(intervals),
         avg_hr=avg_hr,
+        max_hr=max_hr,
         avg_rep_s=total_time / len(intervals),
     )
 

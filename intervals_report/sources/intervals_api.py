@@ -77,6 +77,7 @@ def to_interval(raw: dict) -> Interval:
         duration_s=raw.get("moving_time") or 0,
         distance_m=raw.get("distance") or 0,
         avg_hr=raw.get("average_heartrate"),
+        max_hr=raw.get("max_heartrate"),
     )
 
 

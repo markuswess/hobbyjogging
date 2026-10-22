@@ -53,6 +53,7 @@ class Interval:
     duration_s: float = 0
     distance_m: float = 0
     avg_hr: float | None = None
+    max_hr: float | None = None
 
 
 @dataclass
@@ -64,4 +65,5 @@ class SubtPoint:
     pace_s_per_km: float
     count: int = 1
     avg_hr: float | None = None
+    max_hr: float | None = None
     avg_rep_s: float = 0

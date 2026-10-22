@@ -130,13 +130,20 @@ def format_subt_result(point: SubtPoint):
 
     interval_duration = f"{mins}:{secs:02d}"
 
-    hr = f"{point.avg_hr:.0f}" if point.avg_hr is not None else "-"
+    if point.avg_hr is None and point.max_hr is None:
+        hr = "- bpm"
+    elif point.max_hr is None:
+        hr = f"{point.avg_hr:.0f} avg bpm"
+    elif point.avg_hr is None:
+        hr = f"{point.max_hr:.0f} max bpm"
+    else:
+        hr = f"{point.avg_hr:.0f} avg / {point.max_hr:.0f} max bpm"
 
     return (
         f"{point.count}x{interval_duration} "
         f"subT-{point.category}: "
         f"{format_pace(point.pace_s_per_km)}/km, "
-        f"{hr} bpm"
+        f"{hr}"
     )
 
 

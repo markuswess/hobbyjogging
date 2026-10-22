@@ -18,6 +18,7 @@ def iv(
     type="WORK",
     group_id="reps",
     avg_hr=None,
+    max_hr=None,
 ):
     return Interval(
         type=type,
@@ -25,6 +26,7 @@ def iv(
         duration_s=duration_s,
         distance_m=distance_m,
         avg_hr=avg_hr,
+        max_hr=max_hr,
     )
 
 
@@ -101,7 +103,7 @@ class WorkIntervalsTests(unittest.TestCase):
     def test_subt_points_use_only_work_reps(self):
         intervals = [
             iv(1200, 4000, group_id="warmup"),
-            *[iv(300, 1300, avg_hr=160) for _ in range(5)],
+            *[iv(300, 1300, avg_hr=160, max_hr=170) for _ in range(5)],
             *[iv(100, 300, group_id="jog") for _ in range(4)],
             iv(1200, 3800, group_id="cooldown"),
         ]
@@ -113,13 +115,14 @@ class WorkIntervalsTests(unittest.TestCase):
         self.assertEqual(5, points[0].count)
         self.assertAlmostEqual(300, points[0].avg_rep_s)
         self.assertAlmostEqual(160, points[0].avg_hr)
+        self.assertEqual(170, points[0].max_hr)
         self.assertEqual("medium", points[0].category)
 
     def test_subt_session_point_aggregates_groups(self):
         intervals = [
-            iv(300, 1300, group_id="ascending"),
-            iv(300, 1300, group_id="descending"),
-            iv(180, 850, group_id="pyramid-tip"),
+            iv(300, 1300, group_id="ascending", max_hr=170),
+            iv(300, 1300, group_id="descending", max_hr=172),
+            iv(180, 850, group_id="pyramid-tip", max_hr=165),
         ]
         activity = Activity(id="a", date=D, name="subT pyramid")
 
@@ -128,6 +131,7 @@ class WorkIntervalsTests(unittest.TestCase):
         self.assertIsNotNone(point)
         self.assertEqual(3, point.count)
         self.assertAlmostEqual(260, point.avg_rep_s)
+        self.assertEqual(172, point.max_hr)
         self.assertEqual("medium", point.category)
 
     def test_subt_session_point_accepts_category_override(self):
