@@ -155,79 +155,6 @@ def format_subt_result(result):
         f'{format_pace(result["pace"])}/km, '
         f'{result["hr"]} bpm'
     )
-def format_subt_summary(sessions):
-
-    if not sessions:
-        return []
-
-    lines = ["## SubT"]
-
-    categories = [
-        ("short", "Short"),
-        ("medium", "Medium"),
-        ("long", "Long"),
-    ]
-
-    for category, label in categories:
-
-        data = [
-            s for s in sessions
-            if s["category"] == category
-        ]
-
-        if not data:
-            continue
-
-        # Chronological
-        data.sort(key=lambda x: x["date"])
-
-        values = []
-
-        for s in data:
-            pace = format_pace(s["pace"])
-            values.append(pace)
-
-        # One value: just show it
-        if len(values) == 1:
-            pace_text = values[0]
-
-        else:
-            pace_text = " → ".join(values)
-
-        hr_values = [
-            str(s["hr"])
-            for s in data
-            if s["hr"] is not None
-        ]
-
-        if len(hr_values) == 1:
-            hr_text = hr_values[0]
-        elif hr_values:
-            hr_text = " → ".join(hr_values)
-        else:
-            hr_text = "-"
-
-        # Use the latest workout's structure
-        latest = data[-1]
-
-        duration = latest["duration"]
-        mins = int(duration // 60)
-        secs = round(duration % 60)
-
-        if secs == 60:
-            mins += 1
-            secs = 0
-
-        interval = f"{mins}:{secs:02d}"
-
-        lines.append(
-            f"- {label}: {len(data)} session"
-            f"{'s' if len(data) != 1 else ''}, "
-            #f"{latest['count']}x{interval} — "
-            f"{pace_text}/km, HR {hr_text}"
-        )
-
-    return lines
 # -------------------------------------------------
 # Analysis
 # -------------------------------------------------
@@ -524,39 +451,6 @@ def get_subt_summary(api, activity):
     ]
 
 
-def get_subt_sessions(api, activities):
-    """Extract subT workout blocks from a list of activities."""
-
-    sessions = []
-
-    for activity in activities:
-
-        name = (activity.get("name") or "").lower()
-        description = (activity.get("description") or "").lower()
-
-        if "subt" not in name and "subt" not in description:
-            continue
-
-        try:
-            detailed = api.get_activity(activity["id"])
-            intervals = detailed.get("icu_intervals", [])
-        except Exception:
-            continue
-
-        results = extract_subt_intervals(intervals)
-
-        for result in results:
-
-            sessions.append({
-                "date": activity["start_date_local"][:10],
-                "category": result["category"],
-                "count": result["count"],
-                "duration": result["duration"] / result["count"],
-                "pace": result["pace"],
-                "hr": result["hr"],
-            })
-
-    return sessions
 # -------------------------------------------------
 # Reports
 # -------------------------------------------------
@@ -962,15 +856,6 @@ def summary(period):
                 for line in subt:
                     lines.append(f"    - {line}")
             lines.append(f"    Comments: {q.get('description')}")
-#    else:
-#        subt_sessions = get_subt_sessions(
-#            api,
-#            training["quality"],
-#        )
-#
-#        lines.extend(
-#            format_subt_summary(subt_sessions)
-#        )
 
     lines.append("\n## Recovery")
 
