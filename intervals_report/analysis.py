@@ -119,6 +119,7 @@ def subt_work_points(
             pace_s_per_km=pace,
             count=len(group),
             avg_hr=avg_hr,
+            avg_rep_s=total_time / len(group),
         ))
 
     return points

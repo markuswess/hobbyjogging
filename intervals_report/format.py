@@ -1,5 +1,27 @@
+"""Report formatting.
+
+All helpers take model objects (see ``model.py``), so reports work with
+any ``DataSource`` implementation.
+"""
+
+from .analysis import RUN_TYPES, is_subt_activity, subt_work_points
 from .classify import classify
-from .sources.intervals_api import to_activity
+from .model import Activity, Interval, SubtPoint, WellnessDay
+from .sources.base import DataSource
+
+
+SPORT_LABELS = {
+    "run": "Run",
+    "trail_run": "TrailRun",
+}
+
+
+def sport_label(item):
+
+    return SPORT_LABELS.get(
+        item.type,
+        item.type.replace("_", " ").title(),
+    )
 
 
 def fmt_time(seconds):
@@ -18,6 +40,7 @@ def fmt_time(seconds):
         return f"{h}h{m:02d}"
 
     return f"{m}min"
+
 
 def fmt_zones(zone_times):
 
@@ -78,9 +101,9 @@ def pace(activity):
     try:
 
         sec = (
-            activity["moving_time"]
+            activity.duration_s
             /
-            activity["distance"]
+            activity.distance_m
             *
             1000
         )
@@ -93,9 +116,10 @@ def pace(activity):
     except Exception:
         return "-"
 
-def format_subt_result(result):
 
-    duration = result["duration"] / result["count"]
+def format_subt_result(point: SubtPoint):
+
+    duration = point.avg_rep_s
 
     mins = int(duration // 60)
     secs = round(duration % 60)
@@ -106,22 +130,26 @@ def format_subt_result(result):
 
     interval_duration = f"{mins}:{secs:02d}"
 
+    hr = f"{point.avg_hr:.0f}" if point.avg_hr is not None else "-"
+
     return (
-        f'{result["count"]}x{interval_duration} '
-        f'subT-{result["category"]}: '
-        f'{format_pace(result["pace"])}/km, '
-        f'{result["hr"]} bpm'
+        f"{point.count}x{interval_duration} "
+        f"subT-{point.category}: "
+        f"{format_pace(point.pace_s_per_km)}/km, "
+        f"{hr} bpm"
     )
+
 
 def last_four_nights(wellness):
 
     wellness = sorted(
         wellness,
-        key=lambda x: x.get("id", ""),
+        key=lambda x: x.date,
         reverse=True,
     )
 
     return wellness[:4]
+
 
 def zone_3_4_time(zone_times):
     """Return combined time spent in zones 3 and 4."""
@@ -130,12 +158,8 @@ def zone_3_4_time(zone_times):
 
     return sum(zone_times[2:4])
 
-def summarize_training(activities):
 
-    run_types = {
-        "Run",
-        "TrailRun",
-    }
+def summarize_training(activities: list[Activity]):
 
     result = {
         "run_time": 0,
@@ -150,68 +174,44 @@ def summarize_training(activities):
         "rpe": 0,
     }
 
-
     for a in activities:
 
-        sport = a.get("type","")
+        time = a.duration_s
+        distance = a.distance_m
+        load = a.training_load or 0
+        rpe = a.rpe or 0
 
-        time = a.get(
-            "moving_time",
-            0
-        )
-
-        distance = a.get(
-            "distance",
-            0
-        )
-
-        load = (
-            a.get("icu_training_load")
-            or 0
-        )
-
-        rpe = (
-            a.get("icu_rpe")
-            or 0
-        )
-
-
-        if sport in run_types:
+        if a.type in RUN_TYPES:
             result["run_time"] += time
             result["run_distance"] += distance
             result["run_load"] += load
-            result["rpe"] += rpe 
+            result["rpe"] += rpe
 
-
-            category = classify(to_activity(a))
+            category = classify(a)
 
             # Warm-ups/cool-downs are quality in the breakdown, but they
             # would clutter the per-session detail list.
             if category.quality and category.kind != "race-support":
                 result["quality"].append(a)
 
-        if sport == "Run":
+        if a.type == "run":
             result["z3_z4_time"] += zone_3_4_time(
-                a.get("pace_zone_times")
+                a.pace_zone_times
             )
 
-        elif sport == "TrailRun":
-
+        elif a.type == "trail_run":
             result["z3_z4_time"] += zone_3_4_time(
-                a.get("icu_hr_zone_times")
+                a.hr_zone_times
             )
 
         else:
-
             result["cross_time"] += time
             result["cross_load"] += load
-
 
     return result
 
 
-
-def recovery_summary(wellness):
+def recovery_summary(wellness: list[WellnessDay]):
 
     def avg(values):
 
@@ -221,23 +221,20 @@ def recovery_summary(wellness):
             else None
         )
 
-
     hrv = []
     rhr = []
     sleep = []
 
-
     for w in wellness:
 
-        if w.get("hrv"):
-            hrv.append(w["hrv"])
+        if w.hrv:
+            hrv.append(w.hrv)
 
-        if w.get("restingHR"):
-            rhr.append(w["restingHR"])
+        if w.resting_hr:
+            rhr.append(w.resting_hr)
 
-        if w.get("sleepSecs"):
-            sleep.append(w["sleepSecs"])
-
+        if w.sleep_s:
+            sleep.append(w.sleep_s)
 
     return {
         "hrv": avg(hrv),
@@ -245,7 +242,8 @@ def recovery_summary(wellness):
         "sleep": avg(sleep),
     }
 
-def latest_recovery(wellness):
+
+def latest_recovery(wellness: list[WellnessDay]):
 
     if not wellness:
         return {
@@ -254,23 +252,13 @@ def latest_recovery(wellness):
             "sleep": None,
         }
 
-    # newest entry
-    w = sorted(
-        wellness,
-        key=lambda x: x.get("id", ""),
-        reverse=True
-    )[0]
+    w = max(wellness, key=lambda x: x.date)
 
     return {
-        "hrv": w.get("hrv"),
-        "rhr": w.get("restingHR"),
-        "sleep": w.get("sleepSecs"),
+        "hrv": w.hrv,
+        "rhr": w.resting_hr,
+        "sleep": w.sleep_s,
     }
-def pace_from_speed(speed):
-    """Return pace as seconds/km."""
-    if not speed or speed <= 0:
-        return None
-    return 1000 / speed
 
 
 def format_pace(seconds):
@@ -281,157 +269,78 @@ def format_pace(seconds):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def classify_subt(duration):
-    """Classify subT interval length."""
-    if duration <= 240:
-        return "short"
-    elif duration <= 350:
-        return "medium"
-    else:
-        return "long"
-
-
-def extract_subt_intervals(intervals):
-    """
-    Extract WORK blocks from an Intervals.icu icu_intervals list.
-
-    Returns one entry per group_id.
-    """
-
-    work = [
-        i for i in intervals
-        if i.get("type") == "WORK"
-        and i.get("moving_time")
-        and i.get("distance")
-    ]
-
-    groups = {}
-
-    for interval in work:
-        group_id = interval.get("group_id")
-
-        # If there is no group_id, keep it as its own group.
-        if not group_id:
-            group_id = f"interval-{interval['id']}"
-
-        groups.setdefault(group_id, []).append(interval)
-
-    results = []
-
-    for group_id, group in groups.items():
-
-        # Sort chronologically
-        group.sort(key=lambda x: x["start_time"])
-
-        total_time = sum(
-            i["moving_time"] for i in group
-        )
-
-        total_distance = sum(
-            i["distance"] for i in group
-        )
-
-        if total_time <= 0 or total_distance <= 0:
-            continue
-
-        avg_speed = total_distance / total_time
-        avg_pace = pace_from_speed(avg_speed)
-
-        # Time-weighted HR
-        hr_values = [
-            (i["average_heartrate"], i["moving_time"])
-            for i in group
-            if i.get("average_heartrate") is not None
-        ]
-
-        if hr_values:
-            avg_hr = (
-                sum(hr * t for hr, t in hr_values)
-                / sum(t for _, t in hr_values)
-            )
-            avg_hr = round(avg_hr)
-        else:
-            avg_hr = None
-
-        results.append({
-            "group_id": group_id,
-            "count": len(group),
-            "duration": total_time,
-            "distance": total_distance,
-            "pace": avg_pace,
-            "hr": avg_hr,
-            "category": classify_subt(total_time / len(group)),
-        })
-
-    return results
-
-def subt_summary_for_activity(activity, intervals):
+def subt_summary_for_activity(
+    activity: Activity,
+    intervals: list[Interval],
+):
     """Return subT report lines for an activity, given its intervals."""
 
-    name = (activity.get("name") or "").lower()
-    description = (activity.get("description") or "").lower()
-
-    # Only inspect activities that look like subT workouts.
-    if "subt" not in name and "subt" not in description:
+    if not is_subt_activity(activity):
         return None
 
-    results = extract_subt_intervals(intervals)
+    points = subt_work_points(activity, intervals)
 
-    if not results:
+    if not points:
         return None
 
     return [
-        format_subt_result(result)
-        for result in results
+        format_subt_result(point)
+        for point in points
     ]
 
 
-def get_subt_summary(api, activity):
+def get_subt_summary(
+    source: DataSource,
+    activity: Activity,
+):
     """Return compact subT interval summary for an activity."""
 
-    name = (activity.get("name") or "").lower()
-    description = (activity.get("description") or "").lower()
-
-    # Only inspect activities that look like subT workouts.
-    if "subt" not in name and "subt" not in description:
+    if not is_subt_activity(activity):
         return None
 
     try:
-        intervals = api.get_activity_intervals(activity["id"])
+        intervals = source.activity_intervals(activity.id)
     except Exception:
         return None
 
     return subt_summary_for_activity(activity, intervals)
 
-def format_activity(api, a, heading):
+
+def format_activity(
+    source: DataSource,
+    activity: Activity,
+    heading: str,
+):
 
     lines = [
         f"\n### {heading}",
-        f"- Duration: {fmt_time(a.get('moving_time'))}",
+        f"- Duration: {fmt_time(activity.duration_s)}",
     ]
 
-    if a.get("distance"):
-        lines.append(f"- Distance: {a['distance']/1000:.1f} km")
+    if activity.distance_m:
+        lines.append(f"- Distance: {activity.distance_m/1000:.1f} km")
 
-    if a.get("type") in ("Run", "TrailRun"):
-        lines.append(f"- Pace: {pace(a)}")
+    if activity.type in RUN_TYPES:
+        lines.append(f"- Pace: {pace(activity)}")
 
-    if a.get("average_heartrate"):
-        lines.append(f"- HR: {a['average_heartrate']:.0f} avg")
+    if activity.avg_hr:
+        lines.append(f"- HR: {activity.avg_hr:.0f} avg")
 
-    if a.get("icu_training_load"):
-        lines.append(f"- Load: {a['icu_training_load']:.0f}")
+    if activity.training_load:
+        lines.append(f"- Load: {activity.training_load:.0f}")
 
-    if a.get("icu_rpe"):
-        lines.append(f"- RPE: {a['icu_rpe']:.0f}")
+    if activity.rpe:
+        lines.append(f"- RPE: {activity.rpe:.0f}")
 
-    if a.get("pace_zone_times"):
-        lines.append(f"- Pace zones: {fmt_zones(a['pace_zone_times'])}")
+    if activity.pace_zone_times:
+        lines.append(
+            f"- Pace zones: {fmt_zones(activity.pace_zone_times)}"
+        )
 
-    if a.get("description"):
-        lines.append(f"- Description: {a['description']}")
+    if activity.description:
+        lines.append(f"- Description: {activity.description}")
 
-    subt = get_subt_summary(api, a)
+    subt = get_subt_summary(source, activity)
 
     if subt:
         lines.append("\n### subT report")

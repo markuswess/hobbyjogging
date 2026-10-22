@@ -2,21 +2,21 @@ import json
 import sys
 from datetime import date, timedelta
 
+from .analysis import is_subt_activity
 from .api import Intervals
 from .classify import category_breakdown
 from .format import (
     fmt_time,
     format_activity,
     format_category_table,
-    get_subt_summary,
     last_four_nights,
-    latest_recovery,
     pace,
     recovery_summary,
+    sport_label,
     summarize_training,
     subt_summary_for_activity,
 )
-from .sources.intervals_api import to_activity, to_interval
+from .sources.intervals_api import IntervalsSource
 
 
 def debug():
@@ -102,35 +102,27 @@ def daily():
     yesterday = today - timedelta(days=1)
 
 
-    api = Intervals()
+    source = IntervalsSource()
 
-    activities = api.activities(
+    activities = source.activities(
         yesterday,
-        yesterday 
+        yesterday
     )
 
-    wellness = api.wellness(
-        today-timedelta(days=4),
+    wellness = source.wellness(
+        today - timedelta(days=4),
         today
-
     )
-    
-    events = api.events(
+
+    events = source.events(
         today,
         today
     )
 
-    activities_today = api.activities(
+    activities_today = source.activities(
         today,
         today
     )
-
-
-
-    recovery = latest_recovery(
-        wellness
-    )
-
 
     lines = []
 
@@ -153,22 +145,18 @@ def daily():
 
         # newest first
         activities.sort(
-            key=lambda x: x.get(
-                "start_date_local",
-                ""
-            )
+            key=lambda x: x.date
         )
-
 
         for a in activities:
 
             heading = (
-                f"{a.get('type','')} "
-                f"{a.get('name','')}"
+                f"{sport_label(a)} "
+                f"{a.name}"
             )
 
             lines.extend(
-                format_activity(api, a, heading)
+                format_activity(source, a, heading)
             )
 
     else:
@@ -187,18 +175,21 @@ def daily():
 
     for w in reversed(nights):
 
-        night_date = w.get("id", "")
+        night_date = w.date
 
-        hrv = w.get("hrv")
-        rhr = w.get("restingHR")
-        sleep = w.get("sleepSecs")
+        hrv = w.hrv
+        rhr = w.resting_hr
+        sleep = w.sleep_s
 
         lines.append(
             f"- {night_date}: "
             + (
             f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
-            +
-            f"RHR {rhr:.0f} bpm"
+            + (
+                f"RHR {rhr:.0f} bpm"
+                if rhr is not None
+                else "RHR N/A"
+            )
             + (
                 f", Sleep {fmt_time(sleep)}"
                 if sleep
@@ -214,22 +205,18 @@ def daily():
 
         # newest first
         activities_today.sort(
-            key=lambda x: x.get(
-                "start_date_local",
-                ""
-            )
+            key=lambda x: x.date
         )
-
 
         for a in activities_today:
 
             heading = (
-                f"Today:  {a.get('type','')} "
-                f"{a.get('name','')}"
+                f"Today:  {sport_label(a)} "
+                f"{a.name}"
             )
 
             lines.extend(
-                format_activity(api, a, heading)
+                format_activity(source, a, heading)
             )
 
     else:
@@ -243,37 +230,33 @@ def daily():
             for e in events:
 
                 lines.append(
-                    f"\n### {e.get('name','')}"
+                    f"\n### {e.name}"
                 )
 
-
-                if e.get("type"):
-
-                    lines.append(
-                        f"- Type: {e['type']}"
-                    )
-
-
-                if e.get("description"):
+                if e.type:
 
                     lines.append(
-                        e["description"]
+                        f"- Type: {sport_label(e)}"
                     )
 
+                if e.description:
 
-                if e.get("duration"):
+                    lines.append(
+                        e.description
+                    )
+
+                if e.duration_s:
 
                     lines.append(
                         f"- Duration: "
-                        f"{fmt_time(e['duration'])}"
+                        f"{fmt_time(e.duration_s)}"
                     )
 
-
-                if e.get("distance"):
+                if e.distance_m:
 
                     lines.append(
                         f"- Distance: "
-                        f"{e['distance']/1000:.1f} km"
+                        f"{e.distance_m/1000:.1f} km"
                     )
 
 
@@ -305,36 +288,31 @@ def summary(period):
 
     start = today - timedelta(days=ndays)
 
-    api = Intervals()
+    source = IntervalsSource()
 
+    activities = source.activities(start, yesterday)
 
-    raw_activities = api.activities(start, yesterday)
-
-    training = summarize_training(raw_activities)
-
-    activities = [to_activity(a) for a in raw_activities]
+    training = summarize_training(activities)
 
     # Only subT names need intervals to refine their rep-length category.
     intervals_by_id = {}
 
     for activity in activities:
 
-        if "subt" not in activity.name.lower():
+        if not is_subt_activity(activity):
             continue
 
         try:
-            raw_intervals = api.get_activity_intervals(activity.id)
+            intervals_by_id[activity.id] = (
+                source.activity_intervals(activity.id)
+            )
         except Exception:
             continue
-
-        intervals_by_id[activity.id] = [
-            to_interval(i) for i in raw_intervals
-        ]
 
     breakdown = category_breakdown(activities, intervals_by_id)
 
     recovery = recovery_summary(
-        api.wellness(start, yesterday)
+        source.wellness(start, yesterday)
     )
 
 
@@ -397,24 +375,25 @@ def summary(period):
 
         for q in training["quality"]:
 
-            intervals = (
-                q.get("icu_intervals")
-                if q.get("icu_intervals") is not None
-                else api.get_activity_intervals(q["id"])
-            )
+            intervals = intervals_by_id.get(q.id)
+
+            if intervals is None:
+                intervals = source.activity_intervals(q.id)
 
             subt = subt_summary_for_activity(q, intervals)
 
+            hr = f"{q.avg_hr:.0f}" if q.avg_hr is not None else "-"
+
             lines.append(
-                f"### Planned: {q.get('name','')}: "
-                f"\n    Totals: {fmt_time(q.get('moving_time'))}, "
+                f"### Planned: {q.name}: "
+                f"\n    Totals: {fmt_time(q.duration_s)}, "
                 f"{pace(q)},"
-                f" {q.get('average_heartrate')} BpM")
+                f" {hr} BpM")
             if subt:
                 lines.append(f"    Work intervals done:")
                 for line in subt:
                     lines.append(f"    - {line}")
-            lines.append(f"    Comments: {q.get('description')}")
+            lines.append(f"    Comments: {q.description}")
 
     lines.append("\n## Recovery")
 

@@ -64,3 +64,4 @@ class SubtPoint:
     pace_s_per_km: float
     count: int = 1
     avg_hr: float | None = None
+    avg_rep_s: float = 0

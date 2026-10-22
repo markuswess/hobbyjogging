@@ -105,7 +105,12 @@ analysis or chart code:
 - `classify.py` — workout categorization (quality / non-quality /
   cross-training / unknown).
 - `charts.py` — matplotlib rendering of analysis output.
-- `reports.py` — the Markdown reports.
+- `format.py` — model-based report formatting helpers.
+- `reports.py` — the Markdown reports; they obtain model objects
+  through a `DataSource`.
+
+Only `sources/intervals_api.py` knows Intervals.icu field names; the
+`debug` command is the one place that still dumps raw payloads.
 
 To add a visualization: compute the metric in `analysis.py` from model
 objects, then plot it in `charts.py`. To switch to a local database,

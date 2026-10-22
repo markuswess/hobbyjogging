@@ -60,6 +60,7 @@ def run_classify(days: int = 30) -> None:
     """Print the category of recent activities."""
     from datetime import date, timedelta
 
+    from .analysis import is_subt_activity
     from .classify import classify
     from .sources.intervals_api import IntervalsSource
 
@@ -72,7 +73,7 @@ def run_classify(days: int = 30) -> None:
     for activity in sorted(activities, key=lambda a: a.date):
         intervals = []
 
-        if "subt" in f"{activity.name} {activity.description}".lower():
+        if is_subt_activity(activity):
             intervals = source.activity_intervals(activity.id)
 
         category = classify(activity, intervals)
