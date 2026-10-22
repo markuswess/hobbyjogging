@@ -19,9 +19,10 @@ training reports:
   intervals).
 - **chart** — Weekly running distance chart (matplotlib) for the
   last 90 days.
-- **subt-chart** — subT work interval pace per category
-  (short/medium/long) over the last 365 days, with per-session dots
-  and rolling averages.
+- **subt-chart** — subT and LT1 work interval pace over the last 365
+  days, with per-session dots color-coded by rep length
+  (short/medium/long) or LT1, plus rolling averages.
+- **subt-hr-chart** — the same work-interval chart using heart rate.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 
@@ -46,6 +47,7 @@ Run:
     uv run --env-file .env python -m intervals_report debug
     uv run --env-file .env python -m intervals_report chart [output.png]
     uv run --env-file .env python -m intervals_report subt-chart [output.png]
+    uv run --env-file .env python -m intervals_report subt-hr-chart [output.png]
     uv run --env-file .env python -m intervals_report classify [days]
 
 ## Workout categories

@@ -1,7 +1,12 @@
 import unittest
 from datetime import date
 
-from intervals_report.analysis import subt_work_points, work_intervals
+from intervals_report.analysis import (
+    is_lt1_activity,
+    subt_session_point,
+    subt_work_points,
+    work_intervals,
+)
 from intervals_report.model import Activity, Interval
 
 D = date(2026, 10, 1)
@@ -109,6 +114,44 @@ class WorkIntervalsTests(unittest.TestCase):
         self.assertAlmostEqual(300, points[0].avg_rep_s)
         self.assertAlmostEqual(160, points[0].avg_hr)
         self.assertEqual("medium", points[0].category)
+
+    def test_subt_session_point_aggregates_groups(self):
+        intervals = [
+            iv(300, 1300, group_id="ascending"),
+            iv(300, 1300, group_id="descending"),
+            iv(180, 850, group_id="pyramid-tip"),
+        ]
+        activity = Activity(id="a", date=D, name="subT pyramid")
+
+        point = subt_session_point(activity, intervals)
+
+        self.assertIsNotNone(point)
+        self.assertEqual(3, point.count)
+        self.assertAlmostEqual(260, point.avg_rep_s)
+        self.assertEqual("medium", point.category)
+
+    def test_subt_session_point_accepts_category_override(self):
+        activity = Activity(id="a", date=D, name="3x10' LT1")
+        intervals = [iv(600, 2800) for _ in range(3)]
+
+        point = subt_session_point(activity, intervals, category="lt1")
+
+        self.assertIsNotNone(point)
+        self.assertEqual("lt1", point.category)
+
+
+class ActivityNameTests(unittest.TestCase):
+
+    def test_lt1_name(self):
+        self.assertTrue(
+            is_lt1_activity(Activity(id="a", date=D, name="3x10' LT1"))
+        )
+        self.assertTrue(
+            is_lt1_activity(Activity(id="a", date=D, name="lt 1"))
+        )
+        self.assertFalse(
+            is_lt1_activity(Activity(id="a", date=D, name="subT"))
+        )
 
 
 if __name__ == "__main__":

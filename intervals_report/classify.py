@@ -40,7 +40,12 @@ Rules
 
 from dataclasses import dataclass
 
-from .analysis import RUN_TYPES, classify_interval, work_intervals
+from .analysis import (
+    LT1_WORDS,
+    RUN_TYPES,
+    classify_interval,
+    work_intervals,
+)
 from .model import Activity, Interval
 
 # --- thresholds -----------------------------------------------------------
@@ -63,7 +68,6 @@ RACE_WORDS = ("race", "wettkampf")
 WARMUP_WORDS = ("warm up", "warm-up", "warmup")
 COOLDOWN_WORDS = ("cool down", "cool-down", "cooldown")
 SUBT_WORDS = ("subt",)
-LT1_WORDS = ("lt1", "lt 1")
 TEMPO_WORDS = ("tempo", "threshold", "schwelle")
 
 

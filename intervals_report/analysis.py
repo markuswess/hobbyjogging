@@ -17,6 +17,8 @@ CATEGORY_MEDIUM = "medium"
 CATEGORY_LONG = "long"
 SUBT_CATEGORIES = (CATEGORY_SHORT, CATEGORY_MEDIUM, CATEGORY_LONG)
 
+LT1_WORDS = ("lt1", "lt 1")
+
 # Average rep duration thresholds (seconds), matching the report logic.
 SHORT_MAX_S = 240
 MEDIUM_MAX_S = 420
@@ -64,6 +66,12 @@ def is_subt_activity(a: Activity) -> bool:
     ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in.
     """
     return "subt" in a.name.lower()
+
+
+def is_lt1_activity(a: Activity) -> bool:
+    """True if the name marks the session as an LT1 workout."""
+    text = a.name.lower()
+    return any(word in text for word in LT1_WORDS)
 
 
 def classify_interval(duration_s: float) -> str:
@@ -145,15 +153,56 @@ def work_intervals(intervals: list[Interval]) -> list[Interval]:
     return filtered or reps
 
 
+def _subt_point(
+    activity: Activity,
+    intervals: list[Interval],
+    category: str | None = None,
+) -> SubtPoint | None:
+    """Aggregate a list of work reps into one pace point."""
+    total_time = sum(i.duration_s for i in intervals)
+    total_distance = sum(i.distance_m for i in intervals)
+
+    pace = pace_s_per_km(total_time, total_distance)
+    if pace is None:
+        return None
+
+    # Time-weighted average heart rate.
+    hr_pairs = [
+        (i.avg_hr, i.duration_s)
+        for i in intervals
+        if i.avg_hr is not None
+    ]
+
+    avg_hr = None
+    if hr_pairs:
+        avg_hr = (
+            sum(hr * t for hr, t in hr_pairs)
+            / sum(t for _, t in hr_pairs)
+        )
+
+    return SubtPoint(
+        date=activity.date,
+        category=category or classify_interval(total_time / len(intervals)),
+        pace_s_per_km=pace,
+        count=len(intervals),
+        avg_hr=avg_hr,
+        avg_rep_s=total_time / len(intervals),
+    )
+
+
+def _paced_work(intervals: list[Interval]) -> list[Interval]:
+    return [
+        i for i in work_intervals(intervals)
+        if i.duration_s and i.distance_m
+    ]
+
+
 def subt_work_points(
     activity: Activity,
     intervals: list[Interval],
 ) -> list[SubtPoint]:
     """One point per WORK interval group (set of reps) in an activity."""
-    work = [
-        i for i in work_intervals(intervals)
-        if i.duration_s and i.distance_m
-    ]
+    work = _paced_work(intervals)
 
     groups: dict[str, list[Interval]] = {}
 
@@ -164,34 +213,25 @@ def subt_work_points(
     points = []
 
     for group in groups.values():
-        total_time = sum(i.duration_s for i in group)
-        total_distance = sum(i.distance_m for i in group)
-
-        pace = pace_s_per_km(total_time, total_distance)
-        if pace is None:
-            continue
-
-        # Time-weighted average heart rate.
-        hr_pairs = [
-            (i.avg_hr, i.duration_s)
-            for i in group
-            if i.avg_hr is not None
-        ]
-
-        avg_hr = None
-        if hr_pairs:
-            avg_hr = (
-                sum(hr * t for hr, t in hr_pairs)
-                / sum(t for _, t in hr_pairs)
-            )
-
-        points.append(SubtPoint(
-            date=activity.date,
-            category=classify_interval(total_time / len(group)),
-            pace_s_per_km=pace,
-            count=len(group),
-            avg_hr=avg_hr,
-            avg_rep_s=total_time / len(group),
-        ))
+        point = _subt_point(activity, group)
+        if point is not None:
+            points.append(point)
 
     return points
+
+
+def subt_session_point(
+    activity: Activity,
+    intervals: list[Interval],
+    category: str | None = None,
+) -> SubtPoint | None:
+    """One point per activity, aggregating all of its work reps.
+
+    ``category`` can override the rep-length category, e.g. for LT1.
+    """
+    work = _paced_work(intervals)
+
+    if not work:
+        return None
+
+    return _subt_point(activity, work, category=category)

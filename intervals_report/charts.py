@@ -61,64 +61,129 @@ def _pace_tick(seconds, _position):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def plot_subt_paces(
+SUBT_COLORS = {
+    "short": "tab:blue",
+    "medium": "tab:orange",
+    "long": "tab:green",
+    "lt1": "tab:purple",
+}
+
+CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
+
+
+def _plot_subt_metric(
     points: list[SubtPoint],
     output: str,
+    value,
+    ylabel: str,
+    title: str,
     window: int = 5,
-    title: str = "subT work interval pace",
+    invert_yaxis: bool = False,
+    tick_formatter=None,
 ) -> str:
-    """Scatter + rolling mean of subT paces, one panel per category."""
+    """Scatter + rolling mean of one work-interval metric."""
     if not points:
         raise ValueError("no data to plot")
 
-    fig, axes = plt.subplots(
-        3, 1,
-        figsize=(10, 9),
-        sharex=True,
-    )
+    fig, ax = plt.subplots(figsize=(10, 6))
+    plotted = False
 
-    for ax, category in zip(axes, SUBT_CATEGORIES):
+    for category in CHART_CATEGORIES:
         data = sorted(
-            (p for p in points if p.category == category),
+            (
+                p for p in points
+                if p.category == category and value(p) is not None
+            ),
             key=lambda p: p.date,
         )
 
-        ax.set_title(f"{category} ({len(data)} sessions)")
-        ax.grid(True, alpha=0.3)
-        ax.set_ylabel("pace (min/km)")
-
         if not data:
-            ax.text(
-                0.5, 0.5, "no data",
-                transform=ax.transAxes,
-                ha="center", va="center",
-            )
-            ax.set_yticks([])
             continue
 
+        plotted = True
+        color = SUBT_COLORS[category]
         dates = [p.date for p in data]
-        paces = [p.pace_s_per_km for p in data]
-
-        ax.scatter(dates, paces, s=30, label="session")
+        values = [value(p) for p in data]
 
         if len(data) >= 2:
             ax.plot(
                 dates,
-                _rolling_mean(paces, window),
-                color="tab:orange",
-                label=f"rolling mean ({window})",
+                _rolling_mean(values, window),
+                color=color,
+                alpha=0.55,
+                linewidth=1.8,
+                zorder=2,
             )
 
+        ax.scatter(
+            dates,
+            values,
+            s=30,
+            color=color,
+            label=f"{category} ({len(data)})",
+            zorder=3,
+        )
+
+    if not plotted:
+        raise ValueError("no data to plot")
+
+    if invert_yaxis:
         # Faster paces (lower seconds/km) point upwards.
         ax.invert_yaxis()
-        ax.yaxis.set_major_formatter(FuncFormatter(_pace_tick))
-        ax.legend(loc="best", fontsize=8)
 
-    axes[-1].set_xlabel("date")
-    fig.suptitle(title)
+    if tick_formatter is not None:
+        ax.yaxis.set_major_formatter(tick_formatter)
+
+    ax.set_xlabel("date")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    ax.legend(
+        loc="best",
+        fontsize=9,
+        title=f"dots = sessions; lines = {window}-session rolling mean",
+        title_fontsize=8,
+    )
+
     fig.autofmt_xdate()
     fig.tight_layout()
     fig.savefig(output, dpi=150)
     plt.close(fig)
 
     return output
+
+
+def plot_subt_paces(
+    points: list[SubtPoint],
+    output: str,
+    window: int = 5,
+    title: str = "subT and LT1 work interval pace",
+) -> str:
+    """Scatter + rolling mean of work paces, color-coded by session type."""
+    return _plot_subt_metric(
+        points,
+        output,
+        value=lambda p: p.pace_s_per_km,
+        ylabel="pace (min/km)",
+        title=title,
+        window=window,
+        invert_yaxis=True,
+        tick_formatter=FuncFormatter(_pace_tick),
+    )
+
+
+def plot_subt_hr(
+    points: list[SubtPoint],
+    output: str,
+    window: int = 5,
+    title: str = "subT and LT1 work interval heart rate",
+) -> str:
+    """Scatter + rolling mean of work-interval HR, by session type."""
+    return _plot_subt_metric(
+        points,
+        output,
+        value=lambda p: p.avg_hr,
+        ylabel="heart rate (bpm)",
+        title=title,
+        window=window,
+    )

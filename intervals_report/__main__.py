@@ -26,12 +26,16 @@ def run_chart(output: str) -> None:
     print(path)
 
 
-def run_subt_chart(output: str) -> None:
-    """Render subT work interval paces for the last 365 days."""
+def run_subt_chart(output: str, heart_rate: bool = False) -> None:
+    """Render subT and LT1 work interval pace or HR for the last 365 days."""
     from datetime import date, timedelta
 
-    from .analysis import is_subt_activity, subt_work_points
-    from .charts import plot_subt_paces
+    from .analysis import (
+        is_lt1_activity,
+        is_subt_activity,
+        subt_session_point,
+    )
+    from .charts import plot_subt_hr, plot_subt_paces
     from .sources.intervals_api import IntervalsSource
 
     end = date.today()
@@ -43,15 +47,23 @@ def run_subt_chart(output: str) -> None:
     points = []
 
     for activity in activities:
-        if is_subt_activity(activity):
-            points.extend(
-                subt_work_points(
-                    activity,
-                    source.activity_intervals(activity.id),
-                )
-            )
+        if is_lt1_activity(activity):
+            category = "lt1"
+        elif is_subt_activity(activity):
+            category = None
+        else:
+            continue
 
-    path = plot_subt_paces(points, output=output)
+        point = subt_session_point(
+            activity,
+            source.activity_intervals(activity.id),
+            category=category,
+        )
+        if point is not None:
+            points.append(point)
+
+    plot = plot_subt_hr if heart_rate else plot_subt_paces
+    path = plot(points, output=output)
 
     print(path)
 
@@ -113,9 +125,13 @@ def main():
         run_chart(sys.argv[2] if len(sys.argv) > 2 else "chart.png")
         sys.exit(0)
 
-    elif mode == "subt-chart":
+    elif mode in ("subt-chart", "subt-hr-chart"):
+        is_hr_chart = mode == "subt-hr-chart"
         run_subt_chart(
-            sys.argv[2] if len(sys.argv) > 2 else "subt-chart.png"
+            sys.argv[2]
+            if len(sys.argv) > 2
+            else ("subt-hr-chart.png" if is_hr_chart else "subt-chart.png"),
+            heart_rate=is_hr_chart,
         )
         sys.exit(0)
 
@@ -127,7 +143,8 @@ def main():
         raise SystemExit(
             "usage: python -m intervals_report "
             "daily|weekly|monthly|yearly|debug|all"
-            "|chart [output.png]|subt-chart [output.png]|classify [days]"
+            "|chart [output.png]|subt-chart [output.png]"
+            "|subt-hr-chart [output.png]|classify [days]"
         )
 
     print(report)
