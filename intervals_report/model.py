@@ -58,7 +58,7 @@ class Interval:
 
 @dataclass
 class SubtPoint:
-    """Aggregated subT work pace for an interval group or session."""
+    """Aggregated work pace, HR, and pace range for a group or session."""
 
     date: date
     category: str  # "short" | "medium" | "long" | "lt1"
@@ -67,3 +67,5 @@ class SubtPoint:
     avg_hr: float | None = None
     max_hr: float | None = None
     avg_rep_s: float = 0
+    fastest_pace_s_per_km: float | None = None
+    slowest_pace_s_per_km: float | None = None

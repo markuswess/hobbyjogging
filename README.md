@@ -23,8 +23,10 @@ training reports:
   last 90 days.
 - **subt-chart** — subT and LT1 work interval pace over the last 365
   days, with per-session dots color-coded by rep length
-  (short/medium/long) or LT1, plus rolling averages.
-- **subt-hr-chart** — the same work-interval chart using heart rate.
+  (short/medium/long) or LT1, vertical bars showing the fastest and
+  slowest work interval, plus rolling averages.
+- **subt-hr-chart** — the same work-interval chart using average
+  heart rate, with vertical bars showing max HR.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 

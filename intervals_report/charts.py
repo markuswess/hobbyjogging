@@ -80,6 +80,9 @@ def _plot_subt_metric(
     window: int = 5,
     invert_yaxis: bool = False,
     tick_formatter=None,
+    range_values=None,
+    range_label: str | None = None,
+    range_caps_both: bool = False,
 ) -> str:
     """Scatter + rolling mean of one work-interval metric."""
     if not points:
@@ -104,6 +107,49 @@ def _plot_subt_metric(
         color = SUBT_COLORS[category]
         dates = [p.date for p in data]
         values = [value(p) for p in data]
+
+        if range_values is not None:
+            bands = []
+
+            for point in data:
+                band = range_values(point)
+                if band is None:
+                    continue
+
+                low, high = band
+                if low is not None and high is not None:
+                    bands.append((point.date, low, high))
+
+            if bands:
+                ax.vlines(
+                    [d for d, _, _ in bands],
+                    [lo for _, lo, _ in bands],
+                    [hi for _, _, hi in bands],
+                    color=color,
+                    alpha=0.35,
+                    linewidth=1.2,
+                    zorder=1,
+                )
+                ax.scatter(
+                    [d for d, _, _ in bands],
+                    [hi for _, _, hi in bands],
+                    marker="_",
+                    s=55,
+                    color=color,
+                    linewidths=1.5,
+                    zorder=2,
+                )
+
+                if range_caps_both:
+                    ax.scatter(
+                        [d for d, _, _ in bands],
+                        [lo for _, lo, _ in bands],
+                        marker="_",
+                        s=55,
+                        color=color,
+                        linewidths=1.5,
+                        zorder=2,
+                    )
 
         if len(data) >= 2:
             ax.plot(
@@ -138,10 +184,17 @@ def _plot_subt_metric(
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
+
+    legend_title = (
+        f"dots = sessions; lines = {window}-session rolling mean"
+    )
+    if range_label:
+        legend_title += f"\nvertical lines = {range_label}"
+
     ax.legend(
         loc="best",
         fontsize=9,
-        title=f"dots = sessions; lines = {window}-session rolling mean",
+        title=legend_title,
         title_fontsize=8,
     )
 
@@ -159,7 +212,7 @@ def plot_subt_paces(
     window: int = 5,
     title: str = "subT and LT1 work interval pace",
 ) -> str:
-    """Scatter + rolling mean of work paces, color-coded by session type."""
+    """Average pace scatter with fastest–slowest ranges, by session type."""
     return _plot_subt_metric(
         points,
         output,
@@ -169,6 +222,12 @@ def plot_subt_paces(
         window=window,
         invert_yaxis=True,
         tick_formatter=FuncFormatter(_pace_tick),
+        range_values=lambda p: (
+            p.fastest_pace_s_per_km,
+            p.slowest_pace_s_per_km,
+        ),
+        range_label="fastest–slowest",
+        range_caps_both=True,
     )
 
 
@@ -178,7 +237,7 @@ def plot_subt_hr(
     window: int = 5,
     title: str = "subT and LT1 work interval heart rate",
 ) -> str:
-    """Scatter + rolling mean of work-interval HR, by session type."""
+    """Average HR scatter with max-HR ranges, by session type."""
     return _plot_subt_metric(
         points,
         output,
@@ -186,4 +245,9 @@ def plot_subt_hr(
         ylabel="heart rate (bpm)",
         title=title,
         window=window,
+        range_values=lambda p: (
+            p.avg_hr,
+            p.max_hr,
+        ),
+        range_label="max HR",
     )

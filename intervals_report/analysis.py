@@ -185,6 +185,12 @@ def _subt_point(
         default=None,
     )
 
+    rep_paces = []
+    for interval in intervals:
+        rep_pace = pace_s_per_km(interval.duration_s, interval.distance_m)
+        if rep_pace is not None:
+            rep_paces.append(rep_pace)
+
     return SubtPoint(
         date=activity.date,
         category=category or classify_interval(total_time / len(intervals)),
@@ -193,6 +199,8 @@ def _subt_point(
         avg_hr=avg_hr,
         max_hr=max_hr,
         avg_rep_s=total_time / len(intervals),
+        fastest_pace_s_per_km=min(rep_paces) if rep_paces else None,
+        slowest_pace_s_per_km=max(rep_paces) if rep_paces else None,
     )
 
 

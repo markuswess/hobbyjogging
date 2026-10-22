@@ -132,6 +132,8 @@ class WorkIntervalsTests(unittest.TestCase):
         self.assertEqual(3, point.count)
         self.assertAlmostEqual(260, point.avg_rep_s)
         self.assertEqual(172, point.max_hr)
+        self.assertAlmostEqual(211.76, point.fastest_pace_s_per_km, places=2)
+        self.assertAlmostEqual(230.77, point.slowest_pace_s_per_km, places=2)
         self.assertEqual("medium", point.category)
 
     def test_subt_session_point_accepts_category_override(self):
