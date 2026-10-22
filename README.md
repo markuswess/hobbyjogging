@@ -15,6 +15,8 @@ training reports:
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
+- **session <date>** — One day's activities with category, totals,
+  and subT/LT1 work-interval details.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **chart** — Weekly running distance chart (matplotlib) for the
@@ -44,6 +46,7 @@ Run:
     uv run --env-file .env python -m intervals_report monthly
     uv run --env-file .env python -m intervals_report yearly
     uv run --env-file .env python -m intervals_report all
+    uv run --env-file .env python -m intervals_report session 2026-02-22
     uv run --env-file .env python -m intervals_report debug
     uv run --env-file .env python -m intervals_report chart [output.png]
     uv run --env-file .env python -m intervals_report subt-chart [output.png]

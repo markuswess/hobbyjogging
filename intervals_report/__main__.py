@@ -1,6 +1,7 @@
 import sys
+from datetime import date
 
-from .reports import daily, debug, summary
+from .reports import daily, debug, session_report, summary
 
 
 def run_chart(output: str) -> None:
@@ -117,6 +118,21 @@ def main():
     elif mode in ("weekly", "monthly", "yearly"):
         report = summary(mode)
 
+    elif mode == "session":
+        if len(sys.argv) < 3:
+            raise SystemExit(
+                "usage: python -m intervals_report session YYYY-MM-DD"
+            )
+
+        try:
+            day = date.fromisoformat(sys.argv[2])
+        except ValueError:
+            raise SystemExit(
+                "usage: python -m intervals_report session YYYY-MM-DD"
+            )
+
+        report = session_report(day)
+
     elif mode == "debug":
         debug()
         sys.exit(0)
@@ -143,8 +159,9 @@ def main():
         raise SystemExit(
             "usage: python -m intervals_report "
             "daily|weekly|monthly|yearly|debug|all"
-            "|chart [output.png]|subt-chart [output.png]"
-            "|subt-hr-chart [output.png]|classify [days]"
+            "|session YYYY-MM-DD|chart [output.png]"
+            "|subt-chart [output.png]|subt-hr-chart [output.png]"
+            "|classify [days]"
         )
 
     print(report)

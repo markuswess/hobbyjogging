@@ -2,9 +2,9 @@ import json
 import sys
 from datetime import date, timedelta
 
-from .analysis import is_subt_activity
+from .analysis import is_lt1_activity, is_subt_activity
 from .api import Intervals
-from .classify import category_breakdown
+from .classify import category_breakdown, classify
 from .format import (
     fmt_time,
     format_activity,
@@ -14,7 +14,7 @@ from .format import (
     recovery_summary,
     sport_label,
     summarize_training,
-    subt_summary_for_activity,
+    work_summary_for_activity,
 )
 from .sources.intervals_api import IntervalsSource
 
@@ -94,6 +94,38 @@ def debug():
             ensure_ascii=False,
         )
     )
+
+def session_report(day: date, source: IntervalsSource | None = None) -> str:
+    """Render one day's activities with categories and work intervals."""
+    source = source or IntervalsSource()
+    activities = source.activities(day, day)
+
+    lines = [f"# Session {day}"]
+
+    if not activities:
+        lines.append("\n- No activity")
+        return "\n".join(lines)
+
+    for activity in sorted(activities, key=lambda a: a.date):
+        try:
+            intervals = source.activity_intervals(activity.id)
+        except Exception:
+            intervals = []
+
+        category = classify(activity, intervals)
+
+        lines.extend(
+            format_activity(
+                source,
+                activity,
+                f"{sport_label(activity)} — {activity.name}",
+                category=category.path,
+                intervals=intervals,
+            )
+        )
+
+    return "\n".join(lines)
+
 
 def daily():
 
@@ -294,12 +326,15 @@ def summary(period):
 
     training = summarize_training(activities)
 
-    # Only subT names need intervals to refine their rep-length category.
+    # subT/LT1 names need intervals for their work-interval details.
     intervals_by_id = {}
 
     for activity in activities:
 
-        if not is_subt_activity(activity):
+        if not (
+            is_subt_activity(activity)
+            or is_lt1_activity(activity)
+        ):
             continue
 
         try:
@@ -380,7 +415,7 @@ def summary(period):
             if intervals is None:
                 intervals = source.activity_intervals(q.id)
 
-            subt = subt_summary_for_activity(q, intervals)
+            work = work_summary_for_activity(q, intervals)
 
             hr = f"{q.avg_hr:.0f}" if q.avg_hr is not None else "-"
 
@@ -389,9 +424,9 @@ def summary(period):
                 f"\n    Totals: {fmt_time(q.duration_s)}, "
                 f"{pace(q)},"
                 f" {hr} BpM")
-            if subt:
+            if work:
                 lines.append(f"    Work intervals done:")
-                for line in subt:
+                for line in work:
                     lines.append(f"    - {line}")
             lines.append(f"    Comments: {q.description}")
 

@@ -4,7 +4,12 @@ All helpers take model objects (see ``model.py``), so reports work with
 any ``DataSource`` implementation.
 """
 
-from .analysis import RUN_TYPES, is_subt_activity, subt_work_points
+from .analysis import (
+    RUN_TYPES,
+    is_lt1_activity,
+    is_subt_activity,
+    subt_work_points,
+)
 from .classify import classify
 from .model import Activity, Interval, SubtPoint, WellnessDay
 from .sources.base import DataSource
@@ -117,7 +122,7 @@ def pace(activity):
         return "-"
 
 
-def format_subt_result(point: SubtPoint):
+def format_work_result(point: SubtPoint, label: str | None = None):
 
     duration = point.avg_rep_s
 
@@ -129,6 +134,7 @@ def format_subt_result(point: SubtPoint):
         secs = 0
 
     interval_duration = f"{mins}:{secs:02d}"
+    label = label or f"subT-{point.category}"
 
     if point.avg_hr is None and point.max_hr is None:
         hr = "- bpm"
@@ -141,10 +147,15 @@ def format_subt_result(point: SubtPoint):
 
     return (
         f"{point.count}x{interval_duration} "
-        f"subT-{point.category}: "
+        f"{label}: "
         f"{format_pace(point.pace_s_per_km)}/km, "
         f"{hr}"
     )
+
+
+def format_subt_result(point: SubtPoint):
+    """Backward-compatible subT formatter."""
+    return format_work_result(point)
 
 
 def last_four_nights(wellness):
@@ -276,13 +287,17 @@ def format_pace(seconds):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def subt_summary_for_activity(
+def work_summary_for_activity(
     activity: Activity,
     intervals: list[Interval],
 ):
-    """Return subT report lines for an activity, given its intervals."""
+    """Return work-interval report lines for subT or LT1 activities."""
 
-    if not is_subt_activity(activity):
+    if is_lt1_activity(activity):
+        label = "LT1"
+    elif is_subt_activity(activity):
+        label = None
+    else:
         return None
 
     points = subt_work_points(activity, intervals)
@@ -291,18 +306,26 @@ def subt_summary_for_activity(
         return None
 
     return [
-        format_subt_result(point)
+        format_work_result(point, label)
         for point in points
     ]
 
 
-def get_subt_summary(
+def subt_summary_for_activity(
+    activity: Activity,
+    intervals: list[Interval],
+):
+    """Backward-compatible alias for work_summary_for_activity."""
+    return work_summary_for_activity(activity, intervals)
+
+
+def get_work_summary(
     source: DataSource,
     activity: Activity,
 ):
-    """Return compact subT interval summary for an activity."""
+    """Return compact work-interval summary for subT or LT1 activities."""
 
-    if not is_subt_activity(activity):
+    if not (is_subt_activity(activity) or is_lt1_activity(activity)):
         return None
 
     try:
@@ -310,19 +333,31 @@ def get_subt_summary(
     except Exception:
         return None
 
-    return subt_summary_for_activity(activity, intervals)
+    return work_summary_for_activity(activity, intervals)
+
+
+def get_subt_summary(
+    source: DataSource,
+    activity: Activity,
+):
+    """Backward-compatible alias for get_work_summary."""
+    return get_work_summary(source, activity)
 
 
 def format_activity(
     source: DataSource,
     activity: Activity,
     heading: str,
+    category: str | None = None,
+    intervals: list[Interval] | None = None,
 ):
 
-    lines = [
-        f"\n### {heading}",
-        f"- Duration: {fmt_time(activity.duration_s)}",
-    ]
+    lines = [f"\n### {heading}"]
+
+    if category:
+        lines.append(f"- Category: {category}")
+
+    lines.append(f"- Duration: {fmt_time(activity.duration_s)}")
 
     if activity.distance_m:
         lines.append(f"- Distance: {activity.distance_m/1000:.1f} km")
@@ -347,11 +382,15 @@ def format_activity(
     if activity.description:
         lines.append(f"- Description: {activity.description}")
 
-    subt = get_subt_summary(source, activity)
+    if intervals is None:
+        work = get_work_summary(source, activity)
+    else:
+        work = work_summary_for_activity(activity, intervals)
 
-    if subt:
-        lines.append("\n### subT report")
-        for line in subt:
+    if work:
+        label = "LT1 report" if is_lt1_activity(activity) else "subT report"
+        lines.append(f"\n### {label}")
+        for line in work:
             lines.append(f"- {line}")
 
     return lines

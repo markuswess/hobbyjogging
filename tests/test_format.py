@@ -12,6 +12,7 @@ from intervals_report.format import (
     sport_label,
     subt_summary_for_activity,
     summarize_training,
+    work_summary_for_activity,
 )
 from intervals_report.model import Activity, Interval, WellnessDay
 
@@ -125,6 +126,48 @@ class FormattingTests(unittest.TestCase):
     def test_subt_summary_name_only(self):
         a = activity(name="LT1", description="instead of subT")
         self.assertIsNone(subt_summary_for_activity(a, []))
+
+    def test_work_summary_for_lt1(self):
+        a = activity(name="3x10' LT1", duration_s=3000)
+        intervals = [
+            Interval(
+                type="WORK", group_id="g",
+                duration_s=600, distance_m=3000,
+                avg_hr=155, max_hr=168,
+            )
+            for _ in range(3)
+        ]
+
+        self.assertEqual(
+            ["3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm"],
+            work_summary_for_activity(a, intervals),
+        )
+
+    def test_format_activity_lt1_heading(self):
+        a = activity(name="3x10' LT1", duration_s=3000)
+        intervals = [
+            Interval(
+                type="WORK", group_id="g",
+                duration_s=600, distance_m=3000,
+                avg_hr=155, max_hr=168,
+            )
+            for _ in range(3)
+        ]
+
+        lines = format_activity(
+            None,
+            a,
+            "Run — 3x10' LT1",
+            category="quality/intervals/lt1",
+            intervals=intervals,
+        )
+
+        self.assertIn("- Category: quality/intervals/lt1", lines)
+        self.assertIn("\n### LT1 report", lines)
+        self.assertIn(
+            "- 3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm",
+            lines,
+        )
 
     def test_format_activity(self):
         a = activity(
