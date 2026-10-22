@@ -70,6 +70,18 @@ class Intervals:
             },
         )
 
+    def get_activity(self, activity_id):
+
+        r = requests.get(
+            f"https://intervals.icu/api/v1/activity/{activity_id}",
+            auth=self.auth,
+            params={"intervals": "true"},
+            timeout=20,
+        )
+
+        r.raise_for_status()
+
+        return r.json()
 
 # -------------------------------------------------
 # Formatting
@@ -124,8 +136,98 @@ def pace(activity):
     except Exception:
         return "-"
 
+def format_subt_result(result):
 
+    duration = result["duration"] / result["count"]
 
+    mins = int(duration // 60)
+    secs = round(duration % 60)
+
+    if secs == 60:
+        mins += 1
+        secs = 0
+
+    interval_duration = f"{mins}:{secs:02d}"
+
+    return (
+        f'{result["count"]}x{interval_duration} '
+        f'subT-{result["category"]}: '
+        f'{format_pace(result["pace"])}/km, '
+        f'{result["hr"]} bpm'
+    )
+def format_subt_summary(sessions):
+
+    if not sessions:
+        return []
+
+    lines = ["## SubT"]
+
+    categories = [
+        ("short", "Short"),
+        ("medium", "Medium"),
+        ("long", "Long"),
+    ]
+
+    for category, label in categories:
+
+        data = [
+            s for s in sessions
+            if s["category"] == category
+        ]
+
+        if not data:
+            continue
+
+        # Chronological
+        data.sort(key=lambda x: x["date"])
+
+        values = []
+
+        for s in data:
+            pace = format_pace(s["pace"])
+            values.append(pace)
+
+        # One value: just show it
+        if len(values) == 1:
+            pace_text = values[0]
+
+        else:
+            pace_text = " → ".join(values)
+
+        hr_values = [
+            str(s["hr"])
+            for s in data
+            if s["hr"] is not None
+        ]
+
+        if len(hr_values) == 1:
+            hr_text = hr_values[0]
+        elif hr_values:
+            hr_text = " → ".join(hr_values)
+        else:
+            hr_text = "-"
+
+        # Use the latest workout's structure
+        latest = data[-1]
+
+        duration = latest["duration"]
+        mins = int(duration // 60)
+        secs = round(duration % 60)
+
+        if secs == 60:
+            mins += 1
+            secs = 0
+
+        interval = f"{mins}:{secs:02d}"
+
+        lines.append(
+            f"- {label}: {len(data)} session"
+            f"{'s' if len(data) != 1 else ''}, "
+            #f"{latest['count']}x{interval} — "
+            f"{pace_text}/km, HR {hr_text}"
+        )
+
+    return lines
 # -------------------------------------------------
 # Analysis
 # -------------------------------------------------
@@ -296,8 +398,165 @@ def latest_recovery(wellness):
         "rhr": w.get("restingHR"),
         "sleep": w.get("sleepSecs"),
     }
+def pace_from_speed(speed):
+    """Return pace as seconds/km."""
+    if not speed or speed <= 0:
+        return None
+    return 1000 / speed
 
 
+def format_pace(seconds):
+    """Format seconds/km as M:SS."""
+    if seconds is None:
+        return "-"
+    seconds = round(seconds)
+    return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+def classify_subt(duration):
+    """Classify subT interval length."""
+    if duration <= 240:
+        return "short"
+    elif duration <= 350:
+        return "medium"
+    else:
+        return "long"
+
+
+def extract_subt_intervals(intervals):
+    """
+    Extract WORK blocks from an Intervals.icu icu_intervals list.
+
+    Returns one entry per group_id.
+    """
+
+    work = [
+        i for i in intervals
+        if i.get("type") == "WORK"
+        and i.get("moving_time")
+        and i.get("distance")
+    ]
+
+    groups = {}
+
+    for interval in work:
+        group_id = interval.get("group_id")
+
+        # If there is no group_id, keep it as its own group.
+        if not group_id:
+            group_id = f"interval-{interval['id']}"
+
+        groups.setdefault(group_id, []).append(interval)
+
+    results = []
+
+    for group_id, group in groups.items():
+
+        # Sort chronologically
+        group.sort(key=lambda x: x["start_time"])
+
+        total_time = sum(
+            i["moving_time"] for i in group
+        )
+
+        total_distance = sum(
+            i["distance"] for i in group
+        )
+
+        if total_time <= 0 or total_distance <= 0:
+            continue
+
+        avg_speed = total_distance / total_time
+        avg_pace = pace_from_speed(avg_speed)
+
+        # Time-weighted HR
+        hr_values = [
+            (i["average_heartrate"], i["moving_time"])
+            for i in group
+            if i.get("average_heartrate") is not None
+        ]
+
+        if hr_values:
+            avg_hr = (
+                sum(hr * t for hr, t in hr_values)
+                / sum(t for _, t in hr_values)
+            )
+            avg_hr = round(avg_hr)
+        else:
+            avg_hr = None
+
+        results.append({
+            "group_id": group_id,
+            "count": len(group),
+            "duration": total_time,
+            "distance": total_distance,
+            "pace": avg_pace,
+            "hr": avg_hr,
+            "category": classify_subt(total_time / len(group)),
+        })
+
+    return results
+
+def get_subt_summary(api, activity):
+    """Return compact subT interval summary for an activity."""
+
+    name = (activity.get("name") or "").lower()
+    description = (activity.get("description") or "").lower()
+
+    # Only inspect activities that look like subT workouts.
+    if "subt" not in name and "subt" not in description:
+        return None
+
+    try:
+        detailed = api.get_activity(activity["id"])
+        intervals = detailed.get("icu_intervals", [])
+    except Exception:
+        return None
+
+    results = extract_subt_intervals(intervals)
+
+    if not results:
+        return None
+
+    return [
+        format_subt_result(result)
+        for result in results
+    ]
+
+
+def get_subt_sessions(api, activities):
+    """Extract subT workout blocks from a list of activities."""
+
+    sessions = []
+
+    for activity in activities:
+
+        name = (activity.get("name") or "").lower()
+        description = (activity.get("description") or "").lower()
+
+        if "subt" not in name and "subt" not in description:
+            continue
+
+        try:
+            detailed = api.get_activity(activity["id"])
+            intervals = detailed.get("icu_intervals", [])
+        except Exception:
+            continue
+
+        results = extract_subt_intervals(intervals)
+
+        for result in results:
+
+            sessions.append({
+                "date": activity["start_date_local"][:10],
+                "category": result["category"],
+                "count": result["count"],
+                "duration": result["duration"] / result["count"],
+                "pace": result["pace"],
+                "hr": result["hr"],
+            })
+
+    return sessions
 # -------------------------------------------------
 # Reports
 # -------------------------------------------------
@@ -306,7 +565,7 @@ def debug():
     api = Intervals()
 
     today = date.today()
-    yesterday = today - timedelta(days=1)
+    yesterday = today - timedelta(days=2)
 
     activities = api.activities(
         yesterday,
@@ -344,7 +603,25 @@ def debug():
             "wellness": wellness,
             "events": events,
         }
+    elif resource == "intervals":
 
+        if not activities:
+            print("No activities found")
+            return
+
+        activity = api.get_activity(
+            activities[2]["id"]
+        )
+
+        print(
+            json.dumps(
+                activity.get("icu_intervals"),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+
+        return
     else:
         raise SystemExit(
             "usage: intervals_report.py debug "
@@ -369,23 +646,27 @@ def daily():
 
     api = Intervals()
 
-
     activities = api.activities(
         yesterday,
         yesterday 
     )
-#    import json
-#    print(json.dumps(activities[0], indent=2))
+
     wellness = api.wellness(
         today-timedelta(days=4),
         today
 
     )
-
+    
     events = api.events(
         today,
         today
     )
+
+    activities_today = api.activities(
+        today,
+        today
+    )
+
 
 
     recovery = latest_recovery(
@@ -491,6 +772,16 @@ def daily():
                     f"{a['description']}"
                 )
 
+
+            subt = get_subt_summary(api, a)
+
+            if subt:
+                lines.append(
+                    "\n### subT report"
+                )
+                for line in subt:
+                    lines.append(f"- {line}")
+
     else:
 
         lines.append(
@@ -515,68 +806,162 @@ def daily():
 
         lines.append(
             f"- {night_date}: "
-            f"HRV {hrv:.0f} ms, "
+            + (
+            f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
+            +
             f"RHR {rhr:.0f} bpm"
             + (
                 f", Sleep {fmt_time(sleep)}"
                 if sleep
-                else ""
+                else ", Sleep N/A"
             )
         )
 
     # -----------------------------
-    # Planned
+    # Today
     # -----------------------------
+    
+    if activities_today:
 
-    lines.append(
-        "\n## Planned Today"
-    )
+        # newest first
+        activities_today.sort(
+            key=lambda x: x.get(
+                "start_date_local",
+                ""
+            )
+        )
 
 
-    if events:
-
-        for e in events:
+        for a in activities_today:
 
             lines.append(
-                f"\n### {e.get('name','')}"
+                f"\n### Today:  {a.get('type','')} "
+                f"{a.get('name','')}"
             )
 
 
-            if e.get("type"):
-
-                lines.append(
-                    f"- Type: {e['type']}"
-                )
-
-
-            if e.get("description"):
-
-                lines.append(
-                    e["description"]
-                )
+            lines.append(
+                f"- Duration: "
+                f"{fmt_time(a.get('moving_time'))}"
+            )
 
 
-            if e.get("duration"):
-
-                lines.append(
-                    f"- Duration: "
-                    f"{fmt_time(e['duration'])}"
-                )
-
-
-            if e.get("distance"):
+            if a.get("distance"):
 
                 lines.append(
                     f"- Distance: "
-                    f"{e['distance']/1000:.1f} km"
+                    f"{a['distance']/1000:.1f} km"
                 )
 
 
-    else:
+            if a.get("type") in (
+                "Run",
+                "TrailRun"
+            ):
 
+                lines.append(
+                    f"- Pace: {pace(a)}"
+                )
+
+
+            if a.get("average_heartrate"):
+
+                lines.append(
+                    f"- HR: "
+                    f"{a['average_heartrate']:.0f} avg"
+                )
+
+
+            if a.get("icu_training_load"):
+
+                lines.append(
+                    f"- Load: "
+                    f"{a['icu_training_load']:.0f}"
+                )
+
+            if a.get("icu_rpe"):
+
+                lines.append(
+                    f"- RPE: "
+                    f"{a['icu_rpe']:.0f}"
+                )
+
+            if a.get("pace_zone_times"):
+            #if 1:
+
+                lines.append(
+                    f"- Pace zones: "
+                    f"{fmt_zones(a['pace_zone_times'])}"
+                )
+
+            if a.get("description"):
+            #if 1:
+
+                lines.append(
+                    f"- Description: "
+                    f"{a['description']}"
+                )
+
+
+            subt = get_subt_summary(api, a)
+
+            if subt:
+                lines.append(
+                    "\n### subT report"
+                )
+                for line in subt:
+                    lines.append(f"- {line}")
+
+    else:
         lines.append(
-            "- No planned session"
+            "\n## Planned Today"
         )
+
+
+        if events:
+
+            for e in events:
+
+                lines.append(
+                    f"\n### {e.get('name','')}"
+                )
+
+
+                if e.get("type"):
+
+                    lines.append(
+                        f"- Type: {e['type']}"
+                    )
+
+
+                if e.get("description"):
+
+                    lines.append(
+                        e["description"]
+                    )
+
+
+                if e.get("duration"):
+
+                    lines.append(
+                        f"- Duration: "
+                        f"{fmt_time(e['duration'])}"
+                    )
+
+
+                if e.get("distance"):
+
+                    lines.append(
+                        f"- Distance: "
+                        f"{e['distance']/1000:.1f} km"
+                    )
+
+
+        else:
+
+            lines.append(
+                "- No planned session"
+            )
 
 
     return "\n".join(lines)
@@ -624,49 +1009,40 @@ def summary(period):
     )
 
 
-    lines.append("\n## Running")
+    lines.append("\n## Running (avg. per week)")
 
     lines.append(
-        f"- Avg. weekly Time: {fmt_time(training['run_time']/ndays*7)}"
+        f"- Time: {fmt_time(training['run_time']/ndays*7)}"
     )
 
     lines.append(
-        f"- Avg. weekly distance: "
+        f"- Distance: "
         f"{training['run_distance']/1000/ndays*7:.1f} km"
     )
 
     lines.append(
-        f"- Avg. weekly Load: "
+        f"- Load: "
         f"{training['run_load']/ndays*7:.0f}"
     )
 
     lines.append(
-        f"- Avg. weekly RPE: "
+        f"- RPE: "
         f"{training['rpe']/ndays*7:.0f}"
     )
 
     lines.append(
-        f"- Avg. weekly Time in Zones 3 and 4: "
+        f"- Time in Zones 3 and 4: "
         f"{fmt_time(training['z3_z4_time']/ndays*7)}"
     )
 
-    lines.append("\n## Cross training")
+    lines.append("\n## Cross training (avg. per week)")
 
     lines.append(
-        f"- Time: {fmt_time(training['cross_time'])}"
-    )
-
-    lines.append(
-        f"- Avg. weekly Time: {fmt_time(training['cross_time']/ndays*7)}"
+        f"- Time: {fmt_time(training['cross_time']/ndays*7)}"
     )
 
     lines.append(
         f"- Load: "
-        f"{training['cross_load']:.0f}"
-    )
-
-    lines.append(
-        f"- Avg. weekly Load: "
         f"{training['cross_load']/ndays*7:.0f}"
     )
 
@@ -675,12 +1051,26 @@ def summary(period):
 
         for q in training["quality"]:
 
+            subt = get_subt_summary(api, q)
             lines.append(
-                f"- {q.get('name','')}: "
-                f"{fmt_time(q.get('moving_time'))}, "
-                f"{pace(q)}"
-            )
-
+                f"### Planned: {q.get('name','')}: "
+                f"\n    Totals: {fmt_time(q.get('moving_time'))}, "
+                f"{pace(q)},"
+                f" {q.get('average_heartrate')} BpM")
+            if subt:
+                lines.append(f"    Work intervals done:")
+                for line in subt:
+                    lines.append(f"    - {line}")
+            lines.append(f"    Comments: {q.get('description')}")
+#    else:
+#        subt_sessions = get_subt_sessions(
+#            api,
+#            training["quality"],
+#        )
+#
+#        lines.extend(
+#            format_subt_summary(subt_sessions)
+#        )
 
     lines.append("\n## Recovery")
 
