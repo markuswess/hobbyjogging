@@ -12,6 +12,7 @@ from .format import (
     pace,
     recovery_summary,
     summarize_training,
+    subt_summary_for_activity,
 )
 
 
@@ -366,7 +367,14 @@ def summary(period):
 
         for q in training["quality"]:
 
-            subt = get_subt_summary(api, q)
+            intervals = (
+                q.get("icu_intervals")
+                if q.get("icu_intervals") is not None
+                else api.get_activity_intervals(q["id"])
+            )
+
+            subt = subt_summary_for_activity(q, intervals)
+
             lines.append(
                 f"### Planned: {q.get('name','')}: "
                 f"\n    Totals: {fmt_time(q.get('moving_time'))}, "

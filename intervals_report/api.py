@@ -17,6 +17,7 @@ class Intervals:
             f"https://intervals.icu/api/v1/athlete/{ATHLETE_ID}"
         )
         self.auth = ("API_KEY", API_KEY)
+        self._intervals_cache = {}
 
 
     def get(self, endpoint, params=None):
@@ -76,3 +77,10 @@ class Intervals:
         r.raise_for_status()
 
         return r.json()
+
+    def get_activity_intervals(self, activity_id):
+        """Return intervals for an activity, caching the result per id."""
+        if activity_id not in self._intervals_cache:
+            activity = self.get_activity(activity_id)
+            self._intervals_cache[activity_id] = activity.get("icu_intervals") or []
+        return self._intervals_cache[activity_id]

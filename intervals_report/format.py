@@ -332,20 +332,14 @@ def extract_subt_intervals(intervals):
 
     return results
 
-def get_subt_summary(api, activity):
-    """Return compact subT interval summary for an activity."""
+def subt_summary_for_activity(activity, intervals):
+    """Return subT report lines for an activity, given its intervals."""
 
     name = (activity.get("name") or "").lower()
     description = (activity.get("description") or "").lower()
 
     # Only inspect activities that look like subT workouts.
     if "subt" not in name and "subt" not in description:
-        return None
-
-    try:
-        detailed = api.get_activity(activity["id"])
-        intervals = detailed.get("icu_intervals", [])
-    except Exception:
         return None
 
     results = extract_subt_intervals(intervals)
@@ -357,6 +351,24 @@ def get_subt_summary(api, activity):
         format_subt_result(result)
         for result in results
     ]
+
+
+def get_subt_summary(api, activity):
+    """Return compact subT interval summary for an activity."""
+
+    name = (activity.get("name") or "").lower()
+    description = (activity.get("description") or "").lower()
+
+    # Only inspect activities that look like subT workouts.
+    if "subt" not in name and "subt" not in description:
+        return None
+
+    try:
+        intervals = api.get_activity_intervals(activity["id"])
+    except Exception:
+        return None
+
+    return subt_summary_for_activity(activity, intervals)
 
 def format_activity(api, a, heading):
 
