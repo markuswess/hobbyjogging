@@ -5,8 +5,8 @@ Categories
 quality
 ├── intervals
 │   ├── subt-short   (avg rep <= 4:00)
-│   ├── subt-medium  (avg rep 4:01-5:50)
-│   ├── subt-long    (avg rep > 5:50)
+│   ├── subt-medium  (avg rep 4:01-7:00)
+│   ├── subt-long    (avg rep > 7:00)
 │   ├── lt1
 │   └── other
 ├── longrun          (> 90 min)
@@ -21,9 +21,11 @@ unknown
 
 Rules
 -----
-- quality: RPE >= 4. If RPE is missing, infer from intensity
-  (IF >= 0.85 or >= 25% of time in Z3+); if that is impossible -> unknown.
-- A session > 90 min is a longrun even with RPE < 4, unless its content
+- quality: RPE > 3. RPE exactly 3 can also be quality when the session
+  has explicit quality content (race/subT/LT1/tempo) or intensity/zones
+  indicate quality. If RPE is missing, infer from intensity
+  (IF >= 0.85 or >= 25% of time in Z3+); if impossible -> unknown.
+- A session > 90 min is a longrun even with low RPE, unless its content
   (race/subt/lt1/tempo) says otherwise.
 - recovery: RPE = 1 and shorter than 40 min.
 - Sub-type keywords come from the activity name only. Descriptions often
@@ -38,12 +40,12 @@ Rules
 
 from dataclasses import dataclass
 
-from .analysis import RUN_TYPES, classify_interval
+from .analysis import RUN_TYPES, classify_interval, work_intervals
 from .model import Activity, Interval
 
 # --- thresholds -----------------------------------------------------------
 
-QUALITY_RPE = 4
+QUALITY_RPE = 3              # above this is always quality
 LONGRUN_S = 90 * 60
 
 INTENSITY_QUALITY = 0.85      # IF at/above this implies quality
@@ -119,16 +121,13 @@ def classify(
 
     intervals = intervals or []
     text = activity.name.lower()
-    work = [
-        i for i in intervals
-        if i.type == "WORK" and i.duration_s > 0
-    ]
+    work = work_intervals(intervals)
 
     support = _race_support(text)
     if support is not None:
         return Category("quality", "race-support", support)
 
-    quality = _is_quality(activity)
+    quality = _is_quality(activity, text, work)
 
     if quality is True:
         return _quality_category(activity, text, work)
@@ -148,19 +147,61 @@ def classify(
 
 # --- quality --------------------------------------------------------------
 
-def _is_quality(activity: Activity) -> bool | None:
+def _is_quality(
+    activity: Activity,
+    text: str,
+    work: list[Interval],
+) -> bool | None:
     """Quality decision from RPE, falling back to intensity signals."""
-    if activity.rpe is not None:
-        return activity.rpe >= QUALITY_RPE
+    if activity.rpe is None:
+        return _intensity_quality(activity)
 
-    if activity.intensity is not None:
-        return activity.intensity >= INTENSITY_QUALITY
+    if activity.rpe > QUALITY_RPE:
+        return True
+
+    if activity.rpe == QUALITY_RPE:
+        return _maybe_quality(activity, text, work)
+
+    return False
+
+
+def _maybe_quality(
+    activity: Activity,
+    text: str,
+    work: list[Interval],
+) -> bool:
+    """RPE 3 sessions are quality only when something else backs it up."""
+    if _has_quality_content(text, work):
+        return True
+
+    return _intensity_quality(activity) is True
+
+
+def _has_quality_content(text: str, work: list[Interval]) -> bool:
+    return (
+        _has(text, RACE_WORDS)
+        or _has(text, LT1_WORDS)
+        or _has(text, SUBT_WORDS)
+        or _has(text, TEMPO_WORDS)
+        or _has_sustained_block(work)
+    )
+
+
+def _intensity_quality(activity: Activity) -> bool | None:
+    if (
+        activity.intensity is not None
+        and activity.intensity >= INTENSITY_QUALITY
+    ):
+        return True
 
     zones = activity.pace_zone_times or activity.hr_zone_times
     total = sum(zones)
 
     if total > 0:
         return sum(zones[2:]) / total >= QUALITY_ZONE_SHARE
+
+    if activity.intensity is not None:
+        return False
 
     return None
 

@@ -6,6 +6,7 @@ structures. They never touch the API, a database, or plotting.
 
 from collections import defaultdict
 from datetime import date, timedelta
+from statistics import median
 
 from .model import Activity, Interval, SubtPoint
 
@@ -18,7 +19,15 @@ SUBT_CATEGORIES = (CATEGORY_SHORT, CATEGORY_MEDIUM, CATEGORY_LONG)
 
 # Average rep duration thresholds (seconds), matching the report logic.
 SHORT_MAX_S = 240
-MEDIUM_MAX_S = 350
+MEDIUM_MAX_S = 420
+
+# Work interval filtering. Older Intervals.icu activities mark warm-up,
+# cool-down and recovery jogs as WORK; work reps form the fast pace cluster.
+WORK_MIN_DURATION_S = 60
+WORK_MIN_DISTANCE_M = 100
+WORK_PACE_BAND = 1.20
+WORK_MIN_HR_SHARE = 0.85
+WORK_SLOW_PACE_BAND = 1.10
 
 
 def week_start(d: date) -> date:
@@ -73,14 +82,77 @@ def pace_s_per_km(duration_s: float, distance_m: float) -> float | None:
     return duration_s / distance_m * 1000
 
 
+def work_intervals(intervals: list[Interval]) -> list[Interval]:
+    """Return the intervals that are actual work reps.
+
+    Older Intervals.icu data labels warm-up, cool-down and recovery jogs as
+    WORK as well. Work reps are the fast pace cluster; everything else is
+    slower. Strides and GPS artifacts are ignored. When there is not enough
+    pace data to separate the clusters, all WORK intervals are returned.
+    """
+    work = [
+        i for i in intervals
+        if i.type == "WORK" and i.duration_s > 0
+    ]
+
+    paced = [
+        i for i in work
+        if i.duration_s >= WORK_MIN_DURATION_S
+        and i.distance_m >= WORK_MIN_DISTANCE_M
+    ]
+
+    if len(paced) < 3:
+        return work
+
+    def pace(i: Interval) -> float:
+        return i.duration_s / i.distance_m * 1000
+
+    ordered = sorted(paced, key=pace)
+
+    # Use the fastest third as the reference so a single flier cannot pull
+    # the band down, while recovery jogs cannot pull it up.
+    fastest = ordered[:max(1, len(ordered) // 3)]
+    reference = median(pace(i) for i in fastest)
+
+    reps = [
+        i for i in paced
+        if pace(i) <= reference * WORK_PACE_BAND
+    ]
+
+    if not reps:
+        return work
+
+    # Warm-ups can sit just inside the pace band, but their heart rate is
+    # still clearly below the work reps. Only drop slow, low-HR intervals so
+    # short reps with heart-rate lag are kept.
+    hrs = [i.avg_hr for i in reps if i.avg_hr is not None]
+
+    if not hrs:
+        return reps
+
+    median_pace = median(pace(i) for i in reps)
+    min_hr = max(hrs) * WORK_MIN_HR_SHARE
+
+    filtered = [
+        i for i in reps
+        if not (
+            i.avg_hr is not None
+            and i.avg_hr < min_hr
+            and pace(i) > median_pace * WORK_SLOW_PACE_BAND
+        )
+    ]
+
+    return filtered or reps
+
+
 def subt_work_points(
     activity: Activity,
     intervals: list[Interval],
 ) -> list[SubtPoint]:
     """One point per WORK interval group (set of reps) in an activity."""
     work = [
-        i for i in intervals
-        if i.type == "WORK" and i.duration_s and i.distance_m
+        i for i in work_intervals(intervals)
+        if i.duration_s and i.distance_m
     ]
 
     groups: dict[str, list[Interval]] = {}

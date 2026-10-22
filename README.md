@@ -54,8 +54,8 @@ Run:
 quality
 ├── intervals
 │   ├── subt-short   (avg rep <= 4:00)
-│   ├── subt-medium  (avg rep 4:01-5:50)
-│   ├── subt-long    (avg rep > 5:50)
+│   ├── subt-medium  (avg rep 4:01-7:00)
+│   ├── subt-long    (avg rep > 7:00)
 │   ├── lt1
 │   └── other
 ├── longrun          (> 90 min)
@@ -75,9 +75,12 @@ SubT sessions are refined by rep length when interval data is available.
 
 Rules (`classify.py`):
 
-- **quality**: RPE >= 4. If RPE is missing, infer from intensity
-  (IF >= 0.85 or >= 25% of time in Z3+); if impossible -> `unknown`.
-- **longrun**: activity longer than 90 min, even with RPE < 4 —
+- **quality**: RPE > 3. RPE exactly 3 can also be quality when the
+  session has explicit quality content (race/subT/LT1/tempo) or its
+  intensity/zones indicate quality. If RPE is missing, infer from
+  intensity (IF >= 0.85 or >= 25% of time in Z3+); if impossible ->
+  `unknown`.
+- **longrun**: activity longer than 90 min, even with low RPE —
   unless race/subt/lt1/tempo content takes precedence.
 - **recovery**: RPE = 1 and shorter than 40 min.
 - **race-support**: race warm-ups and cool-downs, identified by name
@@ -86,9 +89,15 @@ Rules (`classify.py`):
 - **cross-training**: any non-run activity (hiking, cycling, kayaking).
 - Sub-type keywords come from the activity **name** only; descriptions
   often mention alternatives (e.g. "did 3x10@LT1 instead of subT").
-  Execution (RPE/duration) decides *whether* the session was quality.
+  Execution (RPE/intensity) normally decides *whether* the session was
+  quality; at RPE 3, explicit content (or a sustained block) can tip it
+  into quality.
 - **LT1 wins over subT** when both appear in the name.
 - Rep length ignores work intervals shorter than 60 s (strides).
+- Older activities may label warm-up, cool-down and recovery jogs as
+  `WORK`. Work reps are detected as the fast pace cluster (strides and
+  GPS artifacts ignored, slow low-HR warm-ups removed), so
+  classification, reports and the subT chart use the same reps.
 
 ## Architecture
 

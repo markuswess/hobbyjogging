@@ -58,7 +58,8 @@ class SummarizeTrainingTests(unittest.TestCase):
         self.assertEqual(2400, result["z3_z4_time"])
         self.assertEqual(2400, result["cross_time"])
         self.assertEqual(40, result["cross_load"])
-        self.assertEqual(["run"], [a.id for a in result["quality"]])
+        # RPE 3 can be quality when the zone distribution is hard.
+        self.assertEqual(["run", "trail"], [a.id for a in result["quality"]])
 
     def test_race_support_is_not_in_quality_list(self):
         result = summarize_training([

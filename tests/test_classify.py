@@ -1,6 +1,7 @@
 import unittest
 from datetime import date
 
+from intervals_report.analysis import work_intervals
 from intervals_report.classify import category_breakdown, classify
 from intervals_report.model import Activity, Interval
 
@@ -20,6 +21,15 @@ def work(*durations):
     ]
 
 
+def iv(duration_s, distance_m, type="WORK", group_id=None):
+    return Interval(
+        type=type,
+        group_id=group_id or f"{duration_s}-{distance_m}",
+        duration_s=duration_s,
+        distance_m=distance_m,
+    )
+
+
 class ClassifyTests(unittest.TestCase):
 
     def test_recovery_requires_rpe_1_and_short(self):
@@ -36,7 +46,11 @@ class ClassifyTests(unittest.TestCase):
             classify(activity(rpe=2, duration_s=30 * 60)).path,
         )
 
-    def test_quality_requires_rpe_4(self):
+    def test_quality_rpe_threshold(self):
+        self.assertEqual(
+            "quality/intervals/other",
+            classify(activity(rpe=3.5)).path,
+        )
         self.assertEqual(
             "quality/intervals/other",
             classify(activity(rpe=4)).path,
@@ -44,6 +58,64 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(
             "non-quality/easy",
             classify(activity(rpe=3, duration_s=60 * 60)).path,
+        )
+        self.assertEqual(
+            "non-quality/easy",
+            classify(activity(rpe=2, duration_s=60 * 60)).path,
+        )
+
+    def test_rpe_3_can_be_quality(self):
+        self.assertEqual(
+            "quality/intervals/subt-medium",
+            classify(
+                activity(rpe=3, name="5x5' subT"),
+                work(300, 300),
+            ).path,
+        )
+        self.assertEqual(
+            "quality/intervals/lt1",
+            classify(activity(rpe=3, name="3x10' LT1")).path,
+        )
+        self.assertEqual(
+            "quality/race",
+            classify(activity(rpe=3, name="10k Race")).path,
+        )
+        self.assertEqual(
+            "quality/tempo",
+            classify(activity(rpe=3, name="tempo")).path,
+        )
+        self.assertEqual(
+            "quality/intervals/other",
+            classify(activity(rpe=3, intensity=0.9)).path,
+        )
+        self.assertEqual(
+            "non-quality/easy",
+            classify(activity(rpe=3, intensity=0.6)).path,
+        )
+        self.assertEqual(
+            "quality/intervals/other",
+            classify(
+                activity(
+                    rpe=3,
+                    intensity=0.6,
+                    pace_zone_times=[0, 0, 600, 600, 0],
+                ),
+            ).path,
+        )
+        self.assertEqual(
+            "non-quality/easy",
+            classify(
+                activity(
+                    rpe=3,
+                    pace_zone_times=[1200, 1200, 300, 300, 0],
+                ),
+            ).path,
+        )
+
+    def test_rpe_2_content_is_not_quality(self):
+        self.assertEqual(
+            "non-quality/easy",
+            classify(activity(rpe=2, name="5x5' subT")).path,
         )
 
     def test_missing_rpe_inferred_from_intensity(self):
@@ -59,6 +131,10 @@ class ClassifyTests(unittest.TestCase):
             "unknown",
             classify(activity(rpe=None)).path,
         )
+        self.assertEqual(
+            "unknown",
+            classify(activity(rpe=None, name="subT")).path,
+        )
 
     def test_subt_rep_length(self):
         self.assertEqual(
@@ -70,8 +146,12 @@ class ClassifyTests(unittest.TestCase):
             classify(activity(rpe=4, name="subT"), work(241, 241)).path,
         )
         self.assertEqual(
+            "quality/intervals/subt-medium",
+            classify(activity(rpe=4, name="subT"), work(420, 420)).path,
+        )
+        self.assertEqual(
             "quality/intervals/subt-long",
-            classify(activity(rpe=4, name="subT"), work(351, 351)).path,
+            classify(activity(rpe=4, name="subT"), work(421, 421)).path,
         )
 
     def test_subt_ignores_strides(self):
@@ -80,6 +160,75 @@ class ClassifyTests(unittest.TestCase):
             "quality/intervals/subt-medium",
             classify(activity(rpe=5, name="5x5' subT medium"), intervals).path,
         )
+
+    def test_old_style_work_labels_do_not_skew_subt(self):
+        # Warm-up, cool-down and recovery jogs are all tagged WORK.
+        intervals = [
+            iv(1200, 4000),  # warm-up, 300 s/km
+            *[iv(300, 1300) for _ in range(5)],  # reps, 231 s/km
+            *[iv(100, 300) for _ in range(4)],  # recoveries, 333 s/km
+            iv(1200, 3800),  # cool-down, 316 s/km
+        ]
+
+        self.assertEqual(
+            "quality/intervals/subt-medium",
+            classify(
+                activity(rpe=5, name="5x5' subT"),
+                intervals,
+            ).path,
+        )
+
+    def test_old_style_slow_recovery_jogs(self):
+        # Unlabeled recovery jogs are much slower than the 800 m reps.
+        intervals = [
+            iv(1111, 3445),  # warm-up
+            *[iv(161, 780) for _ in range(8)],  # 800 m reps
+            *[iv(82, 135) for _ in range(8)],  # recovery jogs
+            iv(2804, 8530),  # cool-down
+        ]
+
+        self.assertEqual(
+            "quality/intervals/subt-short",
+            classify(
+                activity(rpe=5, name="8x800m subT short"),
+                intervals,
+            ).path,
+        )
+
+    def test_old_style_short_surges_are_ignored(self):
+        # Fast 20-26 s surges after the reps are not work reps.
+        intervals = [
+            iv(601, 2692),
+            iv(571, 2617),
+            iv(542, 2504),
+            iv(26, 152),
+            iv(24, 142),
+            iv(20, 110),
+        ]
+
+        self.assertEqual(
+            "quality/intervals/subt-long",
+            classify(
+                activity(rpe=6, name="3x9' subT long"),
+                intervals,
+            ).path,
+        )
+
+    def test_old_style_pyramid_keeps_all_reps(self):
+        reps = [60, 120, 180, 240, 300, 240, 180, 120, 60]
+        intervals = [
+            iv(duration, duration / 210 * 1000)
+            for duration in reps
+        ]
+
+        self.assertEqual(
+            "quality/intervals/subt-short",
+            classify(
+                activity(rpe=6, name="subT pyramid"),
+                intervals,
+            ).path,
+        )
+        self.assertEqual(9, len(work_intervals(intervals)))
 
     def test_lt1_wins_over_subt(self):
         self.assertEqual(
