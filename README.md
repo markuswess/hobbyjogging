@@ -58,6 +58,27 @@ Run:
     uv run --env-file .env python -m intervals_report subt-hr-chart [output.png]
     uv run --env-file .env python -m intervals_report classify [days]
 
+### Quick reports
+
+`reports.sh` wraps the long `uv run` command, copies the generated
+Markdown to the clipboard with `wl-copy`, and renders headings, lists
+and tables for the terminal:
+
+    ./reports.sh                 # daily 
+    ./reports.sh daily
+    ./reports.sh monthly
+    ./reports.sh report --days 90
+    ./reports.sh report --from 2026-01-01 --to 2026-03-31
+    ./reports.sh session 2026-10-22
+
+The clipboard receives the original Markdown before terminal
+formatting, so pasting gives clean Markdown. Use `NO_COPY=1` to skip
+the clipboard, `NO_COLOR=1` to disable ANSI colours, or `NO_PRETTY=1`
+to print raw Markdown.
+
+When stdout is a terminal, the direct CLI also displays reports with
+the same formatting. Redirected or piped output remains raw Markdown.
+
 ### Date ranges
 
 `report`, `chart`, `subt-chart`, `subt-hr-chart` and `classify` accept:
@@ -159,6 +180,7 @@ analysis or chart code:
   cross-training / unknown).
 - `charts.py` — matplotlib rendering of analysis output.
 - `format.py` — model-based report formatting helpers.
+- `mdpretty.py` — dependency-free terminal Markdown renderer.
 - `reports.py` — the Markdown reports; they obtain model objects
   through a `DataSource`.
 

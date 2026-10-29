@@ -1,3 +1,4 @@
+import os
 import sys
 from datetime import date
 
@@ -6,6 +7,7 @@ from .cli import (
     parse_classify_args,
     parse_report_args,
 )
+from .mdpretty import render_markdown
 from .reports import (
     daily,
     debug,
@@ -203,7 +205,10 @@ def main():
             "[--to YYYY-MM-DD]"
         )
 
-    print(report)
+    if sys.stdout.isatty() and os.environ.get("NO_PRETTY") != "1":
+        print(render_markdown(report))
+    else:
+        print(report)
 
 
 if __name__ == "__main__":
