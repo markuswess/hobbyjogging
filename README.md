@@ -163,6 +163,21 @@ Rules (`classify.py`):
   GPS artifacts ignored, slow low-HR warm-ups removed), so
   classification, reports and the subT chart use the same reps.
 
+## Feel ratings
+
+Intervals.icu's 1–5 feel rating is shown alongside RPE in the daily
+and session reports (`- Feel: 2 (Good)`). Weekly, monthly and yearly
+reports show the average feel for running and cross-training
+separately. The scale is reversed compared with some watches:
+
+| Feel | Meaning |
+|---:|---|
+| 1 | Strong |
+| 2 | Good |
+| 3 | Normal |
+| 4 | Poor |
+| 5 | Weak |
+
 ## Architecture
 
 Data access and analysis are separated so the data source can be

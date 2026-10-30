@@ -22,6 +22,7 @@ class Activity:
     avg_hr: float | None = None
     training_load: float | None = None
     rpe: float | None = None
+    feel: int | None = None  # 1 = strong, 2 = good, 3 = normal, 4 = poor, 5 = weak
     intensity: float | None = None  # fraction of threshold (ICU intensity)
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)

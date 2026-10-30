@@ -9,6 +9,7 @@ from .format import (
     fmt_time,
     format_activity,
     format_category_table,
+    format_feel,
     last_four_nights,
     pace,
     recovery_summary,
@@ -373,6 +374,12 @@ def period_report(
         f"{training['rpe']/ndays*7:.0f}"
     )
 
+    if training["run_feel_count"]:
+        lines.append(
+            f"- Feel: "
+            f"{training['run_feel']/training['run_feel_count']:.1f} avg"
+        )
+
     lines.append(
         f"- Time in Zones 3 and 4: "
         f"{fmt_time(training['z3_z4_time']/ndays*7)}"
@@ -388,6 +395,12 @@ def period_report(
         f"- Load: "
         f"{training['cross_load']/ndays*7:.0f}"
     )
+
+    if training["cross_feel_count"]:
+        lines.append(
+            f"- Feel: "
+            f"{training['cross_feel']/training['cross_feel_count']:.1f} avg"
+        )
 
     lines.append("\n## Categories (period totals)")
 
@@ -409,11 +422,17 @@ def period_report(
 
             hr = f"{q.avg_hr:.0f}" if q.avg_hr is not None else "-"
 
+            feel = (
+                f", feel {format_feel(q.feel)}"
+                if q.feel is not None
+                else ""
+            )
+
             lines.append(
                 f"### Planned: {q.name}: "
                 f"\n    Totals: {fmt_time(q.duration_s)}, "
                 f"{pace(q)},"
-                f" {hr} BpM")
+                f" {hr} BpM{feel}")
 
             if work:
                 lines.append(f"    Work intervals done:")

@@ -5,6 +5,7 @@ from intervals_report.classify import category_breakdown
 from intervals_report.format import (
     format_activity,
     format_category_table,
+    format_feel,
     last_four_nights,
     latest_recovery,
     pace,
@@ -72,6 +73,19 @@ class SummarizeTrainingTests(unittest.TestCase):
 
         self.assertEqual([], result["quality"])
 
+    def test_feel_totals_separate_runs_and_cross_training(self):
+        result = summarize_training([
+            activity(id="run", type="run", feel=2),
+            activity(id="trail", type="trail_run", feel=4),
+            activity(id="ride", type="ride", feel=1),
+            activity(id="unrated", type="run", feel=None),
+        ])
+
+        self.assertEqual(6, result["run_feel"])
+        self.assertEqual(2, result["run_feel_count"])
+        self.assertEqual(1, result["cross_feel"])
+        self.assertEqual(1, result["cross_feel_count"])
+
 
 class FormattingTests(unittest.TestCase):
 
@@ -86,6 +100,11 @@ class FormattingTests(unittest.TestCase):
             pace(activity(duration_s=300, distance_m=1000)),
         )
         self.assertEqual("-", pace(activity(distance_m=0)))
+
+    def test_format_feel(self):
+        self.assertEqual("4 (Poor)", format_feel(4))
+        self.assertEqual("9", format_feel(9))
+        self.assertEqual("-", format_feel(None))
 
     def test_recovery(self):
         wellness = [
@@ -172,7 +191,7 @@ class FormattingTests(unittest.TestCase):
     def test_format_activity(self):
         a = activity(
             type="run", name="Easy", duration_s=3000, distance_m=10000,
-            avg_hr=140, training_load=40, rpe=1,
+            avg_hr=140, training_load=40, rpe=1, feel=2,
             pace_zone_times=[0, 0, 1800, 0, 0],
         )
 
@@ -185,6 +204,7 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("- HR: 140 avg", lines)
         self.assertIn("- Load: 40", lines)
         self.assertIn("- RPE: 1", lines)
+        self.assertIn("- Feel: 2 (Good)", lines)
         self.assertIn("- Pace zones: Z3 30min", lines)
 
     def test_format_category_table(self):

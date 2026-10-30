@@ -20,6 +20,25 @@ SPORT_LABELS = {
     "trail_run": "TrailRun",
 }
 
+# Intervals.icu's 1-5 feel scale: 1 is best, 5 is worst.
+FEEL_LABELS = {
+    1: "Strong",
+    2: "Good",
+    3: "Normal",
+    4: "Poor",
+    5: "Weak",
+}
+
+
+def format_feel(feel):
+    """Format a feel rating as ``4 (Poor)``."""
+    if feel is None:
+        return "-"
+
+    label = FEEL_LABELS.get(feel)
+
+    return f"{feel} ({label})" if label else f"{feel}"
+
 
 def sport_label(item):
 
@@ -190,6 +209,11 @@ def summarize_training(activities: list[Activity]):
         "quality": [],
         "z3_z4_time": 0,
         "rpe": 0,
+
+        "run_feel": 0,
+        "run_feel_count": 0,
+        "cross_feel": 0,
+        "cross_feel_count": 0,
     }
 
     for a in activities:
@@ -204,6 +228,10 @@ def summarize_training(activities: list[Activity]):
             result["run_distance"] += distance
             result["run_load"] += load
             result["rpe"] += rpe
+
+            if a.feel is not None:
+                result["run_feel"] += a.feel
+                result["run_feel_count"] += 1
 
             category = classify(a)
 
@@ -225,6 +253,10 @@ def summarize_training(activities: list[Activity]):
         else:
             result["cross_time"] += time
             result["cross_load"] += load
+
+            if a.feel is not None:
+                result["cross_feel"] += a.feel
+                result["cross_feel_count"] += 1
 
     return result
 
@@ -373,6 +405,9 @@ def format_activity(
 
     if activity.rpe:
         lines.append(f"- RPE: {activity.rpe:.0f}")
+
+    if activity.feel is not None:
+        lines.append(f"- Feel: {format_feel(activity.feel)}")
 
     if activity.pace_zone_times:
         lines.append(
