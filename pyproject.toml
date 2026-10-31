@@ -1,10 +1,18 @@
 [project]
-name = "intervals-report"
+name = "hobbyjogging"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Training data, imports, and reports"
 requires-python = ">=3.14"
 dependencies = [
-    "matplotlib>=3.10",
-    "requests>=2.34.2",
+    "hobbyjogging-core",
+    "hobbyjogging-import",
+    "hobbyjogging-reports",
 ]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+hobbyjogging-core = { workspace = true }
+hobbyjogging-import = { workspace = true }
+hobbyjogging-reports = { workspace = true }

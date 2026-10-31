@@ -10,3 +10,10 @@ __pycache__/
 chart.png
 subt-chart.png
 subt-hr-chart.png
+
+# Local training data and exports
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.fit
