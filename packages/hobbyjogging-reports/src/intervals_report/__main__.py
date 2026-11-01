@@ -2,7 +2,10 @@ import os
 import sys
 from datetime import date
 
+from hobbyjogging_core.datasource import DataSource
+
 from .cli import (
+    extract_source,
     parse_chart_args,
     parse_classify_args,
     parse_report_args,
@@ -15,15 +18,49 @@ from .reports import (
     session_report,
     summary,
 )
+from .sources import create_source
+
+MODES = {
+    "daily",
+    "weekly",
+    "monthly",
+    "yearly",
+    "all",
+    "report",
+    "session",
+    "chart",
+    "subt-chart",
+    "subt-hr-chart",
+    "classify",
+}
 
 
-def run_chart(output: str, start: date, end: date) -> None:
+def usage() -> str:
+    return (
+        "usage: python -m intervals_report "
+        "[--source database|intervals] "
+        "daily|weekly|monthly|yearly|debug|all"
+        "|session YYYY-MM-DD|report [--days N]"
+        "|chart [output.png]"
+        "|subt-chart [output.png]|subt-hr-chart [output.png]"
+        "|classify [days]"
+        "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
+        "[--to YYYY-MM-DD]"
+        "\n       source: --source database (default) or --source intervals"
+    )
+
+
+def run_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+) -> None:
     """Render a weekly running distance chart for the given range."""
     from .analysis import weekly_run_distance
     from .charts import plot_weekly_bars
-    from .sources.intervals_api import IntervalsSource
 
-    activities = IntervalsSource().activities(start, end)
+    activities = source.activities(start, end)
 
     path = plot_weekly_bars(
         weekly_run_distance(activities),
@@ -39,19 +76,19 @@ def run_subt_chart(
     output: str,
     start: date,
     end: date,
+    source: DataSource,
     heart_rate: bool = False,
 ) -> None:
     """Render subT and LT1 work interval pace or HR for the given range."""
     from .analysis import (
+        activity_sort_key,
         is_lt1_activity,
         is_subt_activity,
         subt_session_point,
     )
     from .charts import plot_subt_hr, plot_subt_paces
-    from .sources.intervals_api import IntervalsSource
 
-    source = IntervalsSource()
-    activities = source.activities(start, end)
+    activities = sorted(source.activities(start, end), key=activity_sort_key)
 
     points = []
 
@@ -77,133 +114,145 @@ def run_subt_chart(
     print(path)
 
 
-def run_classify(start: date, end: date) -> None:
+def run_classify(start: date, end: date, source: DataSource) -> None:
     """Print the category of activities in the given range."""
-    from .analysis import is_subt_activity
+    from .analysis import activity_sort_key, is_subt_activity
     from .classify import classify
-    from .sources.intervals_api import IntervalsSource
 
-    source = IntervalsSource()
     activities = source.activities(start, end)
 
-    for activity in sorted(activities, key=lambda a: a.date):
+    for activity in sorted(activities, key=activity_sort_key):
         intervals = []
 
         if is_subt_activity(activity):
             intervals = source.activity_intervals(activity.id)
 
         category = classify(activity, intervals)
+        rpe = "-" if activity.rpe is None else f"{activity.rpe:g}"
 
         print(
             f"{activity.date} "
             f"{activity.duration_s / 60:5.0f}min "
-            f"rpe={activity.rpe} "
+            f"rpe={rpe} "
             f"{category.path:36s} "
             f"{activity.name}"
         )
 
 
-def main():
-    mode = sys.argv[1]
+def main(argv: list[str] | None = None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    source_name, argv = extract_source(argv)
 
-    if mode == "daily":
-        report = daily()
+    mode = argv[0] if argv else "daily"
+    args = argv[1:]
 
-    elif mode == "all":
-        report = daily()
-        report += "\n\n"
-        report += summary("weekly")
-        report += "\n\n"
-        report += summary("monthly")
-        report += "\n\n"
-        report += summary("yearly")
+    if mode in ("-h", "--help"):
+        print(usage())
+        return
 
-    elif mode in ("weekly", "monthly", "yearly"):
-        report = summary(mode)
-
-    elif mode == "session":
-        if len(sys.argv) < 3:
-            raise SystemExit(
-                "usage: python -m intervals_report session YYYY-MM-DD"
-            )
-
-        try:
-            day = date.fromisoformat(sys.argv[2])
-        except ValueError:
-            raise SystemExit(
-                "usage: python -m intervals_report session YYYY-MM-DD"
-            )
-
-        report = session_report(day)
-
-    elif mode == "debug":
+    if mode == "debug":
         debug()
-        sys.exit(0)
+        return
 
-    elif mode == "report":
-        try:
-            start, end = parse_report_args(sys.argv[2:])
-        except ValueError as exc:
-            raise SystemExit(str(exc)) from exc
+    if mode not in MODES:
+        raise SystemExit(usage())
 
-        report = period_report(start, end, "Custom Training Report")
-
-    elif mode == "chart":
-        try:
-            output, start, end = parse_chart_args(
-                sys.argv[2:],
-                default_output="chart.png",
-                default_days=90,
-            )
-        except ValueError as exc:
-            raise SystemExit(str(exc)) from exc
-
-        run_chart(output, start, end)
-        sys.exit(0)
-
-    elif mode in ("subt-chart", "subt-hr-chart"):
-        is_hr_chart = mode == "subt-hr-chart"
-        default_output = (
-            "subt-hr-chart.png" if is_hr_chart else "subt-chart.png"
-        )
-
-        try:
-            output, start, end = parse_chart_args(
-                sys.argv[2:],
-                default_output=default_output,
-                default_days=365,
-            )
-        except ValueError as exc:
-            raise SystemExit(str(exc)) from exc
-
-        run_subt_chart(
-            output,
-            start,
-            end,
-            heart_rate=is_hr_chart,
-        )
-        sys.exit(0)
-
-    elif mode == "classify":
-        try:
-            start, end = parse_classify_args(sys.argv[2:])
-        except ValueError as exc:
-            raise SystemExit(str(exc)) from exc
-
-        run_classify(start, end)
-        sys.exit(0)
-
-    else:
+    try:
+        source = create_source(source_name)
+    except Exception as exc:
         raise SystemExit(
-            "usage: python -m intervals_report "
-            "daily|weekly|monthly|yearly|debug|all"
-            "|session YYYY-MM-DD|report [--days N]"
-            "|chart [output.png]"
-            "|subt-chart [output.png]|subt-hr-chart [output.png]"
-            "|classify [days]"
-            "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
-            "[--to YYYY-MM-DD]"
-        )
+            f"could not open {source_name} source: {exc}"
+        ) from exc
+
+    with source:
+        if mode == "daily":
+            report = daily(source)
+
+        elif mode == "all":
+            report = daily(source)
+            report += "\n\n"
+            report += summary("weekly", source)
+            report += "\n\n"
+            report += summary("monthly", source)
+            report += "\n\n"
+            report += summary("yearly", source)
+
+        elif mode in ("weekly", "monthly", "yearly"):
+            report = summary(mode, source)
+
+        elif mode == "session":
+            if not args:
+                raise SystemExit(
+                    "usage: python -m intervals_report session YYYY-MM-DD"
+                )
+
+            try:
+                day = date.fromisoformat(args[0])
+            except ValueError:
+                raise SystemExit(
+                    "usage: python -m intervals_report session YYYY-MM-DD"
+                )
+
+            report = session_report(day, source)
+
+        elif mode == "report":
+            try:
+                start, end = parse_report_args(args)
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            report = period_report(
+                start,
+                end,
+                "Custom Training Report",
+                source,
+            )
+
+        elif mode == "chart":
+            try:
+                output, start, end = parse_chart_args(
+                    args,
+                    default_output="chart.png",
+                    default_days=90,
+                )
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_chart(output, start, end, source)
+            return
+
+        elif mode in ("subt-chart", "subt-hr-chart"):
+            is_hr_chart = mode == "subt-hr-chart"
+            default_output = (
+                "subt-hr-chart.png" if is_hr_chart else "subt-chart.png"
+            )
+
+            try:
+                output, start, end = parse_chart_args(
+                    args,
+                    default_output=default_output,
+                    default_days=365,
+                )
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_subt_chart(
+                output,
+                start,
+                end,
+                source,
+                heart_rate=is_hr_chart,
+            )
+            return
+
+        elif mode == "classify":
+            try:
+                start, end = parse_classify_args(args)
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_classify(start, end, source)
+            return
 
     if sys.stdout.isatty() and os.environ.get("NO_PRETTY") != "1":
         print(render_markdown(report))

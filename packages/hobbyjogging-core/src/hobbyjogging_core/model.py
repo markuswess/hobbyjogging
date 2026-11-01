@@ -38,6 +38,7 @@ class ActivityEquipment:
 class Activity:
     id: str
     date: date
+    started_at_utc: str = ""  # ISO timestamp, used for same-day ordering
     type: str = ""  # canonical: "run", "trail_run", "ride", ...
     name: str = ""
     description: str = ""

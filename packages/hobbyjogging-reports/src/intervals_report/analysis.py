@@ -28,6 +28,11 @@ MEDIUM_MAX_S = 420
 # Work interval filtering. Older Intervals.icu activities mark warm-up,
 # cool-down and recovery jogs as WORK; work reps form the fast pace cluster.
 WORK_MIN_DURATION_S = 60
+
+
+def activity_sort_key(activity: Activity) -> tuple[date, str]:
+    """Order activities chronologically, including same-day sessions."""
+    return (activity.date, activity.started_at_utc)
 WORK_MIN_DISTANCE_M = 100
 WORK_PACE_BAND = 1.20
 WORK_MIN_HR_SHARE = 0.85

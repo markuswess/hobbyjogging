@@ -133,6 +133,27 @@ class TrainingRepositoryTests(unittest.TestCase):
             [item.id for item in first.equipment],
         )
 
+    def test_activities_are_ordered_by_start_time_within_a_day(self):
+        self.conn.executemany(
+            "INSERT INTO activities "
+            "(id, local_date, started_at_utc, sport) VALUES (?, ?, ?, ?)",
+            [
+                ("late", "2026-10-03", "2026-10-03T17:00:00", "run"),
+                ("early", "2026-10-03", "2026-10-03T08:00:00", "run"),
+            ],
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 3),
+            date(2026, 10, 3),
+        )
+
+        self.assertEqual(["early", "late"], [a.id for a in activities])
+        self.assertEqual(
+            "2026-10-03T08:00:00",
+            activities[0].started_at_utc,
+        )
+
     def test_empty_activity_range_returns_empty_list(self):
         self.assertEqual(
             [],

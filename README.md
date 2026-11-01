@@ -16,9 +16,11 @@ Training data, imports, and reports.
 uv sync
 ```
 
-Create `.env` at the repository root for Intervals.icu credentials:
+Create `.env` at the repository root for Intervals.icu credentials and an
+optional database location:
 
 ```bash
+export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
 export INTERVALS_ATHLETE_ID=<your-athlete-id>
 export INTERVALS_API_KEY=<your-api-key>
 ```
@@ -46,11 +48,14 @@ SQLite headers and columns enabled.
 
 ## Reports
 
+Reports read the canonical database by default.
+
 ```bash
 ./reports.sh
 ./reports.sh daily
 ./reports.sh report --days 90
 ./reports.sh report --from 2026-01-01 --to 2026-03-31
+./reports.sh weekly --source intervals
 ```
 
 See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.

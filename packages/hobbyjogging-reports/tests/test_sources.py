@@ -1,10 +1,8 @@
 import os
 import unittest
+from unittest.mock import patch
 
-# The API client reads credentials at import time; no requests are made here.
-os.environ.setdefault("INTERVALS_ATHLETE_ID", "test")
-os.environ.setdefault("INTERVALS_API_KEY", "test")
-
+from intervals_report.api import Intervals
 from intervals_report.sources.intervals_api import IntervalsSource, to_activity
 
 
@@ -27,10 +25,27 @@ class IntervalsSourceTests(unittest.TestCase):
 
         self.assertIsNone(to_activity(raw).feel)
 
+    def test_maps_start_timestamp(self):
+        raw = {
+            "id": "a",
+            "start_date": "2026-10-01T06:00:00Z",
+            "start_date_local": "2026-10-01T08:00:00",
+        }
+
+        self.assertEqual(
+            "2026-10-01T06:00:00Z",
+            to_activity(raw).started_at_utc,
+        )
+
     def test_equipment_not_exposed_yet(self):
         source = IntervalsSource(client=object())
 
         self.assertEqual([], source.equipment())
+
+    def test_api_requires_credentials_at_construction(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                Intervals()
 
 
 if __name__ == "__main__":

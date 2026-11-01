@@ -7,10 +7,11 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|weekly|monthly|yearly|all|report|session|classify] [args...]
+  ./reports.sh [daily|weekly|monthly|yearly|all|report|session|classify|chart|subt-chart|subt-hr-chart] [args...]
+  ./reports.sh --source database|intervals [mode] [args...]
 
-With no mode, builds the full daily + weekly + monthly + yearly report.
-The generated Markdown is copied to the clipboard with wl-copy.
+With no mode, builds the daily report. The generated Markdown is copied to
+the clipboard with wl-copy. The database source is the default.
 
 Examples:
   ./reports.sh
@@ -18,6 +19,7 @@ Examples:
   ./reports.sh report --days 90
   ./reports.sh report --from 2026-01-01 --to 2026-03-31
   ./reports.sh session 2026-10-22
+  ./reports.sh weekly --source intervals
 
 Environment:
   NO_COPY=1    do not copy to the clipboard
@@ -26,14 +28,18 @@ Environment:
 EOF
 }
 
-mode="${1:-all}"
+mode="${1:-daily}"
+
+if [[ "$mode" == "--source" ]]; then
+    mode="daily"
+fi
 
 case "$mode" in
     -h|--help)
         usage
         exit 0
         ;;
-    daily|weekly|monthly|yearly|all|report|session|classify)
+    daily|weekly|monthly|yearly|all|report|session|classify|chart|subt-chart|subt-hr-chart)
         ;;
     *)
         usage >&2

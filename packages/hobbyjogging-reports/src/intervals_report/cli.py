@@ -3,6 +3,8 @@
 import argparse
 from datetime import date, timedelta
 
+from .sources import DEFAULT_SOURCE, SOURCE_CHOICES
+
 
 def date_arg(value: str) -> date:
     """Parse a YYYY-MM-DD command-line date."""
@@ -38,6 +40,18 @@ def resolve_range(
         return end - timedelta(days=days), end
 
     return today - timedelta(days=days), today
+
+
+def extract_source(argv: list[str]) -> tuple[str, list[str]]:
+    """Remove the global --source option and return the remaining arguments."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument(
+        "--source",
+        choices=SOURCE_CHOICES,
+        default=DEFAULT_SOURCE,
+    )
+    args, remaining = parser.parse_known_args(argv)
+    return args.source, remaining
 
 
 def range_parser() -> argparse.ArgumentParser:

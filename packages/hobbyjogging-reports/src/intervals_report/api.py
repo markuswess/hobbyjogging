@@ -2,9 +2,6 @@ import os
 
 import requests
 
-ATHLETE_ID = os.environ["INTERVALS_ATHLETE_ID"]
-API_KEY = os.environ["INTERVALS_API_KEY"]
-
 
 # -------------------------------------------------
 # API
@@ -13,10 +10,17 @@ API_KEY = os.environ["INTERVALS_API_KEY"]
 class Intervals:
 
     def __init__(self):
+        athlete_id = os.environ.get("INTERVALS_ATHLETE_ID")
+        api_key = os.environ.get("INTERVALS_API_KEY")
+        if not athlete_id or not api_key:
+            raise RuntimeError(
+                "INTERVALS_ATHLETE_ID and INTERVALS_API_KEY must be set"
+            )
+
         self.base = (
-            f"https://intervals.icu/api/v1/athlete/{ATHLETE_ID}"
+            f"https://intervals.icu/api/v1/athlete/{athlete_id}"
         )
-        self.auth = ("API_KEY", API_KEY)
+        self.auth = ("API_KEY", api_key)
         self._intervals_cache = {}
 
 

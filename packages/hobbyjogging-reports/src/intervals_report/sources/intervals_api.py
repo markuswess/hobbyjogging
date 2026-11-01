@@ -36,6 +36,7 @@ def to_activity(raw: dict) -> Activity:
     return Activity(
         id=raw["id"],
         date=_parse_date(raw["start_date_local"]),
+        started_at_utc=str(raw.get("start_date") or ""),
         type=_norm_type(raw.get("type")),
         name=raw.get("name") or "",
         description=raw.get("description") or "",
@@ -88,6 +89,15 @@ class IntervalsSource:
 
     def __init__(self, client: Intervals | None = None):
         self.client = client or Intervals()
+
+    def close(self) -> None:
+        """Nothing to release; kept for the DataSource context-manager shape."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.close()
 
     def activities(self, start: date, end: date) -> list[Activity]:
         return [to_activity(a) for a in self.client.activities(start, end) or []]

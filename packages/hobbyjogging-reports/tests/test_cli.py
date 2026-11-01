@@ -1,9 +1,12 @@
 import argparse
+import io
 import unittest
+from contextlib import redirect_stderr
 from datetime import date, timedelta
 
 from intervals_report.cli import (
     date_arg,
+    extract_source,
     parse_chart_args,
     parse_classify_args,
     parse_report_args,
@@ -179,6 +182,34 @@ class ChartArgsTests(unittest.TestCase):
         self.assertEqual("pace.png", output)
         self.assertEqual(date(2026, 1, 1), start)
         self.assertEqual(date(2026, 1, 31), end)
+
+
+class SourceArgTests(unittest.TestCase):
+
+    def test_default_source_is_database(self):
+        self.assertEqual(
+            ("database", ["weekly"]),
+            extract_source(["weekly"]),
+        )
+
+    def test_explicit_source_is_removed_from_remaining_args(self):
+        self.assertEqual(
+            ("intervals", ["report", "--days", "7"]),
+            extract_source(
+                ["--source", "intervals", "report", "--days", "7"]
+            ),
+        )
+
+    def test_source_can_follow_the_mode(self):
+        self.assertEqual(
+            ("intervals", ["weekly"]),
+            extract_source(["weekly", "--source", "intervals"]),
+        )
+
+    def test_rejects_unknown_source(self):
+        with self.assertRaises(SystemExit):
+            with redirect_stderr(io.StringIO()):
+                extract_source(["--source", "runalyze"])
 
 
 class DateArgTests(unittest.TestCase):

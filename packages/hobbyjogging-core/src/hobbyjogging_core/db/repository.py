@@ -23,7 +23,7 @@ class TrainingRepository:
         rows = self.connection.execute(
             """
             SELECT
-                id, local_date, sport, name, description,
+                id, local_date, started_at_utc, sport, name, description,
                 duration_s, distance_m, avg_hr, training_load,
                 rpe, feel, intensity
             FROM activities
@@ -44,6 +44,7 @@ class TrainingRepository:
             Activity(
                 id=row["id"],
                 date=date.fromisoformat(row["local_date"]),
+                started_at_utc=row["started_at_utc"] or "",
                 type=row["sport"],
                 name=row["name"],
                 description=row["description"],

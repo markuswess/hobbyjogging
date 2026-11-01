@@ -14,8 +14,9 @@ adapters are currently available:
 - `IntervalsSource` — direct Intervals.icu API access.
 - `DatabaseSource` — reads the canonical SQLite database.
 
-The command-line wrapper still uses `IntervalsSource` by default. Source
-selection will be added once the database importer is available.
+The command-line wrapper uses `DatabaseSource` by default. Select the API
+explicitly with `--source intervals` when you want to compare against
+Intervals.icu. `debug` still dumps raw API payloads and ignores `--source`.
 
 ## What it does
 
@@ -55,8 +56,12 @@ Install dependencies:
 
 Create environment (`.env`):
 
+    export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
     export INTERVALS_ATHLETE_ID=<your-athlete-id>
     export INTERVALS_API_KEY=<your-api-key>
+
+The Intervals.icu variables are only needed for `--source intervals` and
+`debug`.
 
 Run:
 
@@ -79,12 +84,13 @@ Run:
 Markdown to the clipboard with `wl-copy`, and renders headings, lists
 and tables for the terminal:
 
-    ./reports.sh                 # daily 
+    ./reports.sh                 # daily
     ./reports.sh daily
     ./reports.sh monthly
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh session 2026-10-22
+    ./reports.sh weekly --source intervals
 
 The clipboard receives the original Markdown before terminal
 formatting, so pasting gives clean Markdown. Use `NO_COPY=1` to skip
@@ -94,7 +100,20 @@ to print raw Markdown.
 When stdout is a terminal, the direct CLI also displays reports with
 the same formatting. Redirected or piped output remains raw Markdown.
 
-### Date ranges
+### Data source selection
+
+All report commands accept:
+
+    --source database     read the canonical SQLite database (default)
+    --source intervals    read directly from the Intervals.icu API
+
+Examples:
+
+    ./reports.sh report --days 90 --source database
+    ./reports.sh report --days 90 --source intervals
+    ./reports.sh --source intervals weekly
+
+## Date ranges
 
 `report`, `chart`, `subt-chart`, `subt-hr-chart` and `classify` accept:
 
@@ -199,10 +218,12 @@ Data access and analysis are separated so the data source can be
 replaced (e.g. Intervals.icu API → local database) without touching
 analysis or chart code:
 
-- `model.py` — source-agnostic types (`Activity`, `WellnessDay`,
-  `Event`, `Interval`).
-- `cli.py` — shared command-line date-range parsing.
-- `sources/base.py` — the `DataSource` protocol.
+- `hobbyjogging_core/model.py` — source-agnostic types (`Activity`,
+  `WellnessDay`, `Event`, `Interval`).
+- `hobbyjogging_core/datasource.py` — the `DataSource` protocol.
+- `cli.py` — shared command-line date-range and source parsing.
+- `sources/__init__.py` — source selection.
+- `sources/database.py` — canonical SQLite database adapter.
 - `sources/intervals_api.py` — the only module that knows raw
   Intervals.icu field names.
 - `analysis.py` — pure metrics over model objects (no API, no plotting).
@@ -218,6 +239,6 @@ Only `sources/intervals_api.py` knows Intervals.icu field names; the
 `debug` command is the one place that still dumps raw payloads.
 
 To add a visualization: compute the metric in `analysis.py` from model
-objects, then plot it in `charts.py`. To switch to a local database,
-add another `DataSource` implementation; everything downstream stays
-unchanged.
+objects, then plot it in `charts.py`. To add another data source, implement
+the `DataSource` protocol and register it in `sources/__init__.py`; everything
+downstream stays unchanged.

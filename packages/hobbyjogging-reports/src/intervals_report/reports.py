@@ -2,7 +2,13 @@ import json
 import sys
 from datetime import date, timedelta
 
-from .analysis import is_lt1_activity, is_subt_activity
+from hobbyjogging_core.datasource import DataSource
+
+from .analysis import (
+    activity_sort_key,
+    is_lt1_activity,
+    is_subt_activity,
+)
 from .api import Intervals
 from .classify import category_breakdown, classify
 from .format import (
@@ -17,7 +23,7 @@ from .format import (
     summarize_training,
     work_summary_for_activity,
 )
-from .sources.intervals_api import IntervalsSource
+from .sources import DEFAULT_SOURCE, create_source
 
 
 def debug():
@@ -96,9 +102,12 @@ def debug():
         )
     )
 
-def session_report(day: date, source: IntervalsSource | None = None) -> str:
+def session_report(day: date, source: DataSource | None = None) -> str:
     """Render one day's activities with categories and work intervals."""
-    source = source or IntervalsSource()
+    if source is None:
+        with create_source(DEFAULT_SOURCE) as source:
+            return session_report(day, source)
+
     activities = source.activities(day, day)
 
     lines = [f"# Session {day}"]
@@ -107,7 +116,7 @@ def session_report(day: date, source: IntervalsSource | None = None) -> str:
         lines.append("\n- No activity")
         return "\n".join(lines)
 
-    for activity in sorted(activities, key=lambda a: a.date):
+    for activity in sorted(activities, key=activity_sort_key):
         try:
             intervals = source.activity_intervals(activity.id)
         except Exception:
@@ -128,14 +137,15 @@ def session_report(day: date, source: IntervalsSource | None = None) -> str:
     return "\n".join(lines)
 
 
-def daily():
+def daily(source: DataSource | None = None):
+
+    if source is None:
+        with create_source(DEFAULT_SOURCE) as source:
+            return daily(source)
 
     today = date.today()
 
     yesterday = today - timedelta(days=1)
-
-
-    source = IntervalsSource()
 
     activities = source.activities(
         yesterday,
@@ -177,9 +187,7 @@ def daily():
     if activities:
 
         # newest first
-        activities.sort(
-            key=lambda x: x.date
-        )
+        activities.sort(key=activity_sort_key)
 
         for a in activities:
 
@@ -237,9 +245,7 @@ def daily():
     if activities_today:
 
         # newest first
-        activities_today.sort(
-            key=lambda x: x.date
-        )
+        activities_today.sort(key=activity_sort_key)
 
         for a in activities_today:
 
@@ -306,16 +312,19 @@ def period_report(
     start: date,
     end: date,
     title: str,
-    source: IntervalsSource | None = None,
+    source: DataSource | None = None,
 ) -> str:
     """Render a summary for an inclusive date range."""
     if start > end:
         raise ValueError("start must not be after end")
 
-    ndays = (end - start).days + 1
-    source = source or IntervalsSource()
+    if source is None:
+        with create_source(DEFAULT_SOURCE) as source:
+            return period_report(start, end, title, source)
 
-    activities = source.activities(start, end)
+    ndays = (end - start).days + 1
+
+    activities = sorted(source.activities(start, end), key=activity_sort_key)
 
     training = summarize_training(activities)
 
@@ -459,7 +468,7 @@ def period_report(
     return "\n".join(lines)
 
 
-def summary(period):
+def summary(period, source: DataSource | None = None):
     """Render one of the fixed weekly, monthly or yearly reports."""
     today = date.today()
     end = today - timedelta(days=1)
@@ -482,4 +491,5 @@ def summary(period):
         start,
         end,
         f"{period.title()} Training Report",
+        source=source,
     )
