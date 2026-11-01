@@ -29,7 +29,7 @@ Useful options:
 
 - `--no-intervals` — skip per-activity interval downloads.
 - `--database PATH` — write to a database other than `HOBBYJOGGING_DB` or
-  `data/hobbyjogging.db`.
+  `~/projects/laufen_private/data/db/hobbyjogging.db`.
 
 The importer writes:
 

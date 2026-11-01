@@ -25,6 +25,9 @@ export INTERVALS_API_KEY=<your-api-key>
 
 ## Import
 
+The canonical database lives at
+`~/projects/laufen_private/data/db/hobbyjogging.db` by default.
+
 ```bash
 uv run --env-file .env hobbyjogging-import intervals --days 90
 ```
