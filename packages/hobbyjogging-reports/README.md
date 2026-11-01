@@ -3,7 +3,19 @@
 This package is part of the `hobbyjogging` workspace. Run the commands below
 from the repository root.
 
-Generate daily, weekly and monthly summaries from Intervals.icu.
+Generate daily, weekly and monthly summaries from Intervals.icu or the
+canonical hobbyjogging database.
+
+## Data sources
+
+Reports depend on the `DataSource` protocol from `hobbyjogging-core`. Two
+adapters are currently available:
+
+- `IntervalsSource` — direct Intervals.icu API access.
+- `DatabaseSource` — reads the canonical SQLite database.
+
+The command-line wrapper still uses `IntervalsSource` by default. Source
+selection will be added once the database importer is available.
 
 ## What it does
 

@@ -33,6 +33,19 @@ Set `HOBBYJOGGING_DB` to use a different path.
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
 `SCHEMA_VERSION` is the current target version.
 
+Read canonical data through the repository:
+
+```python
+from hobbyjogging_core import TrainingRepository, open_database
+
+conn = open_database()
+repository = TrainingRepository(conn)
+activities = repository.activities(start, end)
+wellness = repository.wellness(start, end)
+events = repository.events(start, end)
+equipment = repository.equipment()
+```
+
 ### Schema layers
 
 - `source_records` — immutable raw imports, checksums, and file references.
