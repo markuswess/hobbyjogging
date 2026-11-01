@@ -40,13 +40,14 @@ Rules
 
 from dataclasses import dataclass
 
+from hobbyjogging_core.model import Activity, Interval
+
 from .analysis import (
     LT1_WORDS,
     RUN_TYPES,
     classify_interval,
     work_intervals,
 )
-from .model import Activity, Interval
 
 # --- thresholds -----------------------------------------------------------
 

@@ -5,7 +5,7 @@ import unittest
 os.environ.setdefault("INTERVALS_ATHLETE_ID", "test")
 os.environ.setdefault("INTERVALS_API_KEY", "test")
 
-from intervals_report.sources.intervals_api import to_activity
+from intervals_report.sources.intervals_api import IntervalsSource, to_activity
 
 
 class IntervalsSourceTests(unittest.TestCase):
@@ -26,6 +26,11 @@ class IntervalsSourceTests(unittest.TestCase):
         }
 
         self.assertIsNone(to_activity(raw).feel)
+
+    def test_equipment_not_exposed_yet(self):
+        source = IntervalsSource(client=object())
+
+        self.assertEqual([], source.equipment())
 
 
 if __name__ == "__main__":

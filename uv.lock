@@ -199,12 +199,14 @@ name = "hobbyjogging-reports"
 version = "0.1.0"
 source = { editable = "packages/hobbyjogging-reports" }
 dependencies = [
+    { name = "hobbyjogging-core" },
     { name = "matplotlib" },
     { name = "requests" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "hobbyjogging-core", editable = "packages/hobbyjogging-core" },
     { name = "matplotlib", specifier = ">=3.10" },
     { name = "requests", specifier = ">=2.34.2" },
 ]

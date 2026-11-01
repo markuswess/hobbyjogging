@@ -15,7 +15,7 @@ from intervals_report.format import (
     summarize_training,
     work_summary_for_activity,
 )
-from intervals_report.model import Activity, Interval, WellnessDay
+from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
 D = date(2026, 10, 1)
 

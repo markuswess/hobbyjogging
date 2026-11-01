@@ -1,8 +1,11 @@
 """Report formatting.
 
-All helpers take model objects (see ``model.py``), so reports work with
-any ``DataSource`` implementation.
+All helpers take canonical model objects (see ``hobbyjogging_core.model``), so
+reports work with any ``DataSource`` implementation.
 """
+
+from hobbyjogging_core.datasource import DataSource
+from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
 from .analysis import (
     RUN_TYPES,
@@ -11,8 +14,7 @@ from .analysis import (
     subt_work_points,
 )
 from .classify import classify
-from .model import Activity, Interval, SubtPoint, WellnessDay
-from .sources.base import DataSource
+from .model import SubtPoint
 
 
 SPORT_LABELS = {

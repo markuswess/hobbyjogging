@@ -1,14 +1,16 @@
 """Source-agnostic analysis.
 
-Functions here take model objects (see ``model.py``) and return plain Python
-structures. They never touch the API, a database, or plotting.
+Functions here take model objects (see ``hobbyjogging_core.model``) and return
+plain Python structures. They never touch the API, a database, or plotting.
 """
 
 from collections import defaultdict
 from datetime import date, timedelta
 from statistics import median
 
-from .model import Activity, Interval, SubtPoint
+from hobbyjogging_core.model import Activity, Interval
+
+from .model import SubtPoint
 
 RUN_TYPES = {"run", "trail_run"}
 

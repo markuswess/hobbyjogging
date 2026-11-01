@@ -37,5 +37,6 @@ See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.
 ## Tests
 
 ```bash
+uv run python -m unittest discover -s packages/hobbyjogging-core/tests -v
 uv run python -m unittest discover -s packages/hobbyjogging-reports/tests -v
 ```

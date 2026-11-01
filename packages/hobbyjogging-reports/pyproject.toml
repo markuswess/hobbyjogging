@@ -5,6 +5,7 @@ description = "Training reports, analysis, and charts"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "hobbyjogging-core",
     "matplotlib>=3.10",
     "requests>=2.34.2",
 ]

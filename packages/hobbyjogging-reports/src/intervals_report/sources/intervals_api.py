@@ -6,8 +6,9 @@ names. Everything downstream sees the canonical model.
 
 from datetime import date
 
+from hobbyjogging_core.model import Activity, Equipment, Event, Interval, WellnessDay
+
 from ..api import Intervals
-from ..model import Activity, Event, Interval, WellnessDay
 
 _TYPE_ALIASES = {
     "run": "run",
@@ -102,3 +103,7 @@ class IntervalsSource:
             to_interval(i)
             for i in self.client.get_activity_intervals(activity_id)
         ]
+
+    def equipment(self) -> list[Equipment]:
+        """Intervals.icu gear is not exposed by this adapter yet."""
+        return []

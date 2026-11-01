@@ -1,14 +1,14 @@
 """The data source interface.
 
-Every adapter (Intervals.icu API today, a local database later) implements
-this protocol and returns model objects (see ``intervals_report.model``).
-Analysis and chart code should only ever depend on this interface.
+Every adapter (Intervals.icu API, local database, file export, ...) implements
+this protocol and returns canonical model objects. Analysis, charts, and
+reports should depend only on this interface.
 """
 
 from datetime import date
 from typing import Protocol
 
-from ..model import Activity, Event, Interval, WellnessDay
+from .model import Activity, Equipment, Event, Interval, WellnessDay
 
 
 class DataSource(Protocol):
@@ -23,4 +23,7 @@ class DataSource(Protocol):
         ...
 
     def activity_intervals(self, activity_id: str) -> list[Interval]:
+        ...
+
+    def equipment(self) -> list[Equipment]:
         ...

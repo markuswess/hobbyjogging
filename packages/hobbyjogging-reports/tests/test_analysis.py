@@ -7,7 +7,7 @@ from intervals_report.analysis import (
     subt_work_points,
     work_intervals,
 )
-from intervals_report.model import Activity, Interval
+from hobbyjogging_core.model import Activity, Interval
 
 D = date(2026, 10, 1)
 

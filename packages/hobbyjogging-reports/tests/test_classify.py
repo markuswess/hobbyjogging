@@ -3,7 +3,7 @@ from datetime import date
 
 from intervals_report.analysis import work_intervals
 from intervals_report.classify import category_breakdown, classify
-from intervals_report.model import Activity, Interval
+from hobbyjogging_core.model import Activity, Interval
 
 D = date(2026, 10, 1)
 
