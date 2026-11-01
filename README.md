@@ -32,6 +32,18 @@ The canonical database lives at
 uv run --env-file .env hobbyjogging-import intervals --days 90
 ```
 
+## Inspect the database
+
+`db.sh` uses `HOBBYJOGGING_DB` from `.env` and opens the database with
+SQLite headers and columns enabled.
+
+```bash
+./db.sh
+./db.sh ".tables"
+./db.sh ".schema activities"
+./db.sh "SELECT local_date, sport, name FROM activities ORDER BY local_date DESC LIMIT 10;"
+```
+
 ## Reports
 
 ```bash
