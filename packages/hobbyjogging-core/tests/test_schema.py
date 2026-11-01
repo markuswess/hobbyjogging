@@ -1,17 +1,9 @@
-import os
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
-from hobbyjogging_core import (
-    SCHEMA_VERSION,
-    connect,
-    default_database_path,
-    migrate,
-    open_database,
-)
+from hobbyjogging_core import SCHEMA_VERSION, connect, migrate, open_database
 
 
 EXPECTED_TABLES = {
@@ -182,14 +174,6 @@ class SchemaMigrationTests(unittest.TestCase):
             self.assertEqual(
                 SCHEMA_VERSION,
                 conn.execute("PRAGMA user_version").fetchone()[0],
-            )
-
-    def test_default_database_path_points_to_private_directory(self):
-        with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(
-                Path.home()
-                / "projects/laufen_private/data/db/hobbyjogging.db",
-                default_database_path(),
             )
 
 

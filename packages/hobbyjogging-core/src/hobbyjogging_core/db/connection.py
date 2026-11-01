@@ -7,9 +7,7 @@ from pathlib import Path
 from .migrations import migrate
 
 DATABASE_PATH_ENV = "HOBBYJOGGING_DB"
-DEFAULT_DATABASE_PATH = (
-    Path.home() / "projects/laufen_private/data/db/hobbyjogging.db"
-)
+DEFAULT_DATABASE_PATH = Path("data/hobbyjogging.db")
 
 
 def default_database_path() -> Path:

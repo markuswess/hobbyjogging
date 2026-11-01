@@ -25,7 +25,7 @@ Open and migrate a database with:
 ```python
 from hobbyjogging_core import open_database
 
-conn = open_database()  # ~/projects/laufen_private/data/db/hobbyjogging.db
+conn = open_database()  # data/hobbyjogging.db
 ```
 
 Set `HOBBYJOGGING_DB` to use a different path.
