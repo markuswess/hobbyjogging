@@ -46,6 +46,30 @@ events = repository.events(start, end)
 equipment = repository.equipment()
 ```
 
+Write imports through `TrainingWriter`:
+
+```python
+from hobbyjogging_core import TrainingWriter
+
+writer = TrainingWriter(conn)
+run_id = writer.start_import_run("intervals", {"days": 90})
+source_id = writer.upsert_source_record(
+    source="intervals",
+    record_type="activity",
+    external_id="i123",
+    checksum="...",
+    payload_json="{}",
+    import_run_id=run_id,
+)
+writer.upsert_activity(
+    "activity-uuid",
+    {"local_date": "2026-10-01", "sport": "run", "name": "Easy run"},
+    source="intervals",
+    source_record_id=source_id,
+)
+writer.finish_import_run(run_id, "success", records_seen=1, records_imported=1)
+```
+
 ### Schema layers
 
 - `source_records` — immutable raw imports, checksums, and file references.

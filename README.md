@@ -23,6 +23,12 @@ export INTERVALS_ATHLETE_ID=<your-athlete-id>
 export INTERVALS_API_KEY=<your-api-key>
 ```
 
+## Import
+
+```bash
+uv run --env-file .env hobbyjogging-import intervals --days 90
+```
+
 ## Reports
 
 ```bash
@@ -38,5 +44,6 @@ See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.
 
 ```bash
 uv run python -m unittest discover -s packages/hobbyjogging-core/tests -v
+uv run python -m unittest discover -s packages/hobbyjogging-import/tests -v
 uv run python -m unittest discover -s packages/hobbyjogging-reports/tests -v
 ```

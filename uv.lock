@@ -189,10 +189,14 @@ version = "0.1.0"
 source = { editable = "packages/hobbyjogging-import" }
 dependencies = [
     { name = "hobbyjogging-core" },
+    { name = "requests" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "hobbyjogging-core", editable = "packages/hobbyjogging-core" }]
+requires-dist = [
+    { name = "hobbyjogging-core", editable = "packages/hobbyjogging-core" },
+    { name = "requests", specifier = ">=2.34.2" },
+]
 
 [[package]]
 name = "hobbyjogging-reports"

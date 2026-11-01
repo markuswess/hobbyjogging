@@ -4,6 +4,7 @@ from .datasource import DataSource
 from .db import (
     SCHEMA_VERSION,
     TrainingRepository,
+    TrainingWriter,
     connect,
     default_database_path,
     migrate,
@@ -27,6 +28,7 @@ __all__ = [
     "Interval",
     "SCHEMA_VERSION",
     "TrainingRepository",
+    "TrainingWriter",
     "WellnessDay",
     "connect",
     "default_database_path",
