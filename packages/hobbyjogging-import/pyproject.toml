@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Import and normalize training data from external sources"
 requires-python = ">=3.14"
 dependencies = [
+    "fitdecode>=0.11.0",
     "hobbyjogging-core",
     "requests>=2.34.2",
 ]

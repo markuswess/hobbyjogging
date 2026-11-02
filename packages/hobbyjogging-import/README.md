@@ -3,6 +3,27 @@
 Import and normalize training data from external sources into the canonical
 hobbyjogging database.
 
+## FIT files
+
+FIT files are read from `data/fit` by default. Set `HOBBYJOGGING_FIT_DIR` to
+use another directory:
+
+```bash
+export HOBBYJOGGING_FIT_DIR=~/projects/laufen_private/data/fit
+```
+
+Inspect one FIT file without writing to the database:
+
+```bash
+uv run --env-file .env hobbyjogging-import fit \
+  --inspect data/fit/30285-220489711.fit
+```
+
+Add `--json` to print the normalized summary as JSON. The inspector shows the
+device, sport mapping, start times, duration, distance, pace, heart rate,
+ascent, calories, and laps. A bare filename is resolved under
+`HOBBYJOGGING_FIT_DIR`.
+
 ## Intervals.icu
 
 Set credentials at the repository root:

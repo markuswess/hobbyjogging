@@ -1,11 +1,14 @@
 """Command-line interface for hobbyjogging imports."""
 
 import argparse
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_core import default_database_path, open_database
 
+from .config import default_fit_dir, resolve_fit_path
+from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .intervals import IntervalsImporter
 
 
@@ -64,12 +67,74 @@ def build_parser() -> argparse.ArgumentParser:
         help="skip per-activity interval downloads",
     )
 
+    fit = subparsers.add_parser(
+        "fit",
+        help="inspect FIT files (import support will follow)",
+    )
+    fit.add_argument(
+        "--inspect",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "parse and print one FIT file without writing "
+            f"(default directory: {default_fit_dir()})"
+        ),
+    )
+    fit.add_argument(
+        "--json",
+        action="store_true",
+        help="print the normalized FIT summary as JSON",
+    )
+    fit.add_argument(
+        "paths",
+        nargs="*",
+        type=Path,
+        help="FIT files or directories for future imports",
+    )
+
     return parser
+
+
+def run_fit_inspect(args, parser: argparse.ArgumentParser) -> int:
+    if args.inspect is None:
+        parser.error("FIT import is not implemented yet; use --inspect FILE")
+
+    if args.paths:
+        parser.error(
+            "--inspect accepts one file; positional FIT imports are not "
+            "implemented yet"
+        )
+
+    path = resolve_fit_path(args.inspect)
+
+    if not path.is_file():
+        parser.error(f"FIT file not found: {path}")
+
+    try:
+        summary = parse_fit_file(path)
+    except Exception as exc:
+        raise SystemExit(f"could not parse {path}: {exc}") from exc
+
+    if args.json:
+        print(
+            json.dumps(
+                fit_file_to_dict(summary),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print(format_fit_file(summary))
+
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "fit":
+        return run_fit_inspect(args, parser)
 
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")

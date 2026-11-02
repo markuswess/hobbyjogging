@@ -16,19 +16,29 @@ Training data, imports, and reports.
 uv sync
 ```
 
-Create `.env` at the repository root for Intervals.icu credentials and an
-optional database location:
+Create `.env` at the repository root for Intervals.icu credentials and
+optional database and FIT locations:
 
 ```bash
-export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
+export HOBBYJOGGING_DB=<your/path/databasefile.db>
+export HOBBYJOGGING_FIT_DIR=<your/path/fit-directory>
 export INTERVALS_ATHLETE_ID=<your-athlete-id>
 export INTERVALS_API_KEY=<your-api-key>
 ```
 
 ## Import
 
-The canonical database lives at
-`data/hobbyjogging.db` by default.
+The canonical database lives at `data/hobbyjogging.db` by default. FIT files
+are read from `data/fit` unless `HOBBYJOGGING_FIT_DIR` is set.
+
+Inspect a FIT file without writing to the database:
+
+```bash
+uv run --env-file .env hobbyjogging-import fit \
+  --inspect data/fit/30285-220489711.fit
+```
+
+Import Intervals.icu data:
 
 ```bash
 uv run --env-file .env hobbyjogging-import intervals --days 90
