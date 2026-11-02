@@ -144,8 +144,8 @@ def daily(source: DataSource | None = None):
             return daily(source)
 
     today = date.today()
-
     yesterday = today - timedelta(days=1)
+    tomorrow = today + timedelta(days=1)
 
     activities = source.activities(
         yesterday,
@@ -160,6 +160,11 @@ def daily(source: DataSource | None = None):
     events = source.events(
         today,
         today
+    )
+
+    events_tomorrow = source.events(
+        tomorrow,
+        tomorrow
     )
 
     activities_today = source.activities(
@@ -305,6 +310,51 @@ def daily(source: DataSource | None = None):
                 "- No planned session"
             )
 
+    # -----------------------------
+    # Tomorrow
+    # -----------------------------
+    
+    lines.append(
+        "\n## Planned Tomorrow"
+    )
+    if events_tomorrow:
+        for e in events_tomorrow:
+
+            lines.append(
+                f"\n### {e.name}"
+            )
+
+            if e.type:
+
+                lines.append(
+                    f"- Type: {sport_label(e)}"
+                )
+
+            if e.description:
+
+                lines.append(
+                    e.description
+                )
+
+            if e.duration_s:
+
+                lines.append(
+                    f"- Duration: "
+                    f"{fmt_time(e.duration_s)}"
+                )
+
+            if e.distance_m:
+
+                lines.append(
+                    f"- Distance: "
+                    f"{e.distance_m/1000:.1f} km"
+                )
+
+    else:
+
+        lines.append(
+            "- No planned session"
+        )
 
     return "\n".join(lines)
 
