@@ -274,6 +274,7 @@ def _activity_values(raw: dict) -> dict[str, object]:
         "name": str(raw.get("name") or ""),
         "description": str(raw.get("description") or ""),
         "duration_s": _float(raw.get("moving_time")) or 0.0,
+        "elapsed_s": _float(raw.get("elapsed_time")) or 0.0,
         "distance_m": _float(raw.get("distance")) or 0.0,
     }
 

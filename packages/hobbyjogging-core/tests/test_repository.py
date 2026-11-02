@@ -18,22 +18,22 @@ class TrainingRepositoryTests(unittest.TestCase):
             """
             INSERT INTO activities (
                 id, local_date, sport, name, description,
-                duration_s, distance_m, avg_hr, training_load,
+                duration_s, elapsed_s, distance_m, avg_hr, training_load,
                 rpe, feel, intensity
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
                     "a1", "2026-10-01", "run", "Morning run", "Easy",
-                    3600, 10000, 140, 50, 4, 2, 0.8,
+                    3600, 3700, 10000, 140, 50, 4, 2, 0.8,
                 ),
                 (
                     "a2", "2026-10-02", "ride", "Evening ride", "",
-                    1800, 20000, 130, 30, None, None, 0.6,
+                    1800, 1900, 20000, 130, 30, None, None, 0.6,
                 ),
                 (
                     "a3", "2026-10-05", "run", "Weekend run", "",
-                    5400, 15000, 145, 70, 5, 3, 0.85,
+                    5400, 5600, 15000, 145, 70, 5, 3, 0.85,
                 ),
             ],
         )
@@ -91,6 +91,22 @@ class TrainingRepositoryTests(unittest.TestCase):
             ],
         )
         self.conn.executemany(
+            "INSERT INTO activity_laps "
+            "(activity_id, lap_index, start_time_utc, duration_s, "
+            "distance_m, avg_hr, max_hr, elevation_gain_m) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    "a1", 2, "2026-10-01T06:10:00Z", 120, 300,
+                    120, 130, 2,
+                ),
+                (
+                    "a1", 1, "2026-10-01T06:00:00Z", 60, 200,
+                    150, 160, 1,
+                ),
+            ],
+        )
+        self.conn.executemany(
             "INSERT INTO wellness_days "
             "(local_date, hrv, resting_hr, sleep_s) VALUES (?, ?, ?, ?)",
             [
@@ -120,6 +136,7 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual("run", first.type)
         self.assertEqual("Morning run", first.name)
         self.assertEqual(3600, first.duration_s)
+        self.assertEqual(3700, first.elapsed_s)
         self.assertEqual(10000, first.distance_m)
         self.assertEqual(140, first.avg_hr)
         self.assertEqual(50, first.training_load)
@@ -193,6 +210,18 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual("g1", intervals[0].group_id)
         self.assertEqual(60, intervals[0].duration_s)
         self.assertEqual("RECOVERY", intervals[1].type)
+
+    def test_activity_laps_are_ordered_by_index(self):
+        laps = self.repository.activity_laps("a1")
+
+        self.assertEqual([1, 2], [lap.index for lap in laps])
+        self.assertEqual("2026-10-01T06:00:00Z", laps[0].start_time_utc)
+        self.assertEqual(60, laps[0].duration_s)
+        self.assertEqual(200, laps[0].distance_m)
+        self.assertEqual(150, laps[0].avg_hr)
+        self.assertEqual(160, laps[0].max_hr)
+        self.assertEqual(1, laps[0].elevation_gain_m)
+        self.assertEqual(120, laps[1].duration_s)
 
     def test_equipment_is_sorted_and_mapped(self):
         equipment = self.repository.equipment()

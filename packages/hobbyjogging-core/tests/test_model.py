@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from hobbyjogging_core import Activity, ActivityEquipment, Equipment
+from hobbyjogging_core import Activity, ActivityEquipment, Equipment, Lap
 
 
 class EquipmentModelTests(unittest.TestCase):
@@ -30,6 +30,16 @@ class EquipmentModelTests(unittest.TestCase):
         self.assertEqual("primary", link.role)
         self.assertEqual("manual", link.source)
         self.assertFalse(link.is_manual)
+
+    def test_lap_defaults(self):
+        lap = Lap(index=1)
+
+        self.assertEqual("", lap.start_time_utc)
+        self.assertEqual(0, lap.duration_s)
+        self.assertEqual(0, lap.distance_m)
+        self.assertIsNone(lap.avg_hr)
+        self.assertIsNone(lap.max_hr)
+        self.assertIsNone(lap.elevation_gain_m)
 
 
 if __name__ == "__main__":

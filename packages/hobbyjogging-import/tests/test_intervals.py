@@ -17,6 +17,7 @@ class FakeIntervalsClient:
                 "name": "Morning run",
                 "description": "Easy",
                 "moving_time": 3600,
+                "elapsed_time": 3900,
                 "distance": 10000,
                 "average_heartrate": 140,
                 "icu_training_load": 50,
@@ -109,6 +110,7 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual("run", activity.type)
         self.assertEqual("Morning run", activity.name)
         self.assertEqual(3600, activity.duration_s)
+        self.assertEqual(3900, activity.elapsed_s)
         self.assertEqual(10000, activity.distance_m)
         self.assertEqual(140, activity.avg_hr)
         self.assertEqual(50, activity.training_load)

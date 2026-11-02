@@ -9,6 +9,7 @@ from hobbyjogging_core.model import (
     Equipment,
     Event,
     Interval,
+    Lap,
     WellnessDay,
 )
 
@@ -24,7 +25,7 @@ class TrainingRepository:
             """
             SELECT
                 id, local_date, started_at_utc, sport, name, description,
-                duration_s, distance_m, avg_hr, training_load,
+                duration_s, elapsed_s, distance_m, avg_hr, training_load,
                 rpe, feel, intensity
             FROM activities
             WHERE local_date BETWEEN ? AND ?
@@ -49,6 +50,7 @@ class TrainingRepository:
                 name=row["name"],
                 description=row["description"],
                 duration_s=row["duration_s"],
+                elapsed_s=row["elapsed_s"],
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 training_load=row["training_load"],
@@ -126,6 +128,32 @@ class TrainingRepository:
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 max_hr=row["max_hr"],
+            )
+            for row in rows
+        ]
+
+    def activity_laps(self, activity_id: str) -> list[Lap]:
+        rows = self.connection.execute(
+            """
+            SELECT
+                lap_index, start_time_utc, duration_s, distance_m,
+                avg_hr, max_hr, elevation_gain_m
+            FROM activity_laps
+            WHERE activity_id = ?
+            ORDER BY lap_index
+            """,
+            (activity_id,),
+        ).fetchall()
+
+        return [
+            Lap(
+                index=row["lap_index"],
+                start_time_utc=row["start_time_utc"] or "",
+                duration_s=row["duration_s"],
+                distance_m=row["distance_m"],
+                avg_hr=row["avg_hr"],
+                max_hr=row["max_hr"],
+                elevation_gain_m=row["elevation_gain_m"],
             )
             for row in rows
         ]

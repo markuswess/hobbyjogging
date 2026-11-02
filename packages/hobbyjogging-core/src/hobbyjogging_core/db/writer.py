@@ -3,7 +3,7 @@
 import json
 import sqlite3
 
-from hobbyjogging_core.model import Interval
+from hobbyjogging_core.model import Interval, Lap
 
 ACTIVITY_COLUMNS = {
     "local_date",
@@ -14,6 +14,7 @@ ACTIVITY_COLUMNS = {
     "name",
     "description",
     "duration_s",
+    "elapsed_s",
     "distance_m",
     "avg_hr",
     "training_load",
@@ -21,6 +22,24 @@ ACTIVITY_COLUMNS = {
     "feel",
     "intensity",
 }
+
+TIMING_FIELDS = {
+    "local_date",
+    "started_at_utc",
+    "tz_offset_min",
+    "duration_s",
+    "elapsed_s",
+    "distance_m",
+    "avg_hr",
+}
+
+SOURCE_PRIORITY = {
+    "fit": {"timing": 30, "other": 10},
+    "intervals": {"timing": 20, "other": 20},
+    "manual": {"timing": 100, "other": 100},
+}
+
+DEFAULT_PRIORITY = 10
 
 
 class TrainingWriter:
@@ -192,7 +211,7 @@ class TrainingWriter:
         )
 
         for field, value in values.items():
-            if self._is_manual_field(activity_id, field):
+            if not self._should_update_field(activity_id, field, source):
                 continue
 
             self.connection.execute(
@@ -315,6 +334,43 @@ class TrainingWriter:
                 rows,
             )
 
+    def replace_activity_laps(
+        self,
+        activity_id: str,
+        laps: list[Lap],
+        *,
+        source_record_id: int | None = None,
+    ) -> None:
+        self.connection.execute(
+            "DELETE FROM activity_laps WHERE activity_id = ?",
+            (activity_id,),
+        )
+        rows = [
+            (
+                activity_id,
+                lap.index,
+                lap.start_time_utc,
+                lap.duration_s,
+                lap.distance_m,
+                lap.avg_hr,
+                lap.max_hr,
+                lap.elevation_gain_m,
+                source_record_id,
+            )
+            for lap in laps
+        ]
+        if rows:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_laps (
+                    activity_id, lap_index, start_time_utc,
+                    duration_s, distance_m, avg_hr, max_hr,
+                    elevation_gain_m, source_record_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+
     def upsert_wellness(
         self,
         *,
@@ -387,6 +443,36 @@ class TrainingWriter:
                 distance_m,
             ),
         )
+
+    def _should_update_field(
+        self,
+        activity_id: str,
+        field_name: str,
+        source: str,
+    ) -> bool:
+        if self._is_manual_field(activity_id, field_name):
+            return False
+
+        row = self.connection.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+
+        if row is None:
+            return True
+
+        return self._field_priority(source, field_name) >= self._field_priority(
+            row["source"],
+            field_name,
+        )
+
+    @staticmethod
+    def _field_priority(source: str, field_name: str) -> int:
+        kind = "timing" if field_name in TIMING_FIELDS else "other"
+        return SOURCE_PRIORITY.get(source, {}).get(kind, DEFAULT_PRIORITY)
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(

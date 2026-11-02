@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from hobbyjogging_core import SCHEMA_VERSION, connect, migrate, open_database
+from hobbyjogging_core.db.schema import INITIAL_SCHEMA_SQL
 
 
 EXPECTED_TABLES = {
@@ -46,6 +47,29 @@ class SchemaMigrationTests(unittest.TestCase):
             )
         }
         self.assertTrue(EXPECTED_TABLES.issubset(tables))
+
+        columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(activities)")
+        }
+        self.assertIn("elapsed_s", columns)
+
+    def test_migrates_v1_activity_rows_to_elapsed_time(self):
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.conn.execute("PRAGMA user_version = 1")
+        self.conn.commit()
+
+        version = migrate(self.conn)
+        row = self.conn.execute(
+            "SELECT elapsed_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+
+        self.assertEqual(2, version)
+        self.assertEqual(0, row["elapsed_s"])
 
     def test_migrate_is_idempotent(self):
         migrate(self.conn)

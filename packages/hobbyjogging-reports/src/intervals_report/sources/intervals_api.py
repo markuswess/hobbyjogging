@@ -41,6 +41,7 @@ def to_activity(raw: dict) -> Activity:
         name=raw.get("name") or "",
         description=raw.get("description") or "",
         duration_s=raw.get("moving_time") or 0,
+        elapsed_s=raw.get("elapsed_time") or 0,
         distance_m=raw.get("distance") or 0,
         avg_hr=raw.get("average_heartrate"),
         training_load=raw.get("icu_training_load"),

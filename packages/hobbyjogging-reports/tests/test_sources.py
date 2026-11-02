@@ -37,6 +37,15 @@ class IntervalsSourceTests(unittest.TestCase):
             to_activity(raw).started_at_utc,
         )
 
+    def test_maps_elapsed_time(self):
+        raw = {
+            "id": "a",
+            "start_date_local": "2026-10-01T08:00:00",
+            "elapsed_time": 3900,
+        }
+
+        self.assertEqual(3900, to_activity(raw).elapsed_s)
+
     def test_equipment_not_exposed_yet(self):
         source = IntervalsSource(client=object())
 

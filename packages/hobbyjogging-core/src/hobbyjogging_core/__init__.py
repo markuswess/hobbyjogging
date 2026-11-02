@@ -16,6 +16,7 @@ from .model import (
     Equipment,
     Event,
     Interval,
+    Lap,
     WellnessDay,
 )
 
@@ -26,6 +27,7 @@ __all__ = [
     "Equipment",
     "Event",
     "Interval",
+    "Lap",
     "SCHEMA_VERSION",
     "TrainingRepository",
     "TrainingWriter",

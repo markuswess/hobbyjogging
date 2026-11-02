@@ -43,6 +43,7 @@ class Activity:
     name: str = ""
     description: str = ""
     duration_s: float = 0
+    elapsed_s: float = 0
     distance_m: float = 0
     avg_hr: float | None = None
     training_load: float | None = None
@@ -81,3 +82,14 @@ class Interval:
     distance_m: float = 0
     avg_hr: float | None = None
     max_hr: float | None = None
+
+
+@dataclass
+class Lap:
+    index: int
+    start_time_utc: str = ""
+    duration_s: float = 0
+    distance_m: float = 0
+    avg_hr: float | None = None
+    max_hr: float | None = None
+    elevation_gain_m: float | None = None

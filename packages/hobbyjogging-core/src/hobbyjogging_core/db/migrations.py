@@ -4,10 +4,15 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+MIGRATION_2_SQL = """
+ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
+"""
 
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
+    2: MIGRATION_2_SQL,
 }
 
 
