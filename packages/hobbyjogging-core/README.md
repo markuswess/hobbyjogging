@@ -76,6 +76,8 @@ writer.finish_import_run(run_id, "success", records_seen=1, records_imported=1)
 - `activities`, `wellness_days`, `events` — canonical merged data.
 - `activity_sources` — links between canonical activities and raw records.
 - `activity_field_sources` — per-field provenance; manual values are marked.
+- `review_items` — import conflicts and questionable activities, with a
+  fingerprint for idempotent detection and an open/ignored/resolved status.
 - `activity_laps`, `activity_intervals` — FIT laps and structured intervals.
 - `activity_zone_times`, `zone_configs` — zone times and their definitions.
 - `equipment`, `activity_equipment`, `equipment_source_links` — gear and

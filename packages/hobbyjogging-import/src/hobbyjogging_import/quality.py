@@ -13,22 +13,22 @@ from dataclasses import dataclass
 
 from hobbyjogging_core import TrainingWriter
 
-# Implied whole-activity pace sanity window, in seconds per kilometer.
-MIN_PACE_S_PER_KM = 120.0  # 2:00 /km
-MAX_PACE_S_PER_KM = 600.0  # 10:00 /km
+# Implied whole-activity pace sanity windows, in seconds per kilometer.
+# Running and cycling have very different plausible ranges. Cycling rides a
+# wide style range (MTB climbs, pushing the bike), so only absurd mismatches
+# between distance and duration get flagged.
+MIN_RUN_PACE_S_PER_KM = 120.0  # 2:00 /km
+MAX_RUN_PACE_S_PER_KM = 600.0  # 10:00 /km
+MIN_RIDE_PACE_S_PER_KM = 36.0  # ~100 km/h
+MAX_RIDE_PACE_S_PER_KM = 900.0  # 15:00 /km walking pace
 
-PACE_SPORTS = frozenset(
-    {
-        "run",
-        "trail_run",
-        "treadmill_run",
-        "track_run",
-        "ride",
-        "virtual_ride",
-        "gravel_ride",
-        "mtb_ride",
-    }
+RUN_SPORTS = frozenset(
+    {"run", "trail_run", "treadmill_run", "track_run"}
 )
+RIDE_SPORTS = frozenset(
+    {"ride", "virtual_ride", "gravel_ride", "mtb_ride"}
+)
+PACE_SPORTS = RUN_SPORTS | RIDE_SPORTS
 
 AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"
@@ -68,30 +68,37 @@ def quality_findings(
             )
         )
 
-    if distance_m == 0:
+    pace_sport = sport in PACE_SPORTS
+    pace_s_per_km = None
+
+    if pace_sport and duration_s > 0 and distance_m > 0:
+        pace_s_per_km = duration_s / (distance_m / 1000)
+
+    if distance_m == 0 and pace_sport:
         findings.append(
             Finding(
                 rule="zero_distance",
-                detail="distance is 0 m",
+                detail="distance is 0 m where distance is expected",
                 context={"distance_m": distance_m, "sport": sport},
             )
         )
 
-    if (
-        sport in PACE_SPORTS
-        and duration_s > 0
-        and distance_m > 0
-    ):
-        pace_s_per_km = duration_s / (distance_m / 1000)
+    if pace_s_per_km is not None:
+        if sport in RIDE_SPORTS:
+            window = (MIN_RIDE_PACE_S_PER_KM, MAX_RIDE_PACE_S_PER_KM)
+        else:
+            window = (MIN_RUN_PACE_S_PER_KM, MAX_RUN_PACE_S_PER_KM)
 
-        if not (MIN_PACE_S_PER_KM <= pace_s_per_km <= MAX_PACE_S_PER_KM):
+        if not (window[0] <= pace_s_per_km <= window[1]):
             findings.append(
                 Finding(
                     rule="implied_pace",
                     detail=(
                         "implied pace "
                         f"{_format_pace(pace_s_per_km)} /km is outside "
-                        "the plausible 2:00-10:00 /km window"
+                        "the plausible "
+                        f"{_format_pace(window[0])}-{_format_pace(window[1])}"
+                        " /km window"
                     ),
                     context={
                         "pace_s_per_km": round(pace_s_per_km, 1),

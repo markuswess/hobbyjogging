@@ -51,6 +51,16 @@ Import Intervals.icu data:
 uv run --env-file .env hobbyjogging-import intervals --days 90
 ```
 
+Import-conflicts and questionable activities land in the review workflow:
+
+```bash
+uv run --env-file .env hobbyjogging-import review list
+```
+
+Reports exclude flagged activities until they are resolved; add
+`--include-review` to see them. See `packages/hobbyjogging-import/README.md`
+for the review workflow.
+
 ## Inspect the database
 
 `db.sh` uses `HOBBYJOGGING_DB` from `.env` and opens the database with

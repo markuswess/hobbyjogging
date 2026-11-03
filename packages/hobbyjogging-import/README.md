@@ -86,3 +86,41 @@ Re-importing is idempotent: source records are matched by
 `(source, record_type, external_id)`, and canonical activities use stable
 UUIDs derived from the Intervals.icu activity ID. Manual field overrides are
 not overwritten.
+
+## Import review
+
+Import conflicts and questionable activities are recorded as *review items*
+in the canonical `review_items` table. Every importer runs a small canonical
+quality rule set (zero duration, missing distance for run/ride sports,
+implied pace outside a plausible per-sport window) and persists ambiguous
+matches with their candidate lists. Detection is idempotent by fingerprint:
+reimporting never duplicates items and never reopens resolved ones.
+
+```bash
+uv run --env-file .env hobbyjogging-import review list
+uv run --env-file .env hobbyjogging-import review list \
+  --category ambiguous_match
+uv run --env-file .env hobbyjogging-import review show 3
+```
+
+Resolving an ambiguous match links the source record to the chosen activity;
+then re-run the importer over that record so its field values are applied:
+
+```bash
+uv run --env-file .env hobbyjogging-import review resolve 3 --activity <id>
+
+# pick up the field values of the resolved record
+uv run --env-file .env hobbyjogging-import fit <file>   # or intervals --from ...
+```
+
+Other commands:
+
+- `review ignore <id> [--note]` — keep the item but stop surfacing it.
+- `review flag <activity-id> [--category quality|duplicate|manual_flag]
+  [--severity] [--note]` — manually flag an activity.
+- `review scan [--activity <id>] [--dry-run]` — run the quality rule set
+  over existing activities and record findings; useful for backfilling after
+  the rules change.
+
+Reports exclude activities with open review items by default and print an
+"excluded (import review)" note; `--include-review` shows them.

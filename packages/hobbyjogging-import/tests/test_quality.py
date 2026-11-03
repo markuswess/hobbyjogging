@@ -42,11 +42,39 @@ class QualityRuleTests(unittest.TestCase):
         self.assertEqual(1, len(findings))
         self.assertEqual("zero_duration", findings[0].rule)
 
-    def test_zero_distance(self):
+    def test_zero_distance_only_for_pace_sports(self):
         findings = _findings(distance_m=0)
 
         self.assertEqual(1, len(findings))
         self.assertEqual("zero_distance", findings[0].rule)
+
+        # Sports without distance requirements are not flagged.
+        self.assertEqual(
+            [], _findings(sport="training", distance_m=0)
+        )
+        self.assertEqual(
+            [], _findings(sport="racket", distance_m=0)
+        )
+
+    def test_normal_cycling_pace_is_not_flagged(self):
+        # ~31 km/h is a normal road-bike pace.
+        self.assertEqual(
+            [], _findings(sport="ride", duration_s=1505, distance_m=13132)
+        )
+        self.assertEqual(
+            [], _findings(sport="mtb_ride", duration_s=669, distance_m=6239)
+        )
+        # Slow riding (pushing the bike, unicycle) is real data, not junk.
+        self.assertEqual(
+            [], _findings(sport="ride", duration_s=2310, distance_m=3601)
+        )
+        # Absurd mismatch (21 km in 2 minutes) gets flagged.
+        self.assertEqual(
+            1,
+            len(
+                _findings(sport="ride", duration_s=120, distance_m=21000)
+            ),
+        )
 
     def test_too_fast_pace_within_pace_sports(self):
         findings = _findings(duration_s=1100, distance_m=10000)
@@ -65,6 +93,19 @@ class QualityRuleTests(unittest.TestCase):
     def test_pace_boundaries_are_inclusive(self):
         self.assertEqual([], _findings(duration_s=600, distance_m=5000))
         self.assertEqual([], _findings(duration_s=3000, distance_m=5000))
+        # Ride window boundaries.
+        self.assertEqual(
+            [], _findings(sport="ride", duration_s=900, distance_m=1000)
+        )
+        self.assertEqual(
+            [], _findings(sport="ride", duration_s=180, distance_m=5000)
+        )
+        self.assertEqual(
+            1,
+            len(
+                _findings(sport="ride", duration_s=990, distance_m=1000)
+            ),
+        )
 
     def test_non_pace_sports_skip_pace_rule(self):
         self.assertEqual(
