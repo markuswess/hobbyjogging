@@ -16,6 +16,7 @@ from hobbyjogging_import.fit import (
     format_pace,
     format_speed,
     parse_fit_file,
+    read_fit_file_id,
     summarize_fit_messages,
 )
 
@@ -267,6 +268,36 @@ class FitCliTests(unittest.TestCase):
         self.assertEqual(Path("data/fit/sample.fit"), args.inspect)
         self.assertFalse(args.json)
 
+    def test_import_arguments(self):
+        args = build_parser().parse_args(
+            [
+                "fit",
+                "--from",
+                "2026-10-01",
+                "--to",
+                "2026-10-02",
+                "--recursive",
+                "--dry-run",
+                "--limit",
+                "5",
+                "data/fit",
+            ]
+        )
+
+        self.assertIsNone(args.inspect)
+        self.assertFalse(args.json)
+        self.assertTrue(args.recursive)
+        self.assertTrue(args.dry_run)
+        self.assertEqual(5, args.limit)
+        self.assertEqual("2026-10-01", args.start.isoformat())
+        self.assertEqual("2026-10-02", args.end.isoformat())
+        self.assertEqual([Path("data/fit")], args.paths)
+
+    def test_limit_zero_parses_and_is_checked_at_runtime(self):
+        args = build_parser().parse_args(["fit", "--limit", "0", "data/fit"])
+
+        self.assertEqual(0, args.limit)
+
 
 class FitSampleTests(unittest.TestCase):
 
@@ -274,6 +305,12 @@ class FitSampleTests(unittest.TestCase):
         SAMPLE_FIT.exists(),
         "sample FIT file is not available",
     )
+    def test_reads_real_sample_file_id(self):
+        file_id = read_fit_file_id(SAMPLE_FIT)
+
+        self.assertEqual("activity", file_id["type"])
+        self.assertEqual("garmin", file_id["manufacturer"])
+
     def test_parses_real_sample(self):
         summary = parse_fit_file(SAMPLE_FIT)
 

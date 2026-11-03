@@ -99,6 +99,24 @@ def canonical_sport(sport: object, sub_sport: object = None) -> str:
     return SPORT_ALIASES.get(raw_sport, raw_sport)
 
 
+def read_fit_file_id(path: str | Path) -> dict[str, Any]:
+    """Read only the FIT file_id message, for cheap activity prefiltering."""
+    file_path = Path(path).expanduser()
+
+    with fitdecode.FitReader(str(file_path)) as fit:
+        for frame in fit:
+            if (
+                frame.frame_type == fitdecode.FIT_FRAME_DATA
+                and frame.name == "file_id"
+            ):
+                return {
+                    field.name: field.value
+                    for field in frame.fields
+                }
+
+    return {}
+
+
 def parse_fit_file(path: str | Path) -> FitFileSummary:
     """Parse a FIT file into a compact summary without writing anything."""
     file_path = Path(path).expanduser()

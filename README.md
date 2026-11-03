@@ -38,6 +38,13 @@ uv run --env-file .env hobbyjogging-import fit \
   --inspect data/fit/30285-220489711.fit
 ```
 
+Import FIT activity files (start with `--dry-run`):
+
+```bash
+uv run --env-file .env hobbyjogging-import fit --dry-run
+uv run --env-file .env hobbyjogging-import fit
+```
+
 Import Intervals.icu data:
 
 ```bash

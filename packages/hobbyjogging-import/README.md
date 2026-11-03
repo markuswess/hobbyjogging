@@ -24,6 +24,28 @@ device, sport mapping, start times, duration, distance, pace, heart rate,
 ascent, calories, and laps. A bare filename is resolved under
 `HOBBYJOGGING_FIT_DIR`.
 
+Import FIT activity files:
+
+```bash
+uv run --env-file .env hobbyjogging-import fit --dry-run
+uv run --env-file .env hobbyjogging-import fit
+```
+
+Options:
+
+- `paths`: files or directories (default `HOBBYJOGGING_FIT_DIR` or `data/fit`).
+- `--recursive`: search directories recursively.
+- `--from DATE` / `--to DATE`: filter sessions by local date.
+- `--limit N`: process at most N activity files.
+- `--dry-run`: report matches, creations, and ambiguity without writing.
+
+Files are prefiltered by `file_id.type == activity` before full parsing. Each
+session is matched to a canonical activity by temporal overlap, counted with
+`elapsed_s`. Several FIT files may link to one activity; ambiguous one-to-many
+matches are reported rather than merged. FIT wins for timing, distance, and
+heart-rate fields; Intervals.icu keeps subjective and derived fields; manual
+edits always win. Laps are stored per activity, tentatively merged by source.
+
 ## Intervals.icu
 
 Set credentials at the repository root:

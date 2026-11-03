@@ -371,6 +371,76 @@ class TrainingWriter:
                 rows,
             )
 
+    def merge_activity_laps(
+        self,
+        activity_id: str,
+        laps: list[Lap],
+        *,
+        source_record_id: int,
+    ) -> None:
+        """Replace one source's laps while preserving laps from other sources."""
+        existing = self.connection.execute(
+            """
+            SELECT
+                start_time_utc, duration_s, distance_m,
+                avg_hr, max_hr, elevation_gain_m, source_record_id
+            FROM activity_laps
+            WHERE activity_id = ?
+              AND (source_record_id IS NULL OR source_record_id != ?)
+            """,
+            (activity_id, source_record_id),
+        ).fetchall()
+
+        combined = [
+            (
+                row["start_time_utc"] or "",
+                row["duration_s"],
+                row["distance_m"],
+                row["avg_hr"],
+                row["max_hr"],
+                row["elevation_gain_m"],
+                row["source_record_id"],
+            )
+            for row in existing
+        ]
+        combined.extend(
+            (
+                lap.start_time_utc,
+                lap.duration_s,
+                lap.distance_m,
+                lap.avg_hr,
+                lap.max_hr,
+                lap.elevation_gain_m,
+                source_record_id,
+            )
+            for lap in laps
+        )
+        combined.sort(key=lambda lap: (not bool(lap[0]), lap[0]))
+
+        self.connection.execute(
+            "DELETE FROM activity_laps WHERE activity_id = ?",
+            (activity_id,),
+        )
+        rows = [
+            (
+                activity_id,
+                index,
+                *lap,
+            )
+            for index, lap in enumerate(combined, start=1)
+        ]
+        if rows:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_laps (
+                    activity_id, lap_index, start_time_utc,
+                    duration_s, distance_m, avg_hr, max_hr,
+                    elevation_gain_m, source_record_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+
     def upsert_wellness(
         self,
         *,

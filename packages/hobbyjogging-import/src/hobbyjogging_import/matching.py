@@ -153,6 +153,23 @@ def select_unique_match(
     return matches[0]
 
 
+def linked_activity(
+    connection: sqlite3.Connection,
+    source_record_id: int,
+):
+    """Return the canonical activity already linked to a source record."""
+    return connection.execute(
+        """
+        SELECT activity_id, match_method, confidence
+        FROM activity_sources
+        WHERE source_record_id = ?
+        ORDER BY is_primary DESC, id
+        LIMIT 1
+        """,
+        (source_record_id,),
+    ).fetchone()
+
+
 class ActivityMatcher:
     """Find canonical activities overlapping an imported activity."""
 

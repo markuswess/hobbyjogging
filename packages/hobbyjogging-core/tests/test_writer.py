@@ -286,6 +286,84 @@ class TrainingWriterTests(unittest.TestCase):
         ).fetchall()
         self.assertEqual([(1, 90)], [(row["lap_index"], row["duration_s"]) for row in laps])
 
+    def test_activity_laps_merge_by_source(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        second_source = self._source("fit-2", "checksum-2")
+
+        self.writer.merge_activity_laps(
+            "a1",
+            [
+                Lap(
+                    index=1,
+                    start_time_utc="2026-10-01T06:00:00Z",
+                    duration_s=60,
+                ),
+                Lap(
+                    index=2,
+                    start_time_utc="2026-10-01T06:10:00Z",
+                    duration_s=60,
+                ),
+            ],
+            source_record_id=self.source_id,
+        )
+        self.writer.merge_activity_laps(
+            "a1",
+            [
+                Lap(
+                    index=1,
+                    start_time_utc="2026-10-01T06:05:00Z",
+                    duration_s=60,
+                )
+            ],
+            source_record_id=second_source,
+        )
+
+        laps = self.conn.execute(
+            "SELECT lap_index, start_time_utc, source_record_id "
+            "FROM activity_laps WHERE activity_id = 'a1' ORDER BY lap_index"
+        ).fetchall()
+        self.assertEqual(
+            [
+                (1, "2026-10-01T06:00:00Z", self.source_id),
+                (2, "2026-10-01T06:05:00Z", second_source),
+                (3, "2026-10-01T06:10:00Z", self.source_id),
+            ],
+            [
+                (row["lap_index"], row["start_time_utc"], row["source_record_id"])
+                for row in laps
+            ],
+        )
+
+        self.writer.merge_activity_laps(
+            "a1",
+            [
+                Lap(
+                    index=1,
+                    start_time_utc="2026-10-01T06:02:00Z",
+                    duration_s=90,
+                )
+            ],
+            source_record_id=self.source_id,
+        )
+
+        laps = self.conn.execute(
+            "SELECT lap_index, start_time_utc, source_record_id "
+            "FROM activity_laps WHERE activity_id = 'a1' ORDER BY lap_index"
+        ).fetchall()
+        self.assertEqual(
+            [
+                (1, "2026-10-01T06:02:00Z", self.source_id),
+                (2, "2026-10-01T06:05:00Z", second_source),
+            ],
+            [
+                (row["lap_index"], row["start_time_utc"], row["source_record_id"])
+                for row in laps
+            ],
+        )
+
     def test_wellness_and_event_upserts(self):
         self.writer.upsert_wellness(
             local_date="2026-10-01",

@@ -9,6 +9,7 @@ from hobbyjogging_core import default_database_path, open_database
 
 from .config import default_fit_dir, resolve_fit_path
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
+from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .intervals import IntervalsImporter
 
 
@@ -69,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     fit = subparsers.add_parser(
         "fit",
-        help="inspect FIT files (import support will follow)",
+        help="inspect or import FIT files",
     )
     fit.add_argument(
         "--inspect",
@@ -83,28 +84,49 @@ def build_parser() -> argparse.ArgumentParser:
     fit.add_argument(
         "--json",
         action="store_true",
-        help="print the normalized FIT summary as JSON",
+        help="print the normalized FIT summary as JSON with --inspect",
+    )
+    fit.add_argument(
+        "--recursive",
+        action="store_true",
+        help="search directories recursively",
+    )
+    fit.add_argument("--from", dest="start", type=date_arg)
+    fit.add_argument("--to", dest="end", type=date_arg)
+    fit.add_argument("--database", type=Path)
+    fit.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report matches without writing to the database",
+    )
+    fit.add_argument(
+        "--limit",
+        type=int,
+        help="maximum number of activity FIT files to process",
     )
     fit.add_argument(
         "paths",
         nargs="*",
         type=Path,
-        help="FIT files or directories for future imports",
+        help="FIT files or directories (default: configured FIT directory)",
     )
 
     return parser
 
 
-def run_fit_inspect(args, parser: argparse.ArgumentParser) -> int:
-    if args.inspect is None:
-        parser.error("FIT import is not implemented yet; use --inspect FILE")
+def run_fit(args, parser: argparse.ArgumentParser) -> int:
+    if args.inspect is not None:
+        if args.paths:
+            parser.error("--inspect accepts one file")
+        return _run_fit_inspect(args, parser)
 
-    if args.paths:
-        parser.error(
-            "--inspect accepts one file; positional FIT imports are not "
-            "implemented yet"
-        )
+    if args.json:
+        parser.error("--json requires --inspect")
 
+    return _run_fit_import(args, parser)
+
+
+def _run_fit_inspect(args, parser: argparse.ArgumentParser) -> int:
     path = resolve_fit_path(args.inspect)
 
     if not path.is_file():
@@ -129,12 +151,122 @@ def run_fit_inspect(args, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def _run_fit_import(args, parser: argparse.ArgumentParser) -> int:
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+
+    if (
+        args.start is not None
+        and args.end is not None
+        and args.start > args.end
+    ):
+        parser.error("--from must not be after --to")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    paths = args.paths or [default_fit_dir()]
+
+    try:
+        importer = FitImporter(connection)
+        summary = importer.import_paths(
+            paths,
+            recursive=args.recursive,
+            start=args.start,
+            end=args.end,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    _print_fit_summary(
+        summary,
+        args.database or default_database_path(),
+        dry_run=args.dry_run,
+    )
+    return 0
+
+
+def _print_fit_summary(
+    summary: FitImportSummary,
+    database_path,
+    *,
+    dry_run: bool,
+) -> None:
+    if dry_run:
+        for action in summary.actions:
+            print(_format_fit_action(action))
+
+        print(
+            "FIT dry run: "
+            f"{summary.files_seen} files seen, "
+            f"{summary.files_imported} with activities, "
+            f"{summary.activities_imported} activities would import "
+            f"({summary.activities_matched} matched, "
+            f"{summary.activities_created} created), "
+            f"{summary.laps_imported} laps"
+        )
+    else:
+        for action in summary.actions:
+            if action.action == "ambiguous":
+                print(_format_fit_action(action))
+
+        print(
+            "FIT import complete: "
+            f"{summary.files_imported} files, "
+            f"{summary.activities_imported} activities "
+            f"({summary.activities_matched} matched, "
+            f"{summary.activities_created} created), "
+            f"{summary.laps_imported} laps"
+        )
+
+    print(f"Files skipped: {summary.files_skipped}")
+    print(f"Activities skipped: {summary.activities_skipped}")
+
+    for error in summary.errors:
+        print(f"Error: {error}")
+
+    if not dry_run:
+        print(f"Import run: {summary.run_id}")
+        print(f"Database: {database_path}")
+
+
+def _format_fit_action(action: FitImportAction) -> str:
+    location = f"{action.path} [{action.session_index}]"
+
+    if action.action == "ambiguous":
+        candidates = ", ".join(
+            f"{match.activity_id} ({match.match_method}, "
+            f"{match.confidence:.3f})"
+            for match in action.matches
+        )
+        return f"AMBIGUOUS {location} -> {candidates}"
+
+    if action.action == "skip":
+        return f"SKIP {location} ({action.match_method})"
+
+    confidence = (
+        f", {action.confidence:.3f}"
+        if action.confidence is not None
+        else ""
+    )
+    return (
+        f"{action.action.upper()} {location} -> {action.activity_id} "
+        f"({action.match_method}{confidence})"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.command == "fit":
-        return run_fit_inspect(args, parser)
+        return run_fit(args, parser)
 
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")
@@ -172,6 +304,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     if summary.activities_skipped:
         print(f"Activities skipped: {summary.activities_skipped}")
+
+    for external_id, matches in summary.ambiguous_matches:
+        candidates = ", ".join(
+            f"{match.activity_id} ({match.match_method}, "
+            f"{match.confidence:.3f})"
+            for match in matches
+        )
+        print(f"Ambiguous match: {external_id} -> {candidates}")
+
     print(f"Import run: {summary.run_id}")
     print(f"Database: {database_path}")
     return 0
