@@ -441,6 +441,201 @@ class TrainingWriter:
                 rows,
             )
 
+    def record_review_item(
+        self,
+        *,
+        category: str,
+        detail: str,
+        fingerprint: str,
+        activity_id: str | None = None,
+        source_record_id: int | None = None,
+        import_run_id: int | None = None,
+        context: dict | None = None,
+        severity: str = "warn",
+    ) -> int:
+        """Insert a review item unless its fingerprint already exists.
+
+        The fingerprint makes detection idempotent: reimporting the same
+        problem never duplicates an item and never reopens a resolved one.
+        Returns (review_item_id, created).
+        """
+        row = self.connection.execute(
+            """
+            SELECT id FROM review_items
+            WHERE category = ? AND fingerprint = ?
+              AND COALESCE(activity_id, '') = COALESCE(?, '')
+              AND COALESCE(source_record_id, 0) = COALESCE(?, 0)
+            """,
+            (
+                category,
+                fingerprint,
+                activity_id,
+                source_record_id,
+            ),
+        ).fetchone()
+
+        if row is not None:
+            return row["id"], False
+
+        cursor = self.connection.execute(
+            """
+            INSERT INTO review_items (
+                activity_id, source_record_id, import_run_id,
+                category, detail, context_json, fingerprint, severity
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                activity_id,
+                source_record_id,
+                import_run_id,
+                category,
+                detail,
+                json.dumps(context or {}, sort_keys=True),
+                fingerprint,
+                severity,
+            ),
+        )
+        return cursor.lastrowid, True
+
+    def review_items(
+        self,
+        *,
+        status: str | None = None,
+        category: str | None = None,
+    ) -> list[sqlite3.Row]:
+        """Read review items joined with activity and source-record info."""
+        clauses = []
+        params: list[object] = []
+
+        if status is not None and status != "all":
+            clauses.append("r.status = ?")
+            params.append(status)
+
+        if category is not None:
+            clauses.append("r.category = ?")
+            params.append(category)
+
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+
+        return self.connection.execute(
+            f"""
+            SELECT
+                r.id, r.activity_id, r.source_record_id, r.import_run_id,
+                r.category, r.detail, r.context_json, r.fingerprint,
+                r.status, r.severity, r.reported_at, r.resolved_at,
+                r.resolved_note,
+                a.local_date, a.name AS activity_name, a.sport,
+                sr.source AS record_source, sr.external_id,
+                sr.record_type AS record_type
+            FROM review_items r
+            LEFT JOIN activities a ON a.id = r.activity_id
+            LEFT JOIN source_records sr
+                ON sr.id = r.source_record_id
+            {where}
+            ORDER BY
+                CASE r.status WHEN 'open' THEN 0 ELSE 1 END,
+                CASE r.severity
+                    WHEN 'error' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
+                r.reported_at, r.id
+            """,
+            params,
+        ).fetchall()
+
+    def review_item(self, review_item_id: int) -> sqlite3.Row | None:
+        return self.connection.execute(
+            """
+            SELECT
+                r.id, r.activity_id, r.source_record_id, r.import_run_id,
+                r.category, r.detail, r.context_json, r.fingerprint,
+                r.status, r.severity, r.reported_at, r.resolved_at,
+                r.resolved_note,
+                a.local_date, a.name AS activity_name, a.sport,
+                sr.source AS record_source, sr.external_id,
+                sr.record_type AS record_type
+            FROM review_items r
+            LEFT JOIN activities a ON a.id = r.activity_id
+            LEFT JOIN source_records sr ON sr.id = r.source_record_id
+            WHERE r.id = ?
+            """,
+            (review_item_id,),
+        ).fetchone()
+
+    def set_review_status(
+        self,
+        review_item_id: int,
+        status: str,
+        *,
+        note: str = "",
+    ) -> None:
+        if status not in ("open", "ignored", "resolved"):
+            raise ValueError(f"invalid review status: {status}")
+
+        resolved_at = (
+            "CURRENT_TIMESTAMP" if status in ("ignored", "resolved") else None
+        )
+
+        if resolved_at is not None:
+            self.connection.execute(
+                """
+                UPDATE review_items
+                SET status = ?, resolved_at = CURRENT_TIMESTAMP,
+                    resolved_note = ?
+                WHERE id = ?
+                """,
+                (status, note, review_item_id),
+            )
+        else:
+            self.connection.execute(
+                """
+                UPDATE review_items
+                SET status = ?, resolved_at = NULL, resolved_note = ?
+                WHERE id = ?
+                """,
+                (status, note, review_item_id),
+            )
+
+    def resolve_review_match(
+        self,
+        review_item_id: int,
+        activity_id: str,
+        *,
+        note: str = "",
+    ) -> None:
+        """Resolve an ambiguous-match item by linking its source record.
+
+        The source record is re-linked to the chosen canonical activity.
+        Field values from the source are applied by re-running the relevant
+        importer for that record.
+        """
+        item = self.review_item(review_item_id)
+
+        if item is None:
+            raise ValueError(f"unknown review item: {review_item_id}")
+
+        if item["source_record_id"] is None:
+            raise ValueError(
+                "review item has no source record to link "
+                f"(id {review_item_id})"
+            )
+
+        exists = self.connection.execute(
+            "SELECT 1 FROM activities WHERE id = ?", (activity_id,)
+        ).fetchone()
+
+        if exists is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+
+        self.connection.execute(
+            "DELETE FROM activity_sources WHERE source_record_id = ?",
+            (item["source_record_id"],),
+        )
+        self.link_activity_source(
+            activity_id,
+            item["source_record_id"],
+            match_method="review_resolved",
+        )
+        self.set_review_status(review_item_id, "resolved", note=note)
+
     def upsert_wellness(
         self,
         *,

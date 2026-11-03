@@ -4,15 +4,41 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
 """
 
+MIGRATION_3_SQL = """
+CREATE TABLE review_items (
+    id INTEGER PRIMARY KEY,
+    activity_id TEXT REFERENCES activities(id) ON DELETE CASCADE,
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE CASCADE,
+    import_run_id INTEGER REFERENCES import_runs(id) ON DELETE SET NULL,
+    category TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    context_json TEXT NOT NULL DEFAULT '{}',
+    fingerprint TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'ignored', 'resolved')),
+    severity TEXT NOT NULL DEFAULT 'warn'
+        CHECK (severity IN ('info', 'warn', 'error')),
+    reported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TEXT,
+    resolved_note TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX idx_review_items_scope
+ON review_items(category, fingerprint);
+CREATE INDEX idx_review_items_status ON review_items(status);
+CREATE INDEX idx_review_items_activity ON review_items(activity_id);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
+    3: MIGRATION_3_SQL,
 }
 
 

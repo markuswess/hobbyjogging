@@ -40,6 +40,7 @@ class TrainingRepository:
         activity_ids = [row["id"] for row in rows]
         zone_times = self._zone_times(activity_ids)
         equipment = self._equipment_by_activity(activity_ids)
+        flagged = self._open_review_activity_ids(activity_ids)
 
         return [
             Activity(
@@ -60,6 +61,7 @@ class TrainingRepository:
                 pace_zone_times=zone_times[row["id"]]["pace"],
                 hr_zone_times=zone_times[row["id"]]["hr"],
                 equipment=equipment[row["id"]],
+                needs_review=row["id"] in flagged,
             )
             for row in rows
         ]
@@ -170,6 +172,22 @@ class TrainingRepository:
         ).fetchall()
 
         return [self._equipment_from_row(row) for row in rows]
+
+    def _open_review_activity_ids(
+        self,
+        activity_ids: list[str],
+    ) -> set[str]:
+        placeholders = ", ".join("?" for _ in activity_ids)
+        rows = self.connection.execute(
+            f"""
+            SELECT DISTINCT activity_id
+            FROM review_items
+            WHERE status = 'open'
+              AND activity_id IN ({placeholders})
+            """,
+            activity_ids,
+        ).fetchall()
+        return {row["activity_id"] for row in rows}
 
     def _zone_times(self, activity_ids: list[str]) -> dict[str, dict[str, list[float]]]:
         raw: dict[str, dict[str, dict[int, float]]] = defaultdict(

@@ -53,6 +53,7 @@ class Activity:
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
     equipment: list[Equipment] = field(default_factory=list)
+    needs_review: bool = False  # open review items exist for this activity
 
 
 @dataclass

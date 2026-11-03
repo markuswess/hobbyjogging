@@ -68,7 +68,7 @@ class SchemaMigrationTests(unittest.TestCase):
             "SELECT elapsed_s FROM activities WHERE id = 'a1'"
         ).fetchone()
 
-        self.assertEqual(2, version)
+        self.assertEqual(3, version)
         self.assertEqual(0, row["elapsed_s"])
 
     def test_migrate_is_idempotent(self):
