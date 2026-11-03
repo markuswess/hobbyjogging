@@ -42,16 +42,22 @@ def resolve_range(
     return today - timedelta(days=days), today
 
 
-def extract_source(argv: list[str]) -> tuple[str, list[str]]:
-    """Remove the global --source option and return the remaining arguments."""
+def extract_source(argv: list[str]) -> tuple[str, bool, list[str]]:
+    """Remove global options and return (source, include_review, remaining)."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument(
         "--source",
         choices=SOURCE_CHOICES,
         default=DEFAULT_SOURCE,
     )
+    parser.add_argument(
+        "--include-review",
+        dest="include_review",
+        action="store_true",
+        help="show activities with open import review items",
+    )
     args, remaining = parser.parse_known_args(argv)
-    return args.source, remaining
+    return args.source, args.include_review, remaining
 
 
 def range_parser() -> argparse.ArgumentParser:

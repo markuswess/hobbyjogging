@@ -24,6 +24,7 @@ from .format import (
     work_summary_for_activity,
 )
 from .sources import DEFAULT_SOURCE, create_source
+from .review import exclude_review, review_note
 
 
 def debug():
@@ -102,15 +103,27 @@ def debug():
         )
     )
 
-def session_report(day: date, source: DataSource | None = None) -> str:
+def session_report(
+    day: date,
+    source: DataSource | None = None,
+    *,
+    include_review: bool = False,
+) -> str:
     """Render one day's activities with categories and work intervals."""
     if source is None:
         with create_source(DEFAULT_SOURCE) as source:
-            return session_report(day, source)
+            return session_report(day, source, include_review=include_review)
 
-    activities = source.activities(day, day)
+    activities, excluded = exclude_review(
+        source.activities(day, day),
+        include_review=include_review,
+    )
 
     lines = [f"# Session {day}"]
+
+    note = review_note(excluded)
+    if note:
+        lines.append(note)
 
     if not activities:
         lines.append("\n- No activity")
@@ -137,20 +150,29 @@ def session_report(day: date, source: DataSource | None = None) -> str:
     return "\n".join(lines)
 
 
-def daily(source: DataSource | None = None):
+def daily(
+    source: DataSource | None = None,
+    *,
+    include_review: bool = False,
+):
 
     if source is None:
         with create_source(DEFAULT_SOURCE) as source:
-            return daily(source)
+            return daily(source, include_review=include_review)
 
     today = date.today()
     yesterday = today - timedelta(days=1)
     tomorrow = today + timedelta(days=1)
 
-    activities = source.activities(
-        yesterday,
-        yesterday
+    activities, excluded = exclude_review(
+        source.activities(yesterday, yesterday),
+        include_review=include_review,
     )
+    activities_today, excluded_today = exclude_review(
+        source.activities(today, today),
+        include_review=include_review,
+    )
+    excluded_total = excluded + excluded_today
 
     wellness = source.wellness(
         today - timedelta(days=4),
@@ -167,17 +189,16 @@ def daily(source: DataSource | None = None):
         tomorrow
     )
 
-    activities_today = source.activities(
-        today,
-        today
-    )
-
     lines = []
 
 
     lines.append(
         f"# Daily Training Report {today}"
     )
+
+    note = review_note(excluded_total)
+    if note:
+        lines.append(f"\n> {note}")
 
 
     # -----------------------------
@@ -363,6 +384,8 @@ def period_report(
     end: date,
     title: str,
     source: DataSource | None = None,
+    *,
+    include_review: bool = False,
 ) -> str:
     """Render a summary for an inclusive date range."""
     if start > end:
@@ -370,11 +393,22 @@ def period_report(
 
     if source is None:
         with create_source(DEFAULT_SOURCE) as source:
-            return period_report(start, end, title, source)
+            return period_report(
+                start,
+                end,
+                title,
+                source,
+                include_review=include_review,
+            )
 
     ndays = (end - start).days + 1
 
-    activities = sorted(source.activities(start, end), key=activity_sort_key)
+    activities, excluded = exclude_review(
+        source.activities(start, end),
+        include_review=include_review,
+    )
+
+    activities = sorted(activities, key=activity_sort_key)
 
     training = summarize_training(activities)
 
@@ -411,6 +445,10 @@ def period_report(
     lines.append(
         f"{start} → {end}"
     )
+
+    note = review_note(excluded)
+    if note:
+        lines.append(f"\n> {note}")
 
     lines.append("\n## Running (avg. per week)")
 
@@ -518,7 +556,12 @@ def period_report(
     return "\n".join(lines)
 
 
-def summary(period, source: DataSource | None = None):
+def summary(
+    period,
+    source: DataSource | None = None,
+    *,
+    include_review: bool = False,
+):
     """Render one of the fixed weekly, monthly or yearly reports."""
     today = date.today()
     end = today - timedelta(days=1)
@@ -542,4 +585,5 @@ def summary(period, source: DataSource | None = None):
         end,
         f"{period.title()} Training Report",
         source=source,
+        include_review=include_review,
     )

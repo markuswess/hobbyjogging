@@ -11,6 +11,7 @@ from .cli import (
     parse_report_args,
 )
 from .mdpretty import render_markdown
+from .review import exclude_review, review_note
 from .reports import (
     daily,
     debug,
@@ -47,6 +48,7 @@ def usage() -> str:
         "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
         "[--to YYYY-MM-DD]"
         "\n       source: --source database (default) or --source intervals"
+        "\n       --include-review: show activities with open review items"
     )
 
 
@@ -55,12 +57,21 @@ def run_chart(
     start: date,
     end: date,
     source: DataSource,
+    *,
+    include_review: bool = False,
 ) -> None:
     """Render a weekly running distance chart for the given range."""
     from .analysis import weekly_run_distance
     from .charts import plot_weekly_bars
 
-    activities = source.activities(start, end)
+    activities, excluded = exclude_review(
+        source.activities(start, end),
+        include_review=include_review,
+    )
+
+    note = review_note(excluded)
+    if note:
+        print(f"note: {note}")
 
     path = plot_weekly_bars(
         weekly_run_distance(activities),
@@ -78,6 +89,8 @@ def run_subt_chart(
     end: date,
     source: DataSource,
     heart_rate: bool = False,
+    *,
+    include_review: bool = False,
 ) -> None:
     """Render subT and LT1 work interval pace or HR for the given range."""
     from .analysis import (
@@ -88,7 +101,15 @@ def run_subt_chart(
     )
     from .charts import plot_subt_hr, plot_subt_paces
 
-    activities = sorted(source.activities(start, end), key=activity_sort_key)
+    activities, excluded = exclude_review(
+        source.activities(start, end),
+        include_review=include_review,
+    )
+    activities = sorted(activities, key=activity_sort_key)
+
+    note = review_note(excluded)
+    if note:
+        print(f"note: {note}")
 
     points = []
 
@@ -114,12 +135,25 @@ def run_subt_chart(
     print(path)
 
 
-def run_classify(start: date, end: date, source: DataSource) -> None:
+def run_classify(
+    start: date,
+    end: date,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
     """Print the category of activities in the given range."""
     from .analysis import activity_sort_key, is_subt_activity
     from .classify import classify
 
-    activities = source.activities(start, end)
+    activities, excluded = exclude_review(
+        source.activities(start, end),
+        include_review=include_review,
+    )
+
+    note = review_note(excluded)
+    if note:
+        print(f"note: {note}")
 
     for activity in sorted(activities, key=activity_sort_key):
         intervals = []
@@ -141,7 +175,7 @@ def run_classify(start: date, end: date, source: DataSource) -> None:
 
 def main(argv: list[str] | None = None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    source_name, argv = extract_source(argv)
+    source_name, include_review, argv = extract_source(argv)
 
     mode = argv[0] if argv else "daily"
     args = argv[1:]
@@ -166,19 +200,19 @@ def main(argv: list[str] | None = None):
 
     with source:
         if mode == "daily":
-            report = daily(source)
+            report = daily(source, include_review=include_review)
 
         elif mode == "all":
-            report = daily(source)
+            report = daily(source, include_review=include_review)
             report += "\n\n"
-            report += summary("weekly", source)
+            report += summary("weekly", source, include_review=include_review)
             report += "\n\n"
-            report += summary("monthly", source)
+            report += summary("monthly", source, include_review=include_review)
             report += "\n\n"
-            report += summary("yearly", source)
+            report += summary("yearly", source, include_review=include_review)
 
         elif mode in ("weekly", "monthly", "yearly"):
-            report = summary(mode, source)
+            report = summary(mode, source, include_review=include_review)
 
         elif mode == "session":
             if not args:
@@ -193,7 +227,11 @@ def main(argv: list[str] | None = None):
                     "usage: python -m intervals_report session YYYY-MM-DD"
                 )
 
-            report = session_report(day, source)
+            report = session_report(
+                day,
+                source,
+                include_review=include_review,
+            )
 
         elif mode == "report":
             try:
@@ -206,6 +244,7 @@ def main(argv: list[str] | None = None):
                 end,
                 "Custom Training Report",
                 source,
+                include_review=include_review,
             )
 
         elif mode == "chart":
@@ -218,7 +257,13 @@ def main(argv: list[str] | None = None):
             except ValueError as exc:
                 raise SystemExit(str(exc)) from exc
 
-            run_chart(output, start, end, source)
+            run_chart(
+                output,
+                start,
+                end,
+                source,
+                include_review=include_review,
+            )
             return
 
         elif mode in ("subt-chart", "subt-hr-chart"):
@@ -242,6 +287,7 @@ def main(argv: list[str] | None = None):
                 end,
                 source,
                 heart_rate=is_hr_chart,
+                include_review=include_review,
             )
             return
 
@@ -251,7 +297,12 @@ def main(argv: list[str] | None = None):
             except ValueError as exc:
                 raise SystemExit(str(exc)) from exc
 
-            run_classify(start, end, source)
+            run_classify(
+                start,
+                end,
+                source,
+                include_review=include_review,
+            )
             return
 
     if sys.stdout.isatty() and os.environ.get("NO_PRETTY") != "1":

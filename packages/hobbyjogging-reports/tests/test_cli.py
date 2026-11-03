@@ -188,13 +188,13 @@ class SourceArgTests(unittest.TestCase):
 
     def test_default_source_is_database(self):
         self.assertEqual(
-            ("database", ["weekly"]),
+            ("database", False, ["weekly"]),
             extract_source(["weekly"]),
         )
 
     def test_explicit_source_is_removed_from_remaining_args(self):
         self.assertEqual(
-            ("intervals", ["report", "--days", "7"]),
+            ("intervals", False, ["report", "--days", "7"]),
             extract_source(
                 ["--source", "intervals", "report", "--days", "7"]
             ),
@@ -202,8 +202,14 @@ class SourceArgTests(unittest.TestCase):
 
     def test_source_can_follow_the_mode(self):
         self.assertEqual(
-            ("intervals", ["weekly"]),
+            ("intervals", False, ["weekly"]),
             extract_source(["weekly", "--source", "intervals"]),
+        )
+
+    def test_include_review_flag_is_extracted(self):
+        self.assertEqual(
+            ("database", True, ["weekly"]),
+            extract_source(["--include-review", "weekly"]),
         )
 
     def test_rejects_unknown_source(self):
