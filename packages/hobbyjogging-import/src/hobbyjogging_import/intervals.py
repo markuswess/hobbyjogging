@@ -4,13 +4,14 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
 from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.model import Interval
 
 from .client import IntervalsApi, IntervalsClient
+from .matching import ActivityMatcher, MatchCandidate, linked_activity
 
 SOURCE = "intervals"
 
@@ -31,6 +32,9 @@ class ImportSummary:
     events_seen: int = 0
     events_imported: int = 0
     intervals_imported: int = 0
+    ambiguous_matches: list[tuple[str, list[MatchCandidate]]] = field(
+        default_factory=list
+    )
 
     @property
     def records_seen(self) -> int:
@@ -52,6 +56,7 @@ class IntervalsImporter:
         self.connection = connection
         self.client = client or IntervalsClient()
         self.writer = TrainingWriter(connection)
+        self.matcher = ActivityMatcher(connection)
 
     def import_range(
         self,
@@ -85,7 +90,7 @@ class IntervalsImporter:
                 for raw in activities:
                     interval_count = self._import_activity(
                         raw,
-                        summary.run_id,
+                        summary,
                         interval_payloads.get(_activity_external_id(raw)),
                     )
                     if interval_count is None:
@@ -144,11 +149,13 @@ class IntervalsImporter:
     def _import_activity(
         self,
         raw: dict,
-        run_id: int,
+        summary: ImportSummary,
         interval_payload: list[dict] | None,
     ) -> int | None:
         external_id = _activity_external_id(raw)
         if external_id is None:
+            return None
+        if external_id in {id for id, _ in summary.ambiguous_matches}:
             return None
 
         payload = _payload_json(raw)
@@ -158,9 +165,17 @@ class IntervalsImporter:
             external_id=external_id,
             checksum=_checksum(payload),
             payload_json=payload,
-            import_run_id=run_id,
+            import_run_id=summary.run_id,
         )
-        activity_id = _stable_id("activity", external_id)
+        activity_id, match_method, confidence = self._resolve_activity(
+            raw,
+            summary,
+            external_id,
+            source_record_id,
+        )
+        if activity_id is None:
+            return None
+
         self.writer.upsert_activity(
             activity_id,
             _activity_values(raw),
@@ -170,7 +185,8 @@ class IntervalsImporter:
         self.writer.link_activity_source(
             activity_id,
             source_record_id,
-            match_method="external_id",
+            match_method=match_method,
+            confidence=confidence,
         )
         self.writer.set_activity_zone_times(
             activity_id,
@@ -193,7 +209,7 @@ class IntervalsImporter:
             external_id=external_id,
             checksum=_checksum(interval_payload_json),
             payload_json=interval_payload_json,
-            import_run_id=run_id,
+            import_run_id=summary.run_id,
         )
         intervals = [_to_interval(item) for item in interval_payload]
         self.writer.replace_activity_intervals(
@@ -202,6 +218,39 @@ class IntervalsImporter:
             source_record_id=interval_source_id,
         )
         return len(intervals)
+
+    def _resolve_activity(
+        self,
+        raw: dict,
+        summary: ImportSummary,
+        external_id: str,
+        source_record_id: int,
+    ) -> tuple[str | None, str, float | None]:
+        existing_link = linked_activity(self.connection, source_record_id)
+
+        if existing_link is not None:
+            return (
+                existing_link["activity_id"],
+                existing_link["match_method"] or "external_id",
+                existing_link["confidence"],
+            )
+
+        matches = self.matcher.find(
+            started_at_utc=str(raw.get("start_date") or ""),
+            source=SOURCE,
+            elapsed_s=_float(raw.get("elapsed_time")) or 0.0,
+            duration_s=_float(raw.get("moving_time")) or 0.0,
+        )
+
+        if len(matches) > 1:
+            summary.ambiguous_matches.append((external_id, matches))
+            return None, "", None
+
+        if matches:
+            match = matches[0]
+            return match.activity_id, match.match_method, match.confidence
+
+        return _stable_id("activity", external_id), "created", None
 
     def _import_wellness(self, raw: dict, run_id: int) -> bool:
         value = raw.get("id") or raw.get("date")

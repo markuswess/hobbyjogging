@@ -220,6 +220,115 @@ class IntervalsImporterTests(unittest.TestCase):
         )
         self.assertNotEqual(first.run_id, second.run_id)
 
+    def test_first_intervals_import_is_created_link(self):
+        summary = self._import()
+
+        link = self.conn.execute(
+            "SELECT match_method, is_primary, confidence "
+            "FROM activity_sources"
+        ).fetchone()
+        self.assertEqual("created", link["match_method"])
+        self.assertEqual(1, link["is_primary"])
+        self.assertEqual(1, summary.activities_imported)
+
+    def test_intervals_match_existing_fit_activity(self):
+        writer = self.importer.writer
+        fit_run_id = writer.start_import_run("fit")
+        fit_source = writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="fit-file",
+            checksum="fit-checksum",
+            import_run_id=fit_run_id,
+        )
+        writer.upsert_activity(
+            "fit-uuid",
+            {
+                "local_date": "2026-10-01",
+                "started_at_utc": "2026-10-01T06:00:00Z",
+                "sport": "run",
+                "name": "Run",
+                "duration_s": 3600,
+                "elapsed_s": 3700,
+                "distance_m": 10100,
+                "avg_hr": 141,
+            },
+            source="fit",
+            source_record_id=fit_source,
+        )
+        writer.link_activity_source(
+            "fit-uuid",
+            fit_source,
+            match_method="created",
+        )
+
+        self.client.activity_payloads[0]["start_date"] = (
+            "2026-10-01T06:00:00Z"
+        )
+        self.client.activity_payloads[0]["elapsed_time"] = 3900
+        summary = self._import()
+
+        self.assertEqual(1, summary.activities_imported)
+        self.assertEqual([], summary.ambiguous_matches)
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )
+        self.assertEqual(["fit-uuid"], [activity.id for activity in activities])
+        self.assertEqual("Morning run", activities[0].name)
+        self.assertEqual(3600, activities[0].duration_s)
+        self.assertEqual(3700, activities[0].elapsed_s)
+        self.assertEqual(10100, activities[0].distance_m)
+        self.assertEqual(141, activities[0].avg_hr)
+
+        links = self.conn.execute(
+            """
+            SELECT sr.source, s.match_method, s.is_primary
+            FROM activity_sources s
+            JOIN source_records sr ON sr.id = s.source_record_id
+            ORDER BY sr.source
+            """
+        ).fetchall()
+        self.assertEqual(2, len(links))
+        self.assertEqual("fit", links[0]["source"])
+        self.assertEqual(1, links[0]["is_primary"])
+        self.assertEqual("intervals", links[1]["source"])
+        self.assertEqual(0, links[1]["is_primary"])
+        self.assertEqual("temporal_overlap", links[1]["match_method"])
+
+    def test_ambiguous_intervals_match_is_reported(self):
+        for activity_id in ("overlap-1", "overlap-2"):
+            self.conn.execute(
+                """
+                INSERT INTO activities (
+                    id, local_date, started_at_utc, sport, elapsed_s, duration_s
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    activity_id,
+                    "2026-10-01",
+                    "2026-10-01T06:05:00Z",
+                    "run",
+                    3600,
+                    3500,
+                ),
+            )
+        self.client.activity_payloads[0]["start_date"] = (
+            "2026-10-01T06:00:00Z"
+        )
+        self.client.activity_payloads[0]["duration"] = 3600
+        self.client.activity_payloads[0]["elapsed_time"] = 3700
+
+        summary = self._import()
+
+        self.assertEqual(0, summary.activities_imported)
+        self.assertEqual(1, summary.activities_skipped)
+        self.assertEqual(1, len(summary.ambiguous_matches))
+        external_id, matches = summary.ambiguous_matches[0]
+        self.assertEqual("i1", external_id)
+        self.assertEqual(2, len(matches))
+
     def test_can_skip_interval_downloads(self):
         summary = self._import(include_intervals=False)
 
