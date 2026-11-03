@@ -1,3 +1,4 @@
+import json
 import unittest
 from datetime import date
 
@@ -328,6 +329,41 @@ class IntervalsImporterTests(unittest.TestCase):
         external_id, matches = summary.ambiguous_matches[0]
         self.assertEqual("i1", external_id)
         self.assertEqual(2, len(matches))
+
+        self.assertEqual(1, summary.review_recorded)
+        items = self.importer.writer.review_items(status="all")
+        self.assertEqual(1, len(items))
+        self.assertEqual("ambiguous_match", items[0]["category"])
+        self.assertIsNone(items[0]["activity_id"])
+
+        summary = self._import()
+
+        self.assertEqual(0, summary.review_recorded)
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM review_items"
+            ).fetchone()[0],
+        )
+
+    def test_quality_issue_from_intervals_is_recorded(self):
+        self.client.activity_payloads[0]["distance"] = 0
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.review_recorded)
+        items = self.importer.writer.review_items(status="all")
+        self.assertEqual(1, len(items))
+        self.assertEqual("quality", items[0]["category"])
+        context = json.loads(items[0]["context_json"])
+        self.assertEqual("zero_distance", context["rule"])
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+        self.assertEqual(1, len(activities))
+        self.assertTrue(activities[0].needs_review)
 
     def test_can_skip_interval_downloads(self):
         summary = self._import(include_intervals=False)

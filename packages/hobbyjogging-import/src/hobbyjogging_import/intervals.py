@@ -12,6 +12,7 @@ from hobbyjogging_core.model import Interval
 
 from .client import IntervalsApi, IntervalsClient
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
+from .quality import record_ambiguous_match, record_quality_findings
 
 SOURCE = "intervals"
 
@@ -35,6 +36,7 @@ class ImportSummary:
     ambiguous_matches: list[tuple[str, list[MatchCandidate]]] = field(
         default_factory=list
     )
+    review_recorded: int = 0
 
     @property
     def records_seen(self) -> int:
@@ -199,6 +201,18 @@ class IntervalsImporter:
             _number_list(raw.get("icu_hr_zone_times")),
         )
 
+        values = _activity_values(raw)
+        summary.review_recorded += record_quality_findings(
+            self.writer,
+            activity_id=activity_id,
+            source_record_id=source_record_id,
+            import_run_id=summary.run_id,
+            sport=str(values.get("sport") or ""),
+            duration_s=float(values.get("duration_s") or 0),
+            elapsed_s=float(values.get("elapsed_s") or 0),
+            distance_m=float(values.get("distance_m") or 0),
+        )
+
         if interval_payload is None:
             return 0
 
@@ -244,6 +258,13 @@ class IntervalsImporter:
 
         if len(matches) > 1:
             summary.ambiguous_matches.append((external_id, matches))
+            summary.review_recorded += record_ambiguous_match(
+                self.writer,
+                source_record_id=source_record_id,
+                external_id=external_id,
+                candidates=matches,
+                import_run_id=summary.run_id,
+            )
             return None, "", None
 
         if matches:

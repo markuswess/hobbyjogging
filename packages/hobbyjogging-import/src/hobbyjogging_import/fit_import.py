@@ -26,6 +26,7 @@ from .matching import (
     linked_activity,
     parse_utc,
 )
+from .quality import record_ambiguous_match, record_quality_findings
 
 SOURCE = "fit"
 
@@ -58,6 +59,7 @@ class FitImportSummary:
     activities_created: int = 0
     activities_skipped: int = 0
     laps_imported: int = 0
+    review_recorded: int = 0
     actions: list[FitImportAction] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
@@ -291,6 +293,14 @@ class FitImporter:
 
             if len(matches) > 1:
                 summary.activities_skipped += 1
+                if source_record_id is not None:
+                    summary.review_recorded += record_ambiguous_match(
+                        self.writer,
+                        source_record_id=source_record_id,
+                        external_id=external_id,
+                        candidates=matches,
+                        import_run_id=summary.run_id,
+                    )
                 summary.actions.append(
                     FitImportAction(
                         path=path,
@@ -348,6 +358,18 @@ class FitImporter:
             activity_id,
             laps,
             source_record_id=source_record_id,
+        )
+
+        values = _activity_values(session)
+        summary.review_recorded += record_quality_findings(
+            self.writer,
+            activity_id=activity_id,
+            source_record_id=source_record_id,
+            import_run_id=summary.run_id,
+            sport=str(values.get("sport") or ""),
+            duration_s=float(values.get("duration_s") or 0),
+            elapsed_s=float(values.get("elapsed_s") or 0),
+            distance_m=float(values.get("distance_m") or 0),
         )
 
         summary.activities_imported += 1

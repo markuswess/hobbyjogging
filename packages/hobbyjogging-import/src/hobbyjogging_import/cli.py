@@ -11,6 +11,7 @@ from .config import default_fit_dir, resolve_fit_path
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .intervals import IntervalsImporter
+from .review_cli import run_review
 
 
 def date_arg(value: str) -> date:
@@ -111,7 +112,107 @@ def build_parser() -> argparse.ArgumentParser:
         help="FIT files or directories (default: configured FIT directory)",
     )
 
+    review = subparsers.add_parser(
+        "review",
+        help="list and resolve import conflicts and quality review items",
+    )
+    review.add_argument("--database", type=Path)
+    review_sub = review.add_subparsers(
+        dest="review_action",
+        required=True,
+    )
+
+    review_list = review_sub.add_parser(
+        "list",
+        help="list review items",
+    )
+    _add_review_status_args(review_list)
+    review_list.add_argument(
+        "--limit",
+        type=int,
+        help="show at most this many items",
+    )
+
+    review_show = review_sub.add_parser(
+        "show",
+        help="show one review item in full detail",
+    )
+    review_show.add_argument("id", type=int)
+
+    review_scan = review_sub.add_parser(
+        "scan",
+        help="run quality rules over existing activities and record items",
+    )
+    review_scan.add_argument(
+        "--activity",
+        metavar="ACTIVITY_ID",
+        help="scan a single activity instead of the whole database",
+    )
+    review_scan.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report findings without recording them",
+    )
+
+    review_resolve = review_sub.add_parser(
+        "resolve",
+        help="mark a review item resolved",
+    )
+    review_resolve.add_argument("id", type=int)
+    review_resolve.add_argument(
+        "--activity",
+        metavar="ACTIVITY_ID",
+        help=(
+            "resolve an ambiguous match by linking its source record "
+            "to this canonical activity"
+        ),
+    )
+    review_resolve.add_argument("--note", default="")
+
+    review_ignore = review_sub.add_parser(
+        "ignore",
+        help="mark a review item ignored (kept, never reopens)",
+    )
+    review_ignore.add_argument("id", type=int)
+    review_ignore.add_argument("--note", default="")
+
+    review_flag = review_sub.add_parser(
+        "flag",
+        help="manually flag an activity for review",
+    )
+    review_flag.add_argument("activity_id", metavar="ACTIVITY_ID")
+    _add_review_flag_args(review_flag)
+    review_flag.add_argument(
+        "--note",
+        help="why the activity is flagged (stored as the detail)",
+    )
+
     return parser
+
+
+def _add_review_status_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--status",
+        choices=("open", "ignored", "resolved", "all"),
+        default="open",
+    )
+    parser.add_argument(
+        "--category",
+        choices=("ambiguous_match", "quality", "duplicate", "manual_flag"),
+    )
+
+
+def _add_review_flag_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--category",
+        choices=("quality", "duplicate", "manual_flag"),
+        default="manual_flag",
+    )
+    parser.add_argument(
+        "--severity",
+        choices=("info", "warn", "error"),
+        default="warn",
+    )
 
 
 def run_fit(args, parser: argparse.ArgumentParser) -> int:
@@ -227,6 +328,7 @@ def _print_fit_summary(
 
     print(f"Files skipped: {summary.files_skipped}")
     print(f"Activities skipped: {summary.activities_skipped}")
+    print(f"Review items recorded: {summary.review_recorded}")
 
     for error in summary.errors:
         print(f"Error: {error}")
@@ -268,6 +370,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "fit":
         return run_fit(args, parser)
 
+    if args.command == "review":
+        return run_review(args, parser)
+
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")
 
@@ -304,6 +409,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     if summary.activities_skipped:
         print(f"Activities skipped: {summary.activities_skipped}")
+
+    print(f"Review items recorded: {summary.review_recorded}")
 
     for external_id, matches in summary.ambiguous_matches:
         candidates = ", ".join(

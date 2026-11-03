@@ -271,6 +271,123 @@ class FitImporterTests(unittest.TestCase):
             ).fetchone()[0],
         )
 
+    def _review_items(self):
+        return self.importer.writer.review_items(status="all")
+
+    def _context(self, item) -> dict:
+        import json
+
+        return json.loads(item["context_json"] or "{}")
+
+    def test_ambiguous_match_persists_review_item(self):
+        for activity_id in ("a1", "a2"):
+            self.conn.execute(
+                """
+                INSERT INTO activities (
+                    id, local_date, started_at_utc, sport,
+                    elapsed_s, duration_s
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    activity_id,
+                    "2026-10-01",
+                    "2026-10-01T06:00:00Z",
+                    "run",
+                    3700,
+                    3600,
+                ),
+            )
+
+        path = self._file("one.fit", b"one")
+        first = self._import([_summary(path)])
+
+        self.assertEqual(1, first.activities_skipped)
+        self.assertEqual(1, first.review_recorded)
+
+        items = self._review_items()
+        self.assertEqual(1, len(items))
+        self.assertEqual("ambiguous_match", items[0]["category"])
+        self.assertEqual("open", items[0]["status"])
+        self.assertIsNone(items[0]["activity_id"])
+
+        candidates = self._context(items[0])["candidates"]
+        self.assertEqual(
+            {"a1", "a2"},
+            {candidate["activity_id"] for candidate in candidates},
+        )
+
+        second = self._import([_summary(path)])
+
+        self.assertEqual(0, second.review_recorded)
+        self.assertEqual(1, len(self._review_items()))
+        self.assertEqual(
+            0,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM activity_sources"
+            ).fetchone()[0],
+        )
+
+    def test_resolved_ambiguous_match_is_not_reopened(self):
+        for activity_id in ("a1", "a2"):
+            self.conn.execute(
+                """
+                INSERT INTO activities (
+                    id, local_date, started_at_utc, sport,
+                    elapsed_s, duration_s
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    activity_id,
+                    "2026-10-01",
+                    "2026-10-01T06:00:00Z",
+                    "run",
+                    3700,
+                    3600,
+                ),
+            )
+
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        from hobbyjogging_core import TrainingWriter
+
+        writer = TrainingWriter(self.conn)
+        item_id = writer.review_items(status="open")[0]["id"]
+        writer.resolve_review_match(item_id, "a1", note="a1 wins")
+        self.conn.commit()
+
+        summary = self._import([_summary(path)])
+
+        self.assertEqual(1, summary.activities_imported)
+        self.assertEqual(1, summary.activities_matched)
+        self.assertEqual(0, summary.review_recorded)
+
+        links = self.conn.execute(
+            """
+            SELECT match_method FROM activity_sources
+            WHERE source_record_id = (
+                SELECT id FROM source_records LIMIT 1
+            )
+            """,
+        ).fetchall()
+        self.assertEqual(1, len(links))
+        self.assertEqual("review_resolved", links[0]["match_method"])
+
+    def test_quality_issue_is_recorded_and_flags_activity(self):
+        path = self._file("degenerate.fit", b"degenerate")
+
+        summary = self._import([_summary(path, distance_m=0)])
+
+        self.assertEqual(1, summary.review_recorded)
+        items = self._review_items()
+        self.assertEqual(1, len(items))
+        self.assertEqual("quality", items[0]["category"])
+        self.assertEqual("zero_distance", self._context(items[0])["rule"])
+
+        activities = self._activities()
+        self.assertEqual(1, len(activities))
+        self.assertTrue(activities[0].needs_review)
+
     def test_date_filter_skips_session_before_writing(self):
         path = self._file("one.fit", b"one")
 
