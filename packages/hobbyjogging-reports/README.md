@@ -33,8 +33,9 @@ training reports:
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
-- **session <date>** — One day's activities with category, totals,
-  and subT/LT1 work-interval details.
+- **session [date|id|last]** — Detailed report for one session, chosen by
+  date, activity id, or `last` (the default): category, totals, zones,
+  description, the full interval table, and subT/LT1 work reps.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **chart** — Weekly running distance chart (matplotlib); last 90
@@ -71,7 +72,9 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report yearly
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
+    uv run --env-file .env python -m hobbyjogging_report session
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
+    uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
     uv run --env-file .env python -m hobbyjogging_report debug
     uv run --env-file .env python -m hobbyjogging_report chart [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-chart [output.png]
@@ -90,6 +93,8 @@ and tables for the terminal:
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh session 2026-10-22
+    ./reports.sh session 7a2bf884-2b25-585f-8430-530749f80afa
+    ./reports.sh session last
     ./reports.sh weekly --source intervals
 
 The clipboard receives the original Markdown before terminal
@@ -112,6 +117,23 @@ Examples:
     ./reports.sh report --days 90 --source database
     ./reports.sh report --days 90 --source intervals
     ./reports.sh --source intervals weekly
+
+## Session detail
+
+`session` renders one detailed activity report at a time:
+
+    ./reports.sh session                 # most recent session
+    ./reports.sh session last            # same
+    ./reports.sh session 2026-10-22      # all sessions on that day
+    ./reports.sh session <activity-id>   # one exact activity
+
+The report includes the activity id and date, category, duration/elapsed
+time, distance and pace, HR/load/RPE/feel/intensity, equipment, pace and
+HR zones, a fenced description block, a table of every recorded interval,
+and the subT/LT1 work-rep summary when applicable.
+
+Id lookup scans recent history and expands up to about 20 years. If an
+activity is hidden by an open import review item, add `--include-review`.
 
 ## Date ranges
 

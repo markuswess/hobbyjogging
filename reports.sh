@@ -18,7 +18,10 @@ Examples:
   ./reports.sh weekly
   ./reports.sh report --days 90
   ./reports.sh report --from 2026-01-01 --to 2026-03-31
+  ./reports.sh session
+  ./reports.sh session last
   ./reports.sh session 2026-10-22
+  ./reports.sh session <activity-id>
   ./reports.sh weekly --source intervals
 
 Environment:
@@ -53,7 +56,7 @@ if (( ${#args[@]} == 0 )); then
     args=(daily)
 fi
 
-tmp="$(mktemp "${TMPDIR:-/tmp}/intervals-report.XXXXXX")"
+tmp="$(mktemp "${TMPDIR:-/tmp}/hobbyjogging-report.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 
 if ! uv run --env-file .env python -m hobbyjogging_report "${args[@]}" >"$tmp"; then

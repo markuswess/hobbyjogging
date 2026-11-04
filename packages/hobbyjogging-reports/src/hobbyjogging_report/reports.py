@@ -16,6 +16,8 @@ from .format import (
     format_activity,
     format_category_table,
     format_feel,
+    format_fenced_block,
+    format_session_activity,
     last_four_nights,
     pace,
     recovery_summary,
@@ -40,17 +42,8 @@ def _format_event(event) -> list[str]:
         # Planned descriptions are Markdown themselves. Render them as a
         # fenced block nested under the bullet so their headings, lists and
         # blank lines cannot disturb the report layout.
-        fence = "```"
-        while fence in description:
-            fence += "`"
-
         lines.append("- Description:")
-        lines.append(f"  {fence}")
-        lines.extend(
-            f"  {line}" if line else ""
-            for line in description.splitlines()
-        )
-        lines.append(f"  {fence}")
+        lines.extend(format_fenced_block(description, "  "))
 
     if event.duration_s:
         lines.append(f"- Duration: {fmt_time(event.duration_s)}")
@@ -137,33 +130,138 @@ def debug():
         )
     )
 
-def session_report(
-    day: date,
-    source: DataSource | None = None,
-    *,
-    include_review: bool = False,
-) -> str:
-    """Render one day's activities with categories and work intervals."""
-    if source is None:
-        with create_source(DEFAULT_SOURCE) as source:
-            return session_report(day, source, include_review=include_review)
+SESSION_LOOKBACK_STEPS = (30, 90, 365, 1825, 7300)
+LAST_SELECTORS = {"last", "latest"}
 
-    activities, excluded = exclude_review(
-        source.activities(day, day),
+
+def _recent_activities(source, today, days, *, include_review):
+    return exclude_review(
+        source.activities(today - timedelta(days=days), today),
         include_review=include_review,
     )
 
-    lines = [f"# Session {day}"]
+
+def select_session(
+    source,
+    selector=None,
+    *,
+    include_review: bool = False,
+    today: date | None = None,
+):
+    """Resolve a date, activity id, or ``last`` selector.
+
+    Returns ``(day, activities, excluded)``. The selector may be a ``date``,
+    a ``YYYY-MM-DD`` string, an activity id, ``last``/``latest``, or ``None``
+    for the most recent session.
+    """
+    today = today or date.today()
+
+    if isinstance(selector, date):
+        activities, excluded = exclude_review(
+            source.activities(selector, selector),
+            include_review=include_review,
+        )
+        return selector, sorted(activities, key=activity_sort_key), excluded
+
+    text = str(selector).strip() if selector is not None else ""
+
+    if not text or text.lower() in LAST_SELECTORS:
+        excluded_seen = 0
+
+        for days in SESSION_LOOKBACK_STEPS:
+            activities, excluded = _recent_activities(
+                source,
+                today,
+                days,
+                include_review=include_review,
+            )
+            excluded_seen = excluded
+
+            if activities:
+                latest = max(activities, key=activity_sort_key)
+                return latest.date, [latest], excluded
+
+        return today, [], excluded_seen
+
+    try:
+        day = date.fromisoformat(text)
+    except ValueError:
+        day = None
+
+    if day is not None:
+        activities, excluded = exclude_review(
+            source.activities(day, day),
+            include_review=include_review,
+        )
+        return day, sorted(activities, key=activity_sort_key), excluded
+
+    for days in SESSION_LOOKBACK_STEPS:
+        activities, _ = _recent_activities(
+            source,
+            today,
+            days,
+            include_review=include_review,
+        )
+
+        for activity in activities:
+            if activity.id == text:
+                return activity.date, [activity], 0
+
+    return None, [], 0
+
+
+def session_report(
+    selector=None,
+    source: DataSource | None = None,
+    *,
+    include_review: bool = False,
+    today: date | None = None,
+) -> str:
+    """Render a detailed report for one date or session.
+
+    ``selector`` accepts a date, an activity id, ``last``, or ``None`` for the
+    most recent session.
+    """
+    if source is None:
+        with create_source(DEFAULT_SOURCE) as source:
+            return session_report(
+                selector,
+                source,
+                include_review=include_review,
+                today=today,
+            )
+
+    day, activities, excluded = select_session(
+        source,
+        selector,
+        include_review=include_review,
+        today=today,
+    )
+
+    lines = [f"# Session {day}" if day else "# Session"]
 
     note = review_note(excluded)
     if note:
         lines.append(note)
 
     if not activities:
-        lines.append("\n- No activity")
+        if (
+            isinstance(selector, str)
+            and selector.strip().lower() not in LAST_SELECTORS
+        ):
+            lines.append(
+                f"\n- No activity found for `{selector.strip()}`"
+            )
+            if not include_review:
+                lines.append(
+                    "- An open import review item may hide it; retry with "
+                    "`--include-review`."
+                )
+        else:
+            lines.append("\n- No activity")
         return "\n".join(lines)
 
-    for activity in sorted(activities, key=activity_sort_key):
+    for activity in activities:
         try:
             intervals = source.activity_intervals(activity.id)
         except Exception:
@@ -172,12 +270,10 @@ def session_report(
         category = classify(activity, intervals)
 
         lines.extend(
-            format_activity(
-                source,
+            format_session_activity(
                 activity,
-                f"{sport_label(activity)} — {activity.name}",
+                intervals,
                 category=category.path,
-                intervals=intervals,
             )
         )
 

@@ -41,7 +41,7 @@ def usage() -> str:
         "usage: python -m hobbyjogging_report "
         "[--source database|intervals] "
         "daily|weekly|monthly|yearly|debug|all"
-        "|session YYYY-MM-DD|report [--days N]"
+        "|session [YYYY-MM-DD|ACTIVITY_ID|last]|report [--days N]"
         "|chart [output.png]"
         "|subt-chart [output.png]|subt-hr-chart [output.png]"
         "|classify [days]"
@@ -215,20 +215,14 @@ def main(argv: list[str] | None = None):
             report = summary(mode, source, include_review=include_review)
 
         elif mode == "session":
-            if not args:
+            if len(args) > 1:
                 raise SystemExit(
-                    "usage: python -m hobbyjogging_report session YYYY-MM-DD"
-                )
-
-            try:
-                day = date.fromisoformat(args[0])
-            except ValueError:
-                raise SystemExit(
-                    "usage: python -m hobbyjogging_report session YYYY-MM-DD"
+                    "usage: python -m hobbyjogging_report session "
+                    "[YYYY-MM-DD|ACTIVITY_ID|last]"
                 )
 
             report = session_report(
-                day,
+                args[0] if args else None,
                 source,
                 include_review=include_review,
             )

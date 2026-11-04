@@ -11,6 +11,7 @@ from .analysis import (
     RUN_TYPES,
     is_lt1_activity,
     is_subt_activity,
+    pace_s_per_km,
     subt_work_points,
 )
 from .classify import classify
@@ -68,6 +69,43 @@ def fmt_time(seconds):
     return f"{m}min"
 
 
+def fmt_clock(seconds):
+    """Format seconds as M:SS, or H:MM:SS for longer intervals."""
+    if not seconds:
+        return "-"
+
+    total = int(round(seconds))
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+
+    return f"{minutes}:{secs:02d}"
+
+
+def format_fenced_block(text, indent=""):
+    """Return Markdown lines that keep arbitrary text inside a code fence."""
+    text = (text or "").strip("\n")
+
+    if not text.strip():
+        return []
+
+    fence = "```"
+
+    while fence in text:
+        fence += "`"
+
+    return [
+        f"{indent}{fence}",
+        *[
+            f"{indent}{line}" if line else ""
+            for line in text.splitlines()
+        ],
+        f"{indent}{fence}",
+    ]
+
+
 def fmt_zones(zone_times):
 
     if not zone_times:
@@ -75,6 +113,18 @@ def fmt_zones(zone_times):
 
     return " | ".join(
         f"Z{i+1} {fmt_time(t)}"
+        for i, t in enumerate(zone_times)
+        if t
+    )
+
+
+def fmt_zones_precise(zone_times):
+    """Format zone times as M:SS, keeping sub-minute zones visible."""
+    if not zone_times:
+        return "-"
+
+    return " | ".join(
+        f"Z{i+1} {fmt_clock(t)}"
         for i, t in enumerate(zone_times)
         if t
     )
@@ -429,5 +479,140 @@ def format_activity(
         lines.append(f"\n### {label}")
         for line in work:
             lines.append(f"- {line}")
+
+    return lines
+
+
+def format_interval_table(intervals: list[Interval]):
+    """Render every interval as a Markdown table."""
+    lines = [
+        "| # | Type | Time | Distance | Pace | Avg HR | Max HR |",
+        "|---:|---|---:|---:|---:|---:|---:|",
+    ]
+
+    for index, interval in enumerate(intervals, start=1):
+        interval_pace = pace_s_per_km(
+            interval.duration_s,
+            interval.distance_m,
+        )
+
+        pace_cell = (
+            f"{format_pace(interval_pace)}/km"
+            if interval_pace is not None
+            else "-"
+        )
+        distance_cell = (
+            f"{interval.distance_m / 1000:.2f} km"
+            if interval.distance_m
+            else "-"
+        )
+        avg_hr = (
+            f"{interval.avg_hr:.0f}"
+            if interval.avg_hr is not None
+            else "-"
+        )
+        max_hr = (
+            f"{interval.max_hr:.0f}"
+            if interval.max_hr is not None
+            else "-"
+        )
+
+        lines.append(
+            f"| {index} | {interval.type.title() or '-'} | "
+            f"{fmt_clock(interval.duration_s)} | {distance_cell} | "
+            f"{pace_cell} | {avg_hr} | {max_hr} |"
+        )
+
+    return lines
+
+
+def format_session_activity(
+    activity: Activity,
+    intervals: list[Interval],
+    category: str | None = None,
+):
+    """Render one activity as a detailed, standalone session report."""
+    title = sport_label(activity)
+
+    if activity.name:
+        title = f"{title} — {activity.name}"
+
+    lines = [
+        f"\n## {title}",
+        f"- ID: {activity.id}",
+        f"- Date: {activity.date}",
+    ]
+
+    if activity.started_at_utc:
+        lines.append(f"- Started: {activity.started_at_utc} (UTC)")
+
+    if category:
+        lines.append(f"- Category: {category}")
+
+    lines.append(f"- Duration: {fmt_time(activity.duration_s)}")
+
+    if activity.elapsed_s and activity.elapsed_s != activity.duration_s:
+        lines.append(f"- Elapsed: {fmt_time(activity.elapsed_s)}")
+
+    if activity.distance_m:
+        lines.append(f"- Distance: {activity.distance_m / 1000:.1f} km")
+
+    if activity.type in RUN_TYPES:
+        lines.append(f"- Pace: {pace(activity)}")
+
+    if activity.avg_hr:
+        lines.append(f"- Avg HR: {activity.avg_hr:.0f} bpm")
+
+    if activity.training_load:
+        lines.append(f"- Load: {activity.training_load:.0f}")
+
+    if activity.rpe is not None:
+        lines.append(f"- RPE: {activity.rpe:g}")
+
+    if activity.feel is not None:
+        lines.append(f"- Feel: {format_feel(activity.feel)}")
+
+    if activity.intensity is not None:
+        lines.append(f"- Intensity: {activity.intensity:.0%}")
+
+    if activity.equipment:
+        names = ", ".join(
+            equipment.name or equipment.id
+            for equipment in activity.equipment
+        )
+        lines.append(f"- Equipment: {names}")
+
+    if activity.pace_zone_times:
+        lines.append(
+            f"- Pace zones: {fmt_zones_precise(activity.pace_zone_times)}"
+        )
+
+    if activity.hr_zone_times:
+        lines.append(
+            f"- HR zones: {fmt_zones_precise(activity.hr_zone_times)}"
+        )
+
+    if activity.description and activity.description.strip():
+        lines.append("\n### Description")
+        lines.extend(format_fenced_block(activity.description))
+
+    if intervals:
+        lines.append("\n### Intervals")
+        lines.extend(format_interval_table(intervals))
+
+    points = []
+
+    if intervals and (
+        is_lt1_activity(activity) or is_subt_activity(activity)
+    ):
+        points = subt_work_points(activity, intervals)
+
+    if points:
+        label = "LT1" if is_lt1_activity(activity) else None
+
+        lines.append("\n### Work reps")
+
+        for point in points:
+            lines.append(f"- {format_work_result(point, label)}")
 
     return lines
