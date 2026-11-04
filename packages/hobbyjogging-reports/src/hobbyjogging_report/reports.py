@@ -692,7 +692,7 @@ def period_report(
             )
 
             lines.append(
-                f"### Planned: {q.name}: "
+                f"### {q.name}: "
                 f"\n    Totals: {fmt_time(q.duration_s)}, "
                 f"{pace(q)},"
                 f" {hr} BpM{feel}")
