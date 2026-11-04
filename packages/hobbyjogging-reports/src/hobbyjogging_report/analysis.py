@@ -10,7 +10,7 @@ from statistics import median
 
 from hobbyjogging_core.model import Activity, Interval
 
-from .model import SubtPoint
+from .model import SubtBlock, SubtPoint, SubtSummary
 
 RUN_TYPES = {"run", "trail_run"}
 
@@ -24,6 +24,8 @@ LT1_WORDS = ("lt1", "lt 1")
 # Average rep duration thresholds (seconds), matching the report logic.
 SHORT_MAX_S = 240
 MEDIUM_MAX_S = 420
+
+SUBT_CATEGORY_ORDER = (*SUBT_CATEGORIES, "lt1")
 
 # Work interval filtering. Older Intervals.icu activities mark warm-up,
 # cool-down and recovery jogs as WORK; work reps form the fast pace cluster.
@@ -256,3 +258,189 @@ def subt_session_point(
         return None
 
     return _subt_point(activity, work, category=category)
+
+
+def _combine_points(
+    activity: Activity,
+    category: str,
+    points: list[SubtPoint],
+) -> SubtBlock | None:
+    """Merge same-category points from one session into one report block."""
+    count = sum(point.count for point in points)
+
+    if count <= 0:
+        return None
+
+    total_time = sum(
+        point.count * point.avg_rep_s
+        for point in points
+    )
+    total_distance = sum(
+        (point.count * point.avg_rep_s) / point.pace_s_per_km * 1000
+        for point in points
+    )
+    block_pace = pace_s_per_km(total_time, total_distance)
+
+    if block_pace is None:
+        return None
+
+    hr_pairs = [
+        (point.avg_hr, point.count * point.avg_rep_s)
+        for point in points
+        if point.avg_hr is not None
+    ]
+    hr_time = sum(time for _, time in hr_pairs)
+
+    avg_hr = (
+        sum(hr * time for hr, time in hr_pairs) / hr_time
+        if hr_time
+        else None
+    )
+
+    max_hrs = [
+        point.max_hr
+        for point in points
+        if point.max_hr is not None
+    ]
+    fastest = [
+        point.fastest_pace_s_per_km
+        for point in points
+        if point.fastest_pace_s_per_km is not None
+    ]
+    slowest = [
+        point.slowest_pace_s_per_km
+        for point in points
+        if point.slowest_pace_s_per_km is not None
+    ]
+
+    return SubtBlock(
+        date=activity.date,
+        activity_id=activity.id,
+        activity_name=activity.name,
+        category=category,
+        count=count,
+        avg_rep_s=total_time / count,
+        total_time_s=total_time,
+        total_distance_m=total_distance,
+        pace_s_per_km=block_pace,
+        fastest_pace_s_per_km=min(fastest) if fastest else None,
+        slowest_pace_s_per_km=max(slowest) if slowest else None,
+        avg_hr=avg_hr,
+        max_hr=max(max_hrs) if max_hrs else None,
+    )
+
+
+def subt_blocks(
+    activity: Activity,
+    intervals: list[Interval],
+) -> list[SubtBlock]:
+    """Return one block per work category within a subT or LT1 session."""
+    if not (is_subt_activity(activity) or is_lt1_activity(activity)):
+        return []
+
+    points = subt_work_points(activity, intervals)
+
+    if not points:
+        return []
+
+    grouped: dict[str, list[SubtPoint]] = {}
+
+    for point in points:
+        category = "lt1" if is_lt1_activity(activity) else point.category
+        grouped.setdefault(category, []).append(point)
+
+    blocks = []
+
+    for category, category_points in grouped.items():
+        block = _combine_points(activity, category, category_points)
+        if block is not None:
+            blocks.append(block)
+
+    return blocks
+
+
+def subt_report_blocks(
+    activities: list[Activity],
+    intervals_by_id: dict[str, list[Interval]],
+) -> list[SubtBlock]:
+    """Collect report blocks for subT/LT1 sessions, grouped and sorted."""
+    blocks = []
+
+    for activity in activities:
+        blocks.extend(
+            subt_blocks(
+                activity,
+                intervals_by_id.get(activity.id, []),
+            )
+        )
+
+    order = {
+        category: index
+        for index, category in enumerate(SUBT_CATEGORY_ORDER)
+    }
+
+    return sorted(
+        blocks,
+        key=lambda block: (
+            order.get(block.category, len(order)),
+            block.date,
+            block.activity_name,
+            block.activity_id,
+        ),
+    )
+
+
+def _summary_from_blocks(
+    category: str,
+    blocks: list[SubtBlock],
+) -> SubtSummary:
+    total_time = sum(block.total_time_s for block in blocks)
+    total_distance = sum(block.total_distance_m for block in blocks)
+
+    hr_pairs = [
+        (block.avg_hr, block.total_time_s)
+        for block in blocks
+        if block.avg_hr is not None
+    ]
+    hr_time = sum(time for _, time in hr_pairs)
+
+    max_hrs = [
+        block.max_hr
+        for block in blocks
+        if block.max_hr is not None
+    ]
+
+    return SubtSummary(
+        category=category,
+        sessions=len({block.activity_id for block in blocks}),
+        reps=sum(block.count for block in blocks),
+        total_time_s=total_time,
+        total_distance_m=total_distance,
+        pace_s_per_km=pace_s_per_km(total_time, total_distance),
+        avg_hr=(
+            sum(hr * time for hr, time in hr_pairs) / hr_time
+            if hr_time
+            else None
+        ),
+        max_hr=max(max_hrs) if max_hrs else None,
+    )
+
+
+def subt_report_summary(
+    blocks: list[SubtBlock],
+) -> tuple[list[SubtSummary], SubtSummary]:
+    """Return per-category summaries (including empty ones) and a total."""
+    by_category: dict[str, list[SubtBlock]] = {
+        category: []
+        for category in SUBT_CATEGORY_ORDER
+    }
+
+    for block in blocks:
+        by_category.setdefault(block.category, []).append(block)
+
+    summaries = [
+        _summary_from_blocks(category, by_category.get(category, []))
+        for category in SUBT_CATEGORY_ORDER
+    ]
+
+    return summaries, _summary_from_blocks("total", blocks)

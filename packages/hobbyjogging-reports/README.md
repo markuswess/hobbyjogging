@@ -33,6 +33,8 @@ training reports:
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
+- **subt-report** — All subT and LT1 sessions in a range, grouped by
+  short/medium/long/LT1. Shows work-block and summary tables.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, totals, zones,
   description, the full interval table, and subT/LT1 work reps.
@@ -72,6 +74,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report yearly
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
+    uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
     uv run --env-file .env python -m hobbyjogging_report session
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
@@ -92,6 +95,7 @@ and tables for the terminal:
     ./reports.sh monthly
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
+    ./reports.sh subt-report --days 90
     ./reports.sh session 2026-10-22
     ./reports.sh session 7a2bf884-2b25-585f-8430-530749f80afa
     ./reports.sh session last
@@ -135,9 +139,29 @@ and the subT/LT1 work-rep summary when applicable.
 Id lookup scans recent history and expands up to about 20 years. If an
 activity is hidden by an open import review item, add `--include-review`.
 
+## subT report
+
+`subt-report` collects name-marked subT and LT1 sessions in a range and
+groups their work into short, medium, long, and LT1 tables:
+
+    ./reports.sh subt-report                 # last 90 days
+    ./reports.sh subt-report --days 365
+    ./reports.sh subt-report --from 2026-01-01 --to 2026-06-30
+
+A row is one work block: all same-category reps in a session are merged.
+A session with work in several categories therefore appears in each
+relevant group. LT1 sessions always go to the LT1 group, and sessions
+without usable work reps are omitted.
+
+The report starts with a summary table (sessions, reps, work time,
+work distance, weighted pace, average/max HR) and then shows one table
+per non-empty category. Work pace, fastest/slowest rep pace, and HR are
+derived from the same work reps used by the classification and charts.
+
 ## Date ranges
 
-`report`, `chart`, `subt-chart`, `subt-hr-chart` and `classify` accept:
+`report`, `subt-report`, `chart`, `subt-chart`, `subt-hr-chart` and
+`classify` accept:
 
     --days N              look back N days from today
     --from YYYY-MM-DD     start date (inclusive)

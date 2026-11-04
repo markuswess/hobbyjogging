@@ -17,6 +17,7 @@ from .reports import (
     debug,
     period_report,
     session_report,
+    subt_report,
     summary,
 )
 from .sources import create_source
@@ -28,6 +29,7 @@ MODES = {
     "yearly",
     "all",
     "report",
+    "subt-report",
     "session",
     "chart",
     "subt-chart",
@@ -42,6 +44,7 @@ def usage() -> str:
         "[--source database|intervals] "
         "daily|weekly|monthly|yearly|debug|all"
         "|session [YYYY-MM-DD|ACTIVITY_ID|last]|report [--days N]"
+        "|subt-report [--days N]"
         "|chart [output.png]"
         "|subt-chart [output.png]|subt-hr-chart [output.png]"
         "|classify [days]"
@@ -237,6 +240,20 @@ def main(argv: list[str] | None = None):
                 start,
                 end,
                 "Custom Training Report",
+                source,
+                include_review=include_review,
+            )
+
+        elif mode == "subt-report":
+            try:
+                start, end = parse_report_args(args, default_days=90)
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            report = subt_report(
+                start,
+                end,
+                "subT Report",
                 source,
                 include_review=include_review,
             )

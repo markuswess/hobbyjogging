@@ -15,7 +15,7 @@ from .analysis import (
     subt_work_points,
 )
 from .classify import classify
-from .model import SubtPoint
+from .model import SubtBlock, SubtPoint, SubtSummary
 
 
 SPORT_LABELS = {
@@ -614,5 +614,89 @@ def format_session_activity(
 
         for point in points:
             lines.append(f"- {format_work_result(point, label)}")
+
+    return lines
+
+
+def subt_category_label(category: str) -> str:
+    """Human-readable label for a subT report category."""
+    return "LT1" if category == "lt1" else category.title()
+
+
+def _table_text(value: str) -> str:
+    """Keep arbitrary activity names inside one Markdown table cell."""
+    return str(value).replace("|", "/").replace("\n", " ").strip()
+
+
+def _pace_cell(seconds: float | None) -> str:
+    return f"{format_pace(seconds)}/km" if seconds is not None else "-"
+
+
+def _hr_cell(value: float | None) -> str:
+    return f"{value:.0f}" if value is not None else "-"
+
+
+def _km_cell(distance_m: float, decimals: int) -> str:
+    if not distance_m:
+        return "-"
+    return f"{distance_m / 1000:.{decimals}f}"
+
+
+def format_subt_summary_table(
+    summaries: list[SubtSummary],
+    total: SubtSummary,
+):
+    """Render the cross-category summary for a subT report."""
+    lines = [
+        "| Category | Sessions | Reps | Work time | Work km | "
+        "Avg pace | Avg HR | Max HR |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    for summary in summaries:
+        lines.append(
+            f"| {subt_category_label(summary.category)} | "
+            f"{summary.sessions} | {summary.reps} | "
+            f"{fmt_clock(summary.total_time_s)} | "
+            f"{_km_cell(summary.total_distance_m, 1)} | "
+            f"{_pace_cell(summary.pace_s_per_km)} | "
+            f"{_hr_cell(summary.avg_hr)} | "
+            f"{_hr_cell(summary.max_hr)} |"
+        )
+
+    lines.append(
+        f"| **Total** | {total.sessions} | {total.reps} | "
+        f"{fmt_clock(total.total_time_s)} | "
+        f"{_km_cell(total.total_distance_m, 1)} | "
+        f"{_pace_cell(total.pace_s_per_km)} | "
+        f"{_hr_cell(total.avg_hr)} | "
+        f"{_hr_cell(total.max_hr)} |"
+    )
+
+    return lines
+
+
+def format_subt_block_table(blocks: list[SubtBlock]):
+    """Render one category's work blocks as a Markdown table."""
+    lines = [
+        "| Date | Session | Reps | Work time | Work km | Pace | "
+        "Fastest | Slowest | Avg HR | Max HR |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    for block in blocks:
+        name = _table_text(block.activity_name) or "-"
+
+        lines.append(
+            f"| {block.date} | {name} | "
+            f"{block.count} × {fmt_clock(block.avg_rep_s)} | "
+            f"{fmt_clock(block.total_time_s)} | "
+            f"{_km_cell(block.total_distance_m, 2)} | "
+            f"{_pace_cell(block.pace_s_per_km)} | "
+            f"{_pace_cell(block.fastest_pace_s_per_km)} | "
+            f"{_pace_cell(block.slowest_pace_s_per_km)} | "
+            f"{_hr_cell(block.avg_hr)} | "
+            f"{_hr_cell(block.max_hr)} |"
+        )
 
     return lines
