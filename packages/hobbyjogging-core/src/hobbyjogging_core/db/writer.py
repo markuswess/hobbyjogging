@@ -41,6 +41,8 @@ SOURCE_PRIORITY = {
 
 DEFAULT_PRIORITY = 10
 
+MANUAL_FIELDS = ("duration_s", "distance_m", "sport")
+
 
 class TrainingWriter:
     """Persist imported data into the canonical schema.
@@ -342,6 +344,70 @@ class TrainingWriter:
             (activity_id,),
         ).fetchone()
         return bool(row and row["excluded_at"])
+
+    def set_manual_field(
+        self,
+        activity_id: str,
+        field_name: str,
+        value: object,
+    ) -> None:
+        """Write one activity value as a manual override.
+
+        The value outranks every import source and is protected from being
+        overwritten by reimports. Use clear_manual_field to hand the field
+        back to importers.
+        """
+        if field_name not in MANUAL_FIELDS:
+            raise ValueError(f"field cannot be edited: {field_name}")
+
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        self.connection.execute(
+            f"UPDATE activities SET {field_name} = ?, "
+            f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (value, activity_id),
+        )
+        self.connection.execute(
+            """
+            INSERT INTO activity_field_sources (
+                activity_id, field_name, source, source_record_id,
+                value_json, is_manual
+            ) VALUES (?, ?, 'manual', NULL, ?, 1)
+            ON CONFLICT(activity_id, field_name) DO UPDATE SET
+                source = 'manual',
+                source_record_id = NULL,
+                value_json = excluded.value_json,
+                is_manual = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (activity_id, field_name, json.dumps(value, default=str)),
+        )
+
+    def clear_manual_field(
+        self,
+        activity_id: str,
+        field_name: str,
+    ) -> bool:
+        """Remove a manual override so imports can own the field again."""
+        if field_name not in MANUAL_FIELDS:
+            raise ValueError(f"field cannot be edited: {field_name}")
+
+        cursor = self.connection.execute(
+            """
+            DELETE FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ? AND is_manual = 1
+            """,
+            (activity_id, field_name),
+        )
+        return cursor.rowcount > 0
 
     def is_source_record_excluded(
         self,

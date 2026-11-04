@@ -3,9 +3,12 @@ import unittest
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_import.quality import (
     MANUAL_FLAG,
+    QUALITY,
     quality_findings,
     record_manual_flag,
     record_quality_findings,
+    refresh_activity_quality,
+    review_fingerprint,
 )
 
 
@@ -200,6 +203,112 @@ class RecordQualityFindingsTests(unittest.TestCase):
 
         items = self.writer.review_items()
         self.assertEqual(2, len(items))
+
+
+class RefreshActivityQualityTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 0,
+                "elapsed_s": 0,
+                "distance_m": 8200,
+            },
+            source="test",
+            source_record_id=None,
+        )
+        self.item_id, _ = self.writer.record_review_item(
+            category=QUALITY,
+            detail="no timing data: duration is 0 s",
+            context={"rule": "zero_duration", "duration_s": 0, "elapsed_s": 0},
+            fingerprint=review_fingerprint(
+                ["zero_duration", "a1", None,
+                 {"rule": "zero_duration", "duration_s": 0, "elapsed_s": 0}],
+            ),
+            activity_id="a1",
+        )
+
+    def test_fixed_finding_is_resolved_and_activity_is_clean(self):
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+
+        findings = refresh_activity_quality(
+            self.writer,
+            activity_id="a1",
+            resolve_item_id=self.item_id,
+            resolve_note="manual edit: duration_s",
+        )
+
+        self.assertEqual([], findings)
+        item = self.writer.review_item(self.item_id)
+        self.assertEqual("resolved", item["status"])
+        self.assertEqual(
+            "manual edit: duration_s",
+            item["resolved_note"],
+        )
+        self.assertEqual(0, len(self.writer.review_items(status="open")))
+
+    def test_superseded_finding_is_resolved_and_replaced(self):
+        # Add an implied_pace item computed from the old 0/8.2 km values.
+        old_context = {
+            "rule": "implied_pace",
+            "pace_s_per_km": 0.0,
+            "duration_s": 0,
+            "distance_m": 8200,
+            "sport": "run",
+        }
+        self.writer.record_review_item(
+            category=QUALITY,
+            detail="old pace",
+            context=old_context,
+            fingerprint=review_fingerprint(
+                ["implied_pace", "a1", None, old_context],
+            ),
+            activity_id="a1",
+        )
+
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+        findings = refresh_activity_quality(
+            self.writer,
+            activity_id="a1",
+            resolve_note="manual edit",
+        )
+
+        # 2780 s over 8.2 km = 5:39 /km: healthy, everything resolves.
+        self.assertEqual([], findings)
+        self.assertEqual(0, len(self.writer.review_items(status="open")))
+
+    def test_still_valid_scan_item_stays_open(self):
+        # Make distance wrong: an in-window pace and zero distance coexist.
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+        fresh = refresh_activity_quality(
+            self.writer,
+            activity_id="a1",
+            resolve_item_id=self.item_id,
+        )
+        self.assertEqual([], fresh)
+        self.assertEqual(0, len(self.writer.review_items(status="open")))
+
+        # Now the activity becomes out of window; a new item is recorded.
+        self.writer.set_manual_field("a1", "distance_m", 820000)
+        findings = refresh_activity_quality(
+            self.writer,
+            activity_id="a1",
+            resolve_note="manual edit",
+        )
+        self.assertEqual(1, len(findings))
+        self.assertEqual("implied_pace", findings[0].rule)
+        self.assertEqual(1, len(self.writer.review_items(status="open")))
+
+    def test_unknown_activity_raises(self):
+        with self.assertRaises(ValueError):
+            refresh_activity_quality(self.writer, activity_id="nope")
 
 
 if __name__ == "__main__":

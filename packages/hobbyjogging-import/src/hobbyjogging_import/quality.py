@@ -195,6 +195,73 @@ def record_ambiguous_match(
     return int(created)
 
 
+def refresh_activity_quality(
+    writer: TrainingWriter,
+    *,
+    activity_id: str,
+    resolve_item_id: int | None = None,
+    resolve_note: str = "manual edit",
+) -> list[Finding]:
+    """Re-evaluate the quality rules after a manual edit.
+
+    Resolves the triggering review item and every open quality item whose
+    fingerprint no longer matches the current values (fixed or superseded),
+    then records fresh findings for the new values. Returns the current
+    findings so callers can report ``quality: ok`` or what remains.
+    """
+    row = writer.connection.execute(
+        """
+        SELECT sport, duration_s, elapsed_s, distance_m
+        FROM activities WHERE id = ?
+        """,
+        (activity_id,),
+    ).fetchone()
+
+    if row is None:
+        raise ValueError(f"unknown activity: {activity_id}")
+
+    sport = row["sport"] or ""
+    duration_s = row["duration_s"] or 0
+    elapsed_s = row["elapsed_s"] or 0
+    distance_m = row["distance_m"] or 0
+
+    findings = quality_findings(
+        sport=sport,
+        duration_s=duration_s,
+        elapsed_s=elapsed_s,
+        distance_m=distance_m,
+    )
+    current_fingerprints = {
+        review_fingerprint(
+            [finding.rule, activity_id, None, finding.context]
+        )
+        for finding in findings
+    }
+
+    for item in writer.review_items(category=QUALITY, status="open"):
+        if item["activity_id"] != activity_id:
+            continue
+        if (
+            item["id"] != resolve_item_id
+            and item["fingerprint"] in current_fingerprints
+        ):
+            continue
+        writer.set_review_status(item["id"], "resolved", note=resolve_note)
+
+    record_quality_findings(
+        writer,
+        activity_id=activity_id,
+        source_record_id=None,
+        import_run_id=None,
+        sport=sport,
+        duration_s=duration_s,
+        elapsed_s=elapsed_s,
+        distance_m=distance_m,
+    )
+
+    return findings
+
+
 def record_manual_flag(
     writer: TrainingWriter,
     *,

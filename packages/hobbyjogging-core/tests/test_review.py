@@ -375,5 +375,112 @@ class ExclusionTests(unittest.TestCase):
         )
 
 
+class ManualFieldTests(unittest.TestCase):
+    """Manual field overrides outrank all import sources."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        self.assertEqual(SCHEMA_VERSION, migrate(self.conn))
+        self.writer = TrainingWriter(self.conn)
+
+        self.run_id = self.writer.start_import_run("test")
+        self.source_record_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="seg.fit",
+            checksum="c1",
+            import_run_id=self.run_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "started_at_utc": "2026-10-01T06:00:00Z",
+                "duration_s": 3600,
+                "elapsed_s": 3700,
+                "distance_m": 10000,
+            },
+            source="fit",
+            source_record_id=self.source_record_id,
+        )
+        self.writer.link_activity_source(
+            "a1", self.source_record_id, match_method="created"
+        )
+
+    def _field_row(self, field_name):
+        return self.conn.execute(
+            """
+            SELECT source, is_manual, value_json
+            FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = ?
+            """,
+            (field_name,),
+        ).fetchone()
+
+    def _activity_value(self, column):
+        return self.conn.execute(
+            f"SELECT {column} FROM activities WHERE id = 'a1'"
+        ).fetchone()[0]
+
+    def _reimport(self, duration_s=999):
+        self.writer.upsert_activity(
+            "a1",
+            {"duration_s": duration_s},
+            source="fit",
+            source_record_id=self.source_record_id,
+        )
+
+    def test_set_manual_field_writes_value_and_source(self):
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+        self.conn.commit()
+
+        self.assertEqual(2780, self._activity_value("duration_s"))
+        row = self._field_row("duration_s")
+        self.assertEqual("manual", row["source"])
+        self.assertEqual(1, row["is_manual"])
+        self.assertEqual("2780", str(row["value_json"]).strip('"'))
+
+    def test_manual_value_survives_reimport(self):
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+        self._reimport(duration_s=999)
+        self.conn.commit()
+
+        self.assertEqual(2780, self._activity_value("duration_s"))
+        self.assertEqual(
+            "manual",
+            self._field_row("duration_s")["source"],
+        )
+
+    def test_clear_manual_field_hands_field_back_to_imports(self):
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+
+        self.assertTrue(self.writer.clear_manual_field("a1", "duration_s"))
+        self._reimport(duration_s=999)
+        self.conn.commit()
+
+        self.assertEqual(999, self._activity_value("duration_s"))
+        row = self._field_row("duration_s")
+        self.assertEqual("fit", row["source"])
+        self.assertEqual(0, row["is_manual"])
+
+    def test_clear_missing_override_is_a_noop(self):
+        self.assertFalse(self.writer.clear_manual_field("a1", "duration_s"))
+
+    def test_invalid_field_rejected(self):
+        with self.assertRaises(ValueError):
+            self.writer.set_manual_field("a1", "name", "Not allowed")
+        with self.assertRaises(ValueError):
+            self.writer.clear_manual_field("a1", "name")
+
+    def test_unknown_and_excluded_activities_rejected(self):
+        with self.assertRaises(ValueError):
+            self.writer.set_manual_field("nope", "duration_s", 100)
+        self.writer.exclude_activity("a1")
+        with self.assertRaises(ValueError):
+            self.writer.set_manual_field("a1", "duration_s", 100)
+
+
 if __name__ == "__main__":
     unittest.main()

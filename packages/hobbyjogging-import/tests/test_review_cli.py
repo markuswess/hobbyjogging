@@ -154,6 +154,102 @@ class ReviewCliTests(unittest.TestCase):
             ).fetchone()["excluded_at"],
         )
 
+    def test_edit_sets_manual_value_resolves_item_and_reports_quality(self):
+        conn = self.seed_writer.connection
+        # Recreate the zero-distance situation the seed item describes.
+        conn.execute("UPDATE activities SET distance_m = 0 WHERE id = 'a1'")
+        conn.commit()
+
+        code, output = self._run(
+            [
+                "review", "--database", str(self.database),
+                "edit", "a1",
+                "--distance", "10.0km",
+                "--item", str(self.quality_id),
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("set distance_m: 0.00 km → 10.00 km (manual)", output)
+        self.assertIn(f"Resolved #{self.quality_id}", output)
+        self.assertIn("quality: ok", output)
+
+        row = conn.execute(
+            "SELECT distance_m FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(10000, row["distance_m"])
+
+        source = conn.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'distance_m'
+            """
+        ).fetchone()
+        self.assertEqual("manual", source["source"])
+        self.assertEqual(1, source["is_manual"])
+
+        item = self.seed_writer.review_item(self.quality_id)
+        self.assertEqual("resolved", item["status"])
+        self.assertEqual(
+            0,
+            len(
+                self.seed_writer.review_items(
+                    status="open", category="quality"
+                )
+            ),
+        )
+
+    def test_edit_survives_reimport(self):
+        conn = self.seed_writer.connection
+        conn.execute("UPDATE activities SET distance_m = 0 WHERE id = 'a1'")
+        conn.commit()
+        self._run(
+            [
+                "review", "--database", str(self.database),
+                "edit", "a1", "--distance", "10.2km",
+            ]
+        )
+
+        # A reimport tries to write the original wrong distance again.
+        self.seed_writer.upsert_activity(
+            "a1",
+            {"distance_m": 0},
+            source="fit",
+            source_record_id=self.source_record_id,
+        )
+        conn.commit()
+
+        row = conn.execute(
+            "SELECT distance_m FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(10200, row["distance_m"])
+
+    def test_edit_still_flagged_prints_remaining_findings(self):
+        conn = self.seed_writer.connection
+        conn.execute("UPDATE activities SET distance_m = 0 WHERE id = 'a1'")
+        conn.execute("UPDATE activities SET duration_s = 0 WHERE id = 'a1'")
+        conn.commit()
+
+        code, output = self._run(
+            [
+                "review", "--database", str(self.database),
+                "edit", "a1", "--duration", "60:00", "--note", "fixed time",
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("set duration_s", output)
+        self.assertIn("still flagged", output)
+        self.assertIn("zero_distance", output)
+        self.assertEqual(
+            1,
+            len(
+                self.seed_writer.review_items(
+                    status="open", category="quality"
+                )
+            ),
+        )
+
     def test_show_prints_full_detail(self):
         code, output = self._run(
             ["review", "--database", str(self.database), "show",

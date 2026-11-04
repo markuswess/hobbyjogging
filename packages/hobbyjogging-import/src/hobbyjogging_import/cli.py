@@ -207,6 +207,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     review_restore.add_argument("activity", metavar="ACTIVITY_ID")
 
+    review_edit = review_sub.add_parser(
+        "edit",
+        help="manually edit activity values (outranks all import sources)",
+    )
+    review_edit.add_argument("activity", metavar="ACTIVITY_ID")
+    review_edit.add_argument(
+        "--duration",
+        help="new duration: 46:20, 1:02:03, or seconds",
+    )
+    review_edit.add_argument(
+        "--distance",
+        help="new distance: 8.2km, 8200m, or plain km",
+    )
+    review_edit.add_argument("--sport", help="new sport, e.g. trail_running")
+    review_edit.add_argument(
+        "--item",
+        type=int,
+        metavar="REVIEW_ITEM_ID",
+        help="review item to resolve with this edit",
+    )
+    review_edit.add_argument(
+        "--note",
+        help="override the resolution note for the review item",
+    )
+
     return parser
 
 

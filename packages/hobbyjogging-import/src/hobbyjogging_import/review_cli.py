@@ -21,6 +21,8 @@ def run_review(args, parser) -> int:
             return _run_exclude(args, writer, parser)
         if action == "restore":
             return _run_restore(args, writer, parser)
+        if action == "edit":
+            return _run_edit(args, writer, parser)
         if action == "list":
             return _run_list(args, writer)
         if action == "show":
@@ -218,6 +220,89 @@ def _run_exclude(args, writer: TrainingWriter, parser) -> int:
     writer.connection.commit()
     print(f"Excluded {args.activity}")
     print(f"Review items resolved: {resolved}")
+    return 0
+
+
+def _run_edit(args, writer: TrainingWriter, parser) -> int:
+    """Apply one or more manual field edits and re-run quality rules."""
+    from .quality import refresh_activity_quality
+    from .values import (
+        format_distance_m,
+        format_duration_s,
+        parse_distance_m,
+        parse_duration_s,
+        parse_sport,
+    )
+
+    activity_id = args.activity
+
+    row = writer.connection.execute(
+        "SELECT duration_s, distance_m, sport FROM activities WHERE id = ?",
+        (activity_id,),
+    ).fetchone()
+    if row is None:
+        parser.error(f"unknown activity: {activity_id}")
+
+    planned = []
+    for text, field, parse in (
+        (args.duration, "duration_s", parse_duration_s),
+        (args.distance, "distance_m", parse_distance_m),
+        (args.sport, "sport", parse_sport),
+    ):
+        if text is None:
+            continue
+        try:
+            value = parse(text)
+        except ValueError as exc:
+            parser.error(str(exc))
+        planned.append((field, value))
+
+    if not planned:
+        parser.error(
+            "nothing to edit: use --duration, --distance, or --sport"
+        )
+
+    if args.item is not None and writer.review_item(args.item) is None:
+        parser.error(f"unknown review item: {args.item}")
+
+    formatters = {
+        "duration_s": (format_duration_s, format_duration_s),
+        "distance_m": (format_distance_m, format_distance_m),
+        "sport": (str, str),
+    }
+
+    notes = []
+    try:
+        for field, value in planned:
+            old = row[field]
+            writer.set_manual_field(activity_id, field, value)
+            old_fmt, new_fmt = formatters[field]
+            print(
+                f"set {field}: {old_fmt(old)} → {new_fmt(value)} (manual)"
+            )
+            notes.append(f"{field} {old_fmt(old)} → {new_fmt(value)}")
+    except ValueError as exc:
+        writer.connection.rollback()
+        parser.error(str(exc))
+
+    findings = refresh_activity_quality(
+        writer,
+        activity_id=activity_id,
+        resolve_item_id=args.item,
+        resolve_note=(
+            args.note
+            or f"manual edit: {'; '.join(notes)}"
+        ),
+    )
+    writer.connection.commit()
+
+    if args.item is not None:
+        print(f"Resolved #{args.item}")
+    if findings:
+        print("quality: still flagged — " + "; ".join(f"{f.rule}: {f.detail}" for f in findings))
+    else:
+        print("quality: ok")
+
     return 0
 
 
