@@ -712,6 +712,7 @@ class TrainingWriter:
         *,
         status: str | None = None,
         category: str | None = None,
+        severity: str | None = None,
     ) -> list[sqlite3.Row]:
         """Read review items joined with activity and source-record info."""
         clauses = []
@@ -724,6 +725,10 @@ class TrainingWriter:
         if category is not None:
             clauses.append("r.category = ?")
             params.append(category)
+
+        if severity is not None:
+            clauses.append("r.severity = ?")
+            params.append(severity)
 
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 

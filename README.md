@@ -57,9 +57,21 @@ Import-conflicts and questionable activities land in the review workflow:
 uv run --env-file .env hobbyjogging-import review list
 ```
 
+The quickest way through the queue is the interactive triage walk:
+
+```bash
+uv run --env-file .env hobbyjogging-import review triage
+```
+
+Each item can be inspected, opened in a browser (Intervals), fixed by
+entering valid values (``46:20``, ``8.2km``), marked resolved/ignored, or
+durably excluded (soft delete). Manual values outrank every import source
+and survive reimports; see `packages/hobbyjogging-import/README.md` for
+details, or use the non-interactive twins `review edit`, `review exclude`,
+and `review restore`.
+
 Reports exclude flagged activities until they are resolved; add
-`--include-review` to see them. See `packages/hobbyjogging-import/README.md`
-for the review workflow.
+`--include-review` to see them. Excluded (deleted) activities never appear.
 
 ## Inspect the database
 

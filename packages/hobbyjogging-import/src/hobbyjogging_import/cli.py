@@ -232,6 +232,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="override the resolution note for the review item",
     )
 
+    review_triage = review_sub.add_parser(
+        "triage",
+        help="interactively walk the open review queue",
+    )
+    review_triage.add_argument(
+        "--limit",
+        type=int,
+        help="queue at most this many items",
+    )
+    review_triage.add_argument(
+        "--category",
+        choices=("ambiguous_match", "quality", "duplicate", "manual_flag"),
+    )
+    review_triage.add_argument(
+        "--severity",
+        choices=("info", "warn", "error"),
+    )
+    review_triage.add_argument(
+        "--activity",
+        dest="activity_id",
+        metavar="ACTIVITY_ID",
+        help="triage only items for this activity",
+    )
+
     return parser
 
 

@@ -122,5 +122,39 @@ Other commands:
   over existing activities and record findings; useful for backfilling after
   the rules change.
 
+### Interactive triage
+
+`review triage` walks the open queue one item at a time. Every decision is
+written to the database immediately; quitting (or Ctrl-C) prints a summary.
+
+```
+#1 warn quality/open  2019-01-30  Run  (no timing data: duration is 0 s)
+  (i)nspect  (o)pen  (c)opy URL  (e)nter value  (d)elete
+  (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
+```
+
+- `(i)` shows the full item: activity values, all linked source records with
+  raw paths, and the item context.
+- `(o)` opens the Intervals activity (`https://intervals.icu/activities/<id>`)
+  in a browser; `(c)` copies the URL via `wl-copy`/`xclip`/`xsel` and echoes
+  it. Items linked only to FIT say "no Intervals activity".
+- `(e)` manually fixes one value. The field prompt suggests the rule's field
+  (`zero_duration` → duration, `zero_distance` → distance, `implied_pace` →
+  sport); values parse as `46:20`, `1:02:03`, or seconds / `8.2km`, `8200m`,
+  or plain km. The item is resolved, the quality rules re-run, and the fair
+  verdict ("quality: ok" or what still stands) is printed. Manual values
+  outrank every import source and survive reimports.
+- `(d)` durably excludes (soft-deletes) the activity and its linked source
+  records: hidden from reports, skipped by reimports, review items resolved.
+  `review restore <activity-id>` undoes it.
+- `(r)`/`(x)` resolve or ignore; `(n)` attaches a note to the next
+  close action.
+- Ambiguous matches list numbered candidates: `1-9` links the record to that
+  canonical activity (then re-run its importer), `(e)` asks you to link first.
+
+The non-interactive twin is `review edit <activity-id> --duration 46:20
+--distance 8.2km --sport trail_running [--item <id>] [--note]`.
+
 Reports exclude activities with open review items by default and print an
-"excluded (import review)" note; `--include-review` shows them.
+"excluded (import review)" note; `--include-review` shows them. Excluded
+(soft-deleted) activities never appear.

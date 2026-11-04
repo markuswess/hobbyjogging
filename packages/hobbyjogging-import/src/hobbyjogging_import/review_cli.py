@@ -23,6 +23,8 @@ def run_review(args, parser) -> int:
             return _run_restore(args, writer, parser)
         if action == "edit":
             return _run_edit(args, writer, parser)
+        if action == "triage":
+            return _run_triage(args, writer, parser)
         if action == "list":
             return _run_list(args, writer)
         if action == "show":
@@ -225,23 +227,15 @@ def _run_exclude(args, writer: TrainingWriter, parser) -> int:
 
 def _run_edit(args, writer: TrainingWriter, parser) -> int:
     """Apply one or more manual field edits and re-run quality rules."""
-    from .quality import refresh_activity_quality
-    from .values import (
-        format_distance_m,
-        format_duration_s,
-        parse_distance_m,
-        parse_duration_s,
-        parse_sport,
-    )
-
-    activity_id = args.activity
+    from .editing import apply_manual_edit
+    from .values import parse_distance_m, parse_duration_s, parse_sport
 
     row = writer.connection.execute(
-        "SELECT duration_s, distance_m, sport FROM activities WHERE id = ?",
-        (activity_id,),
+        "SELECT 1 FROM activities WHERE id = ?",
+        (args.activity,),
     ).fetchone()
     if row is None:
-        parser.error(f"unknown activity: {activity_id}")
+        parser.error(f"unknown activity: {args.activity}")
 
     planned = []
     for text, field, parse in (
@@ -265,43 +259,33 @@ def _run_edit(args, writer: TrainingWriter, parser) -> int:
     if args.item is not None and writer.review_item(args.item) is None:
         parser.error(f"unknown review item: {args.item}")
 
-    formatters = {
-        "duration_s": (format_duration_s, format_duration_s),
-        "distance_m": (format_distance_m, format_distance_m),
-        "sport": (str, str),
-    }
-
-    notes = []
     try:
         for field, value in planned:
-            old = row[field]
-            writer.set_manual_field(activity_id, field, value)
-            old_fmt, new_fmt = formatters[field]
-            print(
-                f"set {field}: {old_fmt(old)} → {new_fmt(value)} (manual)"
-            )
-            notes.append(f"{field} {old_fmt(old)} → {new_fmt(value)}")
-    except ValueError as exc:
-        writer.connection.rollback()
-        parser.error(str(exc))
+            try:
+                application = apply_manual_edit(
+                    writer,
+                    activity_id=args.activity,
+                    field=field,
+                    value=value,
+                    resolve_item_id=args.item,
+                    note=args.note,
+                )
+            except ValueError as exc:
+                writer.connection.rollback()
+                parser.error(str(exc))
 
-    findings = refresh_activity_quality(
-        writer,
-        activity_id=activity_id,
-        resolve_item_id=args.item,
-        resolve_note=(
-            args.note
-            or f"manual edit: {'; '.join(notes)}"
-        ),
-    )
-    writer.connection.commit()
-
-    if args.item is not None:
-        print(f"Resolved #{args.item}")
-    if findings:
-        print("quality: still flagged — " + "; ".join(f"{f.rule}: {f.detail}" for f in findings))
-    else:
-        print("quality: ok")
+            print(application.describe())
+            if args.item is not None:
+                print(f"Resolved #{args.item}")
+            if application.okay:
+                print("quality: ok")
+            else:
+                print(
+                    "quality: still flagged — "
+                    f"{application.describe_findings()}"
+                )
+    finally:
+        writer.connection.commit()
 
     return 0
 
@@ -315,6 +299,20 @@ def _run_restore(args, writer: TrainingWriter, parser) -> int:
     writer.restore_activity(args.activity)
     writer.connection.commit()
     print(f"Restored {args.activity} (review items stay resolved)")
+    return 0
+
+
+def _run_triage(args, writer: TrainingWriter, parser) -> int:
+    """Interactive walk over open review items."""
+    from .triage import TriageRunner
+
+    runner = TriageRunner(writer)
+    runner.run(
+        limit=args.limit,
+        category=args.category,
+        severity=args.severity,
+        activity_id=args.activity_id,
+    )
     return 0
 
 
