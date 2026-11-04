@@ -1,8 +1,8 @@
 import unittest
 from datetime import date
 
-from intervals_report.classify import category_breakdown
-from intervals_report.format import (
+from hobbyjogging_report.classify import category_breakdown
+from hobbyjogging_report.format import (
     format_activity,
     format_category_table,
     format_feel,

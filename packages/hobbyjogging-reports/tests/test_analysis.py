@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from intervals_report.analysis import (
+from hobbyjogging_report.analysis import (
     is_lt1_activity,
     subt_session_point,
     subt_work_points,

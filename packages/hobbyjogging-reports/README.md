@@ -65,18 +65,18 @@ The Intervals.icu variables are only needed for `--source intervals` and
 
 Run:
 
-    uv run --env-file .env python -m intervals_report daily
-    uv run --env-file .env python -m intervals_report weekly
-    uv run --env-file .env python -m intervals_report monthly
-    uv run --env-file .env python -m intervals_report yearly
-    uv run --env-file .env python -m intervals_report all
-    uv run --env-file .env python -m intervals_report report --days 90
-    uv run --env-file .env python -m intervals_report session 2026-02-22
-    uv run --env-file .env python -m intervals_report debug
-    uv run --env-file .env python -m intervals_report chart [output.png]
-    uv run --env-file .env python -m intervals_report subt-chart [output.png]
-    uv run --env-file .env python -m intervals_report subt-hr-chart [output.png]
-    uv run --env-file .env python -m intervals_report classify [days]
+    uv run --env-file .env python -m hobbyjogging_report daily
+    uv run --env-file .env python -m hobbyjogging_report weekly
+    uv run --env-file .env python -m hobbyjogging_report monthly
+    uv run --env-file .env python -m hobbyjogging_report yearly
+    uv run --env-file .env python -m hobbyjogging_report all
+    uv run --env-file .env python -m hobbyjogging_report report --days 90
+    uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
+    uv run --env-file .env python -m hobbyjogging_report debug
+    uv run --env-file .env python -m hobbyjogging_report chart [output.png]
+    uv run --env-file .env python -m hobbyjogging_report subt-chart [output.png]
+    uv run --env-file .env python -m hobbyjogging_report subt-hr-chart [output.png]
+    uv run --env-file .env python -m hobbyjogging_report classify [days]
 
 ### Quick reports
 
@@ -127,12 +127,12 @@ The chart commands also accept:
 
 Examples:
 
-    uv run --env-file .env python -m intervals_report report --days 90
-    uv run --env-file .env python -m intervals_report report --from 2026-01-01 --to 2026-03-31
-    uv run --env-file .env python -m intervals_report classify --days 90
-    uv run --env-file .env python -m intervals_report classify --from 2026-01-01 --to 2026-03-31
-    uv run --env-file .env python -m intervals_report subt-chart --from 2026-02-01
-    uv run --env-file .env python -m intervals_report subt-hr-chart --to 2026-06-30 --days 120 --output hr.png
+    uv run --env-file .env python -m hobbyjogging_report report --days 90
+    uv run --env-file .env python -m hobbyjogging_report report --from 2026-01-01 --to 2026-03-31
+    uv run --env-file .env python -m hobbyjogging_report classify --days 90
+    uv run --env-file .env python -m hobbyjogging_report classify --from 2026-01-01 --to 2026-03-31
+    uv run --env-file .env python -m hobbyjogging_report subt-chart --from 2026-02-01
+    uv run --env-file .env python -m hobbyjogging_report subt-hr-chart --to 2026-06-30 --days 120 --output hr.png
 
 Rules:
 

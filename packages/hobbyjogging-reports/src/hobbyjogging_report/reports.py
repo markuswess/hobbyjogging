@@ -125,7 +125,7 @@ def debug():
         return
     else:
         raise SystemExit(
-            "usage: intervals_report.py debug "
+            "usage: hobbyjogging_report.py debug "
             "[activities|wellness|events]"
         )
 

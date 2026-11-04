@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from hobbyjogging_core import SCHEMA_VERSION, connect, migrate
-from intervals_report.sources.database import DatabaseSource
+from hobbyjogging_report.sources.database import DatabaseSource
 
 
 class DatabaseSourceTests(unittest.TestCase):

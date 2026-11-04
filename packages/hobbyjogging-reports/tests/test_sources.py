@@ -2,8 +2,8 @@ import os
 import unittest
 from unittest.mock import patch
 
-from intervals_report.api import Intervals
-from intervals_report.sources.intervals_api import IntervalsSource, to_activity
+from hobbyjogging_report.api import Intervals
+from hobbyjogging_report.sources.intervals_api import IntervalsSource, to_activity
 
 
 class IntervalsSourceTests(unittest.TestCase):

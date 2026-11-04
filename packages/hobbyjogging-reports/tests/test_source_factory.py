@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intervals_report.sources import DEFAULT_SOURCE, create_source
-from intervals_report.sources.database import DatabaseSource
+from hobbyjogging_report.sources import DEFAULT_SOURCE, create_source
+from hobbyjogging_report.sources.database import DatabaseSource
 
 
 class SourceFactoryTests(unittest.TestCase):

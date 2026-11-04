@@ -3,8 +3,8 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from intervals_report.charts import plot_subt_hr, plot_subt_paces
-from intervals_report.model import SubtPoint
+from hobbyjogging_report.charts import plot_subt_hr, plot_subt_paces
+from hobbyjogging_report.model import SubtPoint
 
 D = date(2026, 1, 1)
 

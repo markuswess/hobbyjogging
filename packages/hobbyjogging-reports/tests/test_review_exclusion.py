@@ -2,8 +2,8 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core import connect, migrate
-from intervals_report.reports import daily, period_report, session_report
-from intervals_report.review import exclude_review, review_note
+from hobbyjogging_report.reports import daily, period_report, session_report
+from hobbyjogging_report.review import exclude_review, review_note
 
 
 class ReviewExclusionTests(unittest.TestCase):
@@ -24,13 +24,13 @@ class ReviewExclusionTests(unittest.TestCase):
         )
 
     def _all(self):
-        from intervals_report.sources.database import DatabaseSource
+        from hobbyjogging_report.sources.database import DatabaseSource
 
         source = DatabaseSource(connection=self.conn)
         return source.activities(date(2026, 10, 1), date(2026, 10, 1))
 
     def _activities(self):
-        from intervals_report.sources.database import DatabaseSource
+        from hobbyjogging_report.sources.database import DatabaseSource
 
         source = DatabaseSource(connection=self.conn)
         return [
@@ -121,7 +121,7 @@ class ReviewExclusionTests(unittest.TestCase):
         self.assertNotIn("odd one", report)
 
     def _source(self):
-        from intervals_report.sources.database import DatabaseSource
+        from hobbyjogging_report.sources.database import DatabaseSource
 
         return DatabaseSource(connection=self.conn)
 

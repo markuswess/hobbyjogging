@@ -2,8 +2,8 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core.model import Event
-from intervals_report.mdpretty import render_markdown
-from intervals_report.reports import _format_event
+from hobbyjogging_report.mdpretty import render_markdown
+from hobbyjogging_report.reports import _format_event
 
 
 class MarkdownRendererTests(unittest.TestCase):

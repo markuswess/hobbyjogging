@@ -38,7 +38,7 @@ MODES = {
 
 def usage() -> str:
     return (
-        "usage: python -m intervals_report "
+        "usage: python -m hobbyjogging_report "
         "[--source database|intervals] "
         "daily|weekly|monthly|yearly|debug|all"
         "|session YYYY-MM-DD|report [--days N]"
@@ -217,14 +217,14 @@ def main(argv: list[str] | None = None):
         elif mode == "session":
             if not args:
                 raise SystemExit(
-                    "usage: python -m intervals_report session YYYY-MM-DD"
+                    "usage: python -m hobbyjogging_report session YYYY-MM-DD"
                 )
 
             try:
                 day = date.fromisoformat(args[0])
             except ValueError:
                 raise SystemExit(
-                    "usage: python -m intervals_report session YYYY-MM-DD"
+                    "usage: python -m hobbyjogging_report session YYYY-MM-DD"
                 )
 
             report = session_report(

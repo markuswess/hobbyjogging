@@ -4,7 +4,7 @@ import unittest
 from contextlib import redirect_stderr
 from datetime import date, timedelta
 
-from intervals_report.cli import (
+from hobbyjogging_report.cli import (
     date_arg,
     extract_source,
     parse_chart_args,

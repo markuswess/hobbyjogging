@@ -56,7 +56,7 @@ fi
 tmp="$(mktemp "${TMPDIR:-/tmp}/intervals-report.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 
-if ! uv run --env-file .env python -m intervals_report "${args[@]}" >"$tmp"; then
+if ! uv run --env-file .env python -m hobbyjogging_report "${args[@]}" >"$tmp"; then
     cat "$tmp" >&2
     exit 1
 fi
@@ -78,7 +78,7 @@ if [[ -t 1 && "${NO_PRETTY:-0}" != "1" ]]; then
         python_bin="python3"
     fi
 
-    "$python_bin" -m intervals_report.mdpretty <"$tmp"
+    "$python_bin" -m hobbyjogging_report.mdpretty <"$tmp"
 else
     cat "$tmp"
 fi
