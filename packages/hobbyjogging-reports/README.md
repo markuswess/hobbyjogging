@@ -153,8 +153,8 @@ A session with work in several categories therefore appears in each
 relevant group. LT1 sessions always go to the LT1 group, and sessions
 without usable work reps are omitted.
 
-The report starts with a summary table (sessions, reps, work time,
-work distance, weighted pace, average/max HR) and then shows one table
+The report starts with a summary table (sessions, reps, weekly work time
+and distance, weighted pace, average/max HR) and then shows one table
 per non-empty category. Work pace, fastest/slowest rep pace, and HR are
 derived from the same work reps used by the classification and charts.
 

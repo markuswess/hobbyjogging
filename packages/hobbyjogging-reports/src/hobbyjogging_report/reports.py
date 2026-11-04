@@ -342,8 +342,12 @@ def subt_report(
 
     summaries, total = subt_report_summary(blocks)
 
+    ndays = (end - start).days + 1
+
     lines.append("\n## Summary")
-    lines.extend(format_subt_summary_table(summaries, total))
+    lines.extend(
+        format_subt_summary_table(summaries, total, ndays)
+    )
 
     unique_sessions = {block.activity_id for block in blocks}
 

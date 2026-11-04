@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.model import Activity, Interval
 from hobbyjogging_report.analysis import (
@@ -228,8 +228,8 @@ class SubtReportRenderingTests(unittest.TestCase):
         self.assertIn("2026-10-01 → 2026-10-01", report)
         self.assertIn("## Summary", report)
         self.assertIn(
-            "| Category | Sessions | Reps | Work time | Work km | "
-            "Avg pace | Avg HR | Max HR |",
+            "| Category | Sessions | Reps | Work time / week | "
+            "Work km / week | Avg pace | Avg HR | Max HR |",
             report,
         )
         self.assertIn("## Short", report)
@@ -248,6 +248,23 @@ class SubtReportRenderingTests(unittest.TestCase):
             report,
         )
         self.assertEqual(2, report.count("5x5' + 1x3' subT"))
+
+    def test_summary_work_totals_are_per_week(self):
+        end = D1 + timedelta(days=13)  # 14 days = two weeks
+
+        report = subt_report(
+            D1,
+            end,
+            "subT Report",
+            self.source,
+        )
+
+        # 1500 s and 5.0 km of medium work over two weeks.
+        self.assertIn("| Medium | 1 | 5 | 12:30 | 2.5 |", report)
+        # 180 s and 0.6 km of short work over two weeks.
+        self.assertIn("| Short | 1 | 1 | 1:30 | 0.3 |", report)
+        # 1680 s and 5.6 km total over two weeks.
+        self.assertIn("| **Total** | 1 | 6 | 14:00 | 2.8 |", report)
 
     def test_lt1_session_gets_its_own_table(self):
         lt1 = activity(

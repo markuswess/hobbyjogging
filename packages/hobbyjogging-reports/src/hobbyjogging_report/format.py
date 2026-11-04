@@ -645,33 +645,39 @@ def _km_cell(distance_m: float, decimals: int) -> str:
 def format_subt_summary_table(
     summaries: list[SubtSummary],
     total: SubtSummary,
+    days: int,
 ):
-    """Render the cross-category summary for a subT report."""
+    """Render the cross-category summary for a subT report.
+
+    Work time and distance are shown per week: total divided by ``days`` and
+    multiplied by 7.
+    """
+    weeks = days / 7 if days else 0
+
     lines = [
-        "| Category | Sessions | Reps | Work time | Work km | "
-        "Avg pace | Avg HR | Max HR |",
+        "| Category | Sessions | Reps | Work time / week | "
+        "Work km / week | Avg pace | Avg HR | Max HR |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
-    for summary in summaries:
-        lines.append(
-            f"| {subt_category_label(summary.category)} | "
+    def row(label: str, summary: SubtSummary) -> str:
+        time = summary.total_time_s / weeks if weeks else 0
+        distance = summary.total_distance_m / weeks if weeks else 0
+
+        return (
+            f"| {label} | "
             f"{summary.sessions} | {summary.reps} | "
-            f"{fmt_clock(summary.total_time_s)} | "
-            f"{_km_cell(summary.total_distance_m, 1)} | "
+            f"{fmt_clock(time)} | "
+            f"{_km_cell(distance, 1)} | "
             f"{_pace_cell(summary.pace_s_per_km)} | "
             f"{_hr_cell(summary.avg_hr)} | "
             f"{_hr_cell(summary.max_hr)} |"
         )
 
-    lines.append(
-        f"| **Total** | {total.sessions} | {total.reps} | "
-        f"{fmt_clock(total.total_time_s)} | "
-        f"{_km_cell(total.total_distance_m, 1)} | "
-        f"{_pace_cell(total.pace_s_per_km)} | "
-        f"{_hr_cell(total.avg_hr)} | "
-        f"{_hr_cell(total.max_hr)} |"
-    )
+    for summary in summaries:
+        lines.append(row(subt_category_label(summary.category), summary))
+
+    lines.append(row("**Total**", total))
 
     return lines
 
