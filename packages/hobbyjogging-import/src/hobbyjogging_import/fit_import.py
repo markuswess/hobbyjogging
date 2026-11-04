@@ -263,6 +263,22 @@ class FitImporter:
         source_record_id: int | None = None
         existing_link = None
 
+        if self.writer.is_source_record_excluded(
+            source=SOURCE,
+            record_type="activity",
+            external_id=external_id,
+        ):
+            summary.activities_skipped += 1
+            summary.actions.append(
+                FitImportAction(
+                    path=path,
+                    session_index=session.index,
+                    action="skip",
+                    match_method="excluded",
+                )
+            )
+            return False
+
         if not dry_run:
             source_record_id = self.writer.upsert_source_record(
                 source=SOURCE,
@@ -282,6 +298,17 @@ class FitImporter:
             activity_id = existing_link["activity_id"]
             match_method = existing_link["match_method"] or "external_id"
             confidence = existing_link["confidence"]
+            if self.writer.is_activity_excluded(activity_id):
+                summary.activities_skipped += 1
+                summary.actions.append(
+                    FitImportAction(
+                        path=path,
+                        session_index=session.index,
+                        action="skip",
+                        match_method="excluded",
+                    )
+                )
+                return False
             summary.activities_matched += 1
         else:
             matches = self.matcher.find(

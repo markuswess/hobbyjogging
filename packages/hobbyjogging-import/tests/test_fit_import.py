@@ -457,6 +457,83 @@ class FitImporterTests(unittest.TestCase):
             [lap.start_time_utc for lap in laps],
         )
 
+    def test_excluded_activity_is_not_resurrected_by_reimport(self):
+        path = self._file("one.fit", b"one")
+        first = self._import([_summary(path)])
+        self.assertEqual(1, first.activities_imported)
+
+        activity_id = self._activities()[0].id
+        self.importer.writer.exclude_activity(activity_id)
+        self.conn.commit()
+        self.assertEqual([], self._activities())
+
+        second = self._import([_summary(path)])
+
+        self.assertEqual(1, second.activities_seen)
+        self.assertEqual(0, second.activities_imported)
+        self.assertEqual(0, second.activities_matched)
+        self.assertEqual(0, second.activities_created)
+        self.assertEqual(1, second.activities_skipped)
+        self.assertEqual("skip", second.actions[0].action)
+        self.assertEqual("excluded", second.actions[0].match_method)
+
+        self.assertEqual(
+            [],
+            self._activities(),
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM source_records"
+            ).fetchone()[0],
+        )
+        self.assertIsNotNone(
+            self.conn.execute(
+                "SELECT excluded_at FROM source_records"
+            ).fetchone()["excluded_at"],
+        )
+
+    def test_excluded_linked_activity_is_skipped_after_review_resolution(self):
+        existing_id = "intervals-1"
+        run_id = self.importer.writer.start_import_run("intervals")
+        source_id = self.importer.writer.upsert_source_record(
+            source="intervals",
+            record_type="activity",
+            external_id="i1",
+            checksum="intervals-checksum",
+            import_run_id=run_id,
+        )
+        self.importer.writer.upsert_activity(
+            existing_id,
+            {
+                "local_date": "2026-10-01",
+                "started_at_utc": START_UTC,
+                "sport": "run",
+                "name": "Morning run",
+                "duration_s": 3550,
+                "elapsed_s": 3650,
+                "distance_m": 9950,
+            },
+            source="intervals",
+            source_record_id=source_id,
+        )
+        self.importer.writer.link_activity_source(
+            existing_id,
+            source_id,
+            match_method="external_id",
+        )
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        self.importer.writer.exclude_activity(existing_id)
+        self.conn.commit()
+
+        summary = self._import([_summary(path)])
+
+        self.assertEqual(0, summary.activities_imported)
+        self.assertEqual(1, summary.activities_skipped)
+        self.assertEqual("excluded", summary.actions[0].match_method)
+
     def test_parse_error_is_skipped(self):
         self._file("one.fit", b"one")
 

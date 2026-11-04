@@ -10,8 +10,8 @@ The three commits that finish the review/edit workflow, then real-data verificat
 - Reports/repository reads filter `excluded_at IS NULL`; FIT and Intervals importers skip
   excluded source records and never match into excluded activities; the writer refuses to
   write into an excluded activity.
-- Result: deleted data stays deleted across reimports, with the rows kept for audit
-  (`review exclude` / `review restore` as non-interactive twins).
+- Result: deleted data stays deleted across reimports, with the rows kept for audit;
+  CLI twins `review exclude <activity> [--note]` / `review restore <activity>` are included.
 
 ## Commit 2 — manual edit
 

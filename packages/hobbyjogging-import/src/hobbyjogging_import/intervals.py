@@ -143,6 +143,12 @@ class IntervalsImporter:
             external_id = _activity_external_id(raw)
             if external_id is None:
                 continue
+            if self.writer.is_source_record_excluded(
+                source=SOURCE,
+                record_type="activity",
+                external_id=external_id,
+            ):
+                continue
             result[external_id] = list(
                 self.client.activity_intervals(external_id) or []
             )
@@ -158,6 +164,12 @@ class IntervalsImporter:
         if external_id is None:
             return None
         if external_id in {id for id, _ in summary.ambiguous_matches}:
+            return None
+        if self.writer.is_source_record_excluded(
+            source=SOURCE,
+            record_type="activity",
+            external_id=external_id,
+        ):
             return None
 
         payload = _payload_json(raw)
@@ -243,8 +255,11 @@ class IntervalsImporter:
         existing_link = linked_activity(self.connection, source_record_id)
 
         if existing_link is not None:
+            activity_id = existing_link["activity_id"]
+            if self.writer.is_activity_excluded(activity_id):
+                return None
             return (
-                existing_link["activity_id"],
+                activity_id,
                 existing_link["match_method"] or "external_id",
                 existing_link["confidence"],
             )

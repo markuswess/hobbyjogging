@@ -101,6 +101,59 @@ class ReviewCliTests(unittest.TestCase):
         self.assertNotIn("ambiguous_match", output)
         self.assertIn("quality/open", output)
 
+    def test_exclude_and_restore_activity(self):
+        self.seed_writer.link_activity_source(
+            "a1", self.source_record_id, match_method="created"
+        )
+        seed_conn = self.seed_writer.connection
+        seed_conn.commit()
+
+        code, output = self._run(
+            [
+                "review", "--database", str(self.database),
+                "exclude", "a1", "--note", "bad data",
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Excluded a1", output)
+        self.assertIn("Review items resolved: 1", output)
+        seed_conn.commit()
+        self.assertEqual(
+            "resolved",
+            self.seed_writer.review_item(self.quality_id)["status"],
+        )
+        self.assertEqual(
+            "bad data",
+            self.seed_writer.review_item(self.quality_id)["resolved_note"],
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "list",
+             "--status", "all"]
+        )
+
+        self.assertIn("[excluded]", output)
+        self.assertNotIn("open review item(s)", output)
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "restore", "a1"]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Restored a1", output)
+
+        rows = seed_conn.execute(
+            "SELECT excluded_at FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertIsNone(rows["excluded_at"])
+        self.assertIsNone(
+            seed_conn.execute(
+                "SELECT excluded_at FROM source_records WHERE id = ?",
+                (self.source_record_id,),
+            ).fetchone()["excluded_at"],
+        )
+
     def test_show_prints_full_detail(self):
         code, output = self._run(
             ["review", "--database", str(self.database), "show",

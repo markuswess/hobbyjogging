@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -35,10 +35,16 @@ CREATE INDEX idx_review_items_status ON review_items(status);
 CREATE INDEX idx_review_items_activity ON review_items(activity_id);
 """
 
+MIGRATION_4_SQL = """
+ALTER TABLE activities ADD COLUMN excluded_at TEXT;
+ALTER TABLE source_records ADD COLUMN excluded_at TEXT;
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
     3: MIGRATION_3_SQL,
+    4: MIGRATION_4_SQL,
 }
 
 

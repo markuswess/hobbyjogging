@@ -29,6 +29,7 @@ class TrainingRepository:
                 rpe, feel, intensity
             FROM activities
             WHERE local_date BETWEEN ? AND ?
+              AND excluded_at IS NULL
             ORDER BY local_date, COALESCE(started_at_utc, local_date), id
             """,
             (start.isoformat(), end.isoformat()),

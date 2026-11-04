@@ -178,7 +178,7 @@ class TrainingWriter:
             raise ValueError(f"Unknown activity fields: {sorted(unknown)}")
 
         exists = self.connection.execute(
-            "SELECT 1 FROM activities WHERE id = ?",
+            "SELECT excluded_at FROM activities WHERE id = ?",
             (activity_id,),
         ).fetchone()
 
@@ -199,6 +199,9 @@ class TrainingWriter:
                     value,
                 )
             return
+
+        if exists["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
 
         self.connection.execute(
             """
@@ -227,6 +230,136 @@ class TrainingWriter:
                 value,
             )
 
+    def exclude_activity(
+        self,
+        activity_id: str,
+        *,
+        resolve_note: str = "excluded",
+    ) -> int:
+        """Durably soft-delete an activity.
+
+        Marks the activity and every linked source record as excluded so
+        reports hide it and reimports never resurrect it (source records are
+        skipped while excluded). Open review items are resolved so the
+        activity also leaves the review queue. Rows are retained for audit.
+        Returns the number of review items that were resolved.
+        """
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+
+        if row["excluded_at"]:
+            return 0
+
+        self.connection.execute(
+            """
+            UPDATE activities
+            SET excluded_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (activity_id,),
+        )
+
+        source_records = self.connection.execute(
+            """
+            SELECT sr.id
+            FROM source_records sr
+            JOIN activity_sources als ON als.source_record_id = sr.id
+            WHERE als.activity_id = ?
+            """,
+            (activity_id,),
+        ).fetchall()
+
+        for source_record in source_records:
+            self.connection.execute(
+                """
+                UPDATE source_records
+                SET excluded_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (source_record["id"],),
+            )
+
+        cursor = self.connection.execute(
+            """
+            UPDATE review_items
+            SET status = 'resolved',
+                resolved_at = CURRENT_TIMESTAMP,
+                resolved_note = ?
+            WHERE activity_id = ? AND status = 'open'
+            """,
+            (resolve_note, activity_id),
+        )
+        return cursor.rowcount
+
+    def restore_activity(
+        self,
+        activity_id: str,
+    ) -> None:
+        """Undo an exclusion; review items stay resolved."""
+        self.connection.execute(
+            """
+            UPDATE activities
+            SET excluded_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (activity_id,),
+        )
+
+        source_records = self.connection.execute(
+            """
+            SELECT sr.id
+            FROM source_records sr
+            JOIN activity_sources als ON als.source_record_id = sr.id
+            WHERE als.activity_id = ?
+            """,
+            (activity_id,),
+        ).fetchall()
+
+        for source_record in source_records:
+            self.connection.execute(
+                """
+                UPDATE source_records
+                SET excluded_at = NULL
+                WHERE id = ?
+                """,
+                (source_record["id"],),
+            )
+
+    def is_activity_excluded(self, activity_id: str | None) -> bool:
+        """True when the activity exists and is excluded (soft-deleted)."""
+        if activity_id is None:
+            return False
+
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+        return bool(row and row["excluded_at"])
+
+    def is_source_record_excluded(
+        self,
+        *,
+        source: str,
+        record_type: str,
+        external_id: str,
+    ) -> bool:
+        """True when a known source record is excluded (soft-deleted)."""
+        row = self.connection.execute(
+            """
+            SELECT excluded_at FROM source_records
+            WHERE source = ? AND record_type = ? AND external_id = ?
+            """,
+            (source, record_type, external_id),
+        ).fetchone()
+        return bool(row and row["excluded_at"])
+
     def link_activity_source(
         self,
         activity_id: str,
@@ -235,6 +368,17 @@ class TrainingWriter:
         match_method: str = "external_id",
         confidence: float | None = None,
     ) -> None:
+        excluded = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if excluded is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+
+        if excluded["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
         existing = self.connection.execute(
             """
             SELECT id FROM activity_sources
@@ -525,6 +669,7 @@ class TrainingWriter:
                 r.status, r.severity, r.reported_at, r.resolved_at,
                 r.resolved_note,
                 a.local_date, a.name AS activity_name, a.sport,
+                a.excluded_at AS activity_excluded_at,
                 sr.source AS record_source, sr.external_id,
                 sr.record_type AS record_type
             FROM review_items r
@@ -550,6 +695,7 @@ class TrainingWriter:
                 r.status, r.severity, r.reported_at, r.resolved_at,
                 r.resolved_note,
                 a.local_date, a.name AS activity_name, a.sport,
+                a.excluded_at AS activity_excluded_at,
                 sr.source AS record_source, sr.external_id,
                 sr.record_type AS record_type
             FROM review_items r

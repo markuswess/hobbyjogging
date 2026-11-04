@@ -17,6 +17,10 @@ def run_review(args, parser) -> int:
     try:
         writer = TrainingWriter(connection)
 
+        if action == "exclude":
+            return _run_exclude(args, writer, parser)
+        if action == "restore":
+            return _run_restore(args, writer, parser)
         if action == "list":
             return _run_list(args, writer)
         if action == "show":
@@ -204,23 +208,50 @@ def _run_flag(args, writer: TrainingWriter, parser) -> int:
     return 0
 
 
+def _run_exclude(args, writer: TrainingWriter, parser) -> int:
+    if not writer.connection.execute(
+        "SELECT 1 FROM activities WHERE id = ?", (args.activity,)
+    ).fetchone():
+        parser.error(f"unknown activity: {args.activity}")
+
+    resolved = writer.exclude_activity(args.activity, resolve_note=args.note)
+    writer.connection.commit()
+    print(f"Excluded {args.activity}")
+    print(f"Review items resolved: {resolved}")
+    return 0
+
+
+def _run_restore(args, writer: TrainingWriter, parser) -> int:
+    if not writer.connection.execute(
+        "SELECT 1 FROM activities WHERE id = ?", (args.activity,)
+    ).fetchone():
+        parser.error(f"unknown activity: {args.activity}")
+
+    writer.restore_activity(args.activity)
+    writer.connection.commit()
+    print(f"Restored {args.activity} (review items stay resolved)")
+    return 0
+
+
 def _format_summary_line(item) -> str:
     record = ""
     if item["record_source"]:
         external = item["external_id"] or ""
         record = f" [{item['record_source']} {external[:32]}]"
 
+    excluded = " [excluded]" if item["activity_excluded_at"] else ""
+
     if item["local_date"]:
         name = item["activity_name"] or item["sport"] or ""
         return (
             f"#{item['id']} {item['severity']:<4} "
             f"{item['category']}/{item['status']}  "
-            f"{item['local_date']}{record}  {name}  "
+            f"{item['local_date']}{record}  {name}{excluded}  "
             f"({item['detail'][:64]})"
         )
 
     return (
         f"#{item['id']} {item['severity']:<4} "
         f"{item['category']}/{item['status']}  "
-        f"{record}  ({item['detail'][:64]})"
+        f"{record}{excluded}  ({item['detail'][:64]})"
     )

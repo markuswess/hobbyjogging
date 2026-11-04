@@ -221,6 +221,35 @@ class IntervalsImporterTests(unittest.TestCase):
         )
         self.assertNotEqual(first.run_id, second.run_id)
 
+    def test_excluded_intervals_activity_is_skipped_on_reimport(self):
+        self._import()
+        activity_id = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )[0].id
+
+        self.importer.writer.exclude_activity(activity_id)
+        self.conn.commit()
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.activities_seen)
+        self.assertEqual(0, summary.activities_imported)
+        self.assertEqual(1, summary.activities_skipped)
+
+        row = self.conn.execute(
+            "SELECT duration_s, excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+        self.assertEqual(3600, row["duration_s"])
+        self.assertIsNotNone(row["excluded_at"])
+
+        count = self.conn.execute(
+            "SELECT COUNT(*) FROM source_records "
+            "WHERE source = 'intervals' AND record_type = 'intervals'"
+        ).fetchone()[0]
+        self.assertEqual(1, count)
+
     def test_first_intervals_import_is_created_link(self):
         summary = self._import()
 

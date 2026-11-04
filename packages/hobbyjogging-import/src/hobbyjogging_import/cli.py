@@ -187,6 +187,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="why the activity is flagged (stored as the detail)",
     )
 
+    review_exclude = review_sub.add_parser(
+        "exclude",
+        help=(
+            "durably exclude (soft-delete) an activity: hidden from reports, "
+            "skipped by reimports"
+        ),
+    )
+    review_exclude.add_argument("activity", metavar="ACTIVITY_ID")
+    review_exclude.add_argument(
+        "--note",
+        default="excluded",
+        help="note stored on the resolved review items",
+    )
+
+    review_restore = review_sub.add_parser(
+        "restore",
+        help="undo an exclusion (review items stay resolved)",
+    )
+    review_restore.add_argument("activity", metavar="ACTIVITY_ID")
+
     return parser
 
 

@@ -194,6 +194,21 @@ class ActivityMatcherTests(unittest.TestCase):
 
         self.assertEqual([], matches)
 
+    def test_excluded_soft_deleted_activity_is_not_matched(self):
+        self.conn.execute(
+            "UPDATE activities SET excluded_at = CURRENT_TIMESTAMP "
+            "WHERE id = 'a1'"
+        )
+        self.conn.commit()
+
+        matches = self.matcher.find(
+            started_at_utc="2026-10-01T06:10:00Z",
+            source="fit",
+            elapsed_s=3600,
+        )
+
+        self.assertEqual([], matches)
+
     def test_fit_segment_can_match_larger_activity(self):
         matches = self.matcher.find(
             started_at_utc="2026-10-01T06:20:00Z",

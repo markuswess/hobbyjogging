@@ -223,6 +223,7 @@ class ActivityMatcher:
             WHERE local_date BETWEEN ? AND ?
               AND started_at_utc IS NOT NULL
               AND started_at_utc != ''
+              AND excluded_at IS NULL
         """
         params: list[object] = [first_date, last_date]
 

@@ -53,6 +53,13 @@ class SchemaMigrationTests(unittest.TestCase):
             for row in self.conn.execute("PRAGMA table_info(activities)")
         }
         self.assertIn("elapsed_s", columns)
+        self.assertIn("excluded_at", columns)
+
+        record_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(source_records)")
+        }
+        self.assertIn("excluded_at", record_columns)
 
     def test_migrates_v1_activity_rows_to_elapsed_time(self):
         self.conn.executescript(INITIAL_SCHEMA_SQL)
@@ -68,7 +75,7 @@ class SchemaMigrationTests(unittest.TestCase):
             "SELECT elapsed_s FROM activities WHERE id = 'a1'"
         ).fetchone()
 
-        self.assertEqual(3, version)
+        self.assertEqual(SCHEMA_VERSION, version)
         self.assertEqual(0, row["elapsed_s"])
 
     def test_migrate_is_idempotent(self):

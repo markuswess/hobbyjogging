@@ -226,5 +226,154 @@ class ReviewItemTests(unittest.TestCase):
         self.assertFalse(activities[0].needs_review)
 
 
+class ExclusionTests(unittest.TestCase):
+    """Durable soft-deletion: exclusion hides data without hard deletes."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        self.assertEqual(SCHEMA_VERSION, migrate(self.conn))
+        self.writer = TrainingWriter(self.conn)
+        self.repository = TrainingRepository(self.conn)
+
+        self.run_id = self.writer.start_import_run("test")
+        self.source_record_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="seg.fit",
+            checksum="c1",
+            import_run_id=self.run_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "started_at_utc": "2026-10-01T06:00:00Z",
+                "duration_s": 3600,
+                "elapsed_s": 3700,
+            },
+            source="fit",
+            source_record_id=self.source_record_id,
+        )
+        self.writer.link_activity_source(
+            "a1", self.source_record_id, match_method="created"
+        )
+        self.item_id, _ = self.writer.record_review_item(
+            category="quality",
+            detail="zero duration",
+            fingerprint="fp-x",
+            activity_id="a1",
+        )
+
+    def _activity_row(self):
+        return self.conn.execute(
+            "SELECT excluded_at FROM activities WHERE id = 'a1'"
+        ).fetchone()
+
+    def _source_row(self):
+        return self.conn.execute(
+            "SELECT excluded_at FROM source_records WHERE id = ?",
+            (self.source_record_id,),
+        ).fetchone()
+
+    def _repository_activities(self):
+        import datetime
+
+        return self.repository.activities(
+            datetime.date(2026, 10, 1),
+            datetime.date(2026, 10, 1),
+        )
+
+    def test_exclude_marks_activity_source_record_and_resolves_items(self):
+        resolved = self.writer.exclude_activity("a1", resolve_note="triage")
+        self.conn.commit()
+
+        self.assertEqual(1, resolved)
+        self.assertIsNotNone(self._activity_row()["excluded_at"])
+        self.assertIsNotNone(self._source_row()["excluded_at"])
+
+        item = self.writer.review_item(self.item_id)
+        self.assertEqual("resolved", item["status"])
+        self.assertEqual("triage", item["resolved_note"])
+
+        self.assertEqual([], self._repository_activities())
+
+    def test_exclude_is_idempotent(self):
+        self.writer.exclude_activity("a1")
+        first_note = self.writer.review_item(self.item_id)["resolved_note"]
+
+        self.writer.exclude_activity("a1", resolve_note="second pass")
+        self.conn.commit()
+
+        self.assertEqual(
+            first_note,
+            self.writer.review_item(self.item_id)["resolved_note"],
+        )
+
+    def test_restore_clears_exclusion_but_keeps_items_resolved(self):
+        self.writer.exclude_activity("a1", resolve_note="triage")
+        self.writer.restore_activity("a1")
+        self.conn.commit()
+
+        self.assertIsNone(self._activity_row()["excluded_at"])
+        self.assertIsNone(self._source_row()["excluded_at"])
+
+        item = self.writer.review_item(self.item_id)
+        self.assertEqual("resolved", item["status"])
+        self.assertEqual(1, len(self._repository_activities()))
+
+    def test_exclude_unknown_activity_raises(self):
+        with self.assertRaises(ValueError):
+            self.writer.exclude_activity("nope")
+
+    def test_upsert_activity_rejects_excluded_activity(self):
+        self.writer.exclude_activity("a1")
+        self.conn.commit()
+
+        with self.assertRaises(ValueError):
+            self.writer.upsert_activity(
+                "a1",
+                {"duration_s": 999},
+                source="fit",
+                source_record_id=self.source_record_id,
+            )
+
+        row = self.conn.execute(
+            "SELECT duration_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(3600, row["duration_s"])
+
+    def test_link_activity_source_rejects_excluded_activity(self):
+        self.writer.exclude_activity("a1")
+        self.conn.commit()
+
+        with self.assertRaises(ValueError):
+            self.writer.link_activity_source("a1", self.source_record_id)
+
+    def test_is_excluded_helpers(self):
+        self.assertFalse(self.writer.is_activity_excluded("a1"))
+        self.writer.exclude_activity("a1")
+        self.conn.commit()
+
+        self.assertTrue(self.writer.is_activity_excluded("a1"))
+        self.assertTrue(self.writer.is_activity_excluded(None) is False)
+        self.assertFalse(self.writer.is_activity_excluded("nope"))
+        self.assertTrue(
+            self.writer.is_source_record_excluded(
+                source="fit",
+                record_type="activity",
+                external_id="seg.fit",
+            )
+        )
+        self.assertFalse(
+            self.writer.is_source_record_excluded(
+                source="fit",
+                record_type="activity",
+                external_id="other.fit",
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
