@@ -1,9 +1,9 @@
 """Small ANSI renderer for the Markdown reports.
 
 The renderer is intentionally dependency-free. It handles the Markdown
-used by the training reports: headings, bullet lists, emphasis, and
-pipe tables. The output is for terminal display only; clipboard data
-should always be the original Markdown.
+used by the training reports: headings, bullet lists, emphasis, fenced
+code blocks, and pipe tables. The output is for terminal display only;
+clipboard data should always be the original Markdown.
 """
 
 import os
@@ -28,6 +28,7 @@ SEPARATOR_RE = re.compile(r"^:?-{3,}:?$")
 DATE_RANGE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}\s*→\s*\d{4}-\d{2}-\d{2}$"
 )
+FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 
 
 def _style(text: str, code: str, color: bool) -> str:
@@ -185,6 +186,47 @@ def _render_table(lines: list[str], color: bool) -> list[str]:
     return rendered
 
 
+def _render_code(block: list[str], indent: str, color: bool) -> list[str]:
+    """Render fenced code lines with a dim gutter, never inline-styled."""
+    rendered = []
+
+    for line in block:
+        gutter = _style("│ ", DIM, color)
+
+        if line:
+            rendered.append(f"{indent}{gutter}{line}")
+        else:
+            rendered.append(f"{indent}{_style('│', DIM, color)}")
+
+    return rendered
+
+
+def _parse_fence(line: str):
+    match = FENCE_RE.match(line)
+
+    if not match:
+        return None
+
+    indent, marker, info = match.groups()
+
+    # A backtick fence's info string must not contain backticks.
+    if marker[0] == "`" and "`" in info:
+        return None
+
+    return indent, marker, info.strip()
+
+
+def _dedent(line: str, indent: str) -> str:
+    """Remove up to ``indent`` leading spaces from a code line."""
+    remaining = len(indent)
+
+    while remaining and line.startswith(" "):
+        line = line[1:]
+        remaining -= 1
+
+    return line
+
+
 def _render_line(line: str, color: bool) -> str:
     if not line.strip():
         return ""
@@ -257,6 +299,31 @@ def render_markdown(text: str, color: bool | None = None) -> str:
 
     while index < len(lines):
         line = lines[index]
+
+        fence = _parse_fence(line)
+
+        if fence:
+            indent, marker, _ = fence
+            block = []
+            index += 1
+
+            while index < len(lines):
+                closing = _parse_fence(lines[index])
+
+                if (
+                    closing
+                    and closing[1][0] == marker[0]
+                    and len(closing[1]) >= len(marker)
+                    and closing[2] == ""
+                ):
+                    index += 1
+                    break
+
+                block.append(_dedent(lines[index], indent))
+                index += 1
+
+            rendered.extend(_render_code(block, indent, color))
+            continue
 
         if line.lstrip().startswith("|"):
             table = []

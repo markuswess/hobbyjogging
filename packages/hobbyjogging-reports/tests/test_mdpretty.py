@@ -1,6 +1,9 @@
 import unittest
+from datetime import date
 
+from hobbyjogging_core.model import Event
 from intervals_report.mdpretty import render_markdown
+from intervals_report.reports import _format_event
 
 
 class MarkdownRendererTests(unittest.TestCase):
@@ -45,6 +48,56 @@ class MarkdownRendererTests(unittest.TestCase):
         output = render_markdown("# Title\n", color=True)
 
         self.assertIn("\033[", output)
+
+    def test_fenced_code_block_is_not_inline_rendered(self):
+        markdown = (
+            "- Description:\n"
+            "  ```\n"
+            "  **Warm up**\n"
+            "  - 10 min easy\n"
+            "\n"
+            "  ## Main\n"
+            "  ```\n"
+        )
+
+        output = render_markdown(markdown, color=False)
+
+        self.assertNotIn("```", output)
+        self.assertIn("**Warm up**", output)
+        self.assertIn("- 10 min easy", output)
+        self.assertNotIn("• 10 min easy", output)
+        self.assertNotIn("▌ Main", output)
+
+    def test_code_block_ends_at_closing_fence(self):
+        output = render_markdown(
+            "```\ncode\n```\nafter\n",
+            color=False,
+        )
+
+        self.assertIn("code", output)
+        self.assertIn("after", output)
+        self.assertNotIn("```", output)
+
+    def test_planned_description_renders_as_nested_code(self):
+        event = Event(
+            date=date(2026, 11, 5),
+            name="SubT",
+            type="Run",
+            description="# Warm up\n- 15 min easy\n\n## Main\n3 x 10 min",
+            duration_s=3600,
+        )
+
+        markdown = "\n".join(_format_event(event))
+
+        self.assertIn("- Description:", markdown)
+        self.assertIn("  ```", markdown)
+
+        output = render_markdown(markdown, color=False)
+
+        self.assertIn("15 min easy", output)
+        self.assertIn("3 x 10 min", output)
+        self.assertNotIn("```", output)
+        self.assertNotIn("▌ Main", output)
 
 
 if __name__ == "__main__":

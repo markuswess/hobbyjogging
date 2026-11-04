@@ -27,6 +27,40 @@ from .sources import DEFAULT_SOURCE, create_source
 from .review import exclude_review, review_note
 
 
+def _format_event(event) -> list[str]:
+    """Render one planned event as Markdown lines."""
+    lines = [f"\n### {event.name}"]
+
+    if event.type:
+        lines.append(f"- Type: {sport_label(event)}")
+
+    description = event.description.strip("\n") if event.description else ""
+
+    if description.strip():
+        # Planned descriptions are Markdown themselves. Render them as a
+        # fenced block nested under the bullet so their headings, lists and
+        # blank lines cannot disturb the report layout.
+        fence = "```"
+        while fence in description:
+            fence += "`"
+
+        lines.append("- Description:")
+        lines.append(f"  {fence}")
+        lines.extend(
+            f"  {line}" if line else ""
+            for line in description.splitlines()
+        )
+        lines.append(f"  {fence}")
+
+    if event.duration_s:
+        lines.append(f"- Duration: {fmt_time(event.duration_s)}")
+
+    if event.distance_m:
+        lines.append(f"- Distance: {event.distance_m/1000:.1f} km")
+
+    return lines
+
+
 def debug():
 
     api = Intervals()
@@ -283,47 +317,16 @@ def daily(
             lines.extend(
                 format_activity(source, a, heading)
             )
-
-    else:
+            # -----------------------------
+            # Tomorrow (if nothing today)
+            # -----------------------------
+        
         lines.append(
-            "\n## Planned Today"
+            "\n## Planned Tomorrow"
         )
-
-
-        if events:
-
-            for e in events:
-
-                lines.append(
-                    f"\n### {e.name}"
-                )
-
-                if e.type:
-
-                    lines.append(
-                        f"- Type: {sport_label(e)}"
-                    )
-
-                if e.description:
-
-                    lines.append(
-                        e.description
-                    )
-
-                if e.duration_s:
-
-                    lines.append(
-                        f"- Duration: "
-                        f"{fmt_time(e.duration_s)}"
-                    )
-
-                if e.distance_m:
-
-                    lines.append(
-                        f"- Distance: "
-                        f"{e.distance_m/1000:.1f} km"
-                    )
-
+        if events_tomorrow:
+            for e in events_tomorrow:
+                lines.extend(_format_event(e))
 
         else:
 
@@ -331,51 +334,24 @@ def daily(
                 "- No planned session"
             )
 
-    # -----------------------------
-    # Tomorrow
-    # -----------------------------
-    
-    lines.append(
-        "\n## Planned Tomorrow"
-    )
-    if events_tomorrow:
-        for e in events_tomorrow:
-
-            lines.append(
-                f"\n### {e.name}"
-            )
-
-            if e.type:
-
-                lines.append(
-                    f"- Type: {sport_label(e)}"
-                )
-
-            if e.description:
-
-                lines.append(
-                    e.description
-                )
-
-            if e.duration_s:
-
-                lines.append(
-                    f"- Duration: "
-                    f"{fmt_time(e.duration_s)}"
-                )
-
-            if e.distance_m:
-
-                lines.append(
-                    f"- Distance: "
-                    f"{e.distance_m/1000:.1f} km"
-                )
-
     else:
 
         lines.append(
-            "- No planned session"
+            "\n## Planned Today"
         )
+
+        if events:
+
+            for e in events:
+                lines.extend(_format_event(e))
+
+
+        else:
+
+            lines.append(
+                "- No more planned session today"
+            )
+
 
     return "\n".join(lines)
 
