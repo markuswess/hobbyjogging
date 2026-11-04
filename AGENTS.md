@@ -1,0 +1,51 @@
+# Project instructions
+
+hobbyjogging is a Python monorepo: one canonical SQLite training database,
+source importers, and source-independent reports.
+
+## Session scope convention
+
+- **Root sessions** (this directory) handle architecture, planning, schema or
+  model changes, cross-package contracts, docs/roadmap, and real-DB strategy.
+- **Package sessions** (`packages/<pkg>`) handle changes confined to that
+  package: features, bug fixes, tests, and package docs.
+- If a package change needs a core API or schema change, settle or implement
+  the core part in a root session first, then consume it in the package.
+- Package sessions may read the whole repo; only *changes* stay in their lane.
+- Commit scope follows session scope. Never stage unrelated in-progress edits
+  (check `git status` before committing).
+- Do not push; the user pushes manually.
+- The user runs interactive triage against the real database themselves. Test
+  risky operations on a copy (e.g. `/tmp/opencode/`) first.
+
+## Packages
+
+- `packages/hobbyjogging-core` — canonical model, schema/migrations,
+  `TrainingWriter`, `TrainingRepository`.
+- `packages/hobbyjogging-import` — FIT/Intervals importers, review queue,
+  `review`/triage CLI.
+- `packages/hobbyjogging-reports` — matplotlib reports over `DataSource` and
+  the canonical model.
+
+## Tests
+
+Run each package's suite from its own tests directory (pytest is not
+installed):
+
+```bash
+cd packages/<pkg>/tests && uv run python -m unittest discover -q
+```
+
+Cross-package changes must leave all three suites green.
+
+## Data model rules
+
+- Default DB `data/hobbyjogging.db` (`HOBBYJOGGING_DB` overrides); FIT files
+  `data/fit` (`HOBBYJOGGING_FIT_DIR` overrides). Real DB lives at
+  `~/projects/laufen_private/data/db/hobbyjogging.db`.
+- Imports write; reports read only (`DataSource` + canonical model).
+- "Delete" means durable soft delete via `excluded_at`, never a hard delete.
+- Manual values outrank every import source and survive reimports.
+- There is no automatic per-source priority. The first owner keeps a field;
+  meaningful cross-source disagreement becomes a `field_conflict` review item.
+- Reports use matplotlib only, never pandas.
