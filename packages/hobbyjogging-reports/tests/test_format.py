@@ -207,6 +207,23 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("- Feel: 2 (Good)", lines)
         self.assertIn("- Pace zones: Z3 30min", lines)
 
+    def test_format_activity_description_is_fenced(self):
+        a = activity(
+            description="# Warm up\n- 10 min easy\n\n## Main\n3 x 10 min",
+        )
+
+        lines = format_activity(FakeSource(), a, "Run Easy")
+
+        self.assertIn("- Description:", lines)
+        self.assertIn("  ```", lines)
+        self.assertIn("  # Warm up", lines)
+        self.assertIn("  - 10 min easy", lines)
+        self.assertIn("  ## Main", lines)
+        self.assertNotIn(
+            "- Description: # Warm up",
+            lines,
+        )
+
     def test_format_category_table(self):
         stats = category_breakdown([
             activity(id="a", rpe=5, duration_s=3000, training_load=50),

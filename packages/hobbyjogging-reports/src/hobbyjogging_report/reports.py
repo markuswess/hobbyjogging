@@ -507,10 +507,8 @@ def daily(
             lines.extend(
                 format_activity(source, a, heading)
             )
-            # -----------------------------
-            # Tomorrow (if nothing today)
-            # -----------------------------
-        
+
+        # Today already has a session; show what is planned for tomorrow.
         lines.append(
             "\n## Planned Tomorrow"
         )
@@ -526,6 +524,7 @@ def daily(
 
     else:
 
+        # No session today; show what is still planned for today.
         lines.append(
             "\n## Planned Today"
         )
@@ -691,19 +690,22 @@ def period_report(
                 else ""
             )
 
+            lines.append(f"\n### {q.name}")
             lines.append(
-                f"### {q.name}: "
-                f"\n    Totals: {fmt_time(q.duration_s)}, "
-                f"{pace(q)},"
-                f" {hr} BpM{feel}")
+                f"- Totals: {fmt_time(q.duration_s)}, "
+                f"{pace(q)}, {hr} BpM{feel}"
+            )
 
             if work:
-                lines.append(f"    Work intervals done:")
-
+                lines.append("- Work intervals done:")
                 for line in work:
-                    lines.append(f"    - {line}")
+                    lines.append(f"  - {line}")
 
-            lines.append(f"    Comments: {q.description}")
+            if q.description and q.description.strip():
+                lines.append("- Comments:")
+                lines.extend(
+                    format_fenced_block(q.description, "  ")
+                )
 
     lines.append("\n## Recovery")
 

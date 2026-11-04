@@ -428,6 +428,87 @@ def get_subt_summary(
     return get_work_summary(source, activity)
 
 
+def _activity_metric_lines(
+    activity: Activity,
+    *,
+    detailed: bool = False,
+):
+    """Shared metric lines for compact and detailed activity renderers."""
+    lines = [f"- Duration: {fmt_time(activity.duration_s)}"]
+
+    if (
+        detailed
+        and activity.elapsed_s
+        and activity.elapsed_s != activity.duration_s
+    ):
+        lines.append(f"- Elapsed: {fmt_time(activity.elapsed_s)}")
+
+    if activity.distance_m:
+        lines.append(f"- Distance: {activity.distance_m / 1000:.1f} km")
+
+    if activity.type in RUN_TYPES:
+        lines.append(f"- Pace: {pace(activity)}")
+
+    if activity.avg_hr:
+        if detailed:
+            lines.append(f"- Avg HR: {activity.avg_hr:.0f} bpm")
+        else:
+            lines.append(f"- HR: {activity.avg_hr:.0f} avg")
+
+    if activity.training_load:
+        lines.append(f"- Load: {activity.training_load:.0f}")
+
+    if detailed:
+        if activity.rpe is not None:
+            lines.append(f"- RPE: {activity.rpe:g}")
+    elif activity.rpe:
+        lines.append(f"- RPE: {activity.rpe:.0f}")
+
+    if activity.feel is not None:
+        lines.append(f"- Feel: {format_feel(activity.feel)}")
+
+    if detailed and activity.intensity is not None:
+        lines.append(f"- Intensity: {activity.intensity:.0%}")
+
+    if detailed and activity.equipment:
+        names = ", ".join(
+            equipment.name or equipment.id
+            for equipment in activity.equipment
+        )
+        lines.append(f"- Equipment: {names}")
+
+    zones = fmt_zones_precise if detailed else fmt_zones
+
+    if activity.pace_zone_times:
+        lines.append(f"- Pace zones: {zones(activity.pace_zone_times)}")
+
+    if detailed and activity.hr_zone_times:
+        lines.append(f"- HR zones: {zones(activity.hr_zone_times)}")
+
+    return lines
+
+
+def _activity_description_lines(
+    activity: Activity,
+    *,
+    detailed: bool = False,
+):
+    """Render a description without letting its Markdown escape the report."""
+    if not (activity.description and activity.description.strip()):
+        return []
+
+    if detailed:
+        return [
+            "\n### Description",
+            *format_fenced_block(activity.description),
+        ]
+
+    return [
+        "- Description:",
+        *format_fenced_block(activity.description, "  "),
+    ]
+
+
 def format_activity(
     source: DataSource,
     activity: Activity,
@@ -441,33 +522,8 @@ def format_activity(
     if category:
         lines.append(f"- Category: {category}")
 
-    lines.append(f"- Duration: {fmt_time(activity.duration_s)}")
-
-    if activity.distance_m:
-        lines.append(f"- Distance: {activity.distance_m/1000:.1f} km")
-
-    if activity.type in RUN_TYPES:
-        lines.append(f"- Pace: {pace(activity)}")
-
-    if activity.avg_hr:
-        lines.append(f"- HR: {activity.avg_hr:.0f} avg")
-
-    if activity.training_load:
-        lines.append(f"- Load: {activity.training_load:.0f}")
-
-    if activity.rpe:
-        lines.append(f"- RPE: {activity.rpe:.0f}")
-
-    if activity.feel is not None:
-        lines.append(f"- Feel: {format_feel(activity.feel)}")
-
-    if activity.pace_zone_times:
-        lines.append(
-            f"- Pace zones: {fmt_zones(activity.pace_zone_times)}"
-        )
-
-    if activity.description:
-        lines.append(f"- Description: {activity.description}")
+    lines.extend(_activity_metric_lines(activity))
+    lines.extend(_activity_description_lines(activity))
 
     if intervals is None:
         work = get_work_summary(source, activity)
@@ -549,52 +605,8 @@ def format_session_activity(
     if category:
         lines.append(f"- Category: {category}")
 
-    lines.append(f"- Duration: {fmt_time(activity.duration_s)}")
-
-    if activity.elapsed_s and activity.elapsed_s != activity.duration_s:
-        lines.append(f"- Elapsed: {fmt_time(activity.elapsed_s)}")
-
-    if activity.distance_m:
-        lines.append(f"- Distance: {activity.distance_m / 1000:.1f} km")
-
-    if activity.type in RUN_TYPES:
-        lines.append(f"- Pace: {pace(activity)}")
-
-    if activity.avg_hr:
-        lines.append(f"- Avg HR: {activity.avg_hr:.0f} bpm")
-
-    if activity.training_load:
-        lines.append(f"- Load: {activity.training_load:.0f}")
-
-    if activity.rpe is not None:
-        lines.append(f"- RPE: {activity.rpe:g}")
-
-    if activity.feel is not None:
-        lines.append(f"- Feel: {format_feel(activity.feel)}")
-
-    if activity.intensity is not None:
-        lines.append(f"- Intensity: {activity.intensity:.0%}")
-
-    if activity.equipment:
-        names = ", ".join(
-            equipment.name or equipment.id
-            for equipment in activity.equipment
-        )
-        lines.append(f"- Equipment: {names}")
-
-    if activity.pace_zone_times:
-        lines.append(
-            f"- Pace zones: {fmt_zones_precise(activity.pace_zone_times)}"
-        )
-
-    if activity.hr_zone_times:
-        lines.append(
-            f"- HR zones: {fmt_zones_precise(activity.hr_zone_times)}"
-        )
-
-    if activity.description and activity.description.strip():
-        lines.append("\n### Description")
-        lines.extend(format_fenced_block(activity.description))
+    lines.extend(_activity_metric_lines(activity, detailed=True))
+    lines.extend(_activity_description_lines(activity, detailed=True))
 
     if intervals:
         lines.append("\n### Intervals")
