@@ -7,8 +7,9 @@ Where the hobbyjogging monorepo is heading, stage by stage.
 One SQLite database is the single ground truth for all training data. FIT archives and
 Intervals.icu import into a canonical activity model; activities from different sources are
 unified when they overlap in time, so one forest run can carry GPS/HR data from a FIT file and
-subjective data (RPE, feel, training load) from Intervals. Source precedence is explicit, and
-the raw source records are kept as provenance next to the canonical values.
+subjective data (RPE, feel, training load) from Intervals. There is no automatic per-source
+field priority: the first owner keeps a field, and any cross-source disagreement is queued for
+a human decision; the raw source records are kept as provenance next to the canonical values.
 
 A first review mechanism exists: suspicious data (zero durations, absurd paces, ambiguous
 cross-source matches) is detected by a rule set and recorded as review items; reports hide
@@ -30,7 +31,7 @@ After this stage, the database becomes trustworthy enough to build on.
 ## 3. More sources — next
 
 - **CSV import** (deferred until the review/edit workflow is solid): third-party exports that
-  are neither FIT nor Intervals, ingested through the same precedence rules.
+  are neither FIT nor Intervals, ingested through the same owner/conflict review rules.
 - **Runalyze adapter**: the last big source (years of history in a system without usable
   bulk export). Blocked on export/API access; once available it plugs into the same
   canonical model, matching, and review machinery as everything else.

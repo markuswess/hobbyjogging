@@ -136,7 +136,8 @@ class TrainingWriterTests(unittest.TestCase):
         self.assertEqual("manual", source["source"])
         self.assertEqual(1, source["is_manual"])
 
-    def test_source_priority_protects_timing_and_subjective_fields(self):
+    def test_cross_source_fields_have_no_automatic_priority(self):
+        """First owner keeps a field unless a human decides otherwise."""
         intervals_source = self._source("intervals-a1", "checksum-i")
         fit_source = self._source("fit-a1", "checksum-f")
 
@@ -155,20 +156,35 @@ class TrainingWriterTests(unittest.TestCase):
             source="intervals",
             source_record_id=intervals_source,
         )
-        self.writer.upsert_activity(
+
+        # FIT agrees except for a few fields: agreement changes nothing,
+        # disagreement conflicts without writing or changing ownership.
+        conflicts = self.writer.upsert_activity(
             "a1",
             {
                 "local_date": "2026-10-01",
-                "sport": "ride",
+                "sport": "run",
                 "name": "FIT name",
-                "duration_s": 3650,
-                "elapsed_s": 3800,
-                "distance_m": 10100,
+                "duration_s": 3700,
+                "elapsed_s": 3700,
+                "distance_m": 10500,
                 "avg_hr": 145,
                 "training_load": 99,
             },
             source="fit",
             source_record_id=fit_source,
+        )
+
+        self.assertEqual(4, len(conflicts))
+        self.assertEqual(
+            {(c.field_name, c.current_source, c.incoming_source)
+             for c in conflicts},
+            {
+                ("duration_s", "intervals", "fit"),
+                ("distance_m", "intervals", "fit"),
+                ("avg_hr", "intervals", "fit"),
+                ("training_load", "intervals", "fit"),
+            },
         )
 
         activity = self.conn.execute(
@@ -177,28 +193,193 @@ class TrainingWriterTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual("run", activity["sport"])
         self.assertEqual("Intervals name", activity["name"])
-        self.assertEqual(3650, activity["duration_s"])
-        self.assertEqual(3800, activity["elapsed_s"])
-        self.assertEqual(10100, activity["distance_m"])
-        self.assertEqual(145, activity["avg_hr"])
+        self.assertEqual(3600, activity["duration_s"])
+        self.assertEqual(3700, activity["elapsed_s"])
+        self.assertEqual(10000, activity["distance_m"])
+        self.assertEqual(140, activity["avg_hr"])
         self.assertEqual(50, activity["training_load"])
 
+        owner = self.conn.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual("intervals", owner["source"])
+
+        # A conflicting source reimporting does not resolve or duplicate
+        # anything: the same disagreement yields no further writes.
+        again = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3650},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual(1, len(again))
+
+    def test_same_source_refresh_its_own_fields(self):
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run", "duration_s": 3600},
+            source="fit",
+            source_record_id=self.source_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3610},
+            source="fit",
+            source_record_id=self.source_id,
+        )
+
+        self.assertEqual(
+            3610,
+            self.conn.execute(
+                "SELECT duration_s FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
+
+    def test_agreement_within_tolerance_is_not_a_conflict(self):
+        fit_source = self._source("fit-a1", "checksum-f")
         self.writer.upsert_activity(
             "a1",
             {
                 "local_date": "2026-10-01",
-                "name": "Updated Intervals name",
+                "sport": "run",
                 "duration_s": 3600,
+                "elapsed_s": 3700,
+                "distance_m": 10000,
             },
             source="intervals",
-            source_record_id=intervals_source,
+            source_record_id=self.source_id,
         )
 
-        activity = self.conn.execute(
-            "SELECT name, duration_s FROM activities WHERE id = 'a1'"
+        # 1% of 3600 s = 36 s, so a 30 s drift agrees; 1% of 10000 m = 100 m,
+        # so 10100 m agrees too.
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3630, "elapsed_s": 3671, "distance_m": 10100},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT duration_s, elapsed_s, distance_m"
+            " FROM activities WHERE id = 'a1'"
         ).fetchone()
-        self.assertEqual("Updated Intervals name", activity["name"])
-        self.assertEqual(3650, activity["duration_s"])
+        self.assertEqual(
+            (3600, 3700, 10000),
+            (row["duration_s"], row["elapsed_s"], row["distance_m"]),
+        )
+
+    def test_absolute_floor_protects_short_values(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 120,
+                "distance_m": 500,
+            },
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        # 1% of 120 s is 1.2 s — under the 2 s floor these differ.
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 122.5, "distance_m": 505},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual(1, len(conflicts))
+        self.assertEqual("duration_s", conflicts[0].field_name)
+
+    def test_start_time_tolerance(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "started_at_utc": "2026-10-01T06:00:00Z",
+            },
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        agree = self.writer.upsert_activity(
+            "a1",
+            {"started_at_utc": "2026-10-01T06:00:10Z"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual([], agree)
+
+        conflict = self.writer.upsert_activity(
+            "a1",
+            {"started_at_utc": "2026-10-01T06:01:00Z"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual(1, len(conflict))
+        self.assertEqual("started_at_utc", conflict[0].field_name)
+
+    def test_conflict_does_not_touch_owner_when_source_fills_gap(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run", "duration_s": 3600},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        # FIT brings a value for a field the owner never wrote: no conflict
+        # exists (nothing to disagree with), the gap gets filled.
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"distance_m": 10000},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT distance_m FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(10000, row["distance_m"])
+        owner = self.conn.execute(
+            "SELECT source FROM activity_field_sources"
+            " WHERE activity_id = 'a1' AND field_name = 'distance_m'"
+        ).fetchone()
+        self.assertEqual("fit", owner["source"])
+
+    def test_manual_field_outranks_cross_source_agreement_and_disagreement(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run", "duration_s": 3600},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 9999},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(
+            2780,
+            self.conn.execute(
+                "SELECT duration_s FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
 
     def test_activity_source_links_have_one_primary(self):
         self.conn.execute(

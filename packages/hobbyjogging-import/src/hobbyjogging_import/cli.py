@@ -243,7 +243,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     review_triage.add_argument(
         "--category",
-        choices=("ambiguous_match", "quality", "duplicate", "manual_flag"),
+        choices=(
+            "ambiguous_match",
+            "field_conflict",
+            "quality",
+            "duplicate",
+            "manual_flag",
+        ),
     )
     review_triage.add_argument(
         "--severity",
@@ -267,7 +273,13 @@ def _add_review_status_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--category",
-        choices=("ambiguous_match", "quality", "duplicate", "manual_flag"),
+        choices=(
+            "ambiguous_match",
+            "field_conflict",
+            "quality",
+            "duplicate",
+            "manual_flag",
+        ),
     )
 
 

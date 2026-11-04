@@ -18,14 +18,21 @@ from hobbyjogging_core import TrainingWriter
 
 from .clipboard import copy_text
 from .editing import apply_manual_edit
+from .quality import CONFLICT
 from .review_cli import _format_summary_line
-from .values import parse_distance_m, parse_duration_s, parse_sport
+from .values import (
+    format_field,
+    parse_distance_m,
+    parse_duration_s,
+    parse_sport,
+)
 
 INTERVALS_URL = "https://intervals.icu/activities/{}"
 
 KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
+  (v) pick value   field conflict: choose which source value stands
   (o)pen           open the Intervals activity in a browser
   (c)opy URL       copy the Intervals activity URL to the clipboard
   (e)nter value    manually edit duration/distance/sport, then re-check
@@ -177,6 +184,8 @@ class TriageRunner:
 
     def _keys_line(self, item) -> str:
         keys = []
+        if item["category"] == CONFLICT:
+            keys.append("(v) pick value")
         if self._candidates(item):
             keys.append(f"(1-{len(self._candidates(item))}) choose")
         keys.extend(
@@ -226,6 +235,9 @@ class TriageRunner:
             self._inspect(item)
             return False
 
+        if answer == "v":
+            return self._pick_value(item)
+
         if answer == "o":
             self._open(item)
             return False
@@ -272,6 +284,92 @@ class TriageRunner:
         self.pending_note = ""
         self._count("resolved" if status == "resolved" else "ignored")
         self.print(f"  #{item['id']} {status}")
+
+    def _pick_value(self, item) -> bool:
+        """Field conflict: choose which source's value stands.
+
+        Either choice takes manual ownership of the field so no future
+        reimport can re-open the same disagreement.
+        """
+        if item["category"] != CONFLICT:
+            self.print("  this item is not a field conflict")
+            return False
+
+        try:
+            context = json.loads(item["context_json"] or "{}")
+        except ValueError:
+            context = {}
+        field = context.get("field")
+        current = context.get("current") or {}
+        incoming = context.get("incoming") or {}
+        if not field:
+            self.print("  no field in this conflict item")
+            return False
+
+        self.print(f"  field {field} — which value stands?")
+        self.print(
+            f"    1) {current.get('source', '?')}: "
+            f"{format_field(field, current.get('value'))}  "
+            "(current, already canonical)"
+        )
+        self.print(
+            f"    2) {incoming.get('source', '?')}: "
+            f"{format_field(field, incoming.get('value'))}"
+        )
+        try:
+            answer = self.read("  pick (1/2, blank=cancel): ").strip()
+        except EOFError:
+            return False
+
+        if answer == "1":
+            self._apply_conflict_choice(
+                item,
+                field,
+                current.get("value"),
+                "picked current value",
+            )
+            return True
+
+        if answer == "2":
+            self._apply_conflict_choice(
+                item,
+                field,
+                incoming.get("value"),
+                "picked incoming value",
+            )
+            return True
+
+        self.print("  cancelled")
+        return False
+
+    def _apply_conflict_choice(
+        self,
+        item,
+        field: str,
+        value: object,
+        note: str,
+    ) -> None:
+        try:
+            application = apply_manual_edit(
+                self.writer,
+                activity_id=item["activity_id"],
+                field=field,
+                value=value,
+                resolve_item_id=item["id"],
+                note=f"triage: {note}",
+            )
+        except ValueError as exc:
+            self.print(f"  error: {exc}")
+            return
+
+        self.writer.connection.commit()
+        self._count("picked_value")
+        self.print(f"  {application.describe()}")
+        self.print(f"  resolved #{item['id']}")
+        if not application.okay:
+            self.print(
+                f"  quality: still flagged — {application.describe_findings()}"
+            )
 
     def _delete(self, item) -> bool:
         activity_id = item["activity_id"]

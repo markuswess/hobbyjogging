@@ -65,9 +65,11 @@ uv run --env-file .env hobbyjogging-import review triage
 
 Each item can be inspected, opened in a browser (Intervals), fixed by
 entering valid values (``46:20``, ``8.2km``), marked resolved/ignored, or
-durably excluded (soft delete). Manual values outrank every import source
-and survive reimports; see `packages/hobbyjogging-import/README.md` for
-details, or use the non-interactive twins `review edit`, `review exclude`,
+durably excluded (soft delete). When sources disagree on a field, nothing is
+overwritten automatically: both values are queued as a ``field_conflict`` and
+``(v) pick value`` chooses the one that stands. Manual values outrank every
+import source and survive reimports; see `packages/hobbyjogging-import/README.md`
+for details, or use the non-interactive twins `review edit`, `review exclude`,
 and `review restore`.
 
 Reports exclude flagged activities until they are resolved; add

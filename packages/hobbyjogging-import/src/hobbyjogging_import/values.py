@@ -1,12 +1,23 @@
 """Parsers and formatters for manually entered activity values.
 
 These accept the terse notation used by the review CLI and triage queue,
-e.g. ``46:20`` for a duration or ``8.2km`` for a distance.
+e.g. ``46:20`` for a duration or ``8.2km`` for a distance. ``format_field``
+formats any activity field for review displays and conflict messages.
 """
 
 from __future__ import annotations
 
 from .fit import canonical_sport
+
+
+def format_field(field_name: str, value: object) -> str:
+    """Render one activity field's value for a human-readable line."""
+    formatter = FORMATTERS.get(field_name)
+    if formatter is not None:
+        return formatter(value)
+    if value is None:
+        return "-"
+    return str(value)
 
 
 def parse_duration_s(text: str) -> float:
@@ -89,3 +100,18 @@ def format_distance_m(meters: float | None) -> str:
     if meters is None:
         return "-"
     return f"{meters / 1000:.2f} km"
+
+
+def _format_hr(value) -> str:
+    if value is None:
+        return "-"
+    return f"{float(value):.0f} bpm"
+
+
+FORMATTERS = {
+    "duration_s": format_duration_s,
+    "elapsed_s": format_duration_s,
+    "distance_m": format_distance_m,
+    "sport": str,
+    "avg_hr": _format_hr,
+}

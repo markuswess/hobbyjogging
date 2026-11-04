@@ -10,6 +10,7 @@ from .db import (
     migrate,
     open_database,
 )
+from .db.writer import FieldConflict
 from .model import (
     Activity,
     ActivityEquipment,
@@ -26,6 +27,7 @@ __all__ = [
     "DataSource",
     "Equipment",
     "Event",
+    "FieldConflict",
     "Interval",
     "Lap",
     "SCHEMA_VERSION",

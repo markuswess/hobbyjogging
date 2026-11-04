@@ -278,6 +278,96 @@ class TriageTests(unittest.TestCase):
             "SELECT duration_s FROM activities WHERE id = 'a1'"
         ).fetchone()["duration_s"])
 
+    # -- field conflicts ------------------------------------------------------
+
+    def _seed_conflict(self):
+        self.writer.set_review_status(self.item_id, "ignored")
+        self.conn.execute(
+            "UPDATE activities SET duration_s = 3415.411 WHERE id = 'a1'"
+        )
+        item_id, _ = self.writer.record_review_item(
+            category="field_conflict",
+            detail=(
+                "duration_s differs: intervals has 56:55, "
+                "fit reports 17:35"
+            ),
+            context={
+                "rule": "field_conflict",
+                "field": "duration_s",
+                "current": {"source": "intervals", "value": 3415.411},
+                "incoming": {"source": "fit", "value": 1055.0},
+            },
+            fingerprint="fp-conflict-duration",
+            activity_id="a1",
+        )
+        self.conn.commit()
+        return item_id
+
+    def test_pick_incoming_value_takes_manual_ownership(self):
+        item_id = self._seed_conflict()
+
+        runner, lines, counters = self._runner(["v", "2"])
+
+        joined = "\n".join(lines)
+        self.assertIn("(v) pick value", joined)
+        self.assertIn("1) intervals: 56:55", joined)
+        self.assertIn("2) fit: 17:35", joined)
+        self.assertEqual(1, counters["picked_value"])
+
+        row = self.conn.execute(
+            "SELECT duration_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(1055.0, row["duration_s"])
+        source = self.conn.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual("manual", source["source"])
+        self.assertEqual(1, source["is_manual"])
+
+        item = self.writer.review_item(item_id)
+        self.assertEqual("resolved", item["status"])
+        self.assertEqual("triage: picked incoming value", item["resolved_note"])
+
+    def test_pick_current_value_keeps_it_but_protects_the_decision(self):
+        item_id = self._seed_conflict()
+
+        runner, lines, counters = self._runner(["v", "1"])
+
+        self.assertEqual(1, counters["picked_value"])
+        row = self.conn.execute(
+            "SELECT duration_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(3415.411, row["duration_s"])
+        source = self.conn.execute(
+            """
+            SELECT is_manual FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual(1, source["is_manual"])
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(item_id)["status"],
+        )
+
+    def test_pick_value_blank_cancels(self):
+        item_id = self._seed_conflict()
+
+        runner, lines, counters = self._runner(["v", "", "q"])
+
+        self.assertNotIn("picked_value", counters)
+        self.assertEqual("open", self.writer.review_item(item_id)["status"])
+        self.assertIn("cancelled", "\n".join(lines))
+
+    def test_pick_value_rejects_non_conflict_items(self):
+        runner, lines, counters = self._runner(["v", "q"])
+
+        self.assertIn("not a field conflict", "\n".join(lines))
+        self.assertEqual("open", self._item()["status"])
+
     # -- delete -------------------------------------------------------------
 
     def test_delete_confirmed_excludes_activity(self):

@@ -26,7 +26,11 @@ from .matching import (
     linked_activity,
     parse_utc,
 )
-from .quality import record_ambiguous_match, record_quality_findings
+from .quality import (
+    record_ambiguous_match,
+    record_field_conflicts,
+    record_quality_findings,
+)
 
 SOURCE = "fit"
 
@@ -368,11 +372,18 @@ class FitImporter:
         if source_record_id is None:
             raise RuntimeError("FIT source record was not created")
 
-        self.writer.upsert_activity(
+        conflicts = self.writer.upsert_activity(
             activity_id,
             _activity_values(session),
             source=SOURCE,
             source_record_id=source_record_id,
+        )
+        summary.review_recorded += record_field_conflicts(
+            self.writer,
+            activity_id=activity_id,
+            source_record_id=source_record_id,
+            import_run_id=summary.run_id,
+            conflicts=conflicts,
         )
         self.writer.link_activity_source(
             activity_id,

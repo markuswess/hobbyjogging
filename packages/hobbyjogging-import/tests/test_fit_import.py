@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from datetime import date
@@ -216,12 +217,25 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(1, len(activities))
         activity = activities[0]
         self.assertEqual(existing_id, activity.id)
+        # No source has automatic priority: the Intervals owner keeps every
+        # field it wrote, and FIT's disagreeing values become review items.
         self.assertEqual("Morning run", activity.name)
-        self.assertEqual(3600, activity.duration_s)
-        self.assertEqual(3700, activity.elapsed_s)
-        self.assertEqual(10000, activity.distance_m)
-        self.assertEqual(140, activity.avg_hr)
+        self.assertEqual(3550, activity.duration_s)
+        self.assertEqual(3650, activity.elapsed_s)
+        self.assertEqual(9950, activity.distance_m)
+        self.assertEqual(138, activity.avg_hr)
         self.assertEqual(50, activity.training_load)
+
+        conflicts = self.importer.writer.review_items(
+            category="field_conflict",
+            status="open",
+        )
+        self.assertEqual(
+            {"duration_s", "elapsed_s"},
+            {json.loads(item["context_json"])["field"] for item in conflicts},
+        )
+        for item in conflicts:
+            self.assertEqual(existing_id, item["activity_id"])
 
         links = self.conn.execute(
             "SELECT source_record_id, match_method, is_primary "

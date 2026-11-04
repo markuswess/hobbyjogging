@@ -6,13 +6,7 @@ from dataclasses import dataclass
 
 from hobbyjogging_core import TrainingWriter
 
-from .values import format_distance_m, format_duration_s
-
-FORMATTERS = {
-    "duration_s": format_duration_s,
-    "distance_m": format_distance_m,
-    "sport": str,
-}
+from .values import format_field
 
 
 @dataclass
@@ -30,13 +24,16 @@ class EditApplication:
         return not self.findings
 
     def note(self) -> str:
-        fmt = FORMATTERS[self.field]
-        return f"manual edit: {self.field} {fmt(self.old)} → {fmt(self.new)}"
+        return (
+            f"manual edit: {self.field} "
+            f"{format_field(self.field, self.old)} → "
+            f"{format_field(self.field, self.new)}"
+        )
 
     def describe(self) -> str:
-        fmt = FORMATTERS[self.field]
         return (
-            f"set {self.field}: {fmt(self.old)} → {fmt(self.new)} (manual)"
+            f"set {self.field}: {format_field(self.field, self.old)} → "
+            f"{format_field(self.field, self.new)} (manual)"
         )
 
     def describe_findings(self) -> str:

@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 from hobbyjogging_core import TrainingWriter
 
+from .values import format_field
+
 # Implied whole-activity pace sanity windows, in seconds per kilometer.
 # Running and cycling have very different plausible ranges. Cycling rides a
 # wide style range (MTB climbs, pushing the bike), so only absurd mismatches
@@ -33,6 +35,7 @@ PACE_SPORTS = RUN_SPORTS | RIDE_SPORTS
 AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
+CONFLICT = "field_conflict"
 
 
 @dataclass(frozen=True)
@@ -238,6 +241,15 @@ def refresh_activity_quality(
         for finding in findings
     }
 
+    if resolve_item_id is not None:
+        item = writer.review_item(resolve_item_id)
+        if item is not None and item["status"] == "open":
+            writer.set_review_status(
+                resolve_item_id,
+                "resolved",
+                note=resolve_note,
+            )
+
     for item in writer.review_items(category=QUALITY, status="open"):
         if item["activity_id"] != activity_id:
             continue
@@ -279,6 +291,97 @@ def record_manual_flag(
         activity_id=activity_id,
     )
     return int(created)
+
+
+def record_field_conflicts(
+    writer: TrainingWriter,
+    *,
+    activity_id: str,
+    source_record_id: int | None,
+    import_run_id: int | None,
+    conflicts: list,
+) -> int:
+    """Record cross-source field disagreements as review items.
+
+    One item per differing field. Re-recording an identical conflict is a
+    no-op (fingerprint over sources and normalized values); when the values
+    involved change, older open conflict items for the same activity+field
+    are superseded so only the current state stays open.
+    """
+    recorded = 0
+
+    for conflict in conflicts:
+        context = {
+            "rule": "field_conflict",
+            "field": conflict.field_name,
+            "current": {
+                "source": conflict.current_source,
+                "value": conflict.current_value,
+            },
+            "incoming": {
+                "source": conflict.incoming_source,
+                "value": conflict.incoming_value,
+            },
+        }
+        fingerprint = review_fingerprint(
+            [
+                CONFLICT,
+                activity_id,
+                conflict.field_name,
+                conflict.current_source,
+                conflict.incoming_source,
+                _conflict_signature(
+                    conflict.field_name, conflict.current_value
+                ),
+                _conflict_signature(
+                    conflict.field_name, conflict.incoming_value
+                ),
+            ]
+        )
+
+        # Leave an unchanged conflict untouched; supersede older ones whose
+        # values no longer match the current disagreement.
+        for item in writer.review_items(category=CONFLICT, status="open"):
+            if (
+                item["activity_id"] == activity_id
+                and item["fingerprint"] != fingerprint
+                and json.loads(item["context_json"] or "{}").get("field")
+                == conflict.field_name
+            ):
+                writer.set_review_status(
+                    item["id"],
+                    "resolved",
+                    note="superseded: field conflict changed",
+                )
+
+        detail = (
+            f"{conflict.field_name} differs: {conflict.current_source} has "
+            f"{format_field(conflict.field_name, conflict.current_value)}, "
+            f"{conflict.incoming_source} reports "
+            f"{format_field(conflict.field_name, conflict.incoming_value)}"
+        )
+        _, created = writer.record_review_item(
+            category=CONFLICT,
+            detail=detail,
+            context=context,
+            severity="warn",
+            fingerprint=fingerprint,
+            activity_id=activity_id,
+            source_record_id=source_record_id,
+            import_run_id=import_run_id,
+        )
+        recorded += created
+
+    return recorded
+
+
+def _conflict_signature(field_name: str, value: object) -> object:
+    """Normalize a value so repeated imports produce stable fingerprints."""
+    if isinstance(value, (int, float)):
+        if field_name in ("duration_s", "elapsed_s", "distance_m"):
+            return round(float(value), 1)
+        return round(float(value), 2)
+    return value
 
 
 def review_fingerprint(parts: list) -> str:

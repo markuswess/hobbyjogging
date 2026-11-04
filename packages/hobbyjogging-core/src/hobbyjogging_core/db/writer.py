@@ -2,6 +2,8 @@
 
 import json
 import sqlite3
+from dataclasses import dataclass
+from datetime import datetime
 
 from hobbyjogging_core.model import Interval, Lap
 
@@ -23,25 +25,66 @@ ACTIVITY_COLUMNS = {
     "intensity",
 }
 
-TIMING_FIELDS = {
-    "local_date",
-    "started_at_utc",
-    "tz_offset_min",
+MANUAL_FIELDS = (
     "duration_s",
     "elapsed_s",
     "distance_m",
     "avg_hr",
+    "started_at_utc",
+    "local_date",
+    "tz_offset_min",
+    "sport",
+    "training_load",
+)
+
+# Fields whose cross-source disagreement is surfaced for review. Subjective
+# fields (name, description, feel, rpe, ...) keep their current owner
+# silently: two sources naming one ride differently is normal, not a
+# decision the human wants to make thousands of times.
+CONFLICT_FIELDS = frozenset(
+    {
+        "duration_s",
+        "elapsed_s",
+        "distance_m",
+        "avg_hr",
+        "started_at_utc",
+        "local_date",
+        "tz_offset_min",
+        "sport",
+        "training_load",
+    }
+)
+
+# Cross-source agreement tolerances: (relative, absolute) per field. Values
+# inside the tolerance are treated as the same measurement; outside it they
+# become a field_conflict review item.
+NUMERIC_TOLERANCES = {
+    "duration_s": (0.01, 2.0),
+    "elapsed_s": (0.01, 2.0),
+    "distance_m": (0.01, 10.0),
+    "avg_hr": (0.01, 2.0),
 }
+DEFAULT_NUMERIC_TOLERANCE = (0.01, 0.5)
+START_TOLERANCE_S = 15.0
+DATETIME_FIELDS = frozenset({"started_at_utc"})
 
-SOURCE_PRIORITY = {
-    "fit": {"timing": 30, "other": 10},
-    "intervals": {"timing": 20, "other": 20},
-    "manual": {"timing": 100, "other": 100},
-}
 
-DEFAULT_PRIORITY = 10
+@dataclass(frozen=True)
+class FieldConflict:
+    """A cross-source field disagreement a human must decide on.
 
-MANUAL_FIELDS = ("duration_s", "distance_m", "sport")
+    Produced by upsert_activity when an incoming value meaningfully differs
+    from the value already owned by another source. The canonical value is
+    NOT changed by a conflict; the review queue drives the decision.
+    """
+
+    activity_id: str
+    field_name: str
+    current_value: object
+    incoming_value: object
+    current_source: str
+    incoming_source: str
+    source_record_id: int
 
 
 class TrainingWriter:
@@ -174,7 +217,16 @@ class TrainingWriter:
         *,
         source: str,
         source_record_id: int,
-    ) -> None:
+    ) -> list[FieldConflict]:
+        """Write activity values from one source, without automatic priority.
+
+        Precedence is owner-based, not source-based: a manual field is never
+        overwritten; the first source to own a field keeps it as long as
+        later sources agree (within tolerance); any meaningful cross-source
+        disagreement is returned as a FieldConflict for the review queue and
+        leaves the stored value untouched. Re-importing from the same source
+        refreshes that source's own fields.
+        """
         unknown = set(values) - ACTIVITY_COLUMNS
         if unknown:
             raise ValueError(f"Unknown activity fields: {sorted(unknown)}")
@@ -200,10 +252,15 @@ class TrainingWriter:
                     source_record_id,
                     value,
                 )
-            return
+            return []
 
         if exists["excluded_at"]:
             raise ValueError(f"activity {activity_id} is excluded")
+
+        current = self.connection.execute(
+            "SELECT * FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
 
         self.connection.execute(
             """
@@ -215,22 +272,113 @@ class TrainingWriter:
             (source_record_id, activity_id),
         )
 
+        conflicts: list[FieldConflict] = []
         for field, value in values.items():
-            if not self._should_update_field(activity_id, field, source):
-                continue
-
-            self.connection.execute(
-                f"UPDATE activities SET {field} = ?, "
-                f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (value, activity_id),
-            )
-            self._record_field_source(
+            action, owner = self._plan_field_update(
                 activity_id,
                 field,
                 source,
-                source_record_id,
                 value,
+                current[field],
             )
+
+            if action == "write":
+                self.connection.execute(
+                    f"UPDATE activities SET {field} = ?, "
+                    f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (value, activity_id),
+                )
+                self._record_field_source(
+                    activity_id,
+                    field,
+                    source,
+                    source_record_id,
+                    value,
+                )
+            elif action == "conflict":
+                conflicts.append(
+                    FieldConflict(
+                        activity_id=activity_id,
+                        field_name=field,
+                        current_value=current[field],
+                        incoming_value=value,
+                        current_source=owner,
+                        incoming_source=source,
+                        source_record_id=source_record_id,
+                    )
+                )
+
+        return conflicts
+
+    def _plan_field_update(
+        self,
+        activity_id: str,
+        field_name: str,
+        source: str,
+        value: object,
+        current_value: object,
+    ) -> tuple[str, str]:
+        """Decide what to do with one incoming field value.
+
+        Returns (action, current_source) where action is one of "write",
+        "agree", "conflict". "agree" and "conflict" leave the stored value
+        and its owner untouched; "conflict" additionally reports the
+        disagreement.
+        """
+        row = self.connection.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+
+        if row is not None and row["is_manual"]:
+            return "agree", "manual"
+
+        if row is None or row["source"] == source:
+            return "write", source
+
+        current_source = row["source"]
+
+        if current_value is None:
+            return "write", current_source  # fill a gap the owner left
+
+        if value is None:
+            return "agree", current_source  # incoming source has no value
+
+        if field_name not in CONFLICT_FIELDS:
+            return "agree", current_source
+
+        if self._values_conflict(current_value, value, field_name):
+            return "conflict", current_source
+
+        return "agree", current_source
+
+    def _values_conflict(
+        self,
+        current: object,
+        incoming: object,
+        field_name: str,
+    ) -> bool:
+        """True when two source values for one field meaningfully differ."""
+        if field_name in DATETIME_FIELDS:
+            difference = _timestamp_difference_s(current, incoming)
+            if difference is None:
+                return str(current) != str(incoming)
+            return difference > START_TOLERANCE_S
+
+        if isinstance(current, (int, float)) and isinstance(
+            incoming, (int, float)
+        ):
+            relative, absolute = NUMERIC_TOLERANCES.get(
+                field_name,
+                DEFAULT_NUMERIC_TOLERANCE,
+            )
+            tolerance = max(absolute, relative * abs(float(current)))
+            return abs(float(current) - float(incoming)) > tolerance
+
+        return current != incoming
 
     def exclude_activity(
         self,
@@ -926,36 +1074,6 @@ class TrainingWriter:
             ),
         )
 
-    def _should_update_field(
-        self,
-        activity_id: str,
-        field_name: str,
-        source: str,
-    ) -> bool:
-        if self._is_manual_field(activity_id, field_name):
-            return False
-
-        row = self.connection.execute(
-            """
-            SELECT source FROM activity_field_sources
-            WHERE activity_id = ? AND field_name = ?
-            """,
-            (activity_id, field_name),
-        ).fetchone()
-
-        if row is None:
-            return True
-
-        return self._field_priority(source, field_name) >= self._field_priority(
-            row["source"],
-            field_name,
-        )
-
-    @staticmethod
-    def _field_priority(source: str, field_name: str) -> int:
-        kind = "timing" if field_name in TIMING_FIELDS else "other"
-        return SOURCE_PRIORITY.get(source, {}).get(kind, DEFAULT_PRIORITY)
-
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(
             """
@@ -995,3 +1113,28 @@ class TrainingWriter:
                 json.dumps(value, default=str),
             ),
         )
+
+
+def _timestamp_difference_s(current: object, incoming: object) -> float | None:
+    """Seconds between two ISO-8601 timestamps; None when unparseable."""
+    try:
+        first = _parse_timestamp(current)
+        second = _parse_timestamp(incoming)
+    except (ValueError, TypeError):
+        return None
+
+    if first is None or second is None:
+        return None
+
+    try:
+        return abs((first - second).total_seconds())
+    except TypeError:
+        return None
+
+
+def _parse_timestamp(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return datetime.fromisoformat(value)

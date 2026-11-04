@@ -43,7 +43,22 @@ Review 1/9  warn  quality  2019-01-30  Run  (no timing data: duration is 0 s)
 - `review show` gets the activity timing/distance enrichment while we're in there; README
   documents the whole workflow.
 
+## Commit 4 — no automatic source priority
+
+A real import overwrote values the user had corrected in Intervals. Fix: the writer no longer
+ranks sources.
+
+- `upsert_activity` returns `FieldConflict` objects instead of applying a priority table.
+  Manual fields are never written; a source refreshes its own fields; the first owner keeps a
+  field when another source agrees within tolerance; a meaningful disagreement changes nothing
+  and becomes a `field_conflict` review item.
+- Conflict-tracked fields: durations, distance, average HR, start time/date, timezone offset,
+  sport, training load. Subjective fields keep their owner silently.
+- `record_field_conflicts` is idempotent by fingerprint; changed conflicts supersede their
+  older open item. Triage gains `(v) pick value` (choose current vs incoming), which applies
+  the choice as a manual value so reimports cannot re-open it.
+
 ## Then
 
-- Run on a DB copy, then migrate and triage the 9 open quality items on the real DB.
-- Only after that: CSV import, then Runalyze (see [ROADMAP.md](ROADMAP.md)).
+- Re-run the affected Intervals window so existing wrong-value activities get conflict items.
+- Then: CSV import, then Runalyze (see [ROADMAP.md](ROADMAP.md)).

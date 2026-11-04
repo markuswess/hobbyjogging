@@ -12,7 +12,11 @@ from hobbyjogging_core.model import Interval
 
 from .client import IntervalsApi, IntervalsClient
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
-from .quality import record_ambiguous_match, record_quality_findings
+from .quality import (
+    record_ambiguous_match,
+    record_field_conflicts,
+    record_quality_findings,
+)
 
 SOURCE = "intervals"
 
@@ -190,11 +194,18 @@ class IntervalsImporter:
         if activity_id is None:
             return None
 
-        self.writer.upsert_activity(
+        conflicts = self.writer.upsert_activity(
             activity_id,
             _activity_values(raw),
             source=SOURCE,
             source_record_id=source_record_id,
+        )
+        summary.review_recorded += record_field_conflicts(
+            self.writer,
+            activity_id=activity_id,
+            source_record_id=source_record_id,
+            import_run_id=summary.run_id,
+            conflicts=conflicts,
         )
         self.writer.link_activity_source(
             activity_id,

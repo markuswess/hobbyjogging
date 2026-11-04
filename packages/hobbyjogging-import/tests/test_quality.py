@@ -1,10 +1,13 @@
+import json
 import unittest
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_import.quality import (
+    CONFLICT,
     MANUAL_FLAG,
     QUALITY,
     quality_findings,
+    record_field_conflicts,
     record_manual_flag,
     record_quality_findings,
     refresh_activity_quality,
@@ -309,6 +312,129 @@ class RefreshActivityQualityTests(unittest.TestCase):
     def test_unknown_activity_raises(self):
         with self.assertRaises(ValueError):
             refresh_activity_quality(self.writer, activity_id="nope")
+
+
+class RecordFieldConflictsTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.source_record_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="fit-1",
+            checksum="c1",
+            import_run_id=self.run_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 3415.411,
+                "distance_m": 3734.23,
+            },
+            source="intervals",
+            source_record_id=self.source_record_id,
+        )
+
+    def _conflicts(self, **overrides):
+        from hobbyjogging_core import FieldConflict
+
+        values = {
+            "activity_id": "a1",
+            "field_name": "duration_s",
+            "current_value": 3415.411,
+            "incoming_value": 1055,
+            "current_source": "intervals",
+            "incoming_source": "fit",
+            "source_record_id": self.source_record_id,
+        }
+        values.update(overrides)
+        return [FieldConflict(**values)]
+
+    def _record(self, conflicts):
+        return record_field_conflicts(
+            self.writer,
+            activity_id="a1",
+            source_record_id=self.source_record_id,
+            import_run_id=self.run_id,
+            conflicts=conflicts,
+        )
+
+    def test_records_one_item_per_conflict(self):
+        conflicts = self._conflicts() + self._conflicts(
+            field_name="distance_m",
+            current_value=3734.23,
+            incoming_value=3210.99,
+        )
+
+        recorded = self._record(conflicts)
+
+        self.assertEqual(2, recorded)
+        items = self.writer.review_items(category=CONFLICT, status="open")
+        self.assertEqual(2, len(items))
+        details = " | ".join(item["detail"] for item in items)
+        self.assertIn("duration_s differs", details)
+        self.assertIn("56:55", details)
+        self.assertIn("17:35", details)
+        self.assertIn("distance_m differs", details)
+
+        context = json.loads(items[0]["context_json"])
+        self.assertEqual("field_conflict", context["rule"])
+        self.assertEqual("intervals", context["current"]["source"])
+        self.assertEqual("fit", context["incoming"]["source"])
+
+    def test_repeated_import_is_idempotent(self):
+        self.assertEqual(1, self._record(self._conflicts()))
+        self.assertEqual(0, self._record(self._conflicts()))
+
+        self.assertEqual(
+            1,
+            len(self.writer.review_items(category=CONFLICT, status="all")),
+        )
+
+    def test_changed_values_supersede_the_open_item(self):
+        self._record(self._conflicts())
+        self._record(self._conflicts(incoming_value=1200))
+
+        open_items = self.writer.review_items(category=CONFLICT, status="open")
+        all_items = self.writer.review_items(category=CONFLICT, status="all")
+        self.assertEqual(1, len(open_items))
+        self.assertEqual(2, len(all_items))
+        self.assertEqual(1200, json.loads(open_items[0]["context_json"])
+                         ["incoming"]["value"])
+        superseded = [
+            item for item in all_items if item["status"] == "resolved"
+        ]
+        self.assertEqual(1, len(superseded))
+        self.assertIn("superseded", superseded[0]["resolved_note"])
+
+    def test_different_fields_keep_separate_items(self):
+        self._record(
+            self._conflicts()
+            + self._conflicts(
+                field_name="distance_m",
+                current_value=3734.23,
+                incoming_value=3210.99,
+            )
+        )
+        self._record(self._conflicts(incoming_value=1200))
+
+        open_items = self.writer.review_items(category=CONFLICT, status="open")
+        self.assertEqual(2, len(open_items))
+        self.assertEqual(
+            {"duration_s", "distance_m"},
+            {json.loads(item["context_json"])["field"]
+             for item in open_items},
+        )
+
+    def test_no_conflicts_records_nothing(self):
+        self.assertEqual(0, self._record([]))
+        self.assertEqual([], self.writer.review_items(category=CONFLICT))
 
 
 if __name__ == "__main__":

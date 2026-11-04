@@ -42,9 +42,25 @@ Options:
 Files are prefiltered by `file_id.type == activity` before full parsing. Each
 session is matched to a canonical activity by temporal overlap, counted with
 `elapsed_s`. Several FIT files may link to one activity; ambiguous one-to-many
-matches are reported rather than merged. FIT wins for timing, distance, and
-heart-rate fields; Intervals.icu keeps subjective and derived fields; manual
-edits always win. Laps are stored per activity, tentatively merged by source.
+matches are reported rather than merged. Laps are stored per activity,
+tentatively merged by source.
+
+## Source precedence
+
+There is no automatic per-source priority. For every field, the source that
+wrote it keeps ownership; a later source may refresh its own fields, and a
+field nobody has written yet is simply filled. When two sources report a
+measurably different value for the same field, nothing is overwritten: the
+disagreement is recorded as a `field_conflict` review item and the human
+decides (see below). Values that agree within tolerance (about 1%, with small
+absolute floors) are not conflicts. Manual edits always outrank every source
+and survive reimports.
+
+Conflict-tracked fields are `duration_s`, `elapsed_s`, `distance_m`, `avg_hr`,
+`started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and
+`training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
+keep their current owner silently — two devices naming the same run
+differently is not worth a review item.
 
 ## Intervals.icu
 
@@ -92,9 +108,11 @@ not overwritten.
 Import conflicts and questionable activities are recorded as *review items*
 in the canonical `review_items` table. Every importer runs a small canonical
 quality rule set (zero duration, missing distance for run/ride sports,
-implied pace outside a plausible per-sport window) and persists ambiguous
-matches with their candidate lists. Detection is idempotent by fingerprint:
-reimporting never duplicates items and never reopens resolved ones.
+implied pace outside a plausible per-sport window), persists ambiguous
+matches with their candidate lists, and records cross-source field
+disagreements (`field_conflict`) without touching the stored value. Detection
+is idempotent by fingerprint: reimporting never duplicates items and never
+reopens resolved ones. A changed conflict supersedes its older open item.
 
 ```bash
 uv run --env-file .env hobbyjogging-import review list
@@ -128,13 +146,18 @@ Other commands:
 written to the database immediately; quitting (or Ctrl-C) prints a summary.
 
 ```
-#1 warn quality/open  2019-01-30  Run  (no timing data: duration is 0 s)
-  (i)nspect  (o)pen  (c)opy URL  (e)nter value  (d)elete
-  (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
+#10 warn field_conflict/open  2026-03-14  Gumpoldskirchen Running
+  (v) pick value  (i)nspect  (o)pen  (c)opy URL  (e)nter value
+  (d)elete  (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
 ```
 
 - `(i)` shows the full item: activity values, all linked source records with
   raw paths, and the item context.
+- `(v)` appears on `field_conflict` items and shows the competing values, e.g.
+  `1) fit: 56:55` vs `2) intervals: 17:35`. Whichever value you pick is
+  written as a manual value, so the decision takes ownership of the field and
+  later reimports cannot re-open the same conflict. The other conflict items
+  for that activity stay in the queue.
 - `(o)` opens the Intervals activity (`https://intervals.icu/activities/<id>`)
   in a browser; `(c)` copies the URL via `wl-copy`/`xclip`/`xsel` and echoes
   it. Items linked only to FIT say "no Intervals activity".
