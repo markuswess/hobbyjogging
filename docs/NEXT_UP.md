@@ -58,18 +58,48 @@ ranks sources.
   older open item. Triage gains `(v) pick value` (choose current vs incoming), which applies
   the choice as a manual value so reimports cannot re-open it.
 
+## Garmin VO2max — root-session handoff
+
+Verified 2026-11-05: the Personal API activity FIT is byte-identical to the
+GDPR archive copy (4/4 activities tested), and Garmin VO2max is still inside
+it as undocumented message 140, field 7 (`raw * 3.5 / 65536`). It is present
+in 2,836 of 2,839 archive activity files and in every API file tested. The
+JSON activity summary's `vO2MaxValue` is null; the separate type-44
+`max_met_data` files are an integer-only copy and are not exposed by the API.
+Do not add a JSON or companion-file path for VO2max.
+
+Core work (root session, before the import package consumes it):
+
+- Schema v5: `activities.vo2max_garmin REAL`,
+  `activities.vo2max_runalyze REAL`, plus `activity_tags` (activity, tag,
+  source, source_record_id, is_manual).
+- Writer: both columns in `ACTIVITY_COLUMNS`, neither in
+  `CONFLICT_FIELDS`; FIT writes only `vo2max_garmin`, Runalyze writes only
+  `vo2max_runalyze` and fills `vo2max_garmin` only when it is NULL; manual
+  wins per field; same-source reimport refreshes.
+- Tags: replace a source's tags on reimport, never touch `is_manual = 1`.
+- Model/repository/datasource: expose both VO2max values and tags.
+- Tests: migration, independent owners, tags replace.
+
+Then in the import package: parse `unknown_140` in `fit.py`, write
+`vo2max_garmin` from `fit_import.py`, and report VO2max coverage in the FIT
+summary. Backfill by re-running the normal full archive import; it is
+checksum-idempotent.
+
 ## Current priorities
 
 1. **Full FIT archive import** on the real DB. The archive holds ~64k files,
-   ~4.5k of them activity files; ~2.8k were imported before this pass. One run
-   (date filters apply after parsing, so batching does not help).
+   2.8k of them activity recordings. One run (date filters apply after
+   parsing, so batching does not help). Re-run after the parser writes
+   `vo2max_garmin`.
 2. **`garmin fetch`** in the import package: Garmin Personal API key → 24 h
    bearer token, paged activity list, original FIT ZIP download, extract into
-   the archive, manifest/dedupe. Verify API-downloaded FITs against manual
-   exports before trusting them as the only archive.
+   the archive, manifest/dedupe. API files are currently byte-identical to
+   the archive, so no separate VO2max JSON path.
 3. **View models + static weekly dashboard** in the reports package.
-4. **Schema v5 + Runalyze enrichment**: comments merged into `description`,
-   tags in `activity_tags`, gear via the equipment-categories endpoint, and
-   `activities.vo2max`. Unmatched rows create activities.
+4. **Runalyze enrichment** after schema v5: comments merged into
+   `description`, tags in `activity_tags`, gear via the
+   equipment-categories endpoint, and Runalyze's own `vo2max_runalyze`
+   estimate. Unmatched rows create activities.
 
 Still open: Runalyze API auth/endpoint details, homelab cutover.
