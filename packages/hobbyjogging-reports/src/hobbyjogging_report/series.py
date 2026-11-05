@@ -79,6 +79,33 @@ def ewma_series(
     ]
 
 
+def rolling_mean_by_date(
+    points: list[tuple[date, float | None]],
+    window_days: int,
+) -> list[float | None]:
+    """Calendar-window rolling mean, skipping missing values.
+
+    ``points`` must be sorted by date. The window includes the current day,
+    so ``window_days=7`` averages the last seven calendar days. Missing
+    values are ignored rather than treated as zero.
+    """
+    if window_days <= 0:
+        raise ValueError("window_days must be positive")
+
+    result = []
+
+    for index, (day, _) in enumerate(points):
+        cutoff = day - timedelta(days=window_days - 1)
+        values = [
+            value
+            for other_day, value in points[: index + 1]
+            if other_day >= cutoff and value is not None
+        ]
+        result.append(sum(values) / len(values) if values else None)
+
+    return result
+
+
 def alpha_from_time_constant(tau_days: float) -> float:
     """Alpha for an exponential average with a time constant in days."""
     if tau_days <= 0:

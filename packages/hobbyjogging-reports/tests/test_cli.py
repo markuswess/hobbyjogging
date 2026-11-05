@@ -10,6 +10,7 @@ from hobbyjogging_report.cli import (
     parse_chart_args,
     parse_classify_args,
     parse_load_args,
+    parse_recovery_args,
     parse_report_args,
     parse_time_args,
     resolve_range,
@@ -276,6 +277,33 @@ class TimeArgsTests(unittest.TestCase):
     def test_rejects_non_positive_zones(self):
         with self.assertRaises(ValueError):
             parse_time_args(["--zones", "0"], today=TODAY)
+
+
+class RecoveryArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        output, start, end, window = parse_recovery_args(
+            [],
+            today=TODAY,
+        )
+
+        self.assertEqual("recovery.png", output)
+        self.assertEqual(TODAY - timedelta(days=90), start)
+        self.assertEqual(TODAY, end)
+        self.assertEqual(7, window)
+
+    def test_custom_window_and_output(self):
+        output, _, _, window = parse_recovery_args(
+            ["--window", "14", "--output", "hrv.png"],
+            today=TODAY,
+        )
+
+        self.assertEqual("hrv.png", output)
+        self.assertEqual(14, window)
+
+    def test_rejects_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            parse_recovery_args(["--window", "0"], today=TODAY)
 
 
 class SourceArgTests(unittest.TestCase):

@@ -106,6 +106,7 @@ Charts use `charts.sh` and print the generated file path:
 ./charts.sh volume --days 90
 ./charts.sh load --days 180
 ./charts.sh time --days 90
+./charts.sh recovery --days 90
 ./charts.sh subt-pace --days 365
 ```
 

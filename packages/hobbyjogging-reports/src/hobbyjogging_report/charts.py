@@ -19,6 +19,7 @@ from .model import (
     DistancePoint,
     LoadPoint,
     LoadWindows,
+    RecoveryPoint,
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
@@ -549,6 +550,103 @@ def plot_load(
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best", fontsize=9)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(output, dpi=150)
+    plt.close(fig)
+
+    return output
+
+
+def plot_recovery(
+    points: list[RecoveryPoint],
+    output: str,
+    window_days: int = 7,
+    title: str = "Recovery trends",
+) -> str:
+    """Plot HRV, resting HR, and sleep with rolling averages."""
+    if not points:
+        raise ValueError("no data to plot")
+
+    metrics = (
+        ("hrv", "hrv_avg", "HRV", "ms", 1.0, "tab:blue"),
+        (
+            "resting_hr",
+            "resting_hr_avg",
+            "Resting HR",
+            "bpm",
+            1.0,
+            "tab:red",
+        ),
+        (
+            "sleep_s",
+            "sleep_avg",
+            "Sleep",
+            "hours",
+            1 / 3600,
+            "tab:purple",
+        ),
+    )
+
+    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(12, 9))
+
+    for ax, (
+        raw_attr,
+        average_attr,
+        label,
+        unit,
+        scale,
+        color,
+    ) in zip(axes, metrics):
+        raw = [
+            (point.date, getattr(point, raw_attr) * scale)
+            for point in points
+            if getattr(point, raw_attr) is not None
+        ]
+        average = [
+            (point.date, getattr(point, average_attr) * scale)
+            for point in points
+            if getattr(point, average_attr) is not None
+        ]
+
+        if raw:
+            ax.scatter(
+                [day for day, _ in raw],
+                [value for _, value in raw],
+                s=14,
+                color=color,
+                alpha=0.45,
+                label="daily",
+                zorder=2,
+            )
+
+        if average:
+            ax.plot(
+                [day for day, _ in average],
+                [value for _, value in average],
+                color=color,
+                linewidth=2,
+                label=f"{window_days}-day avg",
+                zorder=3,
+            )
+
+        if raw or average:
+            ax.legend(loc="best", fontsize=8)
+        else:
+            ax.text(
+                0.5,
+                0.5,
+                "No data",
+                transform=ax.transAxes,
+                ha="center",
+                va="center",
+            )
+
+        ax.set_ylabel(f"{label} ({unit})")
+        ax.grid(True, alpha=0.3)
+
+    axes[0].set_title(title)
+    axes[-1].set_xlabel("date")
     fig.autofmt_xdate()
     fig.tight_layout()
     fig.savefig(output, dpi=150)

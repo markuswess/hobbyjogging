@@ -5,6 +5,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     plot_load,
+    plot_recovery,
     plot_subt_hr,
     plot_subt_paces,
     plot_time,
@@ -14,6 +15,7 @@ from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
     LoadWindows,
+    RecoveryPoint,
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
@@ -168,6 +170,48 @@ class LoadChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_load([], str(Path(tmp) / "load.png"))
+
+
+class RecoveryChartTests(unittest.TestCase):
+
+    def test_recovery_chart_writes_file(self):
+        points = [
+            RecoveryPoint(
+                D,
+                hrv=50,
+                resting_hr=45,
+                sleep_s=7 * 3600,
+                hrv_avg=50,
+                resting_hr_avg=45,
+                sleep_avg=7 * 3600,
+            ),
+            RecoveryPoint(
+                date(2026, 1, 2),
+                hrv=55,
+                resting_hr=46,
+                sleep_s=8 * 3600,
+                hrv_avg=52.5,
+                resting_hr_avg=45.5,
+                sleep_avg=7.5 * 3600,
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "recovery.png"
+
+            result = plot_recovery(
+                points,
+                str(output),
+                window_days=7,
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_recovery_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_recovery([], str(Path(tmp) / "recovery.png"))
 
 
 if __name__ == "__main__":

@@ -46,6 +46,8 @@ training reports:
   and 7-day fatigue exponentially weighted averages.
 - **time** — Weekly running time stacked by HR zone, with
   182/42/7-day time averages and a per-zone EWMA panel.
+- **recovery** — HRV, resting HR, and sleep trends with a rolling
+  calendar-day average.
 - **subt-pace** — subT and LT1 work interval pace over the last 365
   days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
@@ -86,6 +88,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report volume [output.png]
     uv run --env-file .env python -m hobbyjogging_report load [output.png]
     uv run --env-file .env python -m hobbyjogging_report time [output.png]
+    uv run --env-file .env python -m hobbyjogging_report recovery [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-pace [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
@@ -126,6 +129,7 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
     ./charts.sh time --days 90
     ./charts.sh time --zones 4 --zone-window base
+    ./charts.sh recovery --days 90
     ./charts.sh subt-pace --days 365
     ./charts.sh subt-pace --output subt.png
     ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
@@ -175,6 +179,21 @@ cumulative: `Z4`, `Z3+Z4`, `Z2+Z3+Z4`, then all zones.
 Time outside recorded HR zones is shown as an `Unzoned` segment, so each
 bar still totals the recorded running time. Weekly charts expand the
 requested range to whole Monday–Sunday weeks.
+
+### Recovery chart
+
+`recovery` shows HRV, resting HR, and sleep as three panels sharing a
+date axis:
+
+- daily values as points,
+- a calendar-day rolling average (default 7 days).
+
+    ./charts.sh recovery
+    ./charts.sh recovery --days 90
+    ./charts.sh recovery --window 14
+
+Missing values are skipped rather than treated as zero, so a gap in the
+wellness data does not pull an average down.
 
 ### Data source selection
 
@@ -228,8 +247,8 @@ derived from the same work reps used by the classification and charts.
 
 ## Date ranges
 
-`report`, `subt-report`, `volume`, `load`, `time`, `subt-pace`,
-`subt-hr` and `classify` accept:
+`report`, `subt-report`, `volume`, `load`, `time`, `recovery`,
+`subt-pace`, `subt-hr` and `classify` accept:
 
     --days N              look back N days from today
     --from YYYY-MM-DD     start date (inclusive)

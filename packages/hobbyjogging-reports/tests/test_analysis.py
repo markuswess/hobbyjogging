@@ -9,6 +9,7 @@ from hobbyjogging_report.analysis import (
     is_lt1_activity,
     load_metrics,
     load_warmup_days,
+    recovery_trends,
     subt_session_point,
     subt_work_points,
     time_averages,
@@ -20,7 +21,7 @@ from hobbyjogging_report.analysis import (
     zone_time_averages,
 )
 from hobbyjogging_report.model import LoadWindows
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
 D = date(2026, 10, 1)
 
@@ -534,6 +535,73 @@ class WeeklyVolumeTests(unittest.TestCase):
             ],
             weekly_run_distance(activities),
         )
+
+
+class RecoveryTrendTests(unittest.TestCase):
+
+    def setUp(self):
+        self.wellness = [
+            WellnessDay(
+                date=date(2026, 1, 1),
+                hrv=50,
+                resting_hr=45,
+                sleep_s=7 * 3600,
+            ),
+            WellnessDay(
+                date=date(2026, 1, 2),
+                hrv=None,
+                resting_hr=46,
+                sleep_s=None,
+            ),
+            WellnessDay(
+                date=date(2026, 1, 3),
+                hrv=60,
+                resting_hr=None,
+                sleep_s=8 * 3600,
+            ),
+            WellnessDay(
+                date=date(2026, 1, 6),
+                hrv=70,
+                resting_hr=45,
+                sleep_s=7.5 * 3600,
+            ),
+        ]
+
+    def test_rolls_with_calendar_days_and_skips_missing(self):
+        points = recovery_trends(
+            self.wellness,
+            date(2026, 1, 2),
+            date(2026, 1, 6),
+            window_days=7,
+        )
+
+        self.assertEqual(3, len(points))
+
+        jan2 = points[0]
+        self.assertIsNone(jan2.hrv)
+        self.assertEqual(50, jan2.hrv_avg)
+        self.assertAlmostEqual(45.5, jan2.resting_hr_avg)
+        self.assertEqual(7 * 3600, jan2.sleep_avg)
+
+        jan3 = points[1]
+        self.assertEqual(55, jan3.hrv_avg)
+        self.assertAlmostEqual(45.5, jan3.resting_hr_avg)
+        self.assertEqual(7.5 * 3600, jan3.sleep_avg)
+
+        jan6 = points[2]
+        self.assertEqual(60, jan6.hrv_avg)
+        self.assertAlmostEqual(45.333333, jan6.resting_hr_avg, places=5)
+        self.assertEqual(7.5 * 3600, jan6.sleep_avg)
+
+    def test_empty_wellness_returns_nothing(self):
+        self.assertEqual(
+            [],
+            recovery_trends([], D, D),
+        )
+
+    def test_rejects_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            recovery_trends(self.wellness, D, D, window_days=0)
 
 
 if __name__ == "__main__":

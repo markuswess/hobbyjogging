@@ -106,6 +106,19 @@ class ZoneAveragePoint:
 
 
 @dataclass
+class RecoveryPoint:
+    """Daily wellness values with calendar-window rolling averages."""
+
+    date: date
+    hrv: float | None = None
+    resting_hr: float | None = None
+    sleep_s: float | None = None
+    hrv_avg: float | None = None
+    resting_hr_avg: float | None = None
+    sleep_avg: float | None = None
+
+
+@dataclass
 class TimeZoneWeek:
     """Weekly training seconds split by HR zone, plus unzoned time."""
 

@@ -9,6 +9,7 @@ from .cli import (
     parse_chart_args,
     parse_classify_args,
     parse_load_args,
+    parse_recovery_args,
     parse_report_args,
     parse_time_args,
 )
@@ -39,6 +40,7 @@ MODES = {
     "subt-hr",
     "load",
     "time",
+    "recovery",
     "classify",
 }
 
@@ -54,6 +56,7 @@ def usage() -> str:
         "|subt-pace [output.png]|subt-hr [output.png]"
         "|load [output.png]"
         "|time [output.png]"
+        "|recovery [output.png]"
         "|classify [days]"
         "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
         "[--to YYYY-MM-DD]"
@@ -233,6 +236,37 @@ def run_time_chart(
         zone_points=zone_points,
         zone_window_days=zone_window_days,
         windows=windows,
+    )
+
+    print(path)
+
+
+def run_recovery_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+    window_days: int,
+) -> None:
+    """Render HRV, resting HR, and sleep trends."""
+    from .analysis import recovery_trends
+    from .charts import plot_recovery
+
+    wellness = source.wellness(
+        start - timedelta(days=window_days - 1),
+        end,
+    )
+    points = recovery_trends(
+        wellness,
+        start,
+        end,
+        window_days=window_days,
+    )
+
+    path = plot_recovery(
+        points,
+        output=output,
+        window_days=window_days,
     )
 
     print(path)
@@ -506,6 +540,25 @@ def main(argv: list[str] | None = None):
                 zones,
                 zone_window,
                 include_review=include_review,
+            )
+            return
+
+        elif mode == "recovery":
+            try:
+                output, start, end, window_days = parse_recovery_args(
+                    args,
+                    default_output="recovery.png",
+                    default_days=90,
+                )
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_recovery_chart(
+                output,
+                start,
+                end,
+                source,
+                window_days,
             )
             return
 

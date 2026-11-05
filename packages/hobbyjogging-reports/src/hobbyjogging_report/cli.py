@@ -228,3 +228,29 @@ def parse_time_args(
         args.zones,
         args.zone_window,
     )
+
+
+def parse_recovery_args(
+    argv: list[str],
+    default_output: str = "recovery.png",
+    default_days: int = 90,
+    today: date | None = None,
+) -> tuple[str, date, date, int]:
+    """Parse output, range, and rolling window for the recovery chart."""
+    parser = range_parser()
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    parser.add_argument("--window", type=int, default=7)
+    args = parser.parse_args(argv)
+
+    if args.window <= 0:
+        raise ValueError("--window must be positive")
+
+    output, start, end = _range_output(
+        args,
+        default_output,
+        default_days,
+        today,
+    )
+
+    return output, start, end, args.window

@@ -10,6 +10,7 @@ from hobbyjogging_report.series import (
     date_range,
     ewma,
     ewma_series,
+    rolling_mean_by_date,
     sma,
 )
 
@@ -105,6 +106,45 @@ class AverageTests(unittest.TestCase):
             alpha_from_half_life(0)
         with self.assertRaises(ValueError):
             alpha_from_span(0)
+
+
+class RollingDateAverageTests(unittest.TestCase):
+
+    def test_uses_calendar_window_and_skips_missing(self):
+        points = [
+            (D, 50.0),
+            (date(2026, 1, 3), 60.0),
+            (date(2026, 1, 8), 70.0),
+        ]
+
+        self.assertEqual(
+            [50.0, 55.0, 65.0],
+            rolling_mean_by_date(points, 7),
+        )
+
+    def test_missing_values_do_not_pull_average_down(self):
+        points = [
+            (D, 50.0),
+            (date(2026, 1, 2), None),
+            (date(2026, 1, 3), 60.0),
+        ]
+
+        self.assertEqual(
+            [50.0, 50.0, 55.0],
+            rolling_mean_by_date(points, 7),
+        )
+
+    def test_all_missing_returns_none(self):
+        points = [(D, None), (date(2026, 1, 2), None)]
+
+        self.assertEqual(
+            [None, None],
+            rolling_mean_by_date(points, 7),
+        )
+
+    def test_rejects_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            rolling_mean_by_date([(D, 50.0)], 0)
 
 
 if __name__ == "__main__":
