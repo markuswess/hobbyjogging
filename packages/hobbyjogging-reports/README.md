@@ -361,7 +361,10 @@ analysis or chart code:
   `WellnessDay`, `Event`, `Interval`).
 - `hobbyjogging_core/datasource.py` — the `DataSource` protocol.
 - `cli.py` — shared command-line date-range and source parsing.
-- `commands.py` — command registry, handlers, and per-command help.
+- `commands.py` — command registry and per-command help.
+- `command_support.py` — shared review/fetch helpers for CLI handlers.
+- `report_commands.py` — report command handlers.
+- `chart_commands.py` — chart command handlers.
 - `sources/__init__.py` — source selection.
 - `sources/database.py` — canonical SQLite database adapter.
 - `sources/intervals_api.py` — the only module that knows raw

@@ -535,6 +535,26 @@ def _ewma_columns(
     )
 
 
+def _average_rows(
+    series: list[tuple[date, float]],
+    start: date,
+    windows: AverageWindows,
+) -> list[tuple[date, float, float, float, float]]:
+    """Return ``(date, value, base, fitness, fatigue)`` rows in range."""
+    base, fitness, fatigue = _ewma_columns(series, windows)
+
+    return [
+        (day, value, base_value, fitness_value, fatigue_value)
+        for (day, value), base_value, fitness_value, fatigue_value in zip(
+            series,
+            base,
+            fitness,
+            fatigue,
+        )
+        if day >= start
+    ]
+
+
 def load_metrics(
     activities: list[Activity],
     start: date,
@@ -555,30 +575,18 @@ def load_metrics(
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_training_load(activities, warm_start, end)
-    base, fitness, fatigue = _ewma_columns(series, windows)
+    rows = _average_rows(series, start, windows)
 
-    points = []
-
-    for (day, load), base_value, fitness_value, fatigue_value in zip(
-        series,
-        base,
-        fitness,
-        fatigue,
-    ):
-        if day < start:
-            continue
-
-        points.append(
-            LoadPoint(
-                date=day,
-                load=load,
-                base=base_value,
-                fitness=fitness_value,
-                fatigue=fatigue_value,
-            )
+    return [
+        LoadPoint(
+            date=day,
+            load=value,
+            base=base,
+            fitness=fitness,
+            fatigue=fatigue,
         )
-
-    return points
+        for day, value, base, fitness, fatigue in rows
+    ]
 
 
 def distance_averages(
@@ -600,30 +608,18 @@ def distance_averages(
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_run_distance(activities, warm_start, end)
-    base, fitness, fatigue = _ewma_columns(series, windows)
+    rows = _average_rows(series, start, windows)
 
-    points = []
-
-    for (day, distance), base_value, fitness_value, fatigue_value in zip(
-        series,
-        base,
-        fitness,
-        fatigue,
-    ):
-        if day < start:
-            continue
-
-        points.append(
-            DistancePoint(
-                date=day,
-                distance_km=distance,
-                base=base_value,
-                fitness=fitness_value,
-                fatigue=fatigue_value,
-            )
+    return [
+        DistancePoint(
+            date=day,
+            distance_km=value,
+            base=base,
+            fitness=fitness,
+            fatigue=fatigue,
         )
-
-    return points
+        for day, value, base, fitness, fatigue in rows
+    ]
 
 
 def _normalized_zone_times(
@@ -699,30 +695,18 @@ def time_averages(
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_run_time(activities, warm_start, end)
-    base, fitness, fatigue = _ewma_columns(series, windows)
+    rows = _average_rows(series, start, windows)
 
-    points = []
-
-    for (day, time_s), base_value, fitness_value, fatigue_value in zip(
-        series,
-        base,
-        fitness,
-        fatigue,
-    ):
-        if day < start:
-            continue
-
-        points.append(
-            TimePoint(
-                date=day,
-                time_s=time_s,
-                base=base_value,
-                fitness=fitness_value,
-                fatigue=fatigue_value,
-            )
+    return [
+        TimePoint(
+            date=day,
+            time_s=value,
+            base=base,
+            fitness=fitness,
+            fatigue=fatigue,
         )
-
-    return points
+        for day, value, base, fitness, fatigue in rows
+    ]
 
 
 def daily_zone_time(
