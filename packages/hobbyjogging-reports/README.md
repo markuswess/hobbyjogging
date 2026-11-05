@@ -371,6 +371,7 @@ analysis or chart code:
   Intervals.icu field names.
 - `analysis.py` — pure metrics over model objects (no API, no plotting).
 - `series.py` — pure daily-series, moving-average, and EWMA helpers.
+- `summary.py` — period totals, quality-session lists, and recovery averages.
 - `classify.py` — workout categorization (quality / non-quality /
   cross-training / unknown).
 - `charts.py` — matplotlib rendering of analysis output.

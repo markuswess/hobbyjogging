@@ -8,26 +8,15 @@ from hobbyjogging_report.format import (
     format_feel,
     last_four_nights,
     pace,
-    recovery_summary,
     sport_label,
-    summarize_training,
     work_summary_for_activity,
 )
-from hobbyjogging_core.model import Activity, Interval, WellnessDay
+from hobbyjogging_report.summary import recovery_summary, summarize_training
+from hobbyjogging_core.model import Interval, WellnessDay
+from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
-
-
-class FakeSource:
-
-    def activity_intervals(self, activity_id):
-        return []
-
-
-def activity(**overrides):
-    values = dict(id="a", date=D, type="run", name="", duration_s=3600)
-    values.update(overrides)
-    return Activity(**values)
+activity = activity_factory()
 
 
 class SummarizeTrainingTests(unittest.TestCase):

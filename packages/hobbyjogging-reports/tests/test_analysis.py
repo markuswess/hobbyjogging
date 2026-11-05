@@ -1,5 +1,6 @@
 import unittest
 from datetime import date, timedelta
+from functools import partial
 
 from hobbyjogging_report.analysis import (
     daily_run_distance,
@@ -21,27 +22,11 @@ from hobbyjogging_report.analysis import (
     zone_time_averages,
 )
 from hobbyjogging_report.model import AverageWindows
-from hobbyjogging_core.model import Activity, Interval, WellnessDay
+from hobbyjogging_core.model import Activity, WellnessDay
+from support import make_interval
 
 D = date(2026, 10, 1)
-
-
-def iv(
-    duration_s,
-    distance_m,
-    type="WORK",
-    group_id="reps",
-    avg_hr=None,
-    max_hr=None,
-):
-    return Interval(
-        type=type,
-        group_id=group_id,
-        duration_s=duration_s,
-        distance_m=distance_m,
-        avg_hr=avg_hr,
-        max_hr=max_hr,
-    )
+iv = partial(make_interval, group_id="reps")
 
 
 class WorkIntervalsTests(unittest.TestCase):

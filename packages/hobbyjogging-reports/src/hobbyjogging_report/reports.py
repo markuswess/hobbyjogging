@@ -23,14 +23,13 @@ from .format import (
     format_subt_summary_table,
     last_four_nights,
     pace,
-    recovery_summary,
     sport_label,
     subt_category_label,
-    summarize_training,
     work_summary_for_activity,
 )
 from .sources import DEFAULT_SOURCE, create_source
 from .review import exclude_review, review_note
+from .summary import recovery_summary, summarize_training
 
 
 def _format_event(event) -> list[str]:
@@ -367,6 +366,55 @@ def subt_report(
     return "\n".join(lines)
 
 
+def _activity_lines(source, activities, prefix: str = ""):
+    lines = []
+
+    for activity in sorted(activities, key=activity_sort_key):
+        heading = f"{prefix}{sport_label(activity)} {activity.name}"
+        lines.extend(format_activity(source, activity, heading))
+
+    return lines
+
+
+def _night_lines(wellness):
+    lines = ["\n## Night"]
+
+    for day in reversed(last_four_nights(wellness)):
+        hrv = day.hrv
+        rhr = day.resting_hr
+        sleep = day.sleep_s
+
+        lines.append(
+            f"- {day.date}: "
+            + (f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
+            + (
+                f"RHR {rhr:.0f} bpm"
+                if rhr is not None
+                else "RHR N/A"
+            )
+            + (
+                f", Sleep {fmt_time(sleep)}"
+                if sleep
+                else ", Sleep N/A"
+            )
+        )
+
+    return lines
+
+
+def _plan_lines(events, heading: str, empty_message: str):
+    lines = [f"\n## {heading}"]
+
+    if not events:
+        lines.append(empty_message)
+        return lines
+
+    for event in events:
+        lines.extend(_format_event(event))
+
+    return lines
+
+
 def daily(
     source: DataSource | None = None,
     *,
@@ -406,134 +454,46 @@ def daily(
         tomorrow
     )
 
-    lines = []
-
-
-    lines.append(
-        f"# Daily Training Report {today}"
-    )
+    lines = [f"# Daily Training Report {today}"]
 
     note = review_note(excluded_total)
     if note:
         lines.append(f"\n> {note}")
 
-
-    # -----------------------------
-    # Yesterday
-    # -----------------------------
-
-    lines.append(
-        "\n## Yesterday"
-    )
-
+    lines.append("\n## Yesterday")
 
     if activities:
-
-        # newest first
-        activities.sort(key=activity_sort_key)
-
-        for a in activities:
-
-            heading = (
-                f"{sport_label(a)} "
-                f"{a.name}"
-            )
-
-            lines.extend(
-                format_activity(source, a, heading)
-            )
-
+        lines.extend(_activity_lines(source, activities))
     else:
+        lines.append("- No activity")
 
-        lines.append(
-            "- No activity"
-        )
+    lines.extend(_night_lines(wellness))
 
-
-    # -----------------------------
-    # Recovery
-    # -----------------------------
-    lines.append("\n## Night")
-
-    nights = last_four_nights(wellness)
-
-    for w in reversed(nights):
-
-        night_date = w.date
-
-        hrv = w.hrv
-        rhr = w.resting_hr
-        sleep = w.sleep_s
-
-        lines.append(
-            f"- {night_date}: "
-            + (
-            f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
-            + (
-                f"RHR {rhr:.0f} bpm"
-                if rhr is not None
-                else "RHR N/A"
-            )
-            + (
-                f", Sleep {fmt_time(sleep)}"
-                if sleep
-                else ", Sleep N/A"
-            )
-        )
-
-    # -----------------------------
-    # Today
-    # -----------------------------
-    
     if activities_today:
-
-        # newest first
-        activities_today.sort(key=activity_sort_key)
-
-        for a in activities_today:
-
-            heading = (
-                f"Today:  {sport_label(a)} "
-                f"{a.name}"
+        lines.extend(
+            _activity_lines(
+                source,
+                activities_today,
+                prefix="Today:  ",
             )
-
-            lines.extend(
-                format_activity(source, a, heading)
-            )
-
+        )
         # Today already has a session; show what is planned for tomorrow.
-        lines.append(
-            "\n## Planned Tomorrow"
-        )
-        if events_tomorrow:
-            for e in events_tomorrow:
-                lines.extend(_format_event(e))
-
-        else:
-
-            lines.append(
-                "- No planned session"
+        lines.extend(
+            _plan_lines(
+                events_tomorrow,
+                "Planned Tomorrow",
+                "- No planned session",
             )
-
+        )
     else:
-
         # No session today; show what is still planned for today.
-        lines.append(
-            "\n## Planned Today"
-        )
-
-        if events:
-
-            for e in events:
-                lines.extend(_format_event(e))
-
-
-        else:
-
-            lines.append(
-                "- No more planned session today"
+        lines.extend(
+            _plan_lines(
+                events,
+                "Planned Today",
+                "- No more planned session today",
             )
-
+        )
 
     return "\n".join(lines)
 

@@ -1,43 +1,20 @@
 import unittest
 from datetime import date
 
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import Interval
 from hobbyjogging_report.reports import select_session, session_report
+from support import FakeSource, activity_factory
 
 D1 = date(2026, 10, 1)
 D2 = date(2026, 10, 3)
 
-
-def activity(**overrides):
-    values = dict(
-        id="a",
-        date=D1,
-        type="run",
-        name="Easy",
-        duration_s=2400,
-        distance_m=8000,
-        rpe=2,
-        feel=2,
-    )
-    values.update(overrides)
-    return Activity(**values)
-
-
-class FakeSource:
-
-    def __init__(self, activities, intervals=None):
-        self._activities = activities
-        self._intervals = intervals or {}
-
-    def activities(self, start, end):
-        return [
-            activity
-            for activity in self._activities
-            if start <= activity.date <= end
-        ]
-
-    def activity_intervals(self, activity_id):
-        return self._intervals.get(activity_id, [])
+activity = activity_factory(
+    name="Easy",
+    duration_s=2400,
+    distance_m=8000,
+    rpe=2,
+    feel=2,
+)
 
 
 def work_intervals(count=5):

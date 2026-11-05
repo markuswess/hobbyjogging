@@ -2,11 +2,18 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
-from hobbyjogging_core.model import Activity
 from hobbyjogging_report.mdpretty import render_markdown
 from hobbyjogging_report.reports import daily, period_report
+from support import FakeSource, activity_factory
 
 D1 = date(2026, 10, 1)
+
+activity = activity_factory(
+    name="Easy",
+    duration_s=2400,
+    distance_m=8000,
+    avg_hr=140,
+)
 
 
 class FixedDate(date):
@@ -14,43 +21,6 @@ class FixedDate(date):
     @classmethod
     def today(cls):
         return cls(2026, 10, 2)
-
-
-class FakeSource:
-
-    def __init__(self, activities, intervals=None):
-        self._activities = activities
-        self._intervals = intervals or {}
-
-    def activities(self, start, end):
-        return [
-            activity
-            for activity in self._activities
-            if start <= activity.date <= end
-        ]
-
-    def wellness(self, start, end):
-        return []
-
-    def events(self, start, end):
-        return []
-
-    def activity_intervals(self, activity_id):
-        return self._intervals.get(activity_id, [])
-
-
-def activity(**overrides):
-    values = dict(
-        id="a",
-        date=D1,
-        type="run",
-        name="Easy",
-        duration_s=2400,
-        distance_m=8000,
-        avg_hr=140,
-    )
-    values.update(overrides)
-    return Activity(**values)
 
 
 MULTILINE = "# Warm up\n- 10 min easy\n\n## Main\n3 x 10 min"

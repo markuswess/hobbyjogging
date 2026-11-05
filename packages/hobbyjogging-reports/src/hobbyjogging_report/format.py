@@ -5,7 +5,7 @@ reports work with any ``DataSource`` implementation.
 """
 
 from hobbyjogging_core.datasource import DataSource
-from hobbyjogging_core.model import Activity, Interval, WellnessDay
+from hobbyjogging_core.model import Activity, Interval
 
 from .analysis import (
     RUN_TYPES,
@@ -14,7 +14,6 @@ from .analysis import (
     pace_s_per_km,
     subt_work_points,
 )
-from .classify import classify
 from .model import SubtBlock, SubtPoint, SubtSummary
 
 
@@ -214,111 +213,6 @@ def last_four_nights(wellness):
     )
 
     return wellness[:4]
-
-
-def zone_3_4_time(zone_times):
-    """Return combined time spent in zones 3 and 4."""
-    if not zone_times:
-        return 0
-
-    return sum(zone_times[2:4])
-
-
-def summarize_training(activities: list[Activity]):
-
-    result = {
-        "run_time": 0,
-        "run_distance": 0,
-        "run_load": 0,
-
-        "cross_time": 0,
-        "cross_load": 0,
-
-        "quality": [],
-        "z3_z4_time": 0,
-        "rpe": 0,
-
-        "run_feel": 0,
-        "run_feel_count": 0,
-        "cross_feel": 0,
-        "cross_feel_count": 0,
-    }
-
-    for a in activities:
-
-        time = a.duration_s
-        distance = a.distance_m
-        load = a.training_load or 0
-        rpe = a.rpe or 0
-
-        if a.type in RUN_TYPES:
-            result["run_time"] += time
-            result["run_distance"] += distance
-            result["run_load"] += load
-            result["rpe"] += rpe
-
-            if a.feel is not None:
-                result["run_feel"] += a.feel
-                result["run_feel_count"] += 1
-
-            category = classify(a)
-
-            # Warm-ups/cool-downs are quality in the breakdown, but they
-            # would clutter the per-session detail list.
-            if category.quality and category.kind != "race-support":
-                result["quality"].append(a)
-
-        if a.type == "run":
-            result["z3_z4_time"] += zone_3_4_time(
-                a.pace_zone_times
-            )
-
-        elif a.type == "trail_run":
-            result["z3_z4_time"] += zone_3_4_time(
-                a.hr_zone_times
-            )
-
-        else:
-            result["cross_time"] += time
-            result["cross_load"] += load
-
-            if a.feel is not None:
-                result["cross_feel"] += a.feel
-                result["cross_feel_count"] += 1
-
-    return result
-
-
-def recovery_summary(wellness: list[WellnessDay]):
-
-    def avg(values):
-
-        return (
-            round(sum(values)/len(values),1)
-            if values
-            else None
-        )
-
-    hrv = []
-    rhr = []
-    sleep = []
-
-    for w in wellness:
-
-        if w.hrv:
-            hrv.append(w.hrv)
-
-        if w.resting_hr:
-            rhr.append(w.resting_hr)
-
-        if w.sleep_s:
-            sleep.append(w.sleep_s)
-
-    return {
-        "hrv": avg(hrv),
-        "rhr": avg(rhr),
-        "sleep": avg(sleep),
-    }
 
 
 def format_pace(seconds):

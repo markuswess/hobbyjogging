@@ -1,47 +1,25 @@
 import unittest
 from datetime import date, timedelta
+from functools import partial
 
-from hobbyjogging_core.model import Activity, Interval
 from hobbyjogging_report.analysis import (
     subt_blocks,
     subt_report_blocks,
     subt_report_summary,
 )
 from hobbyjogging_report.reports import subt_report
+from support import FakeSource, activity_factory, make_interval
 
 D1 = date(2026, 10, 1)
 D2 = date(2026, 10, 3)
 
-
-def activity(**overrides):
-    values = dict(
-        id="a",
-        date=D1,
-        type="run",
-        name="5x5' subT medium",
-        duration_s=3000,
-        distance_m=8000,
-        rpe=4,
-    )
-    values.update(overrides)
-    return Activity(**values)
-
-
-def iv(
-    duration_s,
-    distance_m,
-    group_id="g",
-    avg_hr=None,
-    max_hr=None,
-):
-    return Interval(
-        type="WORK",
-        group_id=group_id,
-        duration_s=duration_s,
-        distance_m=distance_m,
-        avg_hr=avg_hr,
-        max_hr=max_hr,
-    )
+activity = activity_factory(
+    name="5x5' subT medium",
+    duration_s=3000,
+    distance_m=8000,
+    rpe=4,
+)
+iv = partial(make_interval, group_id="g")
 
 
 def mixed_intervals():
@@ -52,23 +30,6 @@ def mixed_intervals():
     ] + [
         iv(180, 600, group_id="short", avg_hr=150, max_hr=165),
     ]
-
-
-class FakeSource:
-
-    def __init__(self, activities, intervals=None):
-        self._activities = activities
-        self._intervals = intervals or {}
-
-    def activities(self, start, end):
-        return [
-            activity
-            for activity in self._activities
-            if start <= activity.date <= end
-        ]
-
-    def activity_intervals(self, activity_id):
-        return self._intervals.get(activity_id, [])
 
 
 class SubtBlockTests(unittest.TestCase):

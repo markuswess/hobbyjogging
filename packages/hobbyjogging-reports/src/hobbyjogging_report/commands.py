@@ -1,6 +1,6 @@
 """Command registry and per-command help."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Callable
 
@@ -43,7 +43,9 @@ class Command:
     usage: str
     examples: tuple[str, ...] = ()
     parse: Callable[[list[str]], object] | None = None
-    run: Callable[[object, DataSource | None, bool], str | None] = None
+    run: Callable[[object, DataSource | None, bool], str | None] = field(
+        kw_only=True
+    )
     needs_source: bool = True
 
 

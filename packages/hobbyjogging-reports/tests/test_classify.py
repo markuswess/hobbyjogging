@@ -1,17 +1,12 @@
 import unittest
-from datetime import date
 
 from hobbyjogging_report.analysis import work_intervals
 from hobbyjogging_report.classify import category_breakdown, classify
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import Interval
+from support import activity_factory, make_interval
 
-D = date(2026, 10, 1)
-
-
-def activity(**overrides):
-    values = dict(id="a", date=D, type="run", name="", duration_s=50 * 60)
-    values.update(overrides)
-    return Activity(**values)
+activity = activity_factory(duration_s=50 * 60)
+iv = make_interval
 
 
 def work(*durations):
@@ -19,15 +14,6 @@ def work(*durations):
         Interval(type="WORK", group_id=str(n), duration_s=s, distance_m=s * 4)
         for n, s in enumerate(durations)
     ]
-
-
-def iv(duration_s, distance_m, type="WORK", group_id=None):
-    return Interval(
-        type=type,
-        group_id=group_id or f"{duration_s}-{distance_m}",
-        duration_s=duration_s,
-        distance_m=distance_m,
-    )
 
 
 class ClassifyTests(unittest.TestCase):
