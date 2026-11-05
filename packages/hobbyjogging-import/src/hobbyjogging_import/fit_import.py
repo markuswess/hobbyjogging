@@ -63,6 +63,7 @@ class FitImportSummary:
     activities_created: int = 0
     activities_skipped: int = 0
     laps_imported: int = 0
+    vo2max_imported: int = 0
     review_recorded: int = 0
     actions: list[FitImportAction] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
@@ -356,6 +357,8 @@ class FitImporter:
 
         if dry_run:
             summary.activities_imported += 1
+            if session.vo2max_garmin is not None:
+                summary.vo2max_imported += 1
             summary.laps_imported += len(session.laps)
             summary.actions.append(
                 FitImportAction(
@@ -411,6 +414,8 @@ class FitImporter:
         )
 
         summary.activities_imported += 1
+        if session.vo2max_garmin is not None:
+            summary.vo2max_imported += 1
         summary.laps_imported += len(laps)
         summary.actions.append(
             FitImportAction(
@@ -486,6 +491,7 @@ def _activity_values(session: FitSession) -> dict[str, object]:
             else None
         ),
         "avg_hr": session.avg_hr,
+        "vo2max_garmin": session.vo2max_garmin,
     }
     values.update(
         {

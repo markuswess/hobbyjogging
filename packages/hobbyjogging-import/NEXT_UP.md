@@ -1,58 +1,45 @@
 # Next up: import package
 
-Handoff from the root architecture session. Delete or rewrite this file when
-the tasks are done.
+Handoff from the root architecture session. Both original tasks are done;
+this file now tracks the remaining real-data steps.
 
-## Context
+## Done
 
-- Canonical DB at `HOBBYJOGGING_DB` (schema v4). Owner-based field precedence
-  is in place; cross-source disagreement becomes a `field_conflict` review
-  item (see `docs/ARCHITECTURE.md`).
-- The full FIT archive import is complete: the archive holds 2,839 activity
-  files and all are imported (plus 2 excluded). No missing FIT activities.
-- Recent commits: `93488b6` (shared sport vocabulary), `dab0e10`
-  (owner-based conflicts), `370b883` (architecture docs).
-- Key files: `quality.py`, `fit_import.py`, `cli.py`, `intervals.py`,
-  `matching.py`, `values.py`.
+- **Quality review dedupe.** Quality fingerprints no longer include
+  `source_record_id`, and `TrainingWriter.record_review_item` dedupes by
+  `(category, fingerprint, activity_id)`. The source record stays on the item
+  for provenance. Tests cover an import finding and a later `review scan`
+  finding the same issue.
+- **`garmin fetch`.** Personal API client with shared bearer-token cache,
+  paged activity list, ZIP download, atomic FIT extraction into
+  `HOBBYJOGGING_FIT_DIR/garmin`, a `source_records` manifest, `--dry-run`,
+  `--limit`, `--force`, `--fit-dir`, and `--since`/`--to`/`--days`.
+- **Garmin VO2max.** `fit.py` reads undocumented message 140 field 7
+  (`raw * 3.5 / 65536`) into `FitSession.vo2max_garmin`; `fit_import.py`
+  writes `vo2max_garmin` at full precision; the FIT summary reports coverage.
+- Tests: import 160, core 79, reports 188 (all green).
 
-## Task 1 — fix duplicate quality review items
+## Remaining (real data, user)
 
-`record_quality_findings` includes `source_record_id` in the fingerprint,
-while `review scan` / `refresh_activity_quality` use `None`. The same finding
-is recorded twice.
+1. Re-run the normal full archive import against the real DB:
+   `hobbyjogging-import fit` (no batching; ~2.8k activity files). Expect
+   `vo2max_garmin` on roughly 2,836 activities.
+2. Spot-check one value against Garmin Connect (the watch shows two
+   decimals; the database keeps the raw precision).
+3. Run `garmin fetch --dry-run`, then a small real fetch, then
+   `hobbyjogging-import fit --recursive` over the archive.
+4. Later: Runalyze enrichment writes `vo2max_runalyze` and tags.
 
-- Drop `source_record_id` from the quality fingerprint; keep it on the item
-  for provenance.
-- Update/add tests (scan item + import item for the same finding dedupe).
-- Existing duplicates on the real DB are left for triage.
+## Notes / risks
 
-## Task 2 — Garmin fetch command
-
-Use the official Garmin Connect Personal API. The key is in `.env` as
-`GARMIN_PERSONAL_API_KEY` (valid 365 days).
-
-- Token: `POST https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token`
-  with `Authorization: ApiKey <key>` → bearer token. Tokens last 24 h, no
-  refresh tokens; re-obtain on 401.
-- Activity list (paged):
-  `GET /activitylist-service/activities/search/activities?start=&limit=&startDate=&endDate=`
-- Original file: `GET /download-service/files/activity/{id}` → ZIP bytes
-  containing the FIT.
-- Prefer Garmin's official Python client (`garmin_personal_api`,
-  `garmin/connect-personal-api-python`); keep auth and HTTP injectable for
-  tests.
-- Command: `hobbyjogging-import garmin fetch --since DATE`
-  - downloads missing FITs into `HOBBYJOGGING_FIT_DIR`, extracts them
-  - records a fetch manifest and skips known activity ids
-  - the existing FIT importer ingests the files; reuse `fit_import`, do not
-    duplicate parsing/import logic.
-- Tests: fake client, no network, idempotent re-fetch, 401 → new token.
-- Verify one API-downloaded FIT against a manually exported FIT; note any
-  fields Garmin strips.
-
-## Done when
-
-- Both fixes have tests and the package suite is green.
-- A `garmin fetch --dry-run`-style path is testable without network.
-- Report: files changed, tests run, decisions/risks. Do not run against the
-  real database.
+- Message 140 is undocumented; Garmin can strip it. The VO2max line in the
+  FIT import summary is the early warning.
+- The Personal API activity FIT is byte-identical to the GDPR archive copy
+  (4/4 activities tested in November 2026). The JSON `vO2MaxValue` is null;
+  the type-44 `max_met_data` files are not needed.
+- The manifest is a bandwidth optimization. The FIT importer is
+  checksum-idempotent, so a redownload does not duplicate source records or
+  laps.
+- One core change was needed for task 1: the review-item dedupe query no
+  longer includes `source_record_id`. The v5 schema came from the root
+  session.

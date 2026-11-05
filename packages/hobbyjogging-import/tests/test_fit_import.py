@@ -23,6 +23,7 @@ def _summary(
     distance_m: float = 10000,
     name: str = "FIT Run",
     lap_start: str = "2026-10-01T06:00:00Z",
+    vo2max_garmin: float | None = None,
 ) -> FitFileSummary:
     return FitFileSummary(
         path=path,
@@ -49,6 +50,7 @@ def _summary(
                 max_hr=170,
                 ascent_m=20,
                 calories=500,
+                vo2max_garmin=vo2max_garmin,
                 laps=[
                     FitLap(
                         index=1,
@@ -149,6 +151,30 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual("success", run["status"])
         self.assertEqual(1, run["records_seen"])
         self.assertEqual(1, run["records_imported"])
+
+    def test_import_writes_garmin_vo2max_without_rounding(self):
+        path = self._file("one.fit", b"one")
+
+        summary = self._import(
+            [_summary(path, vo2max_garmin=65.283935546875)]
+        )
+
+        self.assertEqual(1, summary.vo2max_imported)
+        activity = self._activities()[0]
+        self.assertAlmostEqual(65.283935546875, activity.vo2max_garmin)
+        self.assertIsNone(activity.vo2max_runalyze)
+        self.assertAlmostEqual(65.283935546875, activity.vo2max)
+
+    def test_import_without_vo2max_leaves_the_fields_empty(self):
+        path = self._file("one.fit", b"one")
+
+        summary = self._import([_summary(path)])
+
+        self.assertEqual(0, summary.vo2max_imported)
+        activity = self._activities()[0]
+        self.assertIsNone(activity.vo2max_garmin)
+        self.assertIsNone(activity.vo2max_runalyze)
+        self.assertIsNone(activity.vo2max)
 
     def test_reimport_is_idempotent(self):
         path = self._file("one.fit", b"one")

@@ -163,6 +163,29 @@ class RecordQualityFindingsTests(unittest.TestCase):
         self.assertEqual("quality", items[0]["category"])
         self.assertEqual("a1", items[0]["activity_id"])
 
+    def test_source_record_does_not_create_a_duplicate(self):
+        source_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="f1",
+            checksum="c1",
+            import_run_id=self.run_id,
+            payload_json="{}",
+            raw_path="f1.fit",
+        )
+
+        self._record(
+            activity_id="a1",
+            source_record_id=source_id,
+            duration_s=0,
+            elapsed_s=0,
+        )
+        self._record(activity_id="a1", duration_s=0, elapsed_s=0)
+
+        items = self.writer.review_items(status="open")
+        self.assertEqual(1, len(items))
+        self.assertEqual(source_id, items[0]["source_record_id"])
+
     def test_changed_values_create_a_new_finding(self):
         self._record(activity_id="a1", distance_m=0)
 
@@ -232,7 +255,7 @@ class RefreshActivityQualityTests(unittest.TestCase):
             detail="no timing data: duration is 0 s",
             context={"rule": "zero_duration", "duration_s": 0, "elapsed_s": 0},
             fingerprint=review_fingerprint(
-                ["zero_duration", "a1", None,
+                ["zero_duration", "a1",
                  {"rule": "zero_duration", "duration_s": 0, "elapsed_s": 0}],
             ),
             activity_id="a1",

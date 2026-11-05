@@ -132,7 +132,10 @@ def record_quality_findings(
         elapsed_s=elapsed_s,
         distance_m=distance_m,
     ):
-        scope = [finding.rule, activity_id, source_record_id, finding.context]
+        # The source record stays on the item for provenance, but it must not
+        # be part of the identity: an import and a later `review scan` detect
+        # the same canonical finding and must share one fingerprint.
+        scope = [finding.rule, activity_id, finding.context]
         _, created = writer.record_review_item(
             category=QUALITY,
             detail=finding.detail,
@@ -228,9 +231,7 @@ def refresh_activity_quality(
         distance_m=distance_m,
     )
     current_fingerprints = {
-        review_fingerprint(
-            [finding.rule, activity_id, None, finding.context]
-        )
+        review_fingerprint([finding.rule, activity_id, finding.context])
         for finding in findings
     }
 

@@ -27,6 +27,12 @@ SAMPLE_FIT = (
     / "fit"
     / "30285-220489711.fit"
 )
+SAMPLE_VO2MAX_FIT = (
+    Path(__file__).resolve().parents[3]
+    / "data"
+    / "fit"
+    / "30285-18667256.fit"
+)
 
 
 def _sample_messages():
@@ -116,6 +122,81 @@ class FitSummaryTests(unittest.TestCase):
         self.assertEqual(132, lap_summary.max_hr)
         self.assertEqual(2, lap_summary.elevation_gain_m)
 
+    def test_maps_vo2max_to_single_session(self):
+        file_id, activity, session, lap = _sample_messages()
+
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            file_id,
+            activity,
+            [session],
+            [lap],
+            vo2max_garmin=[65.283935546875],
+        )
+
+        self.assertAlmostEqual(
+            65.283935546875,
+            summary.sessions[0].vo2max_garmin,
+        )
+
+    def test_vo2max_values_follow_sessions_when_counts_match(self):
+        start = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
+        sessions = [
+            {
+                "start_time": start,
+                "sport": "running",
+                "first_lap_index": 0,
+                "num_laps": 0,
+            },
+            {
+                "start_time": datetime(2026, 11, 1, 10, 0, tzinfo=UTC),
+                "sport": "cycling",
+                "first_lap_index": 0,
+                "num_laps": 0,
+            },
+        ]
+
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            {"type": "activity"},
+            {},
+            sessions,
+            [],
+            vo2max_garmin=[60.1, 61.2],
+        )
+
+        self.assertEqual(60.1, summary.sessions[0].vo2max_garmin)
+        self.assertEqual(61.2, summary.sessions[1].vo2max_garmin)
+
+    def test_file_level_vo2max_goes_to_last_session(self):
+        start = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
+        sessions = [
+            {
+                "start_time": start,
+                "sport": "running",
+                "first_lap_index": 0,
+                "num_laps": 0,
+            },
+            {
+                "start_time": datetime(2026, 11, 1, 10, 0, tzinfo=UTC),
+                "sport": "cycling",
+                "first_lap_index": 0,
+                "num_laps": 0,
+            },
+        ]
+
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            {"type": "activity"},
+            {},
+            sessions,
+            [],
+            vo2max_garmin=[65.28],
+        )
+
+        self.assertIsNone(summary.sessions[0].vo2max_garmin)
+        self.assertEqual(65.28, summary.sessions[1].vo2max_garmin)
+
     def test_slices_laps_for_multiple_sessions(self):
         start = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
         file_id = {"type": "activity"}
@@ -178,10 +259,28 @@ class FitSummaryTests(unittest.TestCase):
             activity,
             [session],
             [lap],
+            vo2max_garmin=[65.28],
         )
 
         payload = json.dumps(fit_file_to_dict(summary))
         self.assertIn('"canonical_sport": "run"', payload)
+        self.assertIn('"vo2max_garmin": 65.28', payload)
+
+    def test_formats_vo2max(self):
+        file_id, activity, session, lap = _sample_messages()
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            file_id,
+            activity,
+            [session],
+            [lap],
+            vo2max_garmin=[65.283935546875],
+        )
+
+        self.assertIn(
+            "VO2max: 65.28 mL/kg/min",
+            format_fit_file(summary),
+        )
 
     def test_formats_summary(self):
         file_id, activity, session, lap = _sample_messages()
@@ -320,6 +419,23 @@ class FitSampleTests(unittest.TestCase):
 
         self.assertEqual("activity", file_id["type"])
         self.assertEqual("garmin", file_id["manufacturer"])
+
+    @unittest.skipUnless(
+        SAMPLE_VO2MAX_FIT.exists(),
+        "sample FIT file with VO2max is not available",
+    )
+    def test_parses_real_vo2max_without_rounding(self):
+        summary = parse_fit_file(SAMPLE_VO2MAX_FIT)
+
+        self.assertEqual(1, len(summary.sessions))
+        self.assertAlmostEqual(
+            62.98323059082031,
+            summary.sessions[0].vo2max_garmin,
+        )
+        self.assertIn(
+            "VO2max: 62.98 mL/kg/min",
+            format_fit_file(summary),
+        )
 
     def test_parses_real_sample(self):
         summary = parse_fit_file(SAMPLE_FIT)

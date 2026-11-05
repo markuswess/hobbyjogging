@@ -7,9 +7,14 @@ from pathlib import Path
 
 from hobbyjogging_core import default_database_path, open_database
 
-from .config import default_fit_dir, resolve_fit_path
+from .config import (
+    default_fit_dir,
+    default_garmin_dir,
+    resolve_fit_path,
+)
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
+from .garmin import GarminFetcher, GarminFetchSummary
 from .intervals import IntervalsImporter
 from .review_cli import run_review
 
@@ -110,6 +115,46 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="*",
         type=Path,
         help="FIT files or directories (default: configured FIT directory)",
+    )
+
+    garmin = subparsers.add_parser(
+        "garmin",
+        help="fetch original FIT files from Garmin Connect",
+    )
+    garmin_sub = garmin.add_subparsers(
+        dest="garmin_action",
+        required=True,
+    )
+    garmin_fetch = garmin_sub.add_parser(
+        "fetch",
+        help="download missing activity FITs into the archive",
+    )
+    garmin_fetch.add_argument("--days", type=int, default=30)
+    garmin_fetch.add_argument("--since", dest="start", type=date_arg)
+    garmin_fetch.add_argument("--to", dest="end", type=date_arg)
+    garmin_fetch.add_argument("--database", type=Path)
+    garmin_fetch.add_argument(
+        "--fit-dir",
+        type=Path,
+        help=(
+            "destination directory for fetched FITs "
+            f"(default: {default_garmin_dir()})"
+        ),
+    )
+    garmin_fetch.add_argument(
+        "--limit",
+        type=int,
+        help="download at most this many new activities",
+    )
+    garmin_fetch.add_argument(
+        "--force",
+        action="store_true",
+        help="re-download activity ids already in the manifest",
+    )
+    garmin_fetch.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="list what would be fetched without writing",
     )
 
     review = subparsers.add_parser(
@@ -374,6 +419,86 @@ def _run_fit_import(args, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def run_garmin(args, parser: argparse.ArgumentParser) -> int:
+    if args.garmin_action != "fetch":
+        parser.error(f"unknown garmin command: {args.garmin_action}")
+
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+
+    try:
+        start, end = resolve_range(args.days, args.start, args.end)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    fit_dir = args.fit_dir or default_garmin_dir()
+
+    try:
+        try:
+            fetcher = GarminFetcher(connection, fit_dir=fit_dir)
+            summary = fetcher.fetch(
+                start,
+                end,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                force=args.force,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    _print_garmin_summary(
+        summary,
+        args.database or default_database_path(),
+        dry_run=args.dry_run,
+    )
+    return 0
+
+
+def _print_garmin_summary(
+    summary: GarminFetchSummary,
+    database_path,
+    *,
+    dry_run: bool,
+) -> None:
+    if dry_run:
+        print(
+            "Garmin fetch dry run: "
+            f"{summary.listed} listed, "
+            f"{summary.new} new, "
+            f"{summary.skipped_known} known, "
+            f"{summary.skipped_limit} over limit, "
+            f"{summary.failed} failed"
+        )
+        if summary.new_ids:
+            print(f"New: {', '.join(summary.new_ids)}")
+    else:
+        print(
+            "Garmin fetch complete: "
+            f"{summary.listed} listed, "
+            f"{summary.new} new, "
+            f"{summary.downloaded} downloaded, "
+            f"{summary.skipped_known} known, "
+            f"{summary.skipped_limit} over limit, "
+            f"{summary.failed} failed"
+        )
+
+    print(f"Archive: {summary.fit_dir}")
+
+    for error in summary.errors:
+        print(f"Error: {error}")
+
+    if not dry_run:
+        print(f"Import run: {summary.run_id}")
+        print(f"Database: {database_path}")
+
+
 def _print_fit_summary(
     summary: FitImportSummary,
     database_path,
@@ -409,6 +534,7 @@ def _print_fit_summary(
 
     print(f"Files skipped: {summary.files_skipped}")
     print(f"Activities skipped: {summary.activities_skipped}")
+    print(f"VO2max: {summary.vo2max_imported} activities with a Garmin value")
     print(f"Review items recorded: {summary.review_recorded}")
 
     for error in summary.errors:
@@ -450,6 +576,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fit":
         return run_fit(args, parser)
+
+    if args.command == "garmin":
+        return run_garmin(args, parser)
 
     if args.command == "review":
         return run_review(args, parser)

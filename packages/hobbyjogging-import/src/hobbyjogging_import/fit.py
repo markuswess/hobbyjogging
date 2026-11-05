@@ -19,6 +19,12 @@ from hobbyjogging_core.sports import (
     canonical_sport,
 )
 
+# Garmin's undocumented activity message 140 carries the current VO2max in
+# field 7 as a uint32 scaled by 3.5 / 65536. Garmin still includes it in the
+# Personal API FIT; the JSON activity summary's `vO2MaxValue` is null.
+VO2MAX_MESSAGE = 140
+VO2MAX_RAW_SCALE = 3.5 / 65536
+
 
 @dataclass
 class FitLap:
@@ -52,6 +58,7 @@ class FitSession:
     max_hr: float | None = None
     ascent_m: float | None = None
     calories: float | None = None
+    vo2max_garmin: float | None = None
     laps: list[FitLap] = field(default_factory=list)
 
 
@@ -95,6 +102,7 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
     activity: dict[str, Any] = {}
     sessions: list[dict[str, Any]] = []
     laps: list[dict[str, Any]] = []
+    vo2max_values: list[float] = []
     record_count = 0
 
     with fitdecode.FitReader(str(file_path)) as fit:
@@ -114,6 +122,10 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
                 laps.append(values)
             elif frame.name == "record":
                 record_count += 1
+            elif frame.global_mesg_num == VO2MAX_MESSAGE:
+                vo2max = _vo2max_from_message(values)
+                if vo2max is not None:
+                    vo2max_values.append(vo2max)
 
     return summarize_fit_messages(
         file_path,
@@ -121,6 +133,7 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
         activity,
         sessions,
         laps,
+        vo2max_garmin=vo2max_values,
         record_count=record_count,
     )
 
@@ -132,6 +145,7 @@ def summarize_fit_messages(
     sessions: list[dict[str, Any]],
     laps: list[dict[str, Any]],
     *,
+    vo2max_garmin: list[float] | None = None,
     record_count: int = 0,
 ) -> FitFileSummary:
     """Build normalized summaries from decoded FIT messages."""
@@ -201,6 +215,7 @@ def summarize_fit_messages(
             )
         )
 
+    _apply_vo2max(summary.sessions, vo2max_garmin)
     return summary
 
 
@@ -275,6 +290,9 @@ def format_fit_file(summary: FitFileSummary) -> str:
 
         if session.calories is not None:
             lines.append(f"Calories: {_fmt_number(session.calories)}")
+
+        if session.vo2max_garmin is not None:
+            lines.append(f"VO2max: {session.vo2max_garmin:.2f} mL/kg/min")
 
         lines.append(f"Laps: {len(session.laps)}")
 
@@ -424,6 +442,38 @@ def _tz_offset_min(activity: dict[str, Any]) -> int | None:
         return None
 
     return int(round((local_timestamp - timestamp).total_seconds() / 60))
+
+
+def _apply_vo2max(
+    sessions: list[FitSession],
+    values: list[float] | None,
+) -> None:
+    """Attach file-level VO2max messages to the sessions they describe."""
+    if not values or not sessions:
+        return
+
+    if len(values) == len(sessions):
+        for session, value in zip(sessions, values):
+            session.vo2max_garmin = value
+        return
+
+    # Message 140 is file-level. When the counts do not line up, the last
+    # message is the estimate at activity end; attach it to the last session.
+    sessions[-1].vo2max_garmin = values[-1]
+
+
+def _vo2max_from_message(values: dict[str, Any]) -> float | None:
+    """Decode Garmin's VO2max from message 140 without rounding."""
+    raw = values.get("unknown_7")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None
+    if raw <= 0:
+        return None
+
+    value = float(raw) * VO2MAX_RAW_SCALE
+    if not 1.0 <= value <= 100.0:
+        return None
+    return value
 
 
 def _number(value: object) -> float | None:

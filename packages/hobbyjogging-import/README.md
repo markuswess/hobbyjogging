@@ -45,6 +45,65 @@ session is matched to a canonical activity by temporal overlap, counted with
 matches are reported rather than merged. Laps are stored per activity,
 tentatively merged by source.
 
+Garmin's current VO2max is read from undocumented activity message 140, field
+7 (`raw * 3.5 / 65536`), and stored as `vo2max_garmin` at full precision.
+`fit --inspect` prints it, and the import summary reports how many activities
+carried a Garmin value. Runalyze's own estimate will be stored separately as
+`vo2max_runalyze`; the two are never merged or treated as a conflict.
+
+## Garmin Personal API
+
+Create a Personal API key on
+[Garmin Connect](https://connect.garmin.com/app/settings/personalApiToken)
+(valid 30/90/180/365 days) and put it in `.env`:
+
+```bash
+export GARMIN_PERSONAL_API_KEY=<your-personal-api-key>
+```
+
+`GARMIN_API_KEY` is accepted as a fallback. Each run exchanges the key for a
+24 h bearer token with no refresh token; the token is cached at
+`~/.config/garmin/connect-personal-api-bearer-token.json` (the same file
+Garmin's official Python client uses) and re-obtained automatically on 401.
+
+Fetch missing activity FITs for the last 30 days:
+
+```bash
+uv run --env-file .env hobbyjogging-import garmin fetch
+```
+
+Or for an explicit range:
+
+```bash
+uv run --env-file .env hobbyjogging-import garmin fetch \
+  --since 2026-01-01 --to 2026-06-30
+```
+
+Useful options:
+
+- `--days N` — default range length when only `--to` is given (default 30).
+- `--fit-dir PATH` — destination directory (default
+  `HOBBYJOGGING_FIT_DIR/garmin`).
+- `--limit N` — download at most N new activities.
+- `--force` — re-download activity ids already in the manifest.
+- `--dry-run` — list what would be fetched without writing.
+
+Each downloaded ZIP contains one `*_ACTIVITY.fit`; it is extracted atomically
+to `<fit-dir>/<activity_id>.fit`. A fetch manifest is kept in `source_records`
+(`source = "garmin"`, `record_type = "activity-file"`, `external_id =
+<activity_id>`), so known ids are skipped without assuming anything about the
+archive filenames. Then run the normal importer:
+
+```bash
+uv run --env-file .env hobbyjogging-import fit --recursive
+```
+
+The Personal API activity file is currently byte-identical to the file in a
+GDPR archive export (verified on four activities in November 2026). Garmin's
+JSON activity summary exposes `vO2MaxValue` but leaves it null; the FIT still
+carries message 140, so the FIT is the VO2max source. The separate type-44
+`max_met_data` files are only present in GDPR exports and are not needed.
+
 ## Source precedence
 
 There is no automatic per-source priority. For every field, the source that
