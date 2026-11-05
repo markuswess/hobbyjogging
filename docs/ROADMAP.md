@@ -30,11 +30,15 @@ After this stage, the database becomes trustworthy enough to build on.
 
 ## 3. More sources — next
 
-- **CSV import** (deferred until the review/edit workflow is solid): third-party exports that
-  are neither FIT nor Intervals, ingested through the same owner/conflict review rules.
-- **Runalyze adapter**: the last big source (years of history in a system without usable
-  bulk export). Blocked on export/API access; once available it plugs into the same
-  canonical model, matching, and review machinery as everything else.
+- **Garmin Personal API fetch** (official): download original FIT files
+  automatically into the archive, so new activities no longer depend on manual
+  exports. Garmin's API may strip some proprietary fields from downloaded FITs;
+  verify against manual exports.
+- **Runalyze enrichment** (API): comments, tags, gear, and the Runalyze VO2max
+  estimate. Enrichment only — never timing or distance. Unmatched rows create
+  activities so old history stays complete.
+- **CSV import** (optional, deferred): third-party exports that are neither FIT
+  nor Intervals, ingested through the same owner/conflict review rules.
 
 ## 4. Later ideas
 

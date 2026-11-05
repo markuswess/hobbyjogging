@@ -58,7 +58,18 @@ ranks sources.
   older open item. Triage gains `(v) pick value` (choose current vs incoming), which applies
   the choice as a manual value so reimports cannot re-open it.
 
-## Then
+## Current priorities
 
-- Re-run the affected Intervals window so existing wrong-value activities get conflict items.
-- Then: CSV import, then Runalyze (see [ROADMAP.md](ROADMAP.md)).
+1. **Full FIT archive import** on the real DB. The archive holds ~64k files,
+   ~4.5k of them activity files; ~2.8k were imported before this pass. One run
+   (date filters apply after parsing, so batching does not help).
+2. **`garmin fetch`** in the import package: Garmin Personal API key → 24 h
+   bearer token, paged activity list, original FIT ZIP download, extract into
+   the archive, manifest/dedupe. Verify API-downloaded FITs against manual
+   exports before trusting them as the only archive.
+3. **View models + static weekly dashboard** in the reports package.
+4. **Schema v5 + Runalyze enrichment**: comments merged into `description`,
+   tags in `activity_tags`, gear via the equipment-categories endpoint, and
+   `activities.vo2max`. Unmatched rows create activities.
+
+Still open: Runalyze API auth/endpoint details, homelab cutover.

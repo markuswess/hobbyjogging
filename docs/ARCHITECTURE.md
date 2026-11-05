@@ -37,12 +37,14 @@ always-on homelab host. The database lives on exactly one machine and clients
 never hold a copy.
 
 ```text
-        FIT archive                Intervals.icu API
-             |                            |
-             +-------------+--------------+
-                           |
-                    import / sync job
-                           |
+   FIT archive      Garmin Personal API     Intervals.icu API     Runalyze API
+        |                   |                     |                   |
+        |            garmin fetch (FITs)          |          runalyze enrichment
+        |                   |                     |                   |
+        +-------------------+---------------------+-------------------+
+                            |
+                     import / sync job
+                            |
                   canonical SQLite DB  (source of truth)
                            |
                  analysis + view models
@@ -58,6 +60,9 @@ never hold a copy.
 - **Homelab host**: database on local disk (never NFS/SMB), importers, review
   CLI, dashboard generator, static web server.
 - **FIT archive**: synced from the laptop to the homelab (Syncthing or rsync).
+  New activities are also fetched directly from the Garmin Personal API.
+- **Runalyze**: enrichment only (comments, tags, gear, VO2max), never timing
+  or distance.
 - **Clients**: browsers only. No database credentials, no JavaScript
   framework, no write access.
 - **Access**: private network (Tailscale/WireGuard) or basic auth at the
@@ -94,7 +99,11 @@ Source ingestion and the review queue.
 - `fit.py` — FIT parsing and normalization (the only module that knows raw FIT
   field names).
 - `fit_import.py` — file discovery, matching, activity/lap persistence.
+- `garmin.py` — Garmin Personal API client: key → bearer token, activity list,
+  original FIT download into the archive, fetch manifest.
 - `client.py`, `intervals.py` — Intervals.icu API access and import.
+- `runalyze.py` — Runalyze enrichment import (comments, tags, gear, VO2max);
+  never writes timing or distance.
 - `matching.py` — temporal activity matching across sources.
 - `quality.py` — canonical quality rules, field-conflict recording, review
   fingerprints, quality refresh after edits.
@@ -124,7 +133,9 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 4 at the time of writing.
+SQLite, forward-only migrations. Schema version 4 at the time of writing;
+version 5 adds the Runalyze enrichment fields (`activities.vo2max`,
+`activity_tags`).
 
 - `activities` — canonical values: dates, sport, name, description, duration,
   elapsed, distance, heart rate, training load, subjective fields, exclusion
@@ -138,8 +149,10 @@ SQLite, forward-only migrations. Schema version 4 at the time of writing.
   the value it wrote, and whether it is a manual override.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
   attached to activities, tagged by source record.
-- `wellness_days`, `events`, `equipment`, `equipment_source_links`,
-  `zone_configs` — supporting canonical data.
+- `activity_tags` (v5) — activity labels with their source; used for dashboard
+  filters and later analysis.
+- `wellness_days`, `events`, `equipment`, `activity_equipment`,
+  `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `import_runs` — one row per import with parameters and outcome.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
@@ -172,6 +185,43 @@ Two invariants are enforced by the writer:
 5. **Record.** Every run is an `import_runs` row; review items are idempotent
    by fingerprint and supersede older items when the underlying conflict
    changes.
+
+### Garmin Personal API fetch
+
+The official Personal API is the automated source for original FIT files.
+
+- The API key lives in `.env` (`GARMIN_PERSONAL_API_KEY`), valid for up to 365
+  days. Each run exchanges it for a 24 h bearer token; there are no refresh
+  tokens, so a 401 means re-obtain the token. Key expiry is manual and
+  documented.
+- A `garmin fetch --since DATE` step lists activities (paged) and downloads the
+  original file via `/download-service/files/activity/{id}` (a ZIP containing
+  the FIT), extracts it into the FIT archive, and records a fetch manifest so
+  known activity ids are skipped. The existing FIT importer then ingests the
+  files; no separate write path.
+- Garmin may strip some proprietary fields from API-downloaded FITs compared to
+  manually exported ones. Verify a sample before relying on API files as the
+  only archive; the historical manual export stays authoritative if they
+  differ.
+
+### Runalyze enrichment
+
+Runalyze is an enrichment source, not an activity source. The API provides
+comments, tags, gear, and the Runalyze VO2max estimate; it is never used for
+timing or distance.
+
+- Rows are matched to existing activities temporally (Runalyze exposes no
+  Garmin activity id) and stored as `source_records` with
+  `external_id = runalyze:<id>`; unmatched rows create a canonical activity
+  (decision: keep the history complete).
+- Comments merge into `activities.description` (empty → other; contains →
+  longer; otherwise join in a stable order), idempotently and without taking
+  ownership of the field.
+- Tags land in `activity_tags`; gear is upserted into `equipment` and linked via
+  `activity_equipment` (first shoe/bike item primary, rest secondary), with
+  canonical types derived from Runalyze's equipment-categories endpoint.
+- `activities.vo2max` stores the effective estimate; `0`/`use_vo2max=false`
+  means missing. The raw payload keeps the variants.
 
 ## Review workflow
 
@@ -243,9 +293,10 @@ dashboard: the view models make it cheap to add later.
 
 ## Deployment
 
-- **Sync job** on the homelab: Intervals incremental import, FIT archive scan,
-  review scan, then dashboard regeneration. One command, idempotent, prints a
-  diff summary (new activities, changed fields, new conflicts, new findings).
+- **Sync job** on the homelab: Garmin fetch, Intervals incremental import,
+  FIT archive scan, Runalyze enrichment, review scan, then dashboard
+  regeneration. One command, idempotent, prints a diff summary (new activities,
+  changed fields, new conflicts, new findings).
 - **Static serving** via Caddy or nginx; regeneration triggered by the sync
   job, not per request.
 - **Refresh**: wall screens use meta-refresh; phones reload manually.
@@ -262,7 +313,10 @@ dashboard: the view models make it cheap to add later.
 - No SPA or client-side analytics framework.
 - No phone interactivity for now.
 - No direct remote database access; clients read rendered pages.
-- CSV import and the Runalyze adapter remain deferred (see ROADMAP).
+- Generic CSV import remains optional/deferred. Runalyze is covered by its API,
+  not by CSV.
+- The Runalyze Garmin-id gap means matching stays temporal; exact linking can
+  be added if Runalyze ever exposes the external activity id.
 
 ## Working conventions
 
