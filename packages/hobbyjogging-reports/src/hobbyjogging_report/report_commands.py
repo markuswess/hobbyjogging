@@ -2,6 +2,7 @@
 
 from hobbyjogging_core.datasource import DataSource
 
+from .activity_list import activities_report
 from .command_support import reviewed_range
 from .reports import (
     daily,
@@ -119,3 +120,11 @@ def _run_classify(
 def run_debug_command(parsed, source, include_review):
     debug(parsed or "all")
     return None
+
+
+def run_activities_command(parsed, source, include_review):
+    return activities_report(
+        source,
+        parsed,
+        include_review=include_review,
+    )

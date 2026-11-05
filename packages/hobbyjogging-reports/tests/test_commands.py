@@ -6,6 +6,7 @@ from hobbyjogging_report.__main__ import main
 from hobbyjogging_report.commands import COMMANDS, command_help, usage
 
 EXPECTED = {
+    "activities",
     "daily",
     "weekly",
     "monthly",

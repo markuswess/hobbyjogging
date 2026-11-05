@@ -471,7 +471,7 @@ def subt_category_label(category: str) -> str:
     return "LT1" if category == "lt1" else category.title()
 
 
-def _table_text(value: str) -> str:
+def table_text(value: str) -> str:
     """Keep arbitrary activity names inside one Markdown table cell."""
     return str(value).replace("|", "/").replace("\n", " ").strip()
 
@@ -539,7 +539,7 @@ def format_subt_block_table(blocks: list[SubtBlock]):
     ]
 
     for block in blocks:
-        name = _table_text(block.activity_name) or "-"
+        name = table_text(block.activity_name) or "-"
 
         lines.append(
             f"| {block.date} | {name} | "

@@ -56,6 +56,8 @@ training reports:
   heart rate, with vertical bars showing max HR.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
+- **activities** — Table of recent activities (default: last 20), with
+  selectable columns.
 
 ## Setup
 
@@ -81,6 +83,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
     uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
+    uv run --env-file .env python -m hobbyjogging_report activities --limit 20
     uv run --env-file .env python -m hobbyjogging_report session
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
@@ -251,10 +254,32 @@ and distance, weighted pace, average/max HR) and then shows one table
 per non-empty category. Work pace, fastest/slowest rep pace, and HR are
 derived from the same work reps used by the classification and charts.
 
+## Activities table
+
+`activities` lists recent activities as a Markdown table.
+
+    ./reports.sh activities                          # last 20 activities
+    ./reports.sh activities --limit 50               # last 50
+    ./reports.sh activities --days 30                # everything in the last 30 days
+    ./reports.sh activities --days 90 --limit 10     # newest 10 from the last 90 days
+    ./reports.sh activities --add id,category        # defaults plus id and category
+    ./reports.sh activities --columns date,name,distance
+
+Without a date range, the table covers the most recent activities up to
+`--limit` (default 20). With a range, every activity in the range is shown,
+capped by `--limit` if given. Rows are newest first.
+
+Default columns: date, sport, name, duration, distance, pace, avg HR,
+load, RPE, feel. `--columns` replaces them (in the order given); `--add`
+appends. Available columns: id, date, started (UTC), sport, name, duration,
+elapsed, distance, pace, avg_hr, load, rpe, feel, intensity, category.
+The category is only computed when requested, and uses intervals for
+subT/LT1-named sessions.
+
 ## Date ranges
 
 `report`, `subt-report`, `volume`, `load`, `time`, `recovery`,
-`subt-pace`, `subt-hr` and `classify` accept:
+`subt-pace`, `subt-hr`, `classify` and `activities` accept:
 
     --days N              look back N days from today
     --from YYYY-MM-DD     start date (inclusive)

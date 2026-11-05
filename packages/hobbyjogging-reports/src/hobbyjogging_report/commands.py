@@ -22,7 +22,13 @@ from .cli import (
     parse_report_args,
     parse_time_args,
 )
+from .activity_list import (
+    COLUMNS,
+    DEFAULT_COLUMNS,
+    parse_activities_args,
+)
 from .report_commands import (
+    run_activities_command,
     run_all_command,
     run_classify_command,
     run_daily_command,
@@ -47,6 +53,7 @@ class Command:
         kw_only=True
     )
     needs_source: bool = True
+    notes: tuple[str, ...] = ()
 
 
 def _parse_session(argv: list[str]):
@@ -225,6 +232,24 @@ COMMANDS = {
         ),
         run=run_subt_hr_command,
     ),
+    "activities": Command(
+        "activities",
+        "Table of recent activities with selectable columns",
+        "activities [--limit N] [--days N] [--from DATE] [--to DATE] "
+        "[--columns LIST] [--add LIST]",
+        (
+            "reports.sh activities",
+            "reports.sh activities --limit 50",
+            "reports.sh activities --days 30 --add id,category",
+            "reports.sh activities --columns date,name,distance",
+        ),
+        parse=parse_activities_args,
+        run=run_activities_command,
+        notes=(
+            f"default columns: {', '.join(DEFAULT_COLUMNS)}",
+            f"available columns: {', '.join(COLUMNS)}",
+        ),
+    ),
     "debug": Command(
         "debug",
         "Dump raw Intervals.icu payloads",
@@ -272,6 +297,10 @@ def command_help(command: Command) -> str:
     if command.examples:
         lines.extend(["", "examples:"])
         lines.extend(f"  {example}" for example in command.examples)
+
+    if command.notes:
+        lines.extend(["", "notes:"])
+        lines.extend(f"  {note}" for note in command.notes)
 
     if command.needs_source:
         lines.extend([
