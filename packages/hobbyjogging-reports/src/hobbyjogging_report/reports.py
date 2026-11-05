@@ -1,5 +1,4 @@
 import json
-import sys
 from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
@@ -59,7 +58,7 @@ def _format_event(event) -> list[str]:
     return lines
 
 
-def debug():
+def debug(resource: str = "all"):
 
     api = Intervals()
 
@@ -79,12 +78,6 @@ def debug():
     events = api.events(
         today,
         today + timedelta(days=1),
-    )
-
-    resource = (
-        sys.argv[2]
-        if len(sys.argv) > 2
-        else "all"
     )
 
     if resource == "activities":

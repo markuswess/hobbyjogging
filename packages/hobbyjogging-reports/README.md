@@ -93,6 +93,12 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
 
+Every command supports `--help`, for example:
+
+    uv run --env-file .env python -m hobbyjogging_report time --help
+    ./charts.sh time --help
+    ./reports.sh session --help
+
 ### Quick reports
 
 `reports.sh` wraps the long `uv run` command, copies the generated
@@ -355,6 +361,7 @@ analysis or chart code:
   `WellnessDay`, `Event`, `Interval`).
 - `hobbyjogging_core/datasource.py` — the `DataSource` protocol.
 - `cli.py` — shared command-line date-range and source parsing.
+- `commands.py` — command registry, handlers, and per-command help.
 - `sources/__init__.py` — source selection.
 - `sources/database.py` — canonical SQLite database adapter.
 - `sources/intervals_api.py` — the only module that knows raw
