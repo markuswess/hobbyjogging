@@ -102,7 +102,7 @@ def debug(resource: str = "all"):
             return
 
         activity = api.get_activity(
-            activities[2]["id"]
+            activities[0]["id"]
         )
 
         print(
@@ -116,8 +116,8 @@ def debug(resource: str = "all"):
         return
     else:
         raise SystemExit(
-            "usage: hobbyjogging_report.py debug "
-            "[activities|wellness|events]"
+            "usage: hobbyjogging_report debug "
+            "[activities|wellness|events|intervals|all]"
         )
 
     print(

@@ -8,7 +8,7 @@ from hobbyjogging_report.analysis import (
     distance_averages,
     is_lt1_activity,
     load_metrics,
-    load_warmup_days,
+    average_warmup_days,
     recovery_trends,
     subt_session_point,
     subt_work_points,
@@ -20,7 +20,7 @@ from hobbyjogging_report.analysis import (
     work_intervals,
     zone_time_averages,
 )
-from hobbyjogging_report.model import LoadWindows
+from hobbyjogging_report.model import AverageWindows
 from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
 D = date(2026, 10, 1)
@@ -200,11 +200,11 @@ class LoadMetricsTests(unittest.TestCase):
         )
 
     def test_load_warmup_uses_longest_window(self):
-        self.assertEqual(910, load_warmup_days())
+        self.assertEqual(910, average_warmup_days())
         self.assertEqual(
             100,
-            load_warmup_days(
-                LoadWindows(base=20, fitness=10, fatigue=5)
+            average_warmup_days(
+                AverageWindows(base=20, fitness=10, fatigue=5)
             ),
         )
 

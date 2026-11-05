@@ -56,7 +56,7 @@ class SubtSummary:
 
 
 @dataclass(frozen=True)
-class LoadWindows:
+class AverageWindows:
     """EWMA time constants, in days, for the load chart."""
 
     base: int = 182

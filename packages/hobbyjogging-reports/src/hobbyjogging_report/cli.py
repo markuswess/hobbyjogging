@@ -3,7 +3,7 @@
 import argparse
 from datetime import date, timedelta
 
-from .model import LoadWindows
+from .model import AverageWindows
 from .sources import DEFAULT_SOURCE, SOURCE_CHOICES
 
 
@@ -143,8 +143,8 @@ def _window_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _window_options(args) -> LoadWindows:
-    windows = LoadWindows(
+def _window_options(args) -> AverageWindows:
+    windows = AverageWindows(
         base=args.base_days,
         fitness=args.fitness_days,
         fatigue=args.fatigue_days,
@@ -178,7 +178,7 @@ def parse_load_args(
     default_output: str = "load.png",
     default_days: int = 180,
     today: date | None = None,
-) -> tuple[str, date, date, LoadWindows]:
+) -> tuple[str, date, date, AverageWindows]:
     """Parse output, range, and EWMA windows for the load chart."""
     parser = _window_parser()
     args = parser.parse_args(argv)
@@ -198,7 +198,7 @@ def parse_time_args(
     default_output: str = "time.png",
     default_days: int = 90,
     today: date | None = None,
-) -> tuple[str, date, date, LoadWindows, int, str]:
+) -> tuple[str, date, date, AverageWindows, int, str]:
     """Parse output, range, windows, zone count, and zone window."""
     parser = _window_parser()
     parser.add_argument("--zones", type=int, default=4)

@@ -7,11 +7,9 @@ from hobbyjogging_report.format import (
     format_category_table,
     format_feel,
     last_four_nights,
-    latest_recovery,
     pace,
     recovery_summary,
     sport_label,
-    subt_summary_for_activity,
     summarize_training,
     work_summary_for_activity,
 )
@@ -123,7 +121,6 @@ class FormattingTests(unittest.TestCase):
         self.assertEqual(55, summary["hrv"])
         self.assertEqual(46, summary["rhr"])
         self.assertEqual(7.5 * 3600, summary["sleep"])
-        self.assertEqual(60, latest_recovery(wellness)["hrv"])
         self.assertEqual(2, len(last_four_nights(wellness)))
 
     def test_subt_summary_uses_model_intervals(self):
@@ -139,12 +136,12 @@ class FormattingTests(unittest.TestCase):
 
         self.assertEqual(
             ["5x5:00 subT-medium: 5:00/km, 160 avg / 172 max bpm"],
-            subt_summary_for_activity(a, intervals),
+            work_summary_for_activity(a, intervals),
         )
 
     def test_subt_summary_name_only(self):
         a = activity(name="LT1", description="instead of subT")
-        self.assertIsNone(subt_summary_for_activity(a, []))
+        self.assertIsNone(work_summary_for_activity(a, []))
 
     def test_work_summary_for_lt1(self):
         a = activity(name="3x10' LT1", duration_s=3000)

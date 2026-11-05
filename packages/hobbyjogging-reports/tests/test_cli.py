@@ -15,7 +15,7 @@ from hobbyjogging_report.cli import (
     parse_time_args,
     resolve_range,
 )
-from hobbyjogging_report.model import LoadWindows
+from hobbyjogging_report.model import AverageWindows
 
 TODAY = date(2026, 10, 22)
 
@@ -196,7 +196,7 @@ class LoadArgsTests(unittest.TestCase):
         self.assertEqual("load.png", output)
         self.assertEqual(TODAY - timedelta(days=180), start)
         self.assertEqual(TODAY, end)
-        self.assertEqual(LoadWindows(), windows)
+        self.assertEqual(AverageWindows(), windows)
 
     def test_custom_windows_and_output(self):
         output, start, end, windows = parse_load_args(
@@ -214,7 +214,7 @@ class LoadArgsTests(unittest.TestCase):
         self.assertEqual(TODAY - timedelta(days=30), start)
         self.assertEqual(TODAY, end)
         self.assertEqual(
-            LoadWindows(base=100, fitness=20, fatigue=5),
+            AverageWindows(base=100, fitness=20, fatigue=5),
             windows,
         )
 
@@ -249,7 +249,7 @@ class TimeArgsTests(unittest.TestCase):
         self.assertEqual("time.png", output)
         self.assertEqual(TODAY - timedelta(days=90), start)
         self.assertEqual(TODAY, end)
-        self.assertEqual(LoadWindows(), windows)
+        self.assertEqual(AverageWindows(), windows)
         self.assertEqual(4, zones)
         self.assertEqual("fitness", zone_window)
 

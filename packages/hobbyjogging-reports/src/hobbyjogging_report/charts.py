@@ -15,10 +15,11 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 from .analysis import SUBT_CATEGORIES
+from .format import format_pace
 from .model import (
     DistancePoint,
     LoadPoint,
-    LoadWindows,
+    AverageWindows,
     RecoveryPoint,
     SubtPoint,
     TimePoint,
@@ -27,7 +28,7 @@ from .model import (
 )
 from .series import sma
 
-LOAD_COLORS = {
+AVERAGE_COLORS = {
     "base": "tab:blue",
     "fitness": "tab:orange",
     "fatigue": "tab:red",
@@ -73,7 +74,7 @@ def plot_volume(
     output: str,
     *,
     distance_points: list[DistancePoint] | None = None,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     distance_scale: float = 7.0,
     ylabel: str = "km / week",
     title: str = "Weekly running volume",
@@ -86,7 +87,7 @@ def plot_volume(
     if not data and not distance_points:
         raise ValueError("no data to plot")
 
-    windows = windows or LoadWindows()
+    windows = windows or AverageWindows()
     fig, ax = plt.subplots(figsize=(12, 5))
 
     if data:
@@ -118,7 +119,7 @@ def plot_volume(
                     getattr(point, attribute) * distance_scale
                     for point in distance_points
                 ],
-                color=LOAD_COLORS[attribute],
+                color=AVERAGE_COLORS[attribute],
                 linewidth=2,
                 label=label,
                 zorder=2,
@@ -149,7 +150,7 @@ def plot_time(
     time_points: list[TimePoint] | None = None,
     zone_points: list[ZoneAveragePoint] | None = None,
     zone_window_days: int | None = None,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     time_scale: float = 7.0,
     zone_scale: float = 7.0,
     ylabel: str = "hours / week",
@@ -159,7 +160,7 @@ def plot_time(
     if not weeks and not time_points:
         raise ValueError("no data to plot")
 
-    windows = windows or LoadWindows()
+    windows = windows or AverageWindows()
     zone_count = (
         len(weeks[0].zones)
         if weeks
@@ -236,7 +237,7 @@ def plot_time(
                     getattr(point, attribute) * time_scale / 3600
                     for point in time_points
                 ],
-                color=LOAD_COLORS[attribute],
+                color=AVERAGE_COLORS[attribute],
                 linewidth=2,
                 label=label,
                 zorder=2,
@@ -312,8 +313,7 @@ def plot_time(
 
 
 def _pace_tick(seconds, _position):
-    seconds = int(round(seconds))
-    return f"{seconds // 60}:{seconds % 60:02d}"
+    return format_pace(seconds)
 
 
 SUBT_COLORS = {
@@ -511,14 +511,14 @@ def plot_subt_hr(
 def plot_load(
     points: list[LoadPoint],
     output: str,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     title: str = "Training load",
 ) -> str:
     """Daily load bars with base, fitness, and fatigue EWMA lines."""
     if not points:
         raise ValueError("no data to plot")
 
-    windows = windows or LoadWindows()
+    windows = windows or AverageWindows()
     dates = [point.date for point in points]
 
     fig, ax = plt.subplots(figsize=(12, 5))
@@ -539,7 +539,7 @@ def plot_load(
         ax.plot(
             dates,
             [getattr(point, attribute) for point in points],
-            color=LOAD_COLORS[attribute],
+            color=AVERAGE_COLORS[attribute],
             linewidth=2,
             label=label,
             zorder=2,

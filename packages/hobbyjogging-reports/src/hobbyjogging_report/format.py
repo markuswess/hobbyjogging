@@ -174,37 +174,18 @@ def format_category_table(stats):
 
 def pace(activity):
 
-    try:
+    seconds = pace_s_per_km(activity.duration_s, activity.distance_m)
 
-        sec = (
-            activity.duration_s
-            /
-            activity.distance_m
-            *
-            1000
-        )
-
-        return (
-            f"{int(sec//60)}:"
-            f"{int(sec%60):02d}/km"
-        )
-
-    except Exception:
+    if seconds is None:
         return "-"
+
+    return f"{format_pace(seconds)}/km"
 
 
 def format_work_result(point: SubtPoint, label: str | None = None):
 
     duration = point.avg_rep_s
-
-    mins = int(duration // 60)
-    secs = round(duration % 60)
-
-    if secs == 60:
-        mins += 1
-        secs = 0
-
-    interval_duration = f"{mins}:{secs:02d}"
+    interval_duration = fmt_clock(duration)
     label = label or f"subT-{point.category}"
 
     if point.avg_hr is None and point.max_hr is None:
@@ -222,11 +203,6 @@ def format_work_result(point: SubtPoint, label: str | None = None):
         f"{format_pace(point.pace_s_per_km)}/km, "
         f"{hr}"
     )
-
-
-def format_subt_result(point: SubtPoint):
-    """Backward-compatible subT formatter."""
-    return format_work_result(point)
 
 
 def last_four_nights(wellness):
@@ -345,24 +321,6 @@ def recovery_summary(wellness: list[WellnessDay]):
     }
 
 
-def latest_recovery(wellness: list[WellnessDay]):
-
-    if not wellness:
-        return {
-            "hrv": None,
-            "rhr": None,
-            "sleep": None,
-        }
-
-    w = max(wellness, key=lambda x: x.date)
-
-    return {
-        "hrv": w.hrv,
-        "rhr": w.resting_hr,
-        "sleep": w.sleep_s,
-    }
-
-
 def format_pace(seconds):
     """Format seconds/km as M:SS."""
     if seconds is None:
@@ -395,14 +353,6 @@ def work_summary_for_activity(
     ]
 
 
-def subt_summary_for_activity(
-    activity: Activity,
-    intervals: list[Interval],
-):
-    """Backward-compatible alias for work_summary_for_activity."""
-    return work_summary_for_activity(activity, intervals)
-
-
 def get_work_summary(
     source: DataSource,
     activity: Activity,
@@ -418,14 +368,6 @@ def get_work_summary(
         return None
 
     return work_summary_for_activity(activity, intervals)
-
-
-def get_subt_summary(
-    source: DataSource,
-    activity: Activity,
-):
-    """Backward-compatible alias for get_work_summary."""
-    return get_work_summary(source, activity)
 
 
 def _activity_metric_lines(

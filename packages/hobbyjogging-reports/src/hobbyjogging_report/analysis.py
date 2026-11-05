@@ -13,7 +13,7 @@ from hobbyjogging_core.model import Activity, Interval, WellnessDay
 from .model import (
     DistancePoint,
     LoadPoint,
-    LoadWindows,
+    AverageWindows,
     RecoveryPoint,
     SubtBlock,
     SubtPoint,
@@ -45,8 +45,8 @@ MEDIUM_MAX_S = 420
 
 SUBT_CATEGORY_ORDER = (*SUBT_CATEGORIES, "lt1")
 
-DEFAULT_LOAD_WINDOWS = LoadWindows()
-LOAD_WARMUP_FACTOR = 5
+DEFAULT_AVERAGE_WINDOWS = AverageWindows()
+AVERAGE_WARMUP_FACTOR = 5
 
 DEFAULT_ZONE_COUNT = 4
 
@@ -88,17 +88,6 @@ def weekly_run_distance(activities: list[Activity]) -> list[tuple[date, float]]:
             totals[week_start(a.date)] += a.distance_m
 
     return [(week, totals[week] / 1000) for week in sorted(totals)]
-
-
-def weekly_training_load(activities: list[Activity]) -> list[tuple[date, float]]:
-    """Total training load per week, oldest first."""
-    totals: dict[date, float] = defaultdict(float)
-
-    for a in activities:
-        if a.training_load:
-            totals[week_start(a.date)] += a.training_load
-
-    return [(week, totals[week]) for week in sorted(totals)]
 
 
 def is_subt_activity(a: Activity) -> bool:
@@ -479,10 +468,10 @@ def subt_report_summary(
     return summaries, _summary_from_blocks("total", blocks)
 
 
-def load_warmup_days(windows: LoadWindows | None = None) -> int:
+def average_warmup_days(windows: AverageWindows | None = None) -> int:
     """Days of history needed before a load chart's display range."""
-    windows = windows or DEFAULT_LOAD_WINDOWS
-    return LOAD_WARMUP_FACTOR * max(
+    windows = windows or DEFAULT_AVERAGE_WINDOWS
+    return AVERAGE_WARMUP_FACTOR * max(
         windows.base,
         windows.fitness,
         windows.fatigue,
@@ -534,7 +523,7 @@ def daily_run_distance(
 
 def _ewma_columns(
     series: list[tuple[date, float]],
-    windows: LoadWindows,
+    windows: AverageWindows,
 ) -> tuple[list[float], list[float], list[float]]:
     """Return the base, fitness, and fatigue EWMA columns."""
     values = [value for _, value in series]
@@ -551,7 +540,7 @@ def load_metrics(
     start: date,
     end: date,
     *,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     warmup_days: int | None = None,
 ) -> list[LoadPoint]:
     """Return daily load with base, fitness, and fatigue EWMAs.
@@ -559,10 +548,10 @@ def load_metrics(
     ``activities`` must include the warm-up range before ``start`` so the
     long average does not begin at zero mid-report.
     """
-    windows = windows or DEFAULT_LOAD_WINDOWS
+    windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
-        warmup_days = load_warmup_days(windows)
+        warmup_days = average_warmup_days(windows)
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_training_load(activities, warm_start, end)
@@ -597,17 +586,17 @@ def distance_averages(
     start: date,
     end: date,
     *,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     warmup_days: int | None = None,
 ) -> list[DistancePoint]:
     """Return daily running distance with its three EWMAs.
 
     ``activities`` must include the warm-up range before ``start``.
     """
-    windows = windows or DEFAULT_LOAD_WINDOWS
+    windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
-        warmup_days = load_warmup_days(windows)
+        warmup_days = average_warmup_days(windows)
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_run_distance(activities, warm_start, end)
@@ -696,17 +685,17 @@ def time_averages(
     start: date,
     end: date,
     *,
-    windows: LoadWindows | None = None,
+    windows: AverageWindows | None = None,
     warmup_days: int | None = None,
 ) -> list[TimePoint]:
     """Return daily running time with its three EWMAs.
 
     ``activities`` must include the warm-up range before ``start``.
     """
-    windows = windows or DEFAULT_LOAD_WINDOWS
+    windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
-        warmup_days = load_warmup_days(windows)
+        warmup_days = average_warmup_days(windows)
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_run_time(activities, warm_start, end)
@@ -783,7 +772,7 @@ def zone_time_averages(
         raise ValueError("window_days must be positive")
 
     if warmup_days is None:
-        warmup_days = LOAD_WARMUP_FACTOR * window_days
+        warmup_days = AVERAGE_WARMUP_FACTOR * window_days
 
     warm_start = start - timedelta(days=warmup_days)
     series = daily_zone_time(

@@ -15,7 +15,7 @@ from .cli import (
     parse_report_args,
     parse_time_args,
 )
-from .model import LoadWindows
+from .model import AverageWindows
 from .reports import (
     daily,
     debug,
@@ -64,21 +64,21 @@ def run_volume_chart(
     start: date,
     end: date,
     source: DataSource,
-    windows: LoadWindows,
+    windows: AverageWindows,
     *,
     include_review: bool = False,
 ) -> None:
     """Render weekly running volume with distance-average lines."""
     from .analysis import (
         distance_averages,
-        load_warmup_days,
+        average_warmup_days,
         week_bounds,
         weekly_run_distance,
     )
     from .charts import plot_volume
 
     chart_start, chart_end = week_bounds(start, end)
-    warmup_days = load_warmup_days(windows)
+    warmup_days = average_warmup_days(windows)
     warm_start = chart_start - timedelta(days=warmup_days)
 
     all_activities = source.activities(warm_start, chart_end)
@@ -125,7 +125,7 @@ def run_time_chart(
     start: date,
     end: date,
     source: DataSource,
-    windows: LoadWindows,
+    windows: AverageWindows,
     zones: int,
     zone_window: str,
     *,
@@ -134,7 +134,7 @@ def run_time_chart(
     """Render weekly running time stacked by HR zone."""
     from .analysis import (
         RUN_TYPES,
-        load_warmup_days,
+        average_warmup_days,
         time_averages,
         week_bounds,
         weekly_time_by_zone,
@@ -143,7 +143,7 @@ def run_time_chart(
     from .charts import plot_time
 
     chart_start, chart_end = week_bounds(start, end)
-    warmup_days = load_warmup_days(windows)
+    warmup_days = average_warmup_days(windows)
     warm_start = chart_start - timedelta(days=warmup_days)
 
     all_activities = source.activities(warm_start, chart_end)
@@ -304,15 +304,15 @@ def run_load_chart(
     start: date,
     end: date,
     source: DataSource,
-    windows: LoadWindows,
+    windows: AverageWindows,
     *,
     include_review: bool = False,
 ) -> None:
     """Render daily load and its base/fitness/fatigue EWMA lines."""
-    from .analysis import load_metrics, load_warmup_days
+    from .analysis import load_metrics, average_warmup_days
     from .charts import plot_load
 
-    warmup_days = load_warmup_days(windows)
+    warmup_days = average_warmup_days(windows)
     warm_start = start - timedelta(days=warmup_days)
 
     all_activities = source.activities(warm_start, end)
@@ -720,7 +720,7 @@ COMMANDS = {
     "debug": Command(
         "debug",
         "Dump raw Intervals.icu payloads",
-        "debug [activities|wellness|events|intervals]",
+        "debug [activities|wellness|events|intervals|all]",
         ("python -m hobbyjogging_report debug activities",),
         parse=_parse_debug,
         run=_run_debug,

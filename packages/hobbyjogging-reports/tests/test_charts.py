@@ -14,7 +14,7 @@ from hobbyjogging_report.charts import (
 from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
-    LoadWindows,
+    AverageWindows,
     RecoveryPoint,
     SubtPoint,
     TimePoint,
@@ -88,7 +88,7 @@ class VolumeChartTests(unittest.TestCase):
                 data,
                 str(output),
                 distance_points=distance_points,
-                windows=LoadWindows(),
+                windows=AverageWindows(),
             )
 
             self.assertEqual(str(output), result)
@@ -133,7 +133,7 @@ class TimeChartTests(unittest.TestCase):
                 time_points=points,
                 zone_points=zone_points,
                 zone_window_days=42,
-                windows=LoadWindows(),
+                windows=AverageWindows(),
             )
 
             self.assertEqual(str(output), result)
@@ -160,7 +160,7 @@ class LoadChartTests(unittest.TestCase):
             result = plot_load(
                 points,
                 str(output),
-                windows=LoadWindows(base=182, fitness=42, fatigue=7),
+                windows=AverageWindows(base=182, fitness=42, fatigue=7),
             )
 
             self.assertEqual(str(output), result)
