@@ -14,6 +14,7 @@ EXPECTED_TABLES = {
     "activity_intervals",
     "activity_laps",
     "activity_sources",
+    "activity_tags",
     "activity_zone_times",
     "equipment",
     "equipment_source_links",
@@ -54,12 +55,30 @@ class SchemaMigrationTests(unittest.TestCase):
         }
         self.assertIn("elapsed_s", columns)
         self.assertIn("excluded_at", columns)
+        self.assertIn("vo2max_garmin", columns)
+        self.assertIn("vo2max_runalyze", columns)
 
         record_columns = {
             row["name"]
             for row in self.conn.execute("PRAGMA table_info(source_records)")
         }
         self.assertIn("excluded_at", record_columns)
+
+        tag_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(activity_tags)")
+        }
+        self.assertEqual(
+            {
+                "activity_id",
+                "tag",
+                "source",
+                "source_record_id",
+                "is_manual",
+                "created_at",
+            },
+            tag_columns,
+        )
 
     def test_migrates_v1_activity_rows_to_elapsed_time(self):
         self.conn.executescript(INITIAL_SCHEMA_SQL)
@@ -77,6 +96,37 @@ class SchemaMigrationTests(unittest.TestCase):
 
         self.assertEqual(SCHEMA_VERSION, version)
         self.assertEqual(0, row["elapsed_s"])
+
+    def test_migrates_v4_database_to_v5(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.conn.execute("PRAGMA user_version = 4")
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        row = self.conn.execute(
+            "SELECT vo2max_garmin, vo2max_runalyze FROM activities "
+            "WHERE id = 'a1'"
+        ).fetchone()
+        self.assertIsNone(row["vo2max_garmin"])
+        self.assertIsNone(row["vo2max_runalyze"])
+        self.conn.execute(
+            "INSERT INTO activity_tags (activity_id, tag, source) "
+            "VALUES ('a1', 'race', 'manual')"
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute("SELECT COUNT(*) FROM activity_tags").fetchone()[0],
+        )
 
     def test_migrate_is_idempotent(self):
         migrate(self.conn)

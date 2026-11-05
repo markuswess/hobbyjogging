@@ -50,10 +50,22 @@ class Activity:
     rpe: float | None = None
     feel: int | None = None  # 1 = strong, 2 = good, 3 = normal, 4 = poor, 5 = weak
     intensity: float | None = None  # fraction of threshold (ICU intensity)
+    vo2max_garmin: float | None = None
+    vo2max_runalyze: float | None = None
+    tags: list[str] = field(default_factory=list)
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
     equipment: list[Equipment] = field(default_factory=list)
     needs_review: bool = False  # open review items exist for this activity
+
+    @property
+    def vo2max(self) -> float | None:
+        """Best available VO2max: Garmin's value, else Runalyze's estimate."""
+        return (
+            self.vo2max_garmin
+            if self.vo2max_garmin is not None
+            else self.vo2max_runalyze
+        )
 
 
 @dataclass

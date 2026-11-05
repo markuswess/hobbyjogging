@@ -150,6 +150,33 @@ class TrainingRepositoryTests(unittest.TestCase):
             [item.id for item in first.equipment],
         )
 
+    def test_vo2max_and_tags_are_mapped(self):
+        self.conn.execute(
+            "UPDATE activities SET vo2max_garmin = 52.0, "
+            "vo2max_runalyze = 50.0 WHERE id = 'a1'"
+        )
+        self.conn.executemany(
+            "INSERT INTO activity_tags (activity_id, tag, source) "
+            "VALUES (?, ?, ?)",
+            [
+                ("a1", "race", "manual"),
+                ("a1", "morning", "runalyze"),
+            ],
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+
+        first, second = activities
+        self.assertEqual(52.0, first.vo2max_garmin)
+        self.assertEqual(50.0, first.vo2max_runalyze)
+        self.assertEqual(52.0, first.vo2max)
+        self.assertEqual(["morning", "race"], first.tags)
+        self.assertIsNone(second.vo2max)
+        self.assertEqual([], second.tags)
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

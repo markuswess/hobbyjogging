@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -40,11 +40,29 @@ ALTER TABLE activities ADD COLUMN excluded_at TEXT;
 ALTER TABLE source_records ADD COLUMN excluded_at TEXT;
 """
 
+MIGRATION_5_SQL = """
+ALTER TABLE activities ADD COLUMN vo2max_garmin REAL;
+ALTER TABLE activities ADD COLUMN vo2max_runalyze REAL;
+
+CREATE TABLE activity_tags (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, tag, source)
+);
+
+CREATE INDEX idx_activity_tags_tag ON activity_tags(tag);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
     3: MIGRATION_3_SQL,
     4: MIGRATION_4_SQL,
+    5: MIGRATION_5_SQL,
 }
 
 

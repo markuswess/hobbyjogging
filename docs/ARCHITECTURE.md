@@ -133,13 +133,11 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 4 at the time of writing;
-version 5 adds the Runalyze enrichment fields (`activities.vo2max`,
-`activity_tags`).
+SQLite, forward-only migrations. Schema version 5.
 
 - `activities` — canonical values: dates, sport, name, description, duration,
-  elapsed, distance, heart rate, training load, subjective fields, exclusion
-  timestamp.
+  elapsed, distance, heart rate, training load, subjective fields, both VO2max
+  values (`vo2max_garmin`, `vo2max_runalyze`), exclusion timestamp.
 - `source_records` — raw imported payloads with checksums and provenance
   (`source`, `record_type`, `external_id`, `raw_path`, `payload_json`,
   exclusion timestamp).
@@ -161,6 +159,12 @@ Two invariants are enforced by the writer:
 
 - A manual field (`is_manual = 1`) is never overwritten by an import.
 - An excluded activity cannot be written to or linked to.
+
+VO2max has two independent owners: Garmin FIT writes `vo2max_garmin` and
+Runalyze writes `vo2max_runalyze`. Runalyze may fill an empty
+`vo2max_garmin` with its estimate as a fallback, but a later FIT value
+replaces that fallback. Tags are replaced per source on reimport; manual tags
+(`is_manual = 1`) are never touched.
 
 Sports are normalized through `hobbyjogging_core.sports`: one alias table maps
 FIT sport/sub-sport pairs, Intervals type names, and manual entry to the same

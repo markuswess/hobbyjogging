@@ -678,5 +678,161 @@ class TrainingWriterTests(unittest.TestCase):
         self.assertEqual(1, run["records_skipped"])
 
 
+class Vo2maxAndTagTests(unittest.TestCase):
+    """Independent VO2max owners and per-source tag replacement."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+
+        self.intervals_id = self._source("intervals", "i1", "c-i")
+        self.fit_id = self._source("fit", "f1", "c-f")
+        self.runalyze_id = self._source("runalyze", "r1", "c-r")
+
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run"},
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+    def _source(self, source, external_id, checksum):
+        return self.writer.upsert_source_record(
+            source=source,
+            record_type="activity",
+            external_id=external_id,
+            checksum=checksum,
+            import_run_id=self.run_id,
+        )
+
+    def _values(self):
+        return self.conn.execute(
+            "SELECT vo2max_garmin, vo2max_runalyze FROM activities "
+            "WHERE id = 'a1'"
+        ).fetchone()
+
+    def _upsert(self, values, source, record_id):
+        return self.writer.upsert_activity(
+            "a1",
+            values,
+            source=source,
+            source_record_id=record_id,
+        )
+
+    def test_vo2max_fields_have_independent_owners(self):
+        conflicts = self._upsert(
+            {"vo2max_garmin": 52.0},
+            "fit",
+            self.fit_id,
+        )
+        conflicts += self._upsert(
+            {"vo2max_runalyze": 50.0},
+            "runalyze",
+            self.runalyze_id,
+        )
+
+        self.assertEqual([], conflicts)
+        values = self._values()
+        self.assertEqual(52.0, values["vo2max_garmin"])
+        self.assertEqual(50.0, values["vo2max_runalyze"])
+
+    def test_runalyze_fills_garmin_only_when_empty_and_fit_replaces_it(self):
+        self._upsert(
+            {"vo2max_garmin": 49.0, "vo2max_runalyze": 49.0},
+            "runalyze",
+            self.runalyze_id,
+        )
+        values = self._values()
+        self.assertEqual(49.0, values["vo2max_garmin"])
+        self.assertEqual(49.0, values["vo2max_runalyze"])
+
+        self._upsert({"vo2max_garmin": 52.0}, "fit", self.fit_id)
+        values = self._values()
+        self.assertEqual(52.0, values["vo2max_garmin"])
+        self.assertEqual(49.0, values["vo2max_runalyze"])
+
+        # A later Runalyze import refreshes its own estimate but must not
+        # overwrite the Garmin value it only filled as a fallback.
+        self._upsert(
+            {"vo2max_garmin": 50.0, "vo2max_runalyze": 50.0},
+            "runalyze",
+            self.runalyze_id,
+        )
+        values = self._values()
+        self.assertEqual(52.0, values["vo2max_garmin"])
+        self.assertEqual(50.0, values["vo2max_runalyze"])
+
+    def test_manual_vo2max_wins(self):
+        self.writer.set_manual_field("a1", "vo2max_garmin", 55.0)
+
+        conflicts = self._upsert(
+            {"vo2max_garmin": 52.0},
+            "fit",
+            self.fit_id,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(55.0, self._values()["vo2max_garmin"])
+
+    def test_replace_tags_per_source_keeps_manual_tags(self):
+        self.assertEqual(
+            2,
+            self.writer.replace_activity_tags(
+                "a1",
+                ["race", "morning"],
+                source="runalyze",
+                source_record_id=self.runalyze_id,
+            ),
+        )
+        self.writer.replace_activity_tags(
+            "a1",
+            ["key session"],
+            source="manual",
+            is_manual=True,
+        )
+
+        self.assertEqual(
+            1,
+            self.writer.replace_activity_tags(
+                "a1",
+                ["race"],
+                source="runalyze",
+                source_record_id=self.runalyze_id,
+            ),
+        )
+
+        rows = self.conn.execute(
+            """
+            SELECT tag, source, is_manual FROM activity_tags
+            WHERE activity_id = 'a1' ORDER BY tag
+            """
+        ).fetchall()
+        self.assertEqual(
+            [("key session", "manual", 1), ("race", "runalyze", 0)],
+            [(row["tag"], row["source"], row["is_manual"]) for row in rows],
+        )
+
+    def test_replace_tags_deduplicates_and_strips(self):
+        written = self.writer.replace_activity_tags(
+            "a1",
+            [" race ", "race", "", "  "],
+            source="runalyze",
+            source_record_id=self.runalyze_id,
+        )
+
+        self.assertEqual(1, written)
+
+    def test_replace_tags_rejects_unknown_or_excluded_activity(self):
+        with self.assertRaises(ValueError):
+            self.writer.replace_activity_tags("nope", ["x"], source="runalyze")
+
+        self.writer.exclude_activity("a1")
+        with self.assertRaises(ValueError):
+            self.writer.replace_activity_tags("a1", ["x"], source="runalyze")
+
+
 if __name__ == "__main__":
     unittest.main()

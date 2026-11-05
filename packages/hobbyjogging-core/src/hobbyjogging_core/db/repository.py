@@ -26,7 +26,7 @@ class TrainingRepository:
             SELECT
                 id, local_date, started_at_utc, sport, name, description,
                 duration_s, elapsed_s, distance_m, avg_hr, training_load,
-                rpe, feel, intensity
+                rpe, feel, intensity, vo2max_garmin, vo2max_runalyze
             FROM activities
             WHERE local_date BETWEEN ? AND ?
               AND excluded_at IS NULL
@@ -41,6 +41,7 @@ class TrainingRepository:
         activity_ids = [row["id"] for row in rows]
         zone_times = self._zone_times(activity_ids)
         equipment = self._equipment_by_activity(activity_ids)
+        tags = self._tags_by_activity(activity_ids)
         flagged = self._open_review_activity_ids(activity_ids)
 
         return [
@@ -59,6 +60,9 @@ class TrainingRepository:
                 rpe=row["rpe"],
                 feel=row["feel"],
                 intensity=row["intensity"],
+                vo2max_garmin=row["vo2max_garmin"],
+                vo2max_runalyze=row["vo2max_runalyze"],
+                tags=tags[row["id"]],
                 pace_zone_times=zone_times[row["id"]]["pace"],
                 hr_zone_times=zone_times[row["id"]]["hr"],
                 equipment=equipment[row["id"]],
@@ -221,6 +225,27 @@ class TrainingRepository:
                     ]
                 else:
                     result[activity_id][kind] = []
+
+        return result
+
+    def _tags_by_activity(
+        self,
+        activity_ids: list[str],
+    ) -> dict[str, list[str]]:
+        placeholders = ", ".join("?" for _ in activity_ids)
+        rows = self.connection.execute(
+            f"""
+            SELECT DISTINCT activity_id, tag
+            FROM activity_tags
+            WHERE activity_id IN ({placeholders})
+            ORDER BY activity_id, tag
+            """,
+            activity_ids,
+        ).fetchall()
+
+        result: dict[str, list[str]] = defaultdict(list)
+        for row in rows:
+            result[row["activity_id"]].append(row["tag"])
 
         return result
 

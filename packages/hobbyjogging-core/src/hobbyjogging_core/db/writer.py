@@ -24,6 +24,8 @@ ACTIVITY_COLUMNS = {
     "rpe",
     "feel",
     "intensity",
+    "vo2max_garmin",
+    "vo2max_runalyze",
 }
 
 MANUAL_FIELDS = (
@@ -36,6 +38,8 @@ MANUAL_FIELDS = (
     "tz_offset_min",
     "sport",
     "training_load",
+    "vo2max_garmin",
+    "vo2max_runalyze",
 )
 
 # Fields whose cross-source disagreement is surfaced for review. Subjective
@@ -347,6 +351,15 @@ class TrainingWriter:
 
         if value is None:
             return "agree", current_source  # incoming source has no value
+
+        if field_name == "vo2max_garmin":
+            # FIT owns the Garmin estimate. Runalyze may only fill an empty
+            # slot with its own estimate (handled by the NULL check above);
+            # a later FIT import replaces that fallback.
+            if source == "runalyze":
+                return "agree", current_source
+            if source == "fit":
+                return "write", current_source
 
         if field_name == "sport":
             # "generic"/"other" is a placeholder, not a competing claim: a
@@ -808,6 +821,65 @@ class TrainingWriter:
                 rows,
             )
 
+    def replace_activity_tags(
+        self,
+        activity_id: str,
+        tags: list[str],
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's tags for an activity.
+
+        A reimport replaces only its own non-manual tags; manual tags
+        (``is_manual = 1``) are never touched. Pass ``is_manual=True`` to
+        replace the manual tag set explicitly. Returns the number of tags
+        written.
+        """
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        self.connection.execute(
+            """
+            DELETE FROM activity_tags
+            WHERE activity_id = ? AND source = ? AND is_manual = ?
+            """,
+            (activity_id, source, 1 if is_manual else 0),
+        )
+
+        cleaned = _clean_tags(tags)
+        if cleaned:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_tags (
+                    activity_id, tag, source, source_record_id, is_manual
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(activity_id, tag, source) DO UPDATE SET
+                    source_record_id = excluded.source_record_id,
+                    is_manual = excluded.is_manual
+                """,
+                [
+                    (
+                        activity_id,
+                        tag,
+                        source,
+                        source_record_id,
+                        1 if is_manual else 0,
+                    )
+                    for tag in cleaned
+                ],
+            )
+
+        return len(cleaned)
+
     def record_review_item(
         self,
         *,
@@ -1147,3 +1219,16 @@ def _parse_timestamp(value: object) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return datetime.fromisoformat(value)
+
+
+def _clean_tags(tags: list[str]) -> list[str]:
+    """Strip, drop empties, and de-duplicate tags while preserving order."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for tag in tags:
+        text = str(tag or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
