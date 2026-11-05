@@ -10,7 +10,15 @@ from statistics import median
 
 from hobbyjogging_core.model import Activity, Interval
 
-from .model import SubtBlock, SubtPoint, SubtSummary
+from .model import (
+    DistancePoint,
+    LoadPoint,
+    LoadWindows,
+    SubtBlock,
+    SubtPoint,
+    SubtSummary,
+)
+from .series import alpha_from_time_constant, daily_sums, ewma
 
 RUN_TYPES = {"run", "trail_run"}
 
@@ -26,6 +34,9 @@ SHORT_MAX_S = 240
 MEDIUM_MAX_S = 420
 
 SUBT_CATEGORY_ORDER = (*SUBT_CATEGORIES, "lt1")
+
+DEFAULT_LOAD_WINDOWS = LoadWindows()
+LOAD_WARMUP_FACTOR = 5
 
 # Work interval filtering. Older Intervals.icu activities mark warm-up,
 # cool-down and recovery jogs as WORK; work reps form the fast pace cluster.
@@ -444,3 +455,161 @@ def subt_report_summary(
     ]
 
     return summaries, _summary_from_blocks("total", blocks)
+
+
+def load_warmup_days(windows: LoadWindows | None = None) -> int:
+    """Days of history needed before a load chart's display range."""
+    windows = windows or DEFAULT_LOAD_WINDOWS
+    return LOAD_WARMUP_FACTOR * max(
+        windows.base,
+        windows.fitness,
+        windows.fatigue,
+    )
+
+
+def daily_training_load(
+    activities: list[Activity],
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Sum training load per day, filling rest days with zero."""
+    by_day: dict[date, float] = {}
+
+    for activity in activities:
+        if not (start <= activity.date <= end):
+            continue
+
+        by_day[activity.date] = (
+            by_day.get(activity.date, 0.0)
+            + (activity.training_load or 0.0)
+        )
+
+    return daily_sums(by_day, start, end)
+
+
+def daily_run_distance(
+    activities: list[Activity],
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Sum running distance (km) per day, filling rest days with zero."""
+    by_day: dict[date, float] = {}
+
+    for activity in activities:
+        if not (start <= activity.date <= end):
+            continue
+
+        if activity.type not in RUN_TYPES:
+            continue
+
+        by_day[activity.date] = (
+            by_day.get(activity.date, 0.0)
+            + activity.distance_m / 1000
+        )
+
+    return daily_sums(by_day, start, end)
+
+
+def _ewma_columns(
+    series: list[tuple[date, float]],
+    windows: LoadWindows,
+) -> tuple[list[float], list[float], list[float]]:
+    """Return the base, fitness, and fatigue EWMA columns."""
+    values = [value for _, value in series]
+
+    return (
+        ewma(values, alpha_from_time_constant(windows.base)),
+        ewma(values, alpha_from_time_constant(windows.fitness)),
+        ewma(values, alpha_from_time_constant(windows.fatigue)),
+    )
+
+
+def load_metrics(
+    activities: list[Activity],
+    start: date,
+    end: date,
+    *,
+    windows: LoadWindows | None = None,
+    warmup_days: int | None = None,
+) -> list[LoadPoint]:
+    """Return daily load with base, fitness, and fatigue EWMAs.
+
+    ``activities`` must include the warm-up range before ``start`` so the
+    long average does not begin at zero mid-report.
+    """
+    windows = windows or DEFAULT_LOAD_WINDOWS
+
+    if warmup_days is None:
+        warmup_days = load_warmup_days(windows)
+
+    warm_start = start - timedelta(days=warmup_days)
+    series = daily_training_load(activities, warm_start, end)
+    base, fitness, fatigue = _ewma_columns(series, windows)
+
+    points = []
+
+    for (day, load), base_value, fitness_value, fatigue_value in zip(
+        series,
+        base,
+        fitness,
+        fatigue,
+    ):
+        if day < start:
+            continue
+
+        points.append(
+            LoadPoint(
+                date=day,
+                load=load,
+                base=base_value,
+                fitness=fitness_value,
+                fatigue=fatigue_value,
+            )
+        )
+
+    return points
+
+
+def distance_averages(
+    activities: list[Activity],
+    start: date,
+    end: date,
+    *,
+    windows: LoadWindows | None = None,
+    warmup_days: int | None = None,
+) -> list[DistancePoint]:
+    """Return daily running distance with its three EWMAs.
+
+    ``activities`` must include the warm-up range before ``start``.
+    """
+    windows = windows or DEFAULT_LOAD_WINDOWS
+
+    if warmup_days is None:
+        warmup_days = load_warmup_days(windows)
+
+    warm_start = start - timedelta(days=warmup_days)
+    series = daily_run_distance(activities, warm_start, end)
+    base, fitness, fatigue = _ewma_columns(series, windows)
+
+    points = []
+
+    for (day, distance), base_value, fitness_value, fatigue_value in zip(
+        series,
+        base,
+        fitness,
+        fatigue,
+    ):
+        if day < start:
+            continue
+
+        points.append(
+            DistancePoint(
+                date=day,
+                distance_km=distance,
+                base=base_value,
+                fitness=fitness_value,
+                fatigue=fatigue_value,
+            )
+        )
+
+    return points

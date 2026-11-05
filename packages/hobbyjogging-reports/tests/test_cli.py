@@ -9,9 +9,11 @@ from hobbyjogging_report.cli import (
     extract_source,
     parse_chart_args,
     parse_classify_args,
+    parse_load_args,
     parse_report_args,
     resolve_range,
 )
+from hobbyjogging_report.model import LoadWindows
 
 TODAY = date(2026, 10, 22)
 
@@ -182,6 +184,52 @@ class ChartArgsTests(unittest.TestCase):
         self.assertEqual("pace.png", output)
         self.assertEqual(date(2026, 1, 1), start)
         self.assertEqual(date(2026, 1, 31), end)
+
+
+class LoadArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        output, start, end, windows = parse_load_args([], today=TODAY)
+
+        self.assertEqual("load.png", output)
+        self.assertEqual(TODAY - timedelta(days=180), start)
+        self.assertEqual(TODAY, end)
+        self.assertEqual(LoadWindows(), windows)
+
+    def test_custom_windows_and_output(self):
+        output, start, end, windows = parse_load_args(
+            [
+                "--days", "30",
+                "--base-days", "100",
+                "--fitness-days", "20",
+                "--fatigue-days", "5",
+                "--output", "custom.png",
+            ],
+            today=TODAY,
+        )
+
+        self.assertEqual("custom.png", output)
+        self.assertEqual(TODAY - timedelta(days=30), start)
+        self.assertEqual(TODAY, end)
+        self.assertEqual(
+            LoadWindows(base=100, fitness=20, fatigue=5),
+            windows,
+        )
+
+    def test_positional_output(self):
+        output, _, _, _ = parse_load_args(
+            ["load.png"],
+            today=TODAY,
+        )
+
+        self.assertEqual("load.png", output)
+
+    def test_rejects_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            parse_load_args(
+                ["--fitness-days", "0"],
+                today=TODAY,
+            )
 
 
 class SourceArgTests(unittest.TestCase):

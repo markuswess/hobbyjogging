@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
 
@@ -8,9 +8,11 @@ from .cli import (
     extract_source,
     parse_chart_args,
     parse_classify_args,
+    parse_load_args,
     parse_report_args,
 )
 from .mdpretty import render_markdown
+from .model import LoadWindows
 from .review import exclude_review, review_note
 from .reports import (
     daily,
@@ -34,6 +36,7 @@ MODES = {
     "volume",
     "subt-pace",
     "subt-hr",
+    "load",
     "classify",
 }
 
@@ -47,6 +50,7 @@ def usage() -> str:
         "|subt-report [--days N]"
         "|volume [output.png]"
         "|subt-pace [output.png]|subt-hr [output.png]"
+        "|load [output.png]"
         "|classify [days]"
         "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
         "[--to YYYY-MM-DD]"
@@ -55,20 +59,53 @@ def usage() -> str:
     )
 
 
-def run_chart(
+def _print_missing_load_note(activities) -> None:
+    missing_load = sum(
+        1
+        for activity in activities
+        if activity.training_load is None
+    )
+
+    if not missing_load:
+        return
+
+    unit = "activity" if missing_load == 1 else "activities"
+    verb = "has" if missing_load == 1 else "have"
+
+    print(
+        f"note: {missing_load} {unit} {verb} no training load "
+        "(treated as 0)"
+    )
+
+
+def run_volume_chart(
     output: str,
     start: date,
     end: date,
     source: DataSource,
+    windows: LoadWindows,
     *,
     include_review: bool = False,
 ) -> None:
-    """Render a weekly running distance chart for the given range."""
-    from .analysis import weekly_run_distance
-    from .charts import plot_weekly_bars
+    """Render weekly running volume with distance-average lines."""
+    from .analysis import (
+        distance_averages,
+        load_warmup_days,
+        weekly_run_distance,
+    )
+    from .charts import plot_volume
 
-    activities, excluded = exclude_review(
-        source.activities(start, end),
+    warmup_days = load_warmup_days(windows)
+    warm_start = start - timedelta(days=warmup_days)
+
+    all_activities = source.activities(warm_start, end)
+
+    display_activities, excluded = exclude_review(
+        [
+            activity
+            for activity in all_activities
+            if start <= activity.date <= end
+        ],
         include_review=include_review,
     )
 
@@ -76,11 +113,25 @@ def run_chart(
     if note:
         print(f"note: {note}")
 
-    path = plot_weekly_bars(
-        weekly_run_distance(activities),
-        ylabel="km",
+    activities, _ = exclude_review(
+        all_activities,
+        include_review=include_review,
+    )
+
+    points = distance_averages(
+        activities,
+        start,
+        end,
+        windows=windows,
+        warmup_days=warmup_days,
+    )
+
+    path = plot_volume(
+        weekly_run_distance(display_activities),
         output=output,
-        title="Weekly running distance",
+        distance_points=points,
+        windows=windows,
+        ylabel="km / week",
     )
 
     print(path)
@@ -135,6 +186,56 @@ def run_subt_chart(
     plot = plot_subt_hr if heart_rate else plot_subt_paces
     path = plot(points, output=output)
 
+    print(path)
+
+
+def run_load_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+    windows: LoadWindows,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render daily load and its base/fitness/fatigue EWMA lines."""
+    from .analysis import load_metrics, load_warmup_days
+    from .charts import plot_load
+
+    warmup_days = load_warmup_days(windows)
+    warm_start = start - timedelta(days=warmup_days)
+
+    all_activities = source.activities(warm_start, end)
+
+    display_activities, excluded = exclude_review(
+        [
+            activity
+            for activity in all_activities
+            if start <= activity.date <= end
+        ],
+        include_review=include_review,
+    )
+
+    note = review_note(excluded)
+    if note:
+        print(f"note: {note}")
+
+    _print_missing_load_note(display_activities)
+
+    activities, _ = exclude_review(
+        all_activities,
+        include_review=include_review,
+    )
+
+    points = load_metrics(
+        activities,
+        start,
+        end,
+        windows=windows,
+        warmup_days=warmup_days,
+    )
+
+    path = plot_load(points, output=output, windows=windows)
     print(path)
 
 
@@ -258,9 +359,29 @@ def main(argv: list[str] | None = None):
                 include_review=include_review,
             )
 
+        elif mode == "load":
+            try:
+                output, start, end, windows = parse_load_args(
+                    args,
+                    default_output="load.png",
+                    default_days=180,
+                )
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_load_chart(
+                output,
+                start,
+                end,
+                source,
+                windows,
+                include_review=include_review,
+            )
+            return
+
         elif mode == "volume":
             try:
-                output, start, end = parse_chart_args(
+                output, start, end, windows = parse_load_args(
                     args,
                     default_output="volume.png",
                     default_days=90,
@@ -268,11 +389,12 @@ def main(argv: list[str] | None = None):
             except ValueError as exc:
                 raise SystemExit(str(exc)) from exc
 
-            run_chart(
+            run_volume_chart(
                 output,
                 start,
                 end,
                 source,
+                windows,
                 include_review=include_review,
             )
             return

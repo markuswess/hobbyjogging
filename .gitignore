@@ -10,6 +10,7 @@ __pycache__/
 volume.png
 subt-pace.png
 subt-hr.png
+load.png
 
 # Local training data and exports
 data/

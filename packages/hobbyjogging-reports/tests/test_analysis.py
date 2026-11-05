@@ -1,12 +1,20 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_report.analysis import (
+    daily_run_distance,
+    daily_training_load,
+    distance_averages,
     is_lt1_activity,
+    load_metrics,
+    load_warmup_days,
     subt_session_point,
     subt_work_points,
+    week_start,
+    weekly_run_distance,
     work_intervals,
 )
+from hobbyjogging_report.model import LoadWindows
 from hobbyjogging_core.model import Activity, Interval
 
 D = date(2026, 10, 1)
@@ -157,6 +165,194 @@ class ActivityNameTests(unittest.TestCase):
         )
         self.assertFalse(
             is_lt1_activity(Activity(id="a", date=D, name="subT"))
+        )
+
+
+class LoadMetricsTests(unittest.TestCase):
+
+    def test_daily_training_load_sums_and_zero_fills(self):
+        activities = [
+            Activity(id="a", date=D, type="run", training_load=40),
+            Activity(id="b", date=D, type="ride", training_load=20),
+            Activity(
+                id="c",
+                date=date(2026, 10, 3),
+                type="run",
+                training_load=60,
+            ),
+        ]
+
+        series = daily_training_load(
+            activities,
+            D,
+            date(2026, 10, 3),
+        )
+
+        self.assertEqual(
+            [60, 0, 60],
+            [value for _, value in series],
+        )
+
+    def test_load_warmup_uses_longest_window(self):
+        self.assertEqual(910, load_warmup_days())
+        self.assertEqual(
+            100,
+            load_warmup_days(
+                LoadWindows(base=20, fitness=10, fatigue=5)
+            ),
+        )
+
+    def test_load_metrics_short_average_reacts_fastest(self):
+        start = date(2026, 1, 1)
+        end = date(2026, 4, 10)
+        ndays = (end - start).days + 1
+
+        activities = [
+            Activity(
+                id=f"a{index}",
+                date=start + timedelta(days=index),
+                type="run",
+                training_load=100,
+            )
+            for index in range(ndays)
+        ]
+
+        points = load_metrics(
+            activities,
+            start,
+            end,
+            warmup_days=200,
+        )
+
+        self.assertEqual(ndays, len(points))
+        self.assertEqual(start, points[0].date)
+        self.assertEqual(end, points[-1].date)
+        self.assertEqual(100, points[-1].load)
+
+        first = points[0]
+        self.assertLess(first.base, first.fitness)
+        self.assertLess(first.fitness, first.fatigue)
+
+        last = points[-1]
+        self.assertLess(last.base, last.fitness)
+        self.assertLess(last.fitness, last.fatigue)
+
+    def test_load_metrics_can_start_with_no_history(self):
+        points = load_metrics([], D, D, warmup_days=10)
+
+        self.assertEqual(1, len(points))
+        self.assertEqual(0, points[0].load)
+        self.assertEqual(0, points[0].base)
+        self.assertEqual(0, points[0].fitness)
+        self.assertEqual(0, points[0].fatigue)
+
+
+class DistanceMetricsTests(unittest.TestCase):
+
+    def test_daily_run_distance_sums_runs_and_ignores_cross_training(self):
+        activities = [
+            Activity(id="a", date=D, type="run", distance_m=8000),
+            Activity(id="b", date=D, type="ride", distance_m=20000),
+            Activity(id="c", date=D, type="trail_run", distance_m=2000),
+            Activity(
+                id="d",
+                date=date(2026, 10, 2),
+                type="run",
+                distance_m=10000,
+            ),
+        ]
+
+        series = daily_run_distance(
+            activities,
+            D,
+            date(2026, 10, 2),
+        )
+
+        self.assertEqual(
+            [10.0, 10.0],
+            [value for _, value in series],
+        )
+
+    def test_distance_averages_use_the_three_windows(self):
+        start = date(2026, 1, 1)
+        end = date(2026, 4, 10)
+        ndays = (end - start).days + 1
+
+        activities = [
+            Activity(
+                id=f"a{index}",
+                date=start + timedelta(days=index),
+                type="run",
+                distance_m=10000,
+            )
+            for index in range(ndays)
+        ]
+
+        points = distance_averages(
+            activities,
+            start,
+            end,
+            warmup_days=200,
+        )
+
+        self.assertEqual(ndays, len(points))
+        self.assertEqual(10.0, points[-1].distance_km)
+
+        first = points[0]
+        self.assertLess(first.base, first.fitness)
+        self.assertLess(first.fitness, first.fatigue)
+
+        last = points[-1]
+        self.assertLess(last.base, last.fitness)
+        self.assertLess(last.fitness, last.fatigue)
+
+    def test_distance_averages_can_start_with_no_history(self):
+        points = distance_averages([], D, D, warmup_days=10)
+
+        self.assertEqual(1, len(points))
+        self.assertEqual(0, points[0].distance_km)
+        self.assertEqual(0, points[0].base)
+
+
+class WeeklyVolumeTests(unittest.TestCase):
+
+    def test_week_start_is_monday(self):
+        self.assertEqual(date(2026, 9, 28), week_start(D))
+
+    def test_weekly_run_distance_groups_monday_to_sunday(self):
+        activities = [
+            Activity(
+                id="a",
+                date=date(2026, 9, 28),
+                type="run",
+                distance_m=5000,
+            ),
+            Activity(
+                id="b",
+                date=date(2026, 10, 4),
+                type="run",
+                distance_m=5000,
+            ),
+            Activity(
+                id="c",
+                date=date(2026, 10, 5),
+                type="run",
+                distance_m=3000,
+            ),
+            Activity(
+                id="d",
+                date=date(2026, 9, 30),
+                type="ride",
+                distance_m=20000,
+            ),
+        ]
+
+        self.assertEqual(
+            [
+                (date(2026, 9, 28), 10.0),
+                (date(2026, 10, 5), 3.0),
+            ],
+            weekly_run_distance(activities),
         )
 
 

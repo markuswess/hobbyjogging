@@ -3,8 +3,18 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from hobbyjogging_report.charts import plot_subt_hr, plot_subt_paces
-from hobbyjogging_report.model import SubtPoint
+from hobbyjogging_report.charts import (
+    plot_load,
+    plot_subt_hr,
+    plot_subt_paces,
+    plot_volume,
+)
+from hobbyjogging_report.model import (
+    DistancePoint,
+    LoadPoint,
+    LoadWindows,
+    SubtPoint,
+)
 
 D = date(2026, 1, 1)
 
@@ -51,6 +61,64 @@ class SubtChartTests(unittest.TestCase):
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
+
+
+class VolumeChartTests(unittest.TestCase):
+
+    def test_volume_chart_with_distance_averages(self):
+        data = [
+            (date(2026, 1, 5), 30.0),
+            (date(2026, 1, 12), 40.0),
+        ]
+        distance_points = [
+            DistancePoint(D, 8.0, 7.0, 7.5, 7.8),
+            DistancePoint(date(2026, 1, 2), 10.0, 7.1, 7.8, 8.2),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "volume.png"
+
+            result = plot_volume(
+                data,
+                str(output),
+                distance_points=distance_points,
+                windows=LoadWindows(),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_volume_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_volume([], str(Path(tmp) / "volume.png"))
+
+
+class LoadChartTests(unittest.TestCase):
+
+    def test_load_chart_writes_file(self):
+        points = [
+            LoadPoint(D, 50, 40, 45, 48),
+            LoadPoint(date(2026, 1, 2), 80, 41, 50, 55),
+            LoadPoint(date(2026, 1, 3), 0, 40, 48, 47),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "load.png"
+
+            result = plot_load(
+                points,
+                str(output),
+                windows=LoadWindows(base=182, fitness=42, fatigue=7),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_load_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_load([], str(Path(tmp) / "load.png"))
 
 
 if __name__ == "__main__":

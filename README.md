@@ -104,6 +104,7 @@ Charts use `charts.sh` and print the generated file path:
 ```bash
 ./charts.sh
 ./charts.sh volume --days 90
+./charts.sh load --days 180
 ./charts.sh subt-pace --days 365
 ```
 

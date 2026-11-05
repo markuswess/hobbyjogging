@@ -3,6 +3,7 @@
 import argparse
 from datetime import date, timedelta
 
+from .model import LoadWindows
 from .sources import DEFAULT_SOURCE, SOURCE_CHOICES
 
 
@@ -129,3 +130,38 @@ def parse_chart_args(
     output = args.output_option or args.output or default_output
 
     return output, start, end
+
+
+def parse_load_args(
+    argv: list[str],
+    default_output: str = "load.png",
+    default_days: int = 180,
+    today: date | None = None,
+) -> tuple[str, date, date, LoadWindows]:
+    """Parse output, range, and EWMA windows for the load chart."""
+    parser = range_parser()
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    parser.add_argument("--base-days", type=int, default=182)
+    parser.add_argument("--fitness-days", type=int, default=42)
+    parser.add_argument("--fatigue-days", type=int, default=7)
+    args = parser.parse_args(argv)
+
+    windows = LoadWindows(
+        base=args.base_days,
+        fitness=args.fitness_days,
+        fatigue=args.fatigue_days,
+    )
+
+    if min(windows.base, windows.fitness, windows.fatigue) <= 0:
+        raise ValueError("load average windows must be positive")
+
+    days = (
+        args.days_option
+        if args.days_option is not None
+        else default_days
+    )
+    start, end = resolve_range(days, args.start, args.end, today=today)
+    output = args.output_option or args.output or default_output
+
+    return output, start, end, windows

@@ -40,8 +40,10 @@ training reports:
   description, the full interval table, and subT/LT1 work reps.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
-- **volume** — Weekly running volume/distance chart (matplotlib);
-  last 90 days by default.
+- **volume** — Weekly running volume chart with 182/42/7-day
+  distance averages overlaid; last 90 days by default.
+- **load** — Daily training load with 182-day base, 42-day fitness,
+  and 7-day fatigue exponentially weighted averages.
 - **subt-pace** — subT and LT1 work interval pace over the last 365
   days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
@@ -80,6 +82,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
     uv run --env-file .env python -m hobbyjogging_report debug
     uv run --env-file .env python -m hobbyjogging_report volume [output.png]
+    uv run --env-file .env python -m hobbyjogging_report load [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-pace [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
@@ -116,6 +119,8 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh                          # weekly volume, last 90 days
     ./charts.sh volume --days 90
     ./charts.sh volume --output dist.png
+    ./charts.sh load --days 180
+    ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
     ./charts.sh subt-pace --days 365
     ./charts.sh subt-pace --output subt.png
     ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
@@ -123,6 +128,27 @@ the same formatting. Redirected or piped output remains raw Markdown.
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
 as the direct CLI.
+
+### Load chart
+
+`load` shows daily training load as bars plus three exponentially weighted
+averages:
+
+- **Base (182d)** — long-term training base
+- **Fitness (42d)** — medium-term fitness
+- **Fatigue (7d)** — short-term fatigue
+
+The averages use time-constant EWMA (`alpha = 1 - exp(-1 / days)`) and are
+computed with history before the displayed range. Change the horizons with
+`--base-days`, `--fitness-days`, and `--fatigue-days`.
+
+Activities without `training_load` are treated as zero load and get a note.
+The database currently only has load data from late 2025, so the 182-day
+line will still be warming up in earlier charts.
+
+The `volume` chart applies the same three windows to daily running
+distance and scales them to weekly equivalents, so volume and its trends
+share one `km / week` axis. Volume bars are Monday–Sunday weeks.
 
 ### Data source selection
 
@@ -176,7 +202,7 @@ derived from the same work reps used by the classification and charts.
 
 ## Date ranges
 
-`report`, `subt-report`, `volume`, `subt-pace`, `subt-hr` and
+`report`, `subt-report`, `volume`, `load`, `subt-pace`, `subt-hr` and
 `classify` accept:
 
     --days N              look back N days from today
@@ -289,6 +315,7 @@ analysis or chart code:
 - `sources/intervals_api.py` — the only module that knows raw
   Intervals.icu field names.
 - `analysis.py` — pure metrics over model objects (no API, no plotting).
+- `series.py` — pure daily-series, moving-average, and EWMA helpers.
 - `classify.py` — workout categorization (quality / non-quality /
   cross-training / unknown).
 - `charts.py` — matplotlib rendering of analysis output.

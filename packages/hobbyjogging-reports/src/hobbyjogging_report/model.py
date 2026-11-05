@@ -53,3 +53,34 @@ class SubtSummary:
     pace_s_per_km: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
+
+
+@dataclass(frozen=True)
+class LoadWindows:
+    """EWMA time constants, in days, for the load chart."""
+
+    base: int = 182
+    fitness: int = 42
+    fatigue: int = 7
+
+
+@dataclass
+class LoadPoint:
+    """Daily training load plus its smoothed averages."""
+
+    date: date
+    load: float
+    base: float
+    fitness: float
+    fatigue: float
+
+
+@dataclass
+class DistancePoint:
+    """Daily running distance plus its smoothed averages."""
+
+    date: date
+    distance_km: float
+    base: float
+    fitness: float
+    fatigue: float
