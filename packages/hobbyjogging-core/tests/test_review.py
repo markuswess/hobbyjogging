@@ -66,6 +66,40 @@ class ReviewItemTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(1, count)
 
+    def test_source_record_is_not_part_of_item_identity(self):
+        second_source_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="second.fit",
+            checksum="c2",
+            import_run_id=self.run_id,
+        )
+
+        first_id, created = self.writer.record_review_item(
+            category="quality",
+            detail="zero duration",
+            fingerprint="fp-1",
+            activity_id="a1",
+            source_record_id=self.source_record_id,
+        )
+        second_id, created_again = self.writer.record_review_item(
+            category="quality",
+            detail="zero duration",
+            fingerprint="fp-1",
+            activity_id="a1",
+            source_record_id=second_source_id,
+        )
+
+        self.assertTrue(created)
+        self.assertFalse(created_again)
+        self.assertEqual(first_id, second_id)
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM review_items"
+            ).fetchone()[0],
+        )
+
     def test_record_review_item_distinguishes_scopes(self):
         self.writer.record_review_item(
             category="quality",

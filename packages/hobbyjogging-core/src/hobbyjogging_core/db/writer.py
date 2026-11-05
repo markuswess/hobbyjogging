@@ -896,6 +896,9 @@ class TrainingWriter:
 
         The fingerprint makes detection idempotent: reimporting the same
         problem never duplicates an item and never reopens a resolved one.
+        ``source_record_id`` is provenance, not identity: the same canonical
+        finding detected during an import and again during `review scan` must
+        share one item even though only the import knows the source record.
         Returns (review_item_id, created).
         """
         row = self.connection.execute(
@@ -903,13 +906,11 @@ class TrainingWriter:
             SELECT id FROM review_items
             WHERE category = ? AND fingerprint = ?
               AND COALESCE(activity_id, '') = COALESCE(?, '')
-              AND COALESCE(source_record_id, 0) = COALESCE(?, 0)
             """,
             (
                 category,
                 fingerprint,
                 activity_id,
-                source_record_id,
             ),
         ).fetchone()
 
