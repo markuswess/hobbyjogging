@@ -7,6 +7,7 @@ from hobbyjogging_report.charts import (
     plot_load,
     plot_subt_hr,
     plot_subt_paces,
+    plot_time,
     plot_volume,
 )
 from hobbyjogging_report.model import (
@@ -14,6 +15,9 @@ from hobbyjogging_report.model import (
     LoadPoint,
     LoadWindows,
     SubtPoint,
+    TimePoint,
+    TimeZoneWeek,
+    ZoneAveragePoint,
 )
 
 D = date(2026, 1, 1)
@@ -92,6 +96,51 @@ class VolumeChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_volume([], str(Path(tmp) / "volume.png"))
+
+
+class TimeChartTests(unittest.TestCase):
+
+    def test_time_chart_writes_file(self):
+        weeks = [
+            TimeZoneWeek(
+                date(2026, 1, 5),
+                [3600, 1800, 0, 0],
+                600,
+            ),
+            TimeZoneWeek(
+                date(2026, 1, 12),
+                [1800, 3600, 900, 0],
+                0,
+            ),
+        ]
+        points = [
+            TimePoint(D, 7200, 6000, 6500, 7000),
+            TimePoint(date(2026, 1, 2), 5400, 6100, 6500, 6600),
+        ]
+        zone_points = [
+            ZoneAveragePoint(D, [1200, 900, 300, 0]),
+            ZoneAveragePoint(date(2026, 1, 2),  [1300, 850, 350, 0]),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "time.png"
+
+            result = plot_time(
+                weeks,
+                str(output),
+                time_points=points,
+                zone_points=zone_points,
+                zone_window_days=42,
+                windows=LoadWindows(),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_time_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_time([], str(Path(tmp) / "time.png"))
 
 
 class LoadChartTests(unittest.TestCase):

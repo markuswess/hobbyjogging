@@ -84,3 +84,31 @@ class DistancePoint:
     base: float
     fitness: float
     fatigue: float
+
+
+@dataclass
+class TimePoint:
+    """Daily training time plus its smoothed averages."""
+
+    date: date
+    time_s: float
+    base: float
+    fitness: float
+    fatigue: float
+
+
+@dataclass
+class ZoneAveragePoint:
+    """Smoothed daily time in each HR zone."""
+
+    date: date
+    zones: list[float]
+
+
+@dataclass
+class TimeZoneWeek:
+    """Weekly training seconds split by HR zone, plus unzoned time."""
+
+    week: date
+    zones: list[float]
+    unzoned: float = 0.0

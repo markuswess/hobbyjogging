@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [volume|subt-pace|subt-hr|load] [args...]
+  ./charts.sh [volume|subt-pace|subt-hr|load|time] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -23,11 +23,14 @@ Examples:
   ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
   ./charts.sh load --days 180
   ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
+  ./charts.sh time --days 90
+  ./charts.sh time --zones 4 --zone-window base
   ./charts.sh subt-pace --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
-direct CLI. The load and volume charts also accept --base-days /
---fitness-days / --fatigue-days.
+direct CLI. The load, volume, and time charts also accept --base-days /
+--fitness-days / --fatigue-days. The time chart also accepts --zones and
+--zone-window base|fitness|fatigue.
 EOF
 }
 
@@ -57,7 +60,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|subt-pace|subt-hr|load)
+    volume|subt-pace|subt-hr|load|time)
         ;;
     *)
         usage >&2

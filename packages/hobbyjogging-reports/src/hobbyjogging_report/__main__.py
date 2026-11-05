@@ -10,6 +10,7 @@ from .cli import (
     parse_classify_args,
     parse_load_args,
     parse_report_args,
+    parse_time_args,
 )
 from .mdpretty import render_markdown
 from .model import LoadWindows
@@ -37,6 +38,7 @@ MODES = {
     "subt-pace",
     "subt-hr",
     "load",
+    "time",
     "classify",
 }
 
@@ -51,6 +53,7 @@ def usage() -> str:
         "|volume [output.png]"
         "|subt-pace [output.png]|subt-hr [output.png]"
         "|load [output.png]"
+        "|time [output.png]"
         "|classify [days]"
         "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
         "[--to YYYY-MM-DD]"
@@ -91,20 +94,22 @@ def run_volume_chart(
     from .analysis import (
         distance_averages,
         load_warmup_days,
+        week_bounds,
         weekly_run_distance,
     )
     from .charts import plot_volume
 
+    chart_start, chart_end = week_bounds(start, end)
     warmup_days = load_warmup_days(windows)
-    warm_start = start - timedelta(days=warmup_days)
+    warm_start = chart_start - timedelta(days=warmup_days)
 
-    all_activities = source.activities(warm_start, end)
+    all_activities = source.activities(warm_start, chart_end)
 
     display_activities, excluded = exclude_review(
         [
             activity
             for activity in all_activities
-            if start <= activity.date <= end
+            if chart_start <= activity.date <= chart_end
         ],
         include_review=include_review,
     )
@@ -120,8 +125,8 @@ def run_volume_chart(
 
     points = distance_averages(
         activities,
-        start,
-        end,
+        chart_start,
+        chart_end,
         windows=windows,
         warmup_days=warmup_days,
     )
@@ -132,6 +137,102 @@ def run_volume_chart(
         distance_points=points,
         windows=windows,
         ylabel="km / week",
+    )
+
+    print(path)
+
+
+def run_time_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+    windows: LoadWindows,
+    zones: int,
+    zone_window: str,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render weekly running time stacked by HR zone."""
+    from .analysis import (
+        RUN_TYPES,
+        load_warmup_days,
+        time_averages,
+        week_bounds,
+        weekly_time_by_zone,
+        zone_time_averages,
+    )
+    from .charts import plot_time
+
+    chart_start, chart_end = week_bounds(start, end)
+    warmup_days = load_warmup_days(windows)
+    warm_start = chart_start - timedelta(days=warmup_days)
+
+    all_activities = source.activities(warm_start, chart_end)
+
+    display_activities, excluded = exclude_review(
+        [
+            activity
+            for activity in all_activities
+            if chart_start <= activity.date <= chart_end
+        ],
+        include_review=include_review,
+    )
+
+    note = review_note(excluded)
+    if note:
+        print(f"note: {note}")
+
+    unzoned = sum(
+        1
+        for activity in display_activities
+        if activity.type in RUN_TYPES
+        and (activity.duration_s or 0) > 0
+        and not activity.hr_zone_times
+    )
+    if unzoned:
+        unit = "activity" if unzoned == 1 else "activities"
+        verb = "has" if unzoned == 1 else "have"
+        print(
+            f"note: {unzoned} {unit} {verb} no HR zone data "
+            "(shown as unzoned)"
+        )
+
+    activities, _ = exclude_review(
+        all_activities,
+        include_review=include_review,
+    )
+
+    weeks = weekly_time_by_zone(
+        display_activities,
+        chart_start,
+        chart_end,
+        zone_count=zones,
+    )
+    points = time_averages(
+        activities,
+        chart_start,
+        chart_end,
+        windows=windows,
+        warmup_days=warmup_days,
+    )
+    zone_window_days = getattr(windows, zone_window)
+    zone_points = zone_time_averages(
+        activities,
+        chart_start,
+        chart_end,
+        window_days=zone_window_days,
+        warmup_days=warmup_days,
+        zone_count=zones,
+    )
+
+    path = plot_time(
+        weeks,
+        output=output,
+        time_points=points,
+        zone_points=zone_points,
+        zone_window_days=zone_window_days,
+        windows=windows,
     )
 
     print(path)
@@ -375,6 +476,35 @@ def main(argv: list[str] | None = None):
                 end,
                 source,
                 windows,
+                include_review=include_review,
+            )
+            return
+
+        elif mode == "time":
+            try:
+                (
+                    output,
+                    start,
+                    end,
+                    windows,
+                    zones,
+                    zone_window,
+                ) = parse_time_args(
+                    args,
+                    default_output="time.png",
+                    default_days=90,
+                )
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
+
+            run_time_chart(
+                output,
+                start,
+                end,
+                source,
+                windows,
+                zones,
+                zone_window,
                 include_review=include_review,
             )
             return

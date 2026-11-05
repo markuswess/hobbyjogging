@@ -15,7 +15,15 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 from .analysis import SUBT_CATEGORIES
-from .model import DistancePoint, LoadPoint, LoadWindows, SubtPoint
+from .model import (
+    DistancePoint,
+    LoadPoint,
+    LoadWindows,
+    SubtPoint,
+    TimePoint,
+    TimeZoneWeek,
+    ZoneAveragePoint,
+)
 from .series import sma
 
 LOAD_COLORS = {
@@ -23,6 +31,40 @@ LOAD_COLORS = {
     "fitness": "tab:orange",
     "fatigue": "tab:red",
 }
+
+ZONE_COLORS = (
+    "#e5f5e0",
+    "#c7e9c0",
+    "#a1d99b",
+    "#74c476",
+    "#31a354",
+)
+ZONE_LINE_COLORS = (
+    "#74c476",
+    "#41ab5d",
+    "#238b45",
+    "#006d2c",
+    "#00441b",
+)
+UNZONED_COLOR = "#d9d9d9"
+
+
+def _style_week_axis(ax, weeks: list[date]) -> None:
+    """Align weekly bars to Monday–Sunday and label Mondays."""
+    if not weeks:
+        return
+
+    ax.set_xlim(
+        min(weeks),
+        max(weeks) + timedelta(days=7),
+    )
+    interval = max(1, len(weeks) // 12)
+    ax.xaxis.set_major_locator(
+        mdates.WeekdayLocator(
+            byweekday=mdates.MO,
+            interval=interval,
+        )
+    )
 
 
 def plot_volume(
@@ -60,10 +102,6 @@ def plot_volume(
             label="weekly km",
             zorder=1,
         )
-        ax.set_xlim(
-            min(weeks),
-            max(weeks) + timedelta(days=7),
-        )
 
     if distance_points:
         dates = [point.date for point in distance_points]
@@ -92,13 +130,176 @@ def plot_volume(
     ax.legend(loc="best", fontsize=9)
 
     if data:
-        interval = max(1, len(data) // 12)
-        ax.xaxis.set_major_locator(
-            mdates.WeekdayLocator(
-                byweekday=mdates.MO,
-                interval=interval,
-            )
+        _style_week_axis(ax, weeks)
+
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(output, dpi=150)
+    plt.close(fig)
+
+    return output
+
+
+def plot_time(
+    weeks: list[TimeZoneWeek],
+    output: str,
+    *,
+    time_points: list[TimePoint] | None = None,
+    zone_points: list[ZoneAveragePoint] | None = None,
+    zone_window_days: int | None = None,
+    windows: LoadWindows | None = None,
+    time_scale: float = 7.0,
+    zone_scale: float = 7.0,
+    ylabel: str = "hours / week",
+    title: str = "Weekly running time",
+) -> str:
+    """Weekly running time stacked by HR zone with zone EWMA lines."""
+    if not weeks and not time_points:
+        raise ValueError("no data to plot")
+
+    windows = windows or LoadWindows()
+    zone_count = (
+        len(weeks[0].zones)
+        if weeks
+        else len(zone_points[0].zones) if zone_points else 0
+    )
+
+    if zone_points:
+        fig, (ax, zone_ax) = plt.subplots(
+            2,
+            1,
+            sharex=True,
+            figsize=(12, 8),
+            gridspec_kw={"height_ratios": [3, 2]},
         )
+    else:
+        fig, ax = plt.subplots(figsize=(12, 5))
+        zone_ax = None
+
+    if weeks:
+        week_dates = [week.week for week in weeks]
+        bottoms = [0.0] * len(weeks)
+
+        for index in range(zone_count):
+            values = [
+                week.zones[index] / 3600
+                for week in weeks
+            ]
+            ax.bar(
+                week_dates,
+                values,
+                width=7,
+                align="edge",
+                bottom=bottoms,
+                color=ZONE_COLORS[index % len(ZONE_COLORS)],
+                edgecolor="white",
+                linewidth=0.5,
+                label=f"Z{index + 1}",
+                zorder=1,
+            )
+            bottoms = [
+                bottom + value
+                for bottom, value in zip(bottoms, values)
+            ]
+
+        unzoned = [week.unzoned / 3600 for week in weeks]
+
+        if any(unzoned):
+            ax.bar(
+                week_dates,
+                unzoned,
+                width=7,
+                align="edge",
+                bottom=bottoms,
+                color=UNZONED_COLOR,
+                edgecolor="white",
+                linewidth=0.5,
+                label="Unzoned",
+                zorder=1,
+            )
+
+        _style_week_axis(ax, week_dates)
+
+    if time_points:
+        dates = [point.date for point in time_points]
+
+        for attribute, label in (
+            ("base", f"{windows.base}d avg (weekly)"),
+            ("fitness", f"{windows.fitness}d avg (weekly)"),
+            ("fatigue", f"{windows.fatigue}d avg (weekly)"),
+        ):
+            ax.plot(
+                dates,
+                [
+                    getattr(point, attribute) * time_scale / 3600
+                    for point in time_points
+                ],
+                color=LOAD_COLORS[attribute],
+                linewidth=2,
+                label=label,
+                zorder=2,
+            )
+
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best", fontsize=8)
+
+    if zone_ax is not None and zone_points:
+        zone_dates = [point.date for point in zone_points]
+        lower = [0.0] * len(zone_points)
+
+        for index in range(zone_count - 1, -1, -1):
+            values = [
+                point.zones[index] * zone_scale / 3600
+                for point in zone_points
+            ]
+            upper = [
+                low + value
+                for low, value in zip(lower, values)
+            ]
+            label = "+".join(
+                f"Z{zone + 1}"
+                for zone in range(index, zone_count)
+            )
+
+            zone_ax.fill_between(
+                zone_dates,
+                lower,
+                upper,
+                color=ZONE_COLORS[index % len(ZONE_COLORS)],
+                alpha=0.65,
+                linewidth=0,
+            )
+            zone_ax.plot(
+                zone_dates,
+                upper,
+                color=ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)],
+                linewidth=1.8,
+                label=label,
+            )
+            lower = upper
+
+        if zone_window_days:
+            zone_ax.set_title(
+                f"{zone_window_days}-day EWMA stacked by zone",
+                fontsize=10,
+            )
+
+        zone_ax.set_ylabel(ylabel)
+        zone_ax.set_xlabel("week starting (Monday)")
+        zone_ax.grid(True, alpha=0.3)
+        zone_ax.legend(
+            loc="best",
+            fontsize=8,
+            ncol=min(zone_count, 4),
+        )
+    elif zone_ax is not None:
+        zone_ax.set_visible(False)
+
+    if zone_ax is None:
+        ax.set_xlabel("week starting (Monday)")
 
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
     fig.autofmt_xdate()

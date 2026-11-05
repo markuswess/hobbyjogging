@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 from hobbyjogging_report.analysis import (
     daily_run_distance,
+    daily_run_time,
     daily_training_load,
     distance_averages,
     is_lt1_activity,
@@ -10,9 +11,13 @@ from hobbyjogging_report.analysis import (
     load_warmup_days,
     subt_session_point,
     subt_work_points,
+    time_averages,
+    week_bounds,
     week_start,
     weekly_run_distance,
+    weekly_time_by_zone,
     work_intervals,
+    zone_time_averages,
 )
 from hobbyjogging_report.model import LoadWindows
 from hobbyjogging_core.model import Activity, Interval
@@ -314,10 +319,185 @@ class DistanceMetricsTests(unittest.TestCase):
         self.assertEqual(0, points[0].base)
 
 
+class TimeMetricsTests(unittest.TestCase):
+
+    def test_daily_run_time_sums_running_only(self):
+        activities = [
+            Activity(id="a", date=D, type="run", duration_s=3600),
+            Activity(id="b", date=D, type="ride", duration_s=1800),
+            Activity(
+                id="c",
+                date=date(2026, 10, 2),
+                type="run",
+                duration_s=1200,
+            ),
+        ]
+
+        series = daily_run_time(
+            activities,
+            D,
+            date(2026, 10, 2),
+        )
+
+        self.assertEqual(
+            [3600, 1200],
+            [value for _, value in series],
+        )
+
+    def test_time_averages_use_the_three_windows(self):
+        start = date(2026, 1, 1)
+        end = date(2026, 4, 10)
+        ndays = (end - start).days + 1
+
+        activities = [
+            Activity(
+                id=f"a{index}",
+                date=start + timedelta(days=index),
+                type="run",
+                duration_s=3600,
+            )
+            for index in range(ndays)
+        ]
+
+        points = time_averages(
+            activities,
+            start,
+            end,
+            warmup_days=200,
+        )
+
+        self.assertEqual(ndays, len(points))
+        self.assertEqual(3600, points[-1].time_s)
+
+        first = points[0]
+        self.assertLess(first.base, first.fitness)
+        self.assertLess(first.fitness, first.fatigue)
+
+        last = points[-1]
+        self.assertLess(last.base, last.fitness)
+        self.assertLess(last.fitness, last.fatigue)
+
+    def test_weekly_time_by_zone_uses_hr_zones_and_monday_weeks(self):
+        activities = [
+            Activity(
+                id="a",
+                date=date(2026, 9, 28),
+                type="run",
+                duration_s=3600,
+                hr_zone_times=[600, 1200, 1800],
+            ),
+            Activity(
+                id="b",
+                date=date(2026, 10, 4),
+                type="run",
+                duration_s=1800,
+                hr_zone_times=[1800],
+            ),
+            Activity(
+                id="c",
+                date=date(2026, 10, 5),
+                type="run",
+                duration_s=1200,
+            ),
+            Activity(
+                id="d",
+                date=date(2026, 10, 5),
+                type="ride",
+                duration_s=5000,
+                hr_zone_times=[5000],
+            ),
+        ]
+
+        weeks = weekly_time_by_zone(
+            activities,
+            date(2026, 9, 28),
+            date(2026, 10, 5),
+        )
+
+        self.assertEqual(2, len(weeks))
+
+        first = weeks[0]
+        self.assertEqual(date(2026, 9, 28), first.week)
+        self.assertEqual([2400, 1200, 1800, 0], first.zones)
+        self.assertEqual(0, first.unzoned)
+
+        second = weeks[1]
+        self.assertEqual(date(2026, 10, 5), second.week)
+        self.assertEqual([0, 0, 0, 0], second.zones)
+        self.assertEqual(1200, second.unzoned)
+
+    def test_weekly_time_by_zone_scales_zone_overshoot(self):
+        activity = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=1000,
+            hr_zone_times=[500, 1000],
+        )
+
+        weeks = weekly_time_by_zone([activity], D, D)
+
+        self.assertEqual(1, len(weeks))
+        self.assertAlmostEqual(1000, sum(weeks[0].zones))
+        self.assertEqual(0, weeks[0].unzoned)
+
+    def test_weekly_time_by_zone_keeps_uncovered_time(self):
+        activity = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=1000,
+            hr_zone_times=[400],
+        )
+
+        weeks = weekly_time_by_zone([activity], D, D)
+
+        self.assertEqual(400, weeks[0].zones[0])
+        self.assertEqual(600, weeks[0].unzoned)
+
+    def test_zone_time_averages_have_one_series_per_zone(self):
+        activity = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=3600,
+            hr_zone_times=[900, 900, 900, 900],
+        )
+        ride = Activity(
+            id="b",
+            date=D,
+            type="ride",
+            duration_s=3600,
+            hr_zone_times=[3600],
+        )
+
+        points = zone_time_averages(
+            [activity, ride],
+            D,
+            D,
+            window_days=7,
+            warmup_days=10,
+        )
+
+        self.assertEqual(1, len(points))
+        self.assertEqual(4, len(points[0].zones))
+        self.assertGreater(points[0].zones[0], 0)
+        self.assertAlmostEqual(
+            sum(points[0].zones),
+            points[0].zones[0] * 4,
+        )
+
+
 class WeeklyVolumeTests(unittest.TestCase):
 
     def test_week_start_is_monday(self):
         self.assertEqual(date(2026, 9, 28), week_start(D))
+
+    def test_week_bounds_expand_to_full_weeks(self):
+        self.assertEqual(
+            (date(2026, 9, 28), date(2026, 10, 4)),
+            week_bounds(D, date(2026, 10, 2)),
+        )
 
     def test_weekly_run_distance_groups_monday_to_sunday(self):
         activities = [

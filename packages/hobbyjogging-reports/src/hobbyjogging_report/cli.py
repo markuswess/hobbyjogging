@@ -132,21 +132,18 @@ def parse_chart_args(
     return output, start, end
 
 
-def parse_load_args(
-    argv: list[str],
-    default_output: str = "load.png",
-    default_days: int = 180,
-    today: date | None = None,
-) -> tuple[str, date, date, LoadWindows]:
-    """Parse output, range, and EWMA windows for the load chart."""
+def _window_parser() -> argparse.ArgumentParser:
+    """Parser shared by charts with EWMA window options."""
     parser = range_parser()
     parser.add_argument("output", nargs="?")
     parser.add_argument("--output", dest="output_option")
     parser.add_argument("--base-days", type=int, default=182)
     parser.add_argument("--fitness-days", type=int, default=42)
     parser.add_argument("--fatigue-days", type=int, default=7)
-    args = parser.parse_args(argv)
+    return parser
 
+
+def _window_options(args) -> LoadWindows:
     windows = LoadWindows(
         base=args.base_days,
         fitness=args.fitness_days,
@@ -154,8 +151,17 @@ def parse_load_args(
     )
 
     if min(windows.base, windows.fitness, windows.fatigue) <= 0:
-        raise ValueError("load average windows must be positive")
+        raise ValueError("average windows must be positive")
 
+    return windows
+
+
+def _range_output(
+    args,
+    default_output: str,
+    default_days: int,
+    today: date | None,
+) -> tuple[str, date, date]:
     days = (
         args.days_option
         if args.days_option is not None
@@ -164,4 +170,61 @@ def parse_load_args(
     start, end = resolve_range(days, args.start, args.end, today=today)
     output = args.output_option or args.output or default_output
 
+    return output, start, end
+
+
+def parse_load_args(
+    argv: list[str],
+    default_output: str = "load.png",
+    default_days: int = 180,
+    today: date | None = None,
+) -> tuple[str, date, date, LoadWindows]:
+    """Parse output, range, and EWMA windows for the load chart."""
+    parser = _window_parser()
+    args = parser.parse_args(argv)
+    windows = _window_options(args)
+    output, start, end = _range_output(
+        args,
+        default_output,
+        default_days,
+        today,
+    )
+
     return output, start, end, windows
+
+
+def parse_time_args(
+    argv: list[str],
+    default_output: str = "time.png",
+    default_days: int = 90,
+    today: date | None = None,
+) -> tuple[str, date, date, LoadWindows, int, str]:
+    """Parse output, range, windows, zone count, and zone window."""
+    parser = _window_parser()
+    parser.add_argument("--zones", type=int, default=4)
+    parser.add_argument(
+        "--zone-window",
+        choices=("base", "fitness", "fatigue"),
+        default="fitness",
+    )
+    args = parser.parse_args(argv)
+    windows = _window_options(args)
+
+    if args.zones <= 0:
+        raise ValueError("--zones must be positive")
+
+    output, start, end = _range_output(
+        args,
+        default_output,
+        default_days,
+        today,
+    )
+
+    return (
+        output,
+        start,
+        end,
+        windows,
+        args.zones,
+        args.zone_window,
+    )

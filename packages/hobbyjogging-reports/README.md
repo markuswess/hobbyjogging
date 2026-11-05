@@ -44,6 +44,8 @@ training reports:
   distance averages overlaid; last 90 days by default.
 - **load** — Daily training load with 182-day base, 42-day fitness,
   and 7-day fatigue exponentially weighted averages.
+- **time** — Weekly running time stacked by HR zone, with
+  182/42/7-day time averages and a per-zone EWMA panel.
 - **subt-pace** — subT and LT1 work interval pace over the last 365
   days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
@@ -83,6 +85,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report debug
     uv run --env-file .env python -m hobbyjogging_report volume [output.png]
     uv run --env-file .env python -m hobbyjogging_report load [output.png]
+    uv run --env-file .env python -m hobbyjogging_report time [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-pace [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
@@ -121,6 +124,8 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh volume --output dist.png
     ./charts.sh load --days 180
     ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
+    ./charts.sh time --days 90
+    ./charts.sh time --zones 4 --zone-window base
     ./charts.sh subt-pace --days 365
     ./charts.sh subt-pace --output subt.png
     ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
@@ -149,6 +154,27 @@ line will still be warming up in earlier charts.
 The `volume` chart applies the same three windows to daily running
 distance and scales them to weekly equivalents, so volume and its trends
 share one `km / week` axis. Volume bars are Monday–Sunday weeks.
+
+### Time chart
+
+`time` shows weekly running time in hours as Monday–Sunday bars,
+stacked by HR zone. It uses running activities only and defaults to four
+zones (`Z1`–`Z4`).
+
+The top panel overlays the 182/42/7-day averages of total running time,
+scaled to weekly hours. The lower panel stacks the zone EWMAs for the
+selected `--zone-window` (`base`, `fitness`, or `fatigue`; default
+`fitness` / 42 days), also in weekly hours. Its boundary lines are
+cumulative: `Z4`, `Z3+Z4`, `Z2+Z3+Z4`, then all zones.
+
+    ./charts.sh time
+    ./charts.sh time --days 90
+    ./charts.sh time --zones 4 --zone-window base
+    ./charts.sh time --base-days 182 --fitness-days 42 --fatigue-days 7
+
+Time outside recorded HR zones is shown as an `Unzoned` segment, so each
+bar still totals the recorded running time. Weekly charts expand the
+requested range to whole Monday–Sunday weeks.
 
 ### Data source selection
 
@@ -202,8 +228,8 @@ derived from the same work reps used by the classification and charts.
 
 ## Date ranges
 
-`report`, `subt-report`, `volume`, `load`, `subt-pace`, `subt-hr` and
-`classify` accept:
+`report`, `subt-report`, `volume`, `load`, `time`, `subt-pace`,
+`subt-hr` and `classify` accept:
 
     --days N              look back N days from today
     --from YYYY-MM-DD     start date (inclusive)

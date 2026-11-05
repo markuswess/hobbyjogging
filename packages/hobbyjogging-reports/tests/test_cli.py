@@ -11,6 +11,7 @@ from hobbyjogging_report.cli import (
     parse_classify_args,
     parse_load_args,
     parse_report_args,
+    parse_time_args,
     resolve_range,
 )
 from hobbyjogging_report.model import LoadWindows
@@ -230,6 +231,51 @@ class LoadArgsTests(unittest.TestCase):
                 ["--fitness-days", "0"],
                 today=TODAY,
             )
+
+
+class TimeArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        (
+            output,
+            start,
+            end,
+            windows,
+            zones,
+            zone_window,
+        ) = parse_time_args([], today=TODAY)
+
+        self.assertEqual("time.png", output)
+        self.assertEqual(TODAY - timedelta(days=90), start)
+        self.assertEqual(TODAY, end)
+        self.assertEqual(LoadWindows(), windows)
+        self.assertEqual(4, zones)
+        self.assertEqual("fitness", zone_window)
+
+    def test_custom_zones_and_zone_window(self):
+        (
+            output,
+            _,
+            _,
+            _,
+            zones,
+            zone_window,
+        ) = parse_time_args(
+            [
+                "--zones", "4",
+                "--zone-window", "base",
+                "--output", "zones.png",
+            ],
+            today=TODAY,
+        )
+
+        self.assertEqual("zones.png", output)
+        self.assertEqual(4, zones)
+        self.assertEqual("base", zone_window)
+
+    def test_rejects_non_positive_zones(self):
+        with self.assertRaises(ValueError):
+            parse_time_args(["--zones", "0"], today=TODAY)
 
 
 class SourceArgTests(unittest.TestCase):
