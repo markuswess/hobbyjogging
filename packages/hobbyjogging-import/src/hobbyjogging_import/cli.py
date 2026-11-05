@@ -67,6 +67,15 @@ def build_parser() -> argparse.ArgumentParser:
     intervals.add_argument("--days", type=int, default=30)
     intervals.add_argument("--from", dest="start", type=date_arg)
     intervals.add_argument("--to", dest="end", type=date_arg)
+    intervals.add_argument(
+        "--plan-days",
+        type=int,
+        default=182,
+        help=(
+            "fetch planned calendar events this many days ahead "
+            "(default: 182; 0 disables)"
+        ),
+    )
     intervals.add_argument("--database", type=Path)
     intervals.add_argument(
         "--no-intervals",
@@ -586,10 +595,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")
 
+    if args.plan_days < 0:
+        parser.error("--plan-days must be zero or greater")
+
     try:
         start, end = resolve_range(args.days, args.start, args.end)
     except ValueError as exc:
         parser.error(str(exc))
+
+    plan_end = end
+    if args.plan_days > 0:
+        plan_end = max(
+            end,
+            date.today() + timedelta(days=args.plan_days),
+        )
 
     try:
         connection = open_database(args.database)
@@ -603,6 +622,7 @@ def main(argv: list[str] | None = None) -> int:
                 start,
                 end,
                 include_intervals=not args.no_intervals,
+                plan_end=plan_end,
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc)) from exc
@@ -617,6 +637,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{summary.events_imported} events, "
         f"{summary.intervals_imported} intervals"
     )
+    print(f"Plan range: {start} .. {summary.plan_end}")
     if summary.activities_skipped:
         print(f"Activities skipped: {summary.activities_skipped}")
 

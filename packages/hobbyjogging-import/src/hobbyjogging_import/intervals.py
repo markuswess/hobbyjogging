@@ -25,6 +25,7 @@ SOURCE = "intervals"
 @dataclass
 class ImportSummary:
     run_id: int
+    plan_end: date | None = None
     activities_seen: int = 0
     activities_imported: int = 0
     activities_skipped: int = 0
@@ -66,22 +67,36 @@ class IntervalsImporter:
         end: date,
         *,
         include_intervals: bool = True,
+        plan_end: date | None = None,
     ) -> ImportSummary:
+        """Import activities/wellness through ``end`` and events through
+        ``plan_end``.
+
+        Planned workouts live in the calendar ahead of today, so they use a
+        separate horizon. ``plan_end`` defaults to ``end`` and is clamped to
+        at least ``end`` so the event range always contains the activity
+        range.
+        """
+        if plan_end is None or plan_end < end:
+            plan_end = end
+
         summary = ImportSummary(
+            plan_end=plan_end,
             run_id=self.writer.start_import_run(
                 SOURCE,
                 {
                     "start": start.isoformat(),
                     "end": end.isoformat(),
+                    "plan_end": plan_end.isoformat(),
                     "include_intervals": include_intervals,
                 },
-            )
+            ),
         )
 
         try:
             activities = list(self.client.activities(start, end) or [])
             wellness = list(self.client.wellness(start, end) or [])
-            events = list(self.client.events(start, end) or [])
+            events = list(self.client.events(start, plan_end) or [])
             interval_payloads = self._fetch_intervals(activities, include_intervals)
 
             summary.activities_seen = len(activities)

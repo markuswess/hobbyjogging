@@ -1,8 +1,9 @@
 import json
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core import TrainingRepository, connect, migrate
+from hobbyjogging_import.cli import build_parser
 from hobbyjogging_import.intervals import IntervalsImporter
 
 
@@ -47,6 +48,9 @@ class FakeIntervalsClient:
                 "distance": 5000,
             }
         ]
+        self.activity_ranges = []
+        self.wellness_ranges = []
+        self.event_ranges = []
         self.interval_payloads = {
             "i1": [
                 {
@@ -63,14 +67,17 @@ class FakeIntervalsClient:
         self.fail = False
 
     def activities(self, start, end):
+        self.activity_ranges.append((start, end))
         if self.fail:
             raise RuntimeError("API unavailable")
         return self.activity_payloads
 
     def wellness(self, start, end):
+        self.wellness_ranges.append((start, end))
         return self.wellness_payloads
 
     def events(self, start, end):
+        self.event_ranges.append((start, end))
         return self.event_payloads
 
     def activity_intervals(self, activity_id):
@@ -87,11 +94,12 @@ class IntervalsImporterTests(unittest.TestCase):
         self.importer = IntervalsImporter(self.conn, client=self.client)
         self.repository = TrainingRepository(self.conn)
 
-    def _import(self, include_intervals=True):
+    def _import(self, include_intervals=True, plan_end=None):
         return self.importer.import_range(
             date(2026, 10, 1),
             date(2026, 10, 2),
             include_intervals=include_intervals,
+            plan_end=plan_end,
         )
 
     def test_imports_activities_wellness_events_and_intervals(self):
@@ -178,6 +186,71 @@ class IntervalsImporterTests(unittest.TestCase):
             "SELECT is_primary FROM activity_sources"
         ).fetchone()
         self.assertEqual(1, link["is_primary"])
+
+    def test_events_use_the_plan_horizon(self):
+        plan_end = date(2026, 10, 2) + timedelta(days=182)
+
+        summary = self._import(plan_end=plan_end)
+
+        self.assertEqual(
+            [(date(2026, 10, 1), date(2026, 10, 2))],
+            self.client.activity_ranges,
+        )
+        self.assertEqual(
+            [(date(2026, 10, 1), date(2026, 10, 2))],
+            self.client.wellness_ranges,
+        )
+        self.assertEqual(
+            [(date(2026, 10, 1), plan_end)],
+            self.client.event_ranges,
+        )
+        self.assertEqual(plan_end, summary.plan_end)
+
+        run = self.conn.execute(
+            "SELECT parameters_json FROM import_runs WHERE id = ?",
+            (summary.run_id,),
+        ).fetchone()
+        self.assertEqual(
+            plan_end.isoformat(),
+            json.loads(run["parameters_json"])["plan_end"],
+        )
+
+    def test_events_default_to_the_import_end(self):
+        summary = self._import()
+
+        self.assertEqual(
+            [(date(2026, 10, 1), date(2026, 10, 2))],
+            self.client.event_ranges,
+        )
+        self.assertEqual(date(2026, 10, 2), summary.plan_end)
+
+    def test_plan_end_is_clamped_to_the_import_end(self):
+        summary = self._import(plan_end=date(2026, 10, 1))
+
+        self.assertEqual(date(2026, 10, 2), summary.plan_end)
+        self.assertEqual(
+            [(date(2026, 10, 1), date(2026, 10, 2))],
+            self.client.event_ranges,
+        )
+
+    def test_future_planned_event_is_stored(self):
+        self.client.event_payloads.append(
+            {
+                "id": 43,
+                "start_date_local": "2027-03-01T09:00:00",
+                "name": "Future workout",
+                "type": "run",
+            }
+        )
+
+        summary = self._import(plan_end=date(2027, 5, 6))
+
+        self.assertEqual(2, summary.events_imported)
+        events = self.repository.events(
+            date(2027, 3, 1),
+            date(2027, 3, 1),
+        )
+        self.assertEqual(["Future workout"], [event.name for event in events])
 
     def test_reimport_is_idempotent_and_preserves_manual_fields(self):
         first = self._import()
@@ -437,6 +510,21 @@ class IntervalsImporterTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual("failed", run["status"])
         self.assertIn("API unavailable", run["error"])
+
+
+class IntervalsCliTests(unittest.TestCase):
+
+    def test_default_plan_horizon_is_182_days(self):
+        args = build_parser().parse_args(["intervals"])
+
+        self.assertEqual(182, args.plan_days)
+
+    def test_plan_horizon_can_be_disabled(self):
+        args = build_parser().parse_args(
+            ["intervals", "--plan-days", "0"]
+        )
+
+        self.assertEqual(0, args.plan_days)
 
 
 if __name__ == "__main__":

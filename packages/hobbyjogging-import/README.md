@@ -143,8 +143,16 @@ uv run --env-file .env hobbyjogging-import intervals \
   --from 2026-01-01 --to 2026-03-31
 ```
 
+Planned workouts are Intervals calendar events. They are fetched from the
+activity start through `max(--to, today + --plan-days)`, while activities and
+wellness stop at `--to`/today. The default horizon is 182 days, so the daily
+report can show tomorrow's planned session. Event source records are keyed by
+the Intervals event id, so extending the horizon is idempotent.
+
 Useful options:
 
+- `--plan-days N` — fetch planned events N days ahead (default 182; `0`
+  disables the future horizon).
 - `--no-intervals` — skip per-activity interval downloads.
 - `--database PATH` — write to a database other than `HOBBYJOGGING_DB` or
   `data/hobbyjogging.db`.

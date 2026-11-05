@@ -17,6 +17,10 @@ this file now tracks the remaining real-data steps.
 - **Garmin VO2max.** `fit.py` reads undocumented message 140 field 7
   (`raw * 3.5 / 65536`) into `FitSession.vo2max_garmin`; `fit_import.py`
   writes `vo2max_garmin` at full precision; the FIT summary reports coverage.
+- **Intervals plan horizon.** Planned calendar events are fetched from the
+  activity start through `max(--to, today + --plan-days)`; the default
+  horizon is 182 days and `--plan-days 0` disables it. Activities and
+  wellness keep the original range.
 - Tests: import 160, core 79, reports 188 (all green).
 
 ## Remaining (real data, user)
