@@ -86,20 +86,26 @@ Then in the import package: parse `unknown_140` in `fit.py`, write
 summary. Backfill by re-running the normal full archive import; it is
 checksum-idempotent.
 
-## Current priorities
+## Current status
 
-1. **Full FIT archive import** on the real DB. The archive holds ~64k files,
-   2.8k of them activity recordings. One run (date filters apply after
-   parsing, so batching does not help). Re-run after the parser writes
-   `vo2max_garmin`.
-2. **`garmin fetch`** in the import package: Garmin Personal API key → 24 h
-   bearer token, paged activity list, original FIT ZIP download, extract into
-   the archive, manifest/dedupe. API files are currently byte-identical to
-   the archive, so no separate VO2max JSON path.
-3. **View models + static weekly dashboard** in the reports package.
-4. **Runalyze enrichment** after schema v5: comments merged into
-   `description`, tags in `activity_tags`, gear via the
-   equipment-categories endpoint, and Runalyze's own `vo2max_runalyze`
-   estimate. Unmatched rows create activities.
+Done:
+
+- Full FIT archive import and Garmin VO2max backfill on the real DB
+  (2,840 activities, 2,797 with a Garmin VO2max).
+- `garmin fetch` in the import package (official Personal API; API-downloaded
+  FITs are byte-identical to the archive).
+- Schema v5: `vo2max_garmin`, `vo2max_runalyze`, `activity_tags`.
+- Quality findings dedupe by fingerprint, not source record.
+
+Next:
+
+1. **View models + static weekly dashboard** in the reports package.
+2. **Runalyze enrichment**: comments merged into `description`, tags in
+   `activity_tags`, gear via the equipment-categories endpoint, and Runalyze's
+   own `vo2max_runalyze` estimate. Unmatched rows create activities. Blocked
+   on Runalyze API auth/endpoint details.
+3. **Queue cleanup**: stale sport conflicts from pre-normalization values and
+   duplicate quality items; re-import Intervals over the affected history to
+   normalize stored sports.
 
 Still open: Runalyze API auth/endpoint details, homelab cutover.
