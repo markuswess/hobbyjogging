@@ -7,18 +7,9 @@ names. Everything downstream sees the canonical model.
 from datetime import date
 
 from hobbyjogging_core.model import Activity, Equipment, Event, Interval, WellnessDay
+from hobbyjogging_core.sports import canonical_sport
 
 from ..api import Intervals
-
-_TYPE_ALIASES = {
-    "run": "run",
-    "trailrun": "trail_run",
-}
-
-
-def _norm_type(value: str | None) -> str:
-    value = (value or "").lower()
-    return _TYPE_ALIASES.get(value, value)
 
 
 def _parse_date(value: str) -> date:
@@ -37,7 +28,7 @@ def to_activity(raw: dict) -> Activity:
         id=raw["id"],
         date=_parse_date(raw["start_date_local"]),
         started_at_utc=str(raw.get("start_date") or ""),
-        type=_norm_type(raw.get("type")),
+        type=canonical_sport(raw.get("type")),
         name=raw.get("name") or "",
         description=raw.get("description") or "",
         duration_s=raw.get("moving_time") or 0,
@@ -66,7 +57,7 @@ def to_event(raw: dict) -> Event:
     return Event(
         date=_parse_date(raw.get("start_date_local") or raw.get("date") or ""),
         name=raw.get("name") or "",
-        type=_norm_type(raw.get("type")),
+        type=canonical_sport(raw.get("type")),
         description=raw.get("description") or "",
         duration_s=raw.get("duration"),
         distance_m=raw.get("distance"),

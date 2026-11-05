@@ -13,30 +13,11 @@ from typing import Any
 
 import fitdecode
 
-
-SPORT_ALIASES = {
-    "running": "run",
-    "trail_running": "trail_run",
-    "cycling": "ride",
-    "walking": "walk",
-    "hiking": "hike",
-    "swimming": "swim",
-    "rowing": "row",
-    "stand_up_paddleboarding": "sup",
-}
-
-SPORT_LABELS = {
-    "run": "Run",
-    "trail_run": "Trail Run",
-    "ride": "Ride",
-    "walk": "Walk",
-    "hike": "Hike",
-    "swim": "Swim",
-    "row": "Row",
-    "sup": "SUP",
-}
-
-RUN_SPORTS = {"run", "trail_run"}
+from hobbyjogging_core.sports import (
+    RUN_SPORTS,
+    SPORT_LABELS,
+    canonical_sport,
+)
 
 
 @dataclass
@@ -86,17 +67,6 @@ class FitFileSummary:
     time_created: str
     record_count: int = 0
     sessions: list[FitSession] = field(default_factory=list)
-
-
-def canonical_sport(sport: object, sub_sport: object = None) -> str:
-    """Map a FIT sport/sub-sport pair to the canonical sport name."""
-    raw_sport = str(sport or "").strip().lower()
-    raw_sub = str(sub_sport or "").strip().lower()
-
-    if raw_sport == "running" and raw_sub in {"trail", "trail_running"}:
-        return "trail_run"
-
-    return SPORT_ALIASES.get(raw_sport, raw_sport)
 
 
 def read_fit_file_id(path: str | Path) -> dict[str, Any]:

@@ -7,7 +7,7 @@ formats any activity field for review displays and conflict messages.
 
 from __future__ import annotations
 
-from .fit import canonical_sport
+from hobbyjogging_core.sports import canonical_sport
 
 
 def format_field(field_name: str, value: object) -> str:

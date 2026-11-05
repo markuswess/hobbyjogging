@@ -211,6 +211,16 @@ class FitFormattingTests(unittest.TestCase):
         )
         self.assertEqual("ride", canonical_sport("cycling", "road"))
         self.assertEqual("other", canonical_sport("other"))
+        self.assertEqual(
+            "gravel_ride",
+            canonical_sport("cycling", "gravel_cycling"),
+        )
+        self.assertEqual("mtb_ride", canonical_sport("cycling", "mountain"))
+        self.assertEqual(
+            "treadmill_run",
+            canonical_sport("running", "treadmill"),
+        )
+        self.assertEqual("swim", canonical_sport("swimming", "open_water"))
 
     def test_format_duration(self):
         self.assertEqual("0:00", format_duration(0))

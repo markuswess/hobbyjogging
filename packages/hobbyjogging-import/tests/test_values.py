@@ -53,6 +53,8 @@ class ParseSportTests(unittest.TestCase):
         self.assertEqual("run", parse_sport("running"))
         self.assertEqual("trail_run", parse_sport("trail_running"))
         self.assertEqual("ride", parse_sport("Cycling"))
+        self.assertEqual("gravel_ride", parse_sport("GravelRide"))
+        self.assertEqual("alpine_skiing", parse_sport("AlpineSki"))
 
     def test_canonical_names_pass_through(self):
         self.assertEqual("mtb_ride", parse_sport("mtb_ride"))

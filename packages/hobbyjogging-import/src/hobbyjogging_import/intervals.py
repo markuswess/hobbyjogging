@@ -9,6 +9,7 @@ from datetime import date, datetime, timezone
 
 from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.model import Interval
+from hobbyjogging_core.sports import canonical_sport
 
 from .client import IntervalsApi, IntervalsClient
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
@@ -19,11 +20,6 @@ from .quality import (
 )
 
 SOURCE = "intervals"
-
-_TYPE_ALIASES = {
-    "run": "run",
-    "trailrun": "trail_run",
-}
 
 
 @dataclass
@@ -343,7 +339,7 @@ class IntervalsImporter:
             event_id=_stable_id("event", external_id),
             local_date=local_date,
             name=str(raw.get("name") or ""),
-            type=_norm_type(raw.get("type")),
+            type=canonical_sport(raw.get("type")),
             description=str(raw.get("description") or ""),
             duration_s=_float(raw.get("duration")),
             distance_m=_float(raw.get("distance")),
@@ -366,7 +362,7 @@ def _activity_values(raw: dict) -> dict[str, object]:
 
     values: dict[str, object] = {
         "local_date": local_date,
-        "sport": _norm_type(raw.get("type")),
+        "sport": canonical_sport(raw.get("type")),
         "name": str(raw.get("name") or ""),
         "description": str(raw.get("description") or ""),
         "duration_s": _float(raw.get("moving_time")) or 0.0,
@@ -437,11 +433,6 @@ def _date_prefix(value: object) -> str | None:
     except ValueError:
         return None
     return text
-
-
-def _norm_type(value: object) -> str:
-    text = str(value or "").lower()
-    return _TYPE_ALIASES.get(text, text)
 
 
 def _fraction(value: object) -> float | None:

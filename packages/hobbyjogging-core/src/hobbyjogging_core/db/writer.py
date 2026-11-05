@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from hobbyjogging_core.model import Interval, Lap
+from hobbyjogging_core.sports import is_known_sport
 
 ACTIVITY_COLUMNS = {
     "local_date",
@@ -346,6 +347,14 @@ class TrainingWriter:
 
         if value is None:
             return "agree", current_source  # incoming source has no value
+
+        if field_name == "sport":
+            # "generic"/"other" is a placeholder, not a competing claim: a
+            # specific sport fills it, and never conflicts with it.
+            if not is_known_sport(value) and is_known_sport(current_value):
+                return "agree", current_source
+            if is_known_sport(value) and not is_known_sport(current_value):
+                return "write", current_source
 
         if field_name not in CONFLICT_FIELDS:
             return "agree", current_source

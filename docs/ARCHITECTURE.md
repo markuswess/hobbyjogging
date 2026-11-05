@@ -162,6 +162,13 @@ Two invariants are enforced by the writer:
 - A manual field (`is_manual = 1`) is never overwritten by an import.
 - An excluded activity cannot be written to or linked to.
 
+Sports are normalized through `hobbyjogging_core.sports`: one alias table maps
+FIT sport/sub-sport pairs, Intervals type names, and manual entry to the same
+canonical names, and reports/quality rules share the same sport groups. The
+writer treats placeholder sports (`generic`, `other`, `unknown`) as unknown, not
+as competing claims: a specific sport fills a placeholder and never conflicts
+with it. Two different specific sports still become a `field_conflict`.
+
 ## Import pipeline
 
 1. **Ingest.** FIT files are parsed from the archive; Intervals.icu activities,

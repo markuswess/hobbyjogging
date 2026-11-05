@@ -12,6 +12,7 @@ import json
 from dataclasses import dataclass
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.sports import PACE_SPORTS, RIDE_SPORTS
 
 from .values import format_field
 
@@ -23,14 +24,6 @@ MIN_RUN_PACE_S_PER_KM = 120.0  # 2:00 /km
 MAX_RUN_PACE_S_PER_KM = 600.0  # 10:00 /km
 MIN_RIDE_PACE_S_PER_KM = 36.0  # ~100 km/h
 MAX_RIDE_PACE_S_PER_KM = 900.0  # 15:00 /km walking pace
-
-RUN_SPORTS = frozenset(
-    {"run", "trail_run", "treadmill_run", "track_run"}
-)
-RIDE_SPORTS = frozenset(
-    {"ride", "virtual_ride", "gravel_ride", "mtb_ride"}
-)
-PACE_SPORTS = RUN_SPORTS | RIDE_SPORTS
 
 AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"

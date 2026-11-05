@@ -381,6 +381,76 @@ class TrainingWriterTests(unittest.TestCase):
             ).fetchone()[0],
         )
 
+    def test_specific_sport_fills_unknown_placeholder(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "other"},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"sport": "alpine_skiing"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT sport FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual("alpine_skiing", row["sport"])
+        owner = self.conn.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'sport'
+            """
+        ).fetchone()
+        self.assertEqual("fit", owner["source"])
+
+    def test_unknown_sport_does_not_conflict_with_specific(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "soccer"},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"sport": "generic"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT sport FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual("soccer", row["sport"])
+
+    def test_different_specific_sports_conflict(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "trail_run"},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"sport": "run"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual(1, len(conflicts))
+        self.assertEqual("sport", conflicts[0].field_name)
+
     def test_activity_source_links_have_one_primary(self):
         self.conn.execute(
             "INSERT INTO activities (id, local_date, sport) "

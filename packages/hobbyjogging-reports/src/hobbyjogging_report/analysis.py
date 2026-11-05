@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from statistics import median
 
 from hobbyjogging_core.model import Activity, Interval, WellnessDay
+from hobbyjogging_core.sports import RUN_SPORTS
 
 from .model import (
     DistancePoint,
@@ -30,7 +31,7 @@ from .series import (
     rolling_mean_by_date,
 )
 
-RUN_TYPES = {"run", "trail_run"}
+RUN_TYPES = RUN_SPORTS
 
 CATEGORY_SHORT = "short"
 CATEGORY_MEDIUM = "medium"
