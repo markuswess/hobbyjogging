@@ -10,6 +10,9 @@ Training data, imports, and reports.
   Runalyze, and spreadsheet data.
 - `packages/hobbyjogging-reports` — analysis, charts, and Markdown reports.
 
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, data
+flow, and the planned homelab/static-dashboard deployment.
+
 ## Setup
 
 ```bash
