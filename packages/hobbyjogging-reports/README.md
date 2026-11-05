@@ -40,13 +40,13 @@ training reports:
   description, the full interval table, and subT/LT1 work reps.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
-- **chart** — Weekly running distance chart (matplotlib); last 90
-  days by default.
-- **subt-chart** — subT and LT1 work interval pace over the last 365
+- **volume** — Weekly running volume/distance chart (matplotlib);
+  last 90 days by default.
+- **subt-pace** — subT and LT1 work interval pace over the last 365
   days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
   slowest work interval, plus rolling averages.
-- **subt-hr-chart** — the same work-interval chart using average
+- **subt-hr** — the same work-interval chart using average
   heart rate, with vertical bars showing max HR.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
@@ -79,9 +79,9 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
     uv run --env-file .env python -m hobbyjogging_report debug
-    uv run --env-file .env python -m hobbyjogging_report chart [output.png]
-    uv run --env-file .env python -m hobbyjogging_report subt-chart [output.png]
-    uv run --env-file .env python -m hobbyjogging_report subt-hr-chart [output.png]
+    uv run --env-file .env python -m hobbyjogging_report volume [output.png]
+    uv run --env-file .env python -m hobbyjogging_report subt-pace [output.png]
+    uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
 
 ### Quick reports
@@ -113,13 +113,13 @@ the same formatting. Redirected or piped output remains raw Markdown.
 
 `charts.sh` wraps the chart commands and prints the generated file path:
 
-    ./charts.sh                          # weekly distance, last 90 days
-    ./charts.sh chart --days 90
-    ./charts.sh chart --output dist.png
-    ./charts.sh subt-chart --days 365
-    ./charts.sh subt-chart --output subt.png
-    ./charts.sh subt-hr-chart --from 2026-01-01 --to 2026-06-30 --output hr.png
-    ./charts.sh subt-chart --source intervals
+    ./charts.sh                          # weekly volume, last 90 days
+    ./charts.sh volume --days 90
+    ./charts.sh volume --output dist.png
+    ./charts.sh subt-pace --days 365
+    ./charts.sh subt-pace --output subt.png
+    ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
+    ./charts.sh subt-pace --source intervals
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
 as the direct CLI.
@@ -136,7 +136,7 @@ Examples:
     ./reports.sh report --days 90 --source database
     ./reports.sh report --days 90 --source intervals
     ./reports.sh --source intervals weekly
-    ./charts.sh subt-chart --days 365 --source intervals
+    ./charts.sh subt-pace --days 365 --source intervals
 
 ## Session detail
 
@@ -176,7 +176,7 @@ derived from the same work reps used by the classification and charts.
 
 ## Date ranges
 
-`report`, `subt-report`, `chart`, `subt-chart`, `subt-hr-chart` and
+`report`, `subt-report`, `volume`, `subt-pace`, `subt-hr` and
 `classify` accept:
 
     --days N              look back N days from today
@@ -193,8 +193,8 @@ Examples:
     uv run --env-file .env python -m hobbyjogging_report report --from 2026-01-01 --to 2026-03-31
     uv run --env-file .env python -m hobbyjogging_report classify --days 90
     uv run --env-file .env python -m hobbyjogging_report classify --from 2026-01-01 --to 2026-03-31
-    uv run --env-file .env python -m hobbyjogging_report subt-chart --from 2026-02-01
-    uv run --env-file .env python -m hobbyjogging_report subt-hr-chart --to 2026-06-30 --days 120 --output hr.png
+    uv run --env-file .env python -m hobbyjogging_report subt-pace --from 2026-02-01
+    uv run --env-file .env python -m hobbyjogging_report subt-hr --to 2026-06-30 --days 120 --output hr.png
 
 Rules:
 
@@ -202,7 +202,7 @@ Rules:
 - `--from` alone runs from that date through today.
 - `--to` alone counts back `--days` (or the command default) from that date.
 - With neither, count back `--days` (or the command default) from today.
-- The old forms still work: `classify 30` and `subt-chart out.png`.
+- The old forms still work: `classify 30` and `subt-pace out.png`.
   An explicit `--days` / `--output` wins when both are supplied.
 - The fixed presets (`daily`, `weekly`, `monthly`, `yearly`, `all`)
   keep their existing windows; use `report` for a custom range.

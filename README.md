@@ -103,8 +103,8 @@ Charts use `charts.sh` and print the generated file path:
 
 ```bash
 ./charts.sh
-./charts.sh chart --days 90
-./charts.sh subt-chart --days 365
+./charts.sh volume --days 90
+./charts.sh subt-pace --days 365
 ```
 
 See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.

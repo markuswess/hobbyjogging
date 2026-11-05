@@ -7,9 +7,9 @@ __pycache__/
 *.py[cod]
 
 # Generated charts
-chart.png
-subt-chart.png
-subt-hr-chart.png
+volume.png
+subt-pace.png
+subt-hr.png
 
 # Local training data and exports
 data/

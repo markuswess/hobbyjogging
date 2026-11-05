@@ -31,9 +31,9 @@ MODES = {
     "report",
     "subt-report",
     "session",
-    "chart",
-    "subt-chart",
-    "subt-hr-chart",
+    "volume",
+    "subt-pace",
+    "subt-hr",
     "classify",
 }
 
@@ -45,8 +45,8 @@ def usage() -> str:
         "daily|weekly|monthly|yearly|debug|all"
         "|session [YYYY-MM-DD|ACTIVITY_ID|last]|report [--days N]"
         "|subt-report [--days N]"
-        "|chart [output.png]"
-        "|subt-chart [output.png]|subt-hr-chart [output.png]"
+        "|volume [output.png]"
+        "|subt-pace [output.png]|subt-hr [output.png]"
         "|classify [days]"
         "\n       date ranges: [--days N] [--from YYYY-MM-DD] "
         "[--to YYYY-MM-DD]"
@@ -258,11 +258,11 @@ def main(argv: list[str] | None = None):
                 include_review=include_review,
             )
 
-        elif mode == "chart":
+        elif mode == "volume":
             try:
                 output, start, end = parse_chart_args(
                     args,
-                    default_output="chart.png",
+                    default_output="volume.png",
                     default_days=90,
                 )
             except ValueError as exc:
@@ -277,10 +277,10 @@ def main(argv: list[str] | None = None):
             )
             return
 
-        elif mode in ("subt-chart", "subt-hr-chart"):
-            is_hr_chart = mode == "subt-hr-chart"
+        elif mode in ("subt-pace", "subt-hr"):
+            is_hr_chart = mode == "subt-hr"
             default_output = (
-                "subt-hr-chart.png" if is_hr_chart else "subt-chart.png"
+                "subt-hr.png" if is_hr_chart else "subt-pace.png"
             )
 
             try:
