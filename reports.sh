@@ -7,11 +7,12 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|weekly|monthly|yearly|all|report|subt-report|session|classify|chart|subt-chart|subt-hr-chart] [args...]
+  ./reports.sh [daily|weekly|monthly|yearly|all|report|subt-report|session|classify] [args...]
   ./reports.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the daily report. The generated Markdown is copied to
 the clipboard with wl-copy. The database source is the default.
+For charts, use ./charts.sh.
 
 Examples:
   ./reports.sh
@@ -32,18 +33,33 @@ Environment:
 EOF
 }
 
-mode="${1:-daily}"
+args=("$@")
+mode="daily"
+explicit_mode=0
+index=0
 
-if [[ "$mode" == "--source" ]]; then
-    mode="daily"
-fi
+while (( index < ${#args[@]} )); do
+    case "${args[$index]}" in
+        --source)
+            index=$((index + 2))
+            ;;
+        --source=*|--include-review)
+            index=$((index + 1))
+            ;;
+        *)
+            mode="${args[$index]}"
+            explicit_mode=1
+            break
+            ;;
+    esac
+done
 
 case "$mode" in
     -h|--help)
         usage
         exit 0
         ;;
-    daily|weekly|monthly|yearly|all|report|subt-report|session|classify|chart|subt-chart|subt-hr-chart)
+    daily|weekly|monthly|yearly|all|report|subt-report|session|classify)
         ;;
     *)
         usage >&2
@@ -51,10 +67,8 @@ case "$mode" in
         ;;
 esac
 
-args=("$@")
-
-if (( ${#args[@]} == 0 )); then
-    args=(daily)
+if (( explicit_mode == 0 )); then
+    args=("$mode" "${args[@]}")
 fi
 
 tmp="$(mktemp "${TMPDIR:-/tmp}/hobbyjogging-report.XXXXXX")"

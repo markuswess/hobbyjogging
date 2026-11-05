@@ -109,9 +109,24 @@ to print raw Markdown.
 When stdout is a terminal, the direct CLI also displays reports with
 the same formatting. Redirected or piped output remains raw Markdown.
 
+### Quick charts
+
+`charts.sh` wraps the chart commands and prints the generated file path:
+
+    ./charts.sh                          # weekly distance, last 90 days
+    ./charts.sh chart --days 90
+    ./charts.sh chart --output dist.png
+    ./charts.sh subt-chart --days 365
+    ./charts.sh subt-chart --output subt.png
+    ./charts.sh subt-hr-chart --from 2026-01-01 --to 2026-06-30 --output hr.png
+    ./charts.sh subt-chart --source intervals
+
+Charts accept the same `--days` / `--from` / `--to` / `--output` options
+as the direct CLI.
+
 ### Data source selection
 
-All report commands accept:
+All report and chart commands accept:
 
     --source database     read the canonical SQLite database (default)
     --source intervals    read directly from the Intervals.icu API
@@ -121,6 +136,7 @@ Examples:
     ./reports.sh report --days 90 --source database
     ./reports.sh report --days 90 --source intervals
     ./reports.sh --source intervals weekly
+    ./charts.sh subt-chart --days 365 --source intervals
 
 ## Session detail
 

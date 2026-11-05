@@ -99,6 +99,14 @@ Reports read the canonical database by default.
 ./reports.sh weekly --source intervals
 ```
 
+Charts use `charts.sh` and print the generated file path:
+
+```bash
+./charts.sh
+./charts.sh chart --days 90
+./charts.sh subt-chart --days 365
+```
+
 See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.
 
 ## Tests
