@@ -33,6 +33,8 @@ class ImportSummary:
     wellness_imported: int = 0
     events_seen: int = 0
     events_imported: int = 0
+    events_removed: int = 0
+    events_revived: int = 0
     intervals_imported: int = 0
     ambiguous_matches: list[tuple[str, list[MatchCandidate]]] = field(
         default_factory=list
@@ -48,6 +50,23 @@ class ImportSummary:
         return self.activities_imported + self.wellness_imported + self.events_imported
 
 
+@dataclass
+class EventSyncSummary:
+    """Results of reconciling planned events with the Intervals calendar."""
+
+    run_id: int | None = None
+    dry_run: bool = False
+    start: date | None = None
+    end: date | None = None
+    fetched: int = 0
+    new: int = 0
+    updated: int = 0
+    unchanged: int = 0
+    removed: int = 0
+    revived: int = 0
+    skipped: int = 0
+
+
 class IntervalsImporter:
     """Import activities, wellness, events, and intervals from Intervals.icu."""
 
@@ -60,6 +79,100 @@ class IntervalsImporter:
         self.client = client or IntervalsClient()
         self.writer = TrainingWriter(connection)
         self.matcher = ActivityMatcher(connection)
+
+    def sync_events(
+        self,
+        start: date,
+        end: date,
+        *,
+        dry_run: bool = False,
+        plan_days: int | None = None,
+    ) -> EventSyncSummary:
+        """Reconcile planned events with the current Intervals calendar.
+
+        Intervals is authoritative for events. Existing fields are replaced
+        (including NULLs), events that disappeared in the window are
+        soft-excluded, and reappearing events are revived. Events from other
+        sources are never touched.
+        """
+        if start > end:
+            raise ValueError("start must not be after end")
+
+        summary = EventSyncSummary(
+            dry_run=dry_run,
+            start=start,
+            end=end,
+        )
+
+        if not dry_run:
+            summary.run_id = self.writer.start_import_run(
+                SOURCE,
+                {
+                    "events_sync": True,
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
+                    "plan_days": plan_days,
+                },
+            )
+
+        try:
+            events = list(self.client.events(start, end) or [])
+            summary.fetched = len(events)
+
+            if dry_run:
+                counts = self._sync_event_payloads(
+                    events,
+                    start,
+                    end,
+                    None,
+                    dry_run=True,
+                )
+            else:
+                with self.connection:
+                    counts = self._sync_event_payloads(
+                        events,
+                        start,
+                        end,
+                        summary.run_id,
+                    )
+
+            summary.new = counts.new
+            summary.updated = counts.updated
+            summary.unchanged = counts.unchanged
+            summary.removed = counts.removed
+            summary.revived = counts.revived
+            summary.skipped = counts.skipped
+
+            if summary.run_id is not None:
+                self.writer.finish_import_run(
+                    summary.run_id,
+                    "success",
+                    records_seen=summary.fetched,
+                    records_imported=(
+                        summary.new + summary.updated + summary.revived
+                    ),
+                    records_skipped=(
+                        summary.unchanged + summary.skipped
+                    ),
+                )
+            return summary
+
+        except Exception as exc:
+            if summary.run_id is not None:
+                self.connection.rollback()
+                self.writer.finish_import_run(
+                    summary.run_id,
+                    "failed",
+                    records_seen=summary.fetched,
+                    records_imported=(
+                        summary.new + summary.updated + summary.revived
+                    ),
+                    records_skipped=(
+                        summary.unchanged + summary.skipped
+                    ),
+                    error=str(exc),
+                )
+            raise
 
     def import_range(
         self,
@@ -120,9 +233,20 @@ class IntervalsImporter:
                     if self._import_wellness(raw, summary.run_id):
                         summary.wellness_imported += 1
 
-                for raw in events:
-                    if self._import_event(raw, summary.run_id):
-                        summary.events_imported += 1
+                event_summary = self._sync_event_payloads(
+                    events,
+                    start,
+                    plan_end,
+                    summary.run_id,
+                )
+                summary.events_imported = (
+                    event_summary.new
+                    + event_summary.updated
+                    + event_summary.unchanged
+                    + event_summary.revived
+                )
+                summary.events_removed = event_summary.removed
+                summary.events_revived = event_summary.revived
 
             self.writer.finish_import_run(
                 summary.run_id,
@@ -410,42 +534,140 @@ class IntervalsImporter:
         )
         return True
 
-    def _import_event(self, raw: dict, run_id: int) -> bool:
-        value = raw.get("start_date_local") or raw.get("date")
-        local_date = _date_prefix(value)
-        if local_date is None:
-            return False
+    def _sync_event_payloads(
+        self,
+        events: list[dict],
+        start: date,
+        end: date,
+        run_id: int | None,
+        *,
+        dry_run: bool = False,
+    ) -> EventSyncSummary:
+        summary = EventSyncSummary(
+            dry_run=dry_run,
+            start=start,
+            end=end,
+            fetched=len(events),
+        )
 
-        payload = _payload_json(raw)
-        external_id = str(raw.get("id") or _checksum(payload))
-        source_record_id = self.writer.upsert_source_record(
-            source=SOURCE,
-            record_type="event",
-            external_id=external_id,
-            checksum=_checksum(payload),
-            payload_json=payload,
-            import_run_id=run_id,
-        )
-        self.writer.upsert_event(
-            event_id=_stable_id("event", external_id),
-            local_date=local_date,
-            name=str(raw.get("name") or ""),
-            type=canonical_sport(raw.get("type")),
-            description=str(raw.get("description") or ""),
-            duration_s=(
-                _float(raw.get("moving_time"))
-                or _float(raw.get("duration"))
-            ),
-            distance_m=_float(raw.get("distance")),
-            training_load=_float(raw.get("icu_training_load")),
-            source_record_id=source_record_id,
-        )
-        return True
+        rows = self.connection.execute(
+            """
+            SELECT e.id, e.local_date, e.name, e.type, e.description,
+                   e.duration_s, e.distance_m, e.training_load,
+                   e.excluded_at, sr.external_id
+            FROM events e
+            JOIN source_records sr ON sr.id = e.source_record_id
+            WHERE sr.source = ? AND sr.record_type = 'event'
+              AND e.local_date BETWEEN ? AND ?
+            """,
+            (SOURCE, start.isoformat(), end.isoformat()),
+        ).fetchall()
+        existing = {
+            str(row["external_id"]): row
+            for row in rows
+        }
+
+        fetched_ids: set[str] = set()
+
+        for raw in events:
+            external_id = _event_external_id(raw)
+            fetched_ids.add(external_id)
+            values = _event_values(raw)
+            if values is None:
+                summary.skipped += 1
+                continue
+
+            row = existing.get(external_id)
+            if row is None:
+                summary.new += 1
+            elif row["excluded_at"]:
+                summary.revived += 1
+            elif _event_changed(row, values):
+                summary.updated += 1
+            else:
+                summary.unchanged += 1
+
+            if dry_run:
+                continue
+
+            payload = _payload_json(raw)
+            source_record_id = self.writer.upsert_source_record(
+                source=SOURCE,
+                record_type="event",
+                external_id=external_id,
+                checksum=_checksum(payload),
+                payload_json=payload,
+                import_run_id=run_id,
+            )
+            self.writer.upsert_event(
+                event_id=values["event_id"],
+                local_date=values["local_date"],
+                name=values["name"],
+                type=values["type"],
+                description=values["description"],
+                duration_s=values["duration_s"],
+                distance_m=values["distance_m"],
+                training_load=values["training_load"],
+                source_record_id=source_record_id,
+            )
+
+        for external_id, row in existing.items():
+            if external_id in fetched_ids or row["excluded_at"]:
+                continue
+            if dry_run:
+                summary.removed += 1
+            elif self.writer.exclude_event(row["id"]):
+                summary.removed += 1
+
+        return summary
 
 
 def _activity_external_id(raw: dict) -> str | None:
     value = raw.get("id")
     return str(value) if value is not None else None
+
+
+def _event_external_id(raw: dict) -> str:
+    value = raw.get("id")
+    if value is not None:
+        return str(value)
+    return _checksum(_payload_json(raw))
+
+
+def _event_values(raw: dict) -> dict[str, object] | None:
+    local_date = _date_prefix(
+        raw.get("start_date_local") or raw.get("date")
+    )
+    if local_date is None:
+        return None
+
+    external_id = _event_external_id(raw)
+    duration = _float(raw.get("moving_time"))
+    if duration is None:
+        duration = _float(raw.get("duration"))
+
+    return {
+        "event_id": _stable_id("event", external_id),
+        "local_date": local_date,
+        "name": str(raw.get("name") or ""),
+        "type": canonical_sport(raw.get("type")),
+        "description": str(raw.get("description") or ""),
+        "duration_s": duration,
+        "distance_m": _float(raw.get("distance")),
+        "training_load": _float(raw.get("icu_training_load")),
+    }
+
+
+def _event_changed(row, values: dict[str, object]) -> bool:
+    return (
+        row["local_date"] != values["local_date"]
+        or row["name"] != values["name"]
+        or row["type"] != values["type"]
+        or row["description"] != values["description"]
+        or row["duration_s"] != values["duration_s"]
+        or row["distance_m"] != values["distance_m"]
+        or row["training_load"] != values["training_load"]
+    )
 
 
 def _activity_values(raw: dict) -> dict[str, object]:

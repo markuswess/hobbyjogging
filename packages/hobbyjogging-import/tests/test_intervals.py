@@ -3,7 +3,7 @@ import unittest
 from datetime import date, timedelta
 
 from hobbyjogging_core import TrainingRepository, connect, migrate
-from hobbyjogging_import.cli import build_parser
+from hobbyjogging_import.cli import build_parser, resolve_event_range
 from hobbyjogging_import.intervals import IntervalsImporter
 
 
@@ -666,6 +666,213 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertIn("API unavailable", run["error"])
 
 
+class EventSyncTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.client = FakeIntervalsClient()
+        self.importer = IntervalsImporter(self.conn, client=self.client)
+        self.repository = TrainingRepository(self.conn)
+        self.start = date(2026, 10, 1)
+        self.end = date(2026, 10, 2)
+
+    def _sync(self, **kwargs):
+        return self.importer.sync_events(self.start, self.end, **kwargs)
+
+    def _events(self):
+        return self.repository.events(self.start, self.end)
+
+    def _event_count(self):
+        return self.conn.execute(
+            "SELECT COUNT(*) FROM events"
+        ).fetchone()[0]
+
+    def test_sync_adds_new_event(self):
+        summary = self._sync()
+
+        self.assertEqual(1, summary.fetched)
+        self.assertEqual(1, summary.new)
+        self.assertEqual(0, summary.removed)
+        self.assertIsNotNone(summary.run_id)
+
+        events = self._events()
+        self.assertEqual(1, len(events))
+        self.assertEqual("Town race", events[0].name)
+        self.assertEqual(1800, events[0].duration_s)
+        self.assertEqual(5000, events[0].distance_m)
+
+    def test_sync_overwrites_changed_fields(self):
+        self._sync()
+        self.client.event_payloads[0].update(
+            {
+                "name": "New race",
+                "moving_time": 2000,
+                "icu_training_load": 55,
+                "distance": 6000,
+            }
+        )
+
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        event = self._events()[0]
+        self.assertEqual("New race", event.name)
+        self.assertEqual(2000, event.duration_s)
+        self.assertEqual(55, event.training_load)
+        self.assertEqual(6000, event.distance_m)
+
+    def test_sync_clears_fields(self):
+        self.client.event_payloads[0].update(
+            {"distance": 5000, "icu_training_load": 55}
+        )
+        self._sync()
+
+        self.client.event_payloads[0]["distance"] = None
+        self.client.event_payloads[0]["icu_training_load"] = None
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        event = self._events()[0]
+        self.assertIsNone(event.distance_m)
+        self.assertIsNone(event.training_load)
+
+    def test_sync_removes_disappeared_event(self):
+        self._sync()
+        self.client.event_payloads.clear()
+
+        summary = self._sync()
+
+        self.assertEqual(1, summary.removed)
+        self.assertEqual([], self._events())
+        row = self.conn.execute(
+            "SELECT excluded_at FROM events"
+        ).fetchone()
+        self.assertIsNotNone(row["excluded_at"])
+
+    def test_sync_revives_returning_event(self):
+        self._sync()
+        payload = self.client.event_payloads.pop()
+        self._sync()
+        self.client.event_payloads.append(payload)
+
+        summary = self._sync()
+
+        self.assertEqual(1, summary.revived)
+        self.assertEqual(1, len(self._events()))
+        row = self.conn.execute(
+            "SELECT excluded_at FROM events"
+        ).fetchone()
+        self.assertIsNone(row["excluded_at"])
+
+    def test_sync_updates_moved_event_without_duplicating(self):
+        self._sync()
+        self.client.event_payloads[0]["start_date_local"] = (
+            "2026-10-01T09:00:00"
+        )
+
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        events = self._events()
+        self.assertEqual(1, len(events))
+        self.assertEqual(date(2026, 10, 1), events[0].date)
+
+    def test_sync_replaces_recreated_event(self):
+        self._sync()
+        self.client.event_payloads[0] = {
+            **self.client.event_payloads[0],
+            "id": 43,
+            "name": "Recreated",
+        }
+
+        summary = self._sync()
+
+        self.assertEqual(1, summary.new)
+        self.assertEqual(1, summary.removed)
+        self.assertEqual(["Recreated"], [event.name for event in self._events()])
+
+    def test_sync_leaves_other_source_events_untouched(self):
+        run_id = self.importer.writer.start_import_run("manual")
+        source_id = self.importer.writer.upsert_source_record(
+            source="manual",
+            record_type="event",
+            external_id="m1",
+            checksum="c-manual",
+            import_run_id=run_id,
+        )
+        self.importer.writer.upsert_event(
+            event_id="m1",
+            local_date="2026-10-02",
+            name="Manual event",
+            type="run",
+            source_record_id=source_id,
+        )
+        self.conn.commit()
+        self.client.event_payloads.clear()
+
+        summary = self._sync()
+
+        self.assertEqual(0, summary.removed)
+        self.assertEqual(
+            ["Manual event"],
+            [event.name for event in self._events()],
+        )
+
+    def test_sync_dry_run_writes_nothing(self):
+        summary = self._sync(dry_run=True)
+
+        self.assertEqual(1, summary.new)
+        self.assertEqual(0, self._event_count())
+        self.assertEqual(
+            0,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM source_records"
+            ).fetchone()[0],
+        )
+        self.assertEqual(
+            0,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM import_runs"
+            ).fetchone()[0],
+        )
+
+    def test_sync_is_idempotent(self):
+        self._sync()
+        summary = self._sync()
+
+        self.assertEqual(0, summary.new)
+        self.assertEqual(0, summary.updated)
+        self.assertEqual(1, summary.unchanged)
+        self.assertEqual(0, summary.removed)
+        self.assertEqual(1, self._event_count())
+
+    def test_regular_import_prunes_events(self):
+        self.importer.import_range(self.start, self.end, include_intervals=False)
+        self.client.event_payloads.clear()
+
+        summary = self.importer.import_range(
+            self.start,
+            self.end,
+            include_intervals=False,
+        )
+
+        self.assertEqual(1, summary.events_removed)
+        self.assertEqual([], self._events())
+
+    def test_regular_import_stores_moving_time_and_load(self):
+        self.client.event_payloads[0].update(
+            {"moving_time": 2000, "icu_training_load": 55}
+        )
+
+        self.importer.import_range(self.start, self.end, include_intervals=False)
+
+        event = self._events()[0]
+        self.assertEqual(2000, event.duration_s)
+        self.assertEqual(55, event.training_load)
+
+
 class IntervalsCliTests(unittest.TestCase):
 
     def test_default_plan_horizon_is_182_days(self):
@@ -679,6 +886,63 @@ class IntervalsCliTests(unittest.TestCase):
         )
 
         self.assertEqual(0, args.plan_days)
+
+    def test_events_sync_arguments(self):
+        args = build_parser().parse_args(
+            [
+                "events",
+                "sync",
+                "--from",
+                "2026-01-01",
+                "--to",
+                "2026-02-01",
+                "--plan-days",
+                "30",
+                "--dry-run",
+            ]
+        )
+
+        self.assertEqual("events", args.command)
+        self.assertEqual("sync", args.events_action)
+        self.assertEqual("2026-01-01", args.start.isoformat())
+        self.assertEqual("2026-02-01", args.end.isoformat())
+        self.assertEqual(30, args.plan_days)
+        self.assertTrue(args.dry_run)
+
+    def test_events_sync_defaults(self):
+        args = build_parser().parse_args(["events", "sync"])
+
+        self.assertEqual(182, args.plan_days)
+        self.assertIsNone(args.start)
+        self.assertIsNone(args.end)
+        self.assertFalse(args.dry_run)
+
+    def test_event_range_defaults_to_today_and_horizon(self):
+        today = date(2026, 11, 6)
+        start, end = resolve_event_range(None, None, 182, today=today)
+
+        self.assertEqual(today, start)
+        self.assertEqual(today + timedelta(days=182), end)
+
+    def test_event_range_honors_explicit_bounds(self):
+        start, end = resolve_event_range(
+            date(2026, 1, 1),
+            date(2026, 2, 1),
+            182,
+            today=date(2026, 11, 6),
+        )
+
+        self.assertEqual(date(2026, 1, 1), start)
+        self.assertEqual(date(2026, 2, 1), end)
+
+    def test_event_range_rejects_reversed_bounds(self):
+        with self.assertRaises(ValueError):
+            resolve_event_range(
+                date(2026, 2, 1),
+                date(2026, 1, 1),
+                182,
+                today=date(2026, 11, 6),
+            )
 
 
 if __name__ == "__main__":

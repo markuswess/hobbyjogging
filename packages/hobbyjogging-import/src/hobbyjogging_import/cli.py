@@ -15,7 +15,7 @@ from .config import (
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .garmin import GarminFetcher, GarminFetchSummary
-from .intervals import IntervalsImporter
+from .intervals import EventSyncSummary, IntervalsImporter
 from .review_cli import run_review
 
 
@@ -53,6 +53,24 @@ def resolve_range(
     return today - timedelta(days=days), today
 
 
+def resolve_event_range(
+    start: date | None,
+    end: date | None,
+    plan_days: int,
+    today: date | None = None,
+) -> tuple[date, date]:
+    if plan_days < 0:
+        raise ValueError("--plan-days must be zero or greater")
+
+    today = today or date.today()
+    start = start or today
+    if end is None:
+        end = max(start, today + timedelta(days=plan_days))
+    if start > end:
+        raise ValueError("--from must not be after --to")
+    return start, end
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hobbyjogging-import",
@@ -81,6 +99,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-intervals",
         action="store_true",
         help="skip per-activity interval downloads",
+    )
+
+    events = subparsers.add_parser(
+        "events",
+        help="sync planned calendar events",
+    )
+    events_sub = events.add_subparsers(
+        dest="events_action",
+        required=True,
+    )
+    events_sync = events_sub.add_parser(
+        "sync",
+        help="reconcile planned events from Intervals.icu",
+    )
+    events_sync.add_argument("--from", dest="start", type=date_arg)
+    events_sync.add_argument("--to", dest="end", type=date_arg)
+    events_sync.add_argument("--plan-days", type=int, default=182)
+    events_sync.add_argument("--database", type=Path)
+    events_sync.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report changes without writing",
     )
 
     fit = subparsers.add_parser(
@@ -508,6 +548,70 @@ def _print_garmin_summary(
         print(f"Database: {database_path}")
 
 
+def run_events(args, parser: argparse.ArgumentParser) -> int:
+    if args.events_action != "sync":
+        parser.error(f"unknown events command: {args.events_action}")
+
+    try:
+        start, end = resolve_event_range(
+            args.start,
+            args.end,
+            args.plan_days,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            importer = IntervalsImporter(connection)
+            summary = importer.sync_events(
+                start,
+                end,
+                dry_run=args.dry_run,
+                plan_days=args.plan_days,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    _print_events_summary(
+        summary,
+        args.database or default_database_path(),
+        dry_run=args.dry_run,
+    )
+    return 0
+
+
+def _print_events_summary(
+    summary: EventSyncSummary,
+    database_path,
+    *,
+    dry_run: bool,
+) -> None:
+    label = "Events sync dry run" if dry_run else "Events sync complete"
+    print(
+        f"{label}: "
+        f"{summary.fetched} fetched, "
+        f"{summary.new} new, "
+        f"{summary.updated} updated, "
+        f"{summary.unchanged} unchanged, "
+        f"{summary.removed} removed, "
+        f"{summary.revived} revived, "
+        f"{summary.skipped} skipped"
+    )
+    print(f"Range: {summary.start} .. {summary.end}")
+
+    if not dry_run:
+        print(f"Import run: {summary.run_id}")
+        print(f"Database: {database_path}")
+
+
 def _print_fit_summary(
     summary: FitImportSummary,
     database_path,
@@ -589,6 +693,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "garmin":
         return run_garmin(args, parser)
 
+    if args.command == "events":
+        return run_events(args, parser)
+
     if args.command == "review":
         return run_review(args, parser)
 
@@ -640,6 +747,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Plan range: {start} .. {summary.plan_end}")
     if summary.activities_skipped:
         print(f"Activities skipped: {summary.activities_skipped}")
+    if summary.events_removed:
+        print(f"Events removed: {summary.events_removed}")
+    if summary.events_revived:
+        print(f"Events revived: {summary.events_revived}")
 
     print(f"Review items recorded: {summary.review_recorded}")
 

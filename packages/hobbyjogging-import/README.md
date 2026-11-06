@@ -205,6 +205,30 @@ Intervals provides recording time (`icu_recording_time`), moving time
 moving time, so their `duration_s` is the planned moving duration and
 `training_load` comes from `icu_training_load`.
 
+### Planned event sync
+
+Intervals is authoritative for calendar events. Reconcile the plan without
+re-importing activities or wellness:
+
+```bash
+uv run --env-file .env hobbyjogging-import events sync
+uv run --env-file .env hobbyjogging-import events sync --dry-run
+uv run --env-file .env hobbyjogging-import events sync \
+  --from 2026-01-01 --to 2027-05-06
+```
+
+The default window is today through today + `--plan-days` (182). The sync:
+
+- replaces every event field with the current Intervals value, including
+  clearing fields that were removed;
+- soft-excludes events that disappeared from the window;
+- revives events that reappear;
+- leaves manual and other-source events alone;
+- reports fetched/new/updated/unchanged/removed/revived/skipped.
+
+The regular `intervals` import runs the same reconciliation over its event
+range, so it cannot leave stale plans behind.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*
