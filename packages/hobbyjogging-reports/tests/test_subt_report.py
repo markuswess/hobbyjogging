@@ -7,7 +7,7 @@ from hobbyjogging_report.analysis import (
     subt_report_blocks,
     subt_report_summary,
 )
-from hobbyjogging_report.reports import subt_report
+from hobbyjogging_report.subt_report import subt_report
 from support import FakeSource, activity_factory, make_interval
 
 D1 = date(2026, 10, 1)

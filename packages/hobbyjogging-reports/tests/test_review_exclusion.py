@@ -2,7 +2,8 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core import connect, migrate
-from hobbyjogging_report.reports import daily, period_report
+from hobbyjogging_report.daily import daily
+from hobbyjogging_report.period_report import period_report
 from hobbyjogging_report.sessions import session_report
 from hobbyjogging_report.review import exclude_review, review_note
 

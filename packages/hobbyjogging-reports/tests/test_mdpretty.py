@@ -3,7 +3,7 @@ from datetime import date
 
 from hobbyjogging_core.model import Event
 from hobbyjogging_report.mdpretty import render_markdown
-from hobbyjogging_report.reports import _format_event
+from hobbyjogging_report.daily import format_event
 
 
 class MarkdownRendererTests(unittest.TestCase):
@@ -87,7 +87,7 @@ class MarkdownRendererTests(unittest.TestCase):
             duration_s=3600,
         )
 
-        markdown = "\n".join(_format_event(event))
+        markdown = "\n".join(format_event(event))
 
         self.assertIn("- Description:", markdown)
         self.assertIn("  ```", markdown)

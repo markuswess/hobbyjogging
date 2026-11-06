@@ -3,7 +3,8 @@ from datetime import date
 from unittest.mock import patch
 
 from hobbyjogging_report.mdpretty import render_markdown
-from hobbyjogging_report.reports import daily, period_report
+from hobbyjogging_report.daily import daily
+from hobbyjogging_report.period_report import period_report
 from support import FakeSource, activity_factory
 
 D1 = date(2026, 10, 1)
@@ -33,7 +34,7 @@ class DailyDescriptionTests(unittest.TestCase):
             [activity(name="Easy", description=MULTILINE)]
         )
 
-        with patch("hobbyjogging_report.reports.date", FixedDate):
+        with patch("hobbyjogging_report.daily.date", FixedDate):
             report = daily(source)
 
         self.assertIn("## Yesterday", report)

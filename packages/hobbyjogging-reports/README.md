@@ -406,8 +406,11 @@ analysis or chart code:
 - `charts.py` — matplotlib rendering of analysis output.
 - `format.py` — model-based report formatting helpers.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
-- `reports.py` — the Markdown reports; they obtain model objects
-  through a `DataSource`.
+- `daily.py`, `period_report.py`, `subt_report.py` — the Markdown reports;
+  one file per report, obtaining model objects through a `DataSource`.
+- `activity_list.py` — the recent-activities table (selection, columns,
+  rendering).
+- `sessions.py` — session selection and the detailed session report.
 
 Only `sources/intervals_api.py` knows Intervals.icu field names; the
 `debug` command is the one place that still dumps raw payloads.

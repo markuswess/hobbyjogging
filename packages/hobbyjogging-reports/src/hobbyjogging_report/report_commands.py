@@ -2,13 +2,10 @@
 
 from .activity_list import activities_report
 from .command_support import reviewed_range
+from .daily import daily
 from .debug import debug
-from .reports import (
-    daily,
-    period_report,
-    subt_report,
-    summary,
-)
+from .period_report import period_report, summary
+from .subt_report import subt_report
 from .sessions import session_report
 
 
