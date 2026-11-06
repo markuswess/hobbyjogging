@@ -45,6 +45,34 @@ def resolve_range(
     return today - timedelta(days=days), today
 
 
+def resolve_forward_range(
+    days: int,
+    start: date | None = None,
+    end: date | None = None,
+    today: date | None = None,
+) -> tuple[date, date]:
+    """Resolve an inclusive forward-looking range from --days/--from/--to."""
+    if days < 0:
+        raise ValueError("--days must be zero or greater")
+
+    today = today or date.today()
+
+    if start is not None and end is not None:
+        if start > end:
+            raise ValueError("--from must not be after --to")
+        return start, end
+
+    if start is not None:
+        return start, start + timedelta(days=days)
+
+    if end is not None:
+        if end < today:
+            raise ValueError("--to must not be before today")
+        return today, end
+
+    return today, today + timedelta(days=days)
+
+
 def extract_source(argv: list[str]) -> tuple[str, bool, list[str]]:
     """Remove global options and return (source, include_review, remaining)."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
@@ -109,6 +137,24 @@ def parse_report_args(
     )
 
     return resolve_range(days, args.start, args.end, today=today)
+
+
+def parse_planned_args(
+    argv: list[str],
+    default_days: int = DEFAULT_PLANNED_DAYS,
+    today: date | None = None,
+) -> tuple[date, date]:
+    """Parse a forward-looking date range for the planned-workouts report."""
+    parser = range_parser()
+    args = parser.parse_args(argv)
+
+    days = (
+        args.days_option
+        if args.days_option is not None
+        else default_days
+    )
+
+    return resolve_forward_range(days, args.start, args.end, today=today)
 
 
 def parse_chart_args(

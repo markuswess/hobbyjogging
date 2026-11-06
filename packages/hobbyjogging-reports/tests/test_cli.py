@@ -10,9 +10,11 @@ from hobbyjogging_report.cli import (
     parse_chart_args,
     parse_classify_args,
     parse_load_args,
+    parse_planned_args,
     parse_recovery_args,
     parse_report_args,
     parse_time_args,
+    resolve_forward_range,
     resolve_range,
 )
 from hobbyjogging_report.model import AverageWindows
@@ -81,6 +83,115 @@ class ResolveRangeTests(unittest.TestCase):
                 start=date(2026, 11, 1),
                 today=TODAY,
             )
+
+
+class ForwardRangeTests(unittest.TestCase):
+
+    def test_default_horizon_is_today_plus_days(self):
+        self.assertEqual(
+            (TODAY, TODAY + timedelta(days=28)),
+            resolve_forward_range(28, today=TODAY),
+        )
+
+    def test_zero_days_is_a_single_day(self):
+        self.assertEqual(
+            (TODAY, TODAY),
+            resolve_forward_range(0, today=TODAY),
+        )
+
+    def test_rejects_negative_days(self):
+        with self.assertRaises(ValueError):
+            resolve_forward_range(-1, today=TODAY)
+
+    def test_explicit_range_is_used_directly(self):
+        self.assertEqual(
+            (date(2026, 11, 1), date(2026, 12, 15)),
+            resolve_forward_range(
+                28,
+                start=date(2026, 11, 1),
+                end=date(2026, 12, 15),
+                today=TODAY,
+            ),
+        )
+
+    def test_start_only_runs_days_from_start(self):
+        self.assertEqual(
+            (date(2026, 11, 1), date(2026, 11, 29)),
+            resolve_forward_range(
+                28,
+                start=date(2026, 11, 1),
+                today=TODAY,
+            ),
+        )
+
+    def test_end_only_runs_from_today(self):
+        self.assertEqual(
+            (TODAY, date(2026, 12, 15)),
+            resolve_forward_range(
+                28,
+                end=date(2026, 12, 15),
+                today=TODAY,
+            ),
+        )
+
+    def test_rejects_reversed_range(self):
+        with self.assertRaises(ValueError):
+            resolve_forward_range(
+                28,
+                start=date(2026, 12, 15),
+                end=date(2026, 11, 1),
+                today=TODAY,
+            )
+
+    def test_rejects_end_before_today(self):
+        with self.assertRaises(ValueError):
+            resolve_forward_range(
+                28,
+                end=date(2026, 10, 1),
+                today=TODAY,
+            )
+
+
+class PlannedArgsTests(unittest.TestCase):
+
+    def test_default_is_next_28_days(self):
+        self.assertEqual(
+            (TODAY, TODAY + timedelta(days=28)),
+            parse_planned_args([], today=TODAY),
+        )
+
+    def test_days_option(self):
+        self.assertEqual(
+            (TODAY, TODAY + timedelta(days=56)),
+            parse_planned_args(["--days", "56"], today=TODAY),
+        )
+
+    def test_explicit_range(self):
+        self.assertEqual(
+            (date(2026, 11, 1), date(2026, 12, 15)),
+            parse_planned_args(
+                ["--from", "2026-11-01", "--to", "2026-12-15"],
+                today=TODAY,
+            ),
+        )
+
+    def test_from_only(self):
+        self.assertEqual(
+            (date(2026, 11, 1), date(2026, 11, 29)),
+            parse_planned_args(
+                ["--from", "2026-11-01"],
+                today=TODAY,
+            ),
+        )
+
+    def test_to_only(self):
+        self.assertEqual(
+            (TODAY, date(2026, 12, 15)),
+            parse_planned_args(
+                ["--to", "2026-12-15"],
+                today=TODAY,
+            ),
+        )
 
 
 class ClassifyArgsTests(unittest.TestCase):

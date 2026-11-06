@@ -115,6 +115,8 @@ Reports read the canonical database by default.
 ./reports.sh daily
 ./reports.sh report --days 90
 ./reports.sh report --from 2026-01-01 --to 2026-03-31
+./reports.sh planned
+./reports.sh planned --days 56
 ./reports.sh weekly --source intervals
 ./reports.sh activities --limit 20
 ./reports.sh activities --days 30 --add id,category

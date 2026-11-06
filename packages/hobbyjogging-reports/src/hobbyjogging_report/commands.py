@@ -17,6 +17,7 @@ from .cli import (
     parse_chart_args,
     parse_classify_args,
     parse_load_args,
+    parse_planned_args,
     parse_recovery_args,
     parse_report_args,
     parse_time_args,
@@ -32,6 +33,7 @@ from .report_commands import (
     run_classify_command,
     run_daily_command,
     run_debug_command,
+    run_planned_command,
     run_report_command,
     run_session_command,
     run_subt_report_command,
@@ -127,6 +129,17 @@ COMMANDS = {
         ("reports.sh subt-report --days 90",),
         parse=partial(parse_report_args, default_days=90),
         run=run_subt_report_command,
+    ),
+    "planned": Command(
+        "planned",
+        "Upcoming planned workouts",
+        "planned [--days N] [--from DATE] [--to DATE]",
+        (
+            "reports.sh planned",
+            "reports.sh planned --days 56",
+        ),
+        parse=parse_planned_args,
+        run=run_planned_command,
     ),
     "session": Command(
         "session",

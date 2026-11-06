@@ -36,6 +36,9 @@ reports:
   (`--days`, `--from`, `--to`).
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
+- **planned** — Upcoming planned workouts as a compact key-facts table
+  (date, weekday, workout, sport, distance, time, load); next 28 days
+  by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, totals, zones,
   description, the full interval table, and subT/LT1 work reps.
@@ -85,6 +88,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
     uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
+    uv run --env-file .env python -m hobbyjogging_report planned
     uv run --env-file .env python -m hobbyjogging_report activities --limit 20
     uv run --env-file .env python -m hobbyjogging_report session
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
@@ -115,6 +119,8 @@ and tables for the terminal:
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh subt-report --days 90
+    ./reports.sh planned
+    ./reports.sh planned --days 56
     ./reports.sh session 2026-10-22
     ./reports.sh session 7a2bf884-2b25-585f-8430-530749f80afa
     ./reports.sh session last
@@ -314,6 +320,12 @@ subT/LT1-named sessions.
     --from YYYY-MM-DD     start date (inclusive)
     --to YYYY-MM-DD       end date (inclusive)
 
+`planned` uses the same options but looks forward:
+
+    --days N              next N days from today (default 28)
+    --from YYYY-MM-DD     start date (inclusive)
+    --to YYYY-MM-DD       end date (inclusive)
+
 The chart commands also accept:
 
     --output FILE         chart output path
@@ -326,6 +338,9 @@ Examples:
     uv run --env-file .env python -m hobbyjogging_report classify --from 2026-01-01 --to 2026-03-31
     uv run --env-file .env python -m hobbyjogging_report subt --from 2026-02-01
     uv run --env-file .env python -m hobbyjogging_report subt --to 2026-06-30 --days 120 --output subt.png
+    uv run --env-file .env python -m hobbyjogging_report planned
+    uv run --env-file .env python -m hobbyjogging_report planned --days 56
+    uv run --env-file .env python -m hobbyjogging_report planned --to 2026-12-31
 
 Rules:
 
@@ -333,6 +348,9 @@ Rules:
 - `--from` alone runs from that date through today.
 - `--to` alone counts back `--days` (or the command default) from that date.
 - With neither, count back `--days` (or the command default) from today.
+- `planned` looks forward instead: `--from` alone runs `--days` from
+  that date, `--to` alone runs from today through that date, and with
+  neither it lists the next `--days` days (default 28).
 - The old forms still work: `classify 30` and `subt out.png`.
   An explicit `--days` / `--output` wins when both are supplied.
 - The fixed presets (`daily`, `weekly`, `monthly`, `yearly`, `all`)

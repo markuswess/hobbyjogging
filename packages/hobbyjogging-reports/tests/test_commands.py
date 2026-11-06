@@ -14,6 +14,7 @@ EXPECTED = {
     "all",
     "report",
     "subt-report",
+    "planned",
     "session",
     "classify",
     "volume",

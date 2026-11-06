@@ -5,6 +5,7 @@ from .command_support import reviewed_range
 from .daily import daily
 from .debug import debug
 from .period_report import period_report, summary
+from .planned import planned_report
 from .subt_report import subt_report
 from .sessions import session_report
 
@@ -65,6 +66,16 @@ def run_subt_report_command(parsed, source, include_review):
     )
 
 
+def run_planned_command(parsed, source, include_review):
+    start, end = parsed
+    return planned_report(
+        start,
+        end,
+        source,
+        include_review=include_review,
+    )
+
+
 def run_classify_command(parsed, source, include_review):
     """Print the category of activities in the given range."""
     from .analysis import activity_sort_key, is_subt_activity
@@ -96,33 +107,6 @@ def run_classify_command(parsed, source, include_review):
         )
 
     return None
-    """Print the category of activities in the given range."""
-    from .analysis import activity_sort_key, is_subt_activity
-    from .classify import classify
-
-    activities = reviewed_range(
-        source,
-        start,
-        end,
-        include_review,
-    )
-
-    for activity in sorted(activities, key=activity_sort_key):
-        intervals = []
-
-        if is_subt_activity(activity):
-            intervals = source.activity_intervals(activity.id)
-
-        category = classify(activity, intervals)
-        rpe = "-" if activity.rpe is None else f"{activity.rpe:g}"
-
-        print(
-            f"{activity.date} "
-            f"{activity.duration_s / 60:5.0f}min "
-            f"rpe={rpe} "
-            f"{category.path:36s} "
-            f"{activity.name}"
-        )
 
 
 def run_debug_command(parsed, source, include_review):
