@@ -214,18 +214,17 @@ def run_subt_chart(
     start: date,
     end: date,
     source: DataSource,
-    heart_rate: bool = False,
     *,
     include_review: bool = False,
 ) -> None:
-    """Render subT and LT1 work interval pace or HR for the given range."""
+    """Render subT and LT1 work interval pace and HR for the given range."""
     from .analysis import (
         activity_sort_key,
         is_lt1_activity,
         is_subt_activity,
         subt_session_point,
     )
-    from .charts import plot_subt_hr, plot_subt_paces
+    from .charts import plot_subt
 
     activities = reviewed_range(
         source,
@@ -253,8 +252,7 @@ def run_subt_chart(
         if point is not None:
             points.append(point)
 
-    plot = plot_subt_hr if heart_rate else plot_subt_paces
-    path = plot(points, output=output)
+    path = plot_subt(points, output=output)
 
     print(path)
 
@@ -387,27 +385,13 @@ def run_recovery_command(parsed, source, include_review):
     return None
 
 
-def run_subt_pace_command(parsed, source, include_review):
+def run_subt_command(parsed, source, include_review):
     output, start, end = parsed
     run_subt_chart(
         output,
         start,
         end,
         source,
-        heart_rate=False,
-        include_review=include_review,
-    )
-    return None
-
-
-def run_subt_hr_command(parsed, source, include_review):
-    output, start, end = parsed
-    run_subt_chart(
-        output,
-        start,
-        end,
-        source,
-        heart_rate=True,
         include_review=include_review,
     )
     return None

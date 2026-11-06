@@ -20,8 +20,7 @@ EXPECTED = {
     "load",
     "time",
     "recovery",
-    "subt-pace",
-    "subt-hr",
+    "subt",
     "debug",
 }
 

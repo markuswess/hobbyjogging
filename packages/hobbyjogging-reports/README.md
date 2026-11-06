@@ -51,12 +51,11 @@ reports:
   time.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers.
-- **subt-pace** — subT and LT1 work interval pace over the last 365
-  days by default, with per-session dots color-coded by rep length
-  (short/medium/long) or LT1, vertical bars showing the fastest and
-  slowest work interval, plus rolling averages.
-- **subt-hr** — the same work-interval chart using average
-  heart rate, with vertical bars showing max HR.
+- **subt** — subT and LT1 work intervals over the last 365 days by
+  default, with pace on the left axis and average HR on the right.
+  Dots are color-coded by rep length (short/medium/long) or LT1;
+  pace ranges show fastest–slowest, HR ranges show average–max, and
+  both metrics have rolling averages.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with
@@ -95,8 +94,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report load [output.png]
     uv run --env-file .env python -m hobbyjogging_report time [output.png]
     uv run --env-file .env python -m hobbyjogging_report recovery [output.png]
-    uv run --env-file .env python -m hobbyjogging_report subt-pace [output.png]
-    uv run --env-file .env python -m hobbyjogging_report subt-hr [output.png]
+    uv run --env-file .env python -m hobbyjogging_report subt [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
 
 Every command supports `--help`, for example:
@@ -143,10 +141,10 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh time --days 90
     ./charts.sh time --zones 4 --zone-window base
     ./charts.sh recovery --days 90
-    ./charts.sh subt-pace --days 365
-    ./charts.sh subt-pace --output subt.png
-    ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
-    ./charts.sh subt-pace --source intervals
+    ./charts.sh subt --days 365
+    ./charts.sh subt --output subt.png
+    ./charts.sh subt --from 2026-01-01 --to 2026-06-30 --output subt.png
+    ./charts.sh subt --source intervals
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
 as the direct CLI.
@@ -247,7 +245,7 @@ Examples:
     ./reports.sh report --days 90 --source database
     ./reports.sh report --days 90 --source intervals
     ./reports.sh --source intervals weekly
-    ./charts.sh subt-pace --days 365 --source intervals
+    ./charts.sh subt --days 365 --source intervals
 
 ## Session detail
 
@@ -310,7 +308,7 @@ subT/LT1-named sessions.
 ## Date ranges
 
 `report`, `subt-report`, `volume`, `load`, `time`, `recovery`,
-`subt-pace`, `subt-hr`, `classify` and `activities` accept:
+`subt`, `classify` and `activities` accept:
 
     --days N              look back N days from today
     --from YYYY-MM-DD     start date (inclusive)
@@ -326,8 +324,8 @@ Examples:
     uv run --env-file .env python -m hobbyjogging_report report --from 2026-01-01 --to 2026-03-31
     uv run --env-file .env python -m hobbyjogging_report classify --days 90
     uv run --env-file .env python -m hobbyjogging_report classify --from 2026-01-01 --to 2026-03-31
-    uv run --env-file .env python -m hobbyjogging_report subt-pace --from 2026-02-01
-    uv run --env-file .env python -m hobbyjogging_report subt-hr --to 2026-06-30 --days 120 --output hr.png
+    uv run --env-file .env python -m hobbyjogging_report subt --from 2026-02-01
+    uv run --env-file .env python -m hobbyjogging_report subt --to 2026-06-30 --days 120 --output subt.png
 
 Rules:
 
@@ -335,7 +333,7 @@ Rules:
 - `--from` alone runs from that date through today.
 - `--to` alone counts back `--days` (or the command default) from that date.
 - With neither, count back `--days` (or the command default) from today.
-- The old forms still work: `classify 30` and `subt-pace out.png`.
+- The old forms still work: `classify 30` and `subt out.png`.
   An explicit `--days` / `--output` wins when both are supplied.
 - The fixed presets (`daily`, `weekly`, `monthly`, `yearly`, `all`)
   keep their existing windows; use `report` for a custom range.

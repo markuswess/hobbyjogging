@@ -8,6 +8,7 @@ __pycache__/
 
 # Generated charts
 volume.png
+subt.png
 subt-pace.png
 subt-hr.png
 load.png

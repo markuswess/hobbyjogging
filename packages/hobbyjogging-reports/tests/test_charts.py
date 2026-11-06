@@ -6,8 +6,7 @@ from pathlib import Path
 from hobbyjogging_report.charts import (
     plot_load,
     plot_recovery,
-    plot_subt_hr,
-    plot_subt_paces,
+    plot_subt,
     plot_time,
     plot_volume,
 )
@@ -50,23 +49,19 @@ POINTS = [
 
 class SubtChartTests(unittest.TestCase):
 
-    def test_pace_chart_writes_file(self):
+    def test_combined_pace_and_hr_chart_writes_file(self):
         with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "pace.png"
+            output = Path(tmp) / "subt.png"
 
-            result = plot_subt_paces(POINTS, str(output))
+            result = plot_subt(POINTS, str(output))
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
-    def test_hr_chart_writes_file_and_skips_missing_hr(self):
+    def test_combined_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "hr.png"
-
-            result = plot_subt_hr(POINTS, str(output))
-
-            self.assertEqual(str(output), result)
-            self.assertTrue(output.exists())
+            with self.assertRaises(ValueError):
+                plot_subt([], str(Path(tmp) / "subt.png"))
 
 
 class VolumeChartTests(unittest.TestCase):

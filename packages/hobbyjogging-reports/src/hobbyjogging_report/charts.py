@@ -13,6 +13,7 @@ matplotlib.use("Agg")
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
 
 from .analysis import SUBT_CATEGORIES
@@ -447,78 +448,75 @@ SUBT_COLORS = {
 CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
 
 
-def _plot_subt_metric(
+def _subt_points_for(points: list[SubtPoint], category: str, value):
+    return sorted(
+        (
+            point for point in points
+            if point.category == category and value(point) is not None
+        ),
+        key=lambda point: point.date,
+    )
+
+
+def plot_subt(
     points: list[SubtPoint],
     output: str,
-    value,
-    ylabel: str,
-    title: str,
     window: int = 5,
-    invert_yaxis: bool = False,
-    tick_formatter=None,
-    range_values=None,
-    range_label: str | None = None,
-    range_caps_both: bool = False,
+    title: str = "subT and LT1 work intervals",
 ) -> str:
-    """Scatter + rolling mean of one work-interval metric."""
+    """Pace and heart rate in one chart, with two y-axes.
+
+    Pace uses the left axis and is inverted so faster paces point up;
+    heart rate uses the right axis. Category colours are shared: pace is
+    shown with filled dots and solid rolling means, HR with open dots and
+    dashed rolling means.
+    """
     _require_data(points)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(11, 6))
+    hr_ax = ax.twinx()
     plotted = False
+    has_hr = False
 
     for category in CHART_CATEGORIES:
-        data = sorted(
-            (
-                p for p in points
-                if p.category == category and value(p) is not None
-            ),
-            key=lambda p: p.date,
+        color = SUBT_COLORS[category]
+
+        pace = _subt_points_for(
+            points,
+            category,
+            lambda point: point.pace_s_per_km,
         )
 
-        if not data:
-            continue
-
-        plotted = True
-        color = SUBT_COLORS[category]
-        dates = [p.date for p in data]
-        values = [value(p) for p in data]
-
-        if range_values is not None:
-            bands = []
-
-            for point in data:
-                band = range_values(point)
-                if band is None:
-                    continue
-
-                low, high = band
-                if low is not None and high is not None:
-                    bands.append((point.date, low, high))
+        if pace:
+            plotted = True
+            dates = [point.date for point in pace]
+            values = [point.pace_s_per_km for point in pace]
+            bands = [
+                (
+                    point.date,
+                    point.fastest_pace_s_per_km,
+                    point.slowest_pace_s_per_km,
+                )
+                for point in pace
+                if point.fastest_pace_s_per_km is not None
+                and point.slowest_pace_s_per_km is not None
+            ]
 
             if bands:
                 ax.vlines(
-                    [d for d, _, _ in bands],
-                    [lo for _, lo, _ in bands],
-                    [hi for _, _, hi in bands],
+                    [day for day, _, _ in bands],
+                    [low for _, low, _ in bands],
+                    [high for _, _, high in bands],
                     color=color,
                     alpha=0.35,
                     linewidth=1.2,
                     zorder=1,
                 )
-                ax.scatter(
-                    [d for d, _, _ in bands],
-                    [hi for _, _, hi in bands],
-                    marker="_",
-                    s=55,
-                    color=color,
-                    linewidths=1.5,
-                    zorder=2,
-                )
 
-                if range_caps_both:
+                for cap_index in (1, 2):
                     ax.scatter(
-                        [d for d, _, _ in bands],
-                        [lo for _, lo, _ in bands],
+                        [band[0] for band in bands],
+                        [band[cap_index] for band in bands],
                         marker="_",
                         s=55,
                         color=color,
@@ -526,102 +524,139 @@ def _plot_subt_metric(
                         zorder=2,
                     )
 
-        if len(data) >= 2:
-            ax.plot(
+            if len(pace) >= 2:
+                ax.plot(
+                    dates,
+                    sma(values, window),
+                    color=color,
+                    alpha=0.55,
+                    linewidth=1.8,
+                    zorder=2,
+                )
+
+            ax.scatter(
+                dates,
+                values,
+                s=30,
+                color=color,
+                label=f"{category} ({len(pace)})",
+                zorder=3,
+            )
+
+        hr = _subt_points_for(
+            points,
+            category,
+            lambda point: point.avg_hr,
+        )
+
+        if not hr:
+            continue
+
+        plotted = True
+        has_hr = True
+        dates = [point.date for point in hr]
+        values = [point.avg_hr for point in hr]
+        bands = [
+            (point.date, point.avg_hr, point.max_hr)
+            for point in hr
+            if point.max_hr is not None
+        ]
+
+        if bands:
+            hr_ax.vlines(
+                [day for day, _, _ in bands],
+                [low for _, low, _ in bands],
+                [high for _, _, high in bands],
+                color=color,
+                alpha=0.3,
+                linewidth=1.1,
+                linestyle=":",
+                zorder=1,
+            )
+            hr_ax.scatter(
+                [day for day, _, _ in bands],
+                [high for _, _, high in bands],
+                marker="_",
+                s=55,
+                color=color,
+                linewidths=1.5,
+                zorder=2,
+            )
+
+        if len(hr) >= 2:
+            hr_ax.plot(
                 dates,
                 sma(values, window),
                 color=color,
                 alpha=0.55,
                 linewidth=1.8,
+                linestyle="--",
                 zorder=2,
             )
 
-        ax.scatter(
+        hr_ax.scatter(
             dates,
             values,
-            s=30,
-            color=color,
-            label=f"{category} ({len(data)})",
+            s=36,
+            facecolors="none",
+            edgecolors=color,
+            linewidths=1.3,
             zorder=3,
         )
 
     if not plotted:
         raise ValueError("no data to plot")
 
-    if invert_yaxis:
-        # Faster paces (lower seconds/km) point upwards.
-        ax.invert_yaxis()
-
-    if tick_formatter is not None:
-        ax.yaxis.set_major_formatter(tick_formatter)
-
     ax.set_xlabel("date")
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel("pace (min/km)")
+    ax.invert_yaxis()
+    ax.yaxis.set_major_formatter(FuncFormatter(_pace_tick))
+    hr_ax.set_ylabel("heart rate (bpm)")
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
 
-    legend_title = (
-        f"dots = sessions; lines = {window}-session rolling mean"
+    handles, labels = ax.get_legend_handles_labels()
+    handles.append(
+        Line2D(
+            [],
+            [],
+            color="black",
+            marker="o",
+            linestyle="None",
+            markersize=5,
+        )
     )
-    if range_label:
-        legend_title += f"\nvertical lines = {range_label}"
+    labels.append("pace (filled)")
+
+    if has_hr:
+        handles.append(
+            Line2D(
+                [],
+                [],
+                color="black",
+                marker="o",
+                markerfacecolor="none",
+                linestyle="None",
+                markersize=6,
+            )
+        )
+        labels.append("HR (open)")
 
     ax.legend(
+        handles,
+        labels,
         loc="best",
         fontsize=9,
-        title=legend_title,
+        framealpha=0.95,
+        title=(
+            f"solid/dashed lines = {window}-session mean\n"
+            "ranges = pace fastest–slowest / HR max"
+        ),
         title_fontsize=8,
     )
 
     fig.autofmt_xdate()
     return _save(fig, output)
-
-
-def plot_subt_paces(
-    points: list[SubtPoint],
-    output: str,
-    window: int = 5,
-    title: str = "subT and LT1 work interval pace",
-) -> str:
-    """Average pace scatter with fastest–slowest ranges, by session type."""
-    return _plot_subt_metric(
-        points,
-        output,
-        value=lambda p: p.pace_s_per_km,
-        ylabel="pace (min/km)",
-        title=title,
-        window=window,
-        invert_yaxis=True,
-        tick_formatter=FuncFormatter(_pace_tick),
-        range_values=lambda p: (
-            p.fastest_pace_s_per_km,
-            p.slowest_pace_s_per_km,
-        ),
-        range_label="fastest–slowest",
-        range_caps_both=True,
-    )
-
-
-def plot_subt_hr(
-    points: list[SubtPoint],
-    output: str,
-    window: int = 5,
-    title: str = "subT and LT1 work interval heart rate",
-) -> str:
-    """Average HR scatter with max-HR ranges, by session type."""
-    return _plot_subt_metric(
-        points,
-        output,
-        value=lambda p: p.avg_hr,
-        ylabel="heart rate (bpm)",
-        title=title,
-        window=window,
-        range_values=lambda p: (
-            p.avg_hr,
-            p.max_hr,
-        ),
-        range_label="max HR",
-    )
 
 
 def plot_load(

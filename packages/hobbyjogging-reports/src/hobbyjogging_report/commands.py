@@ -9,8 +9,7 @@ from hobbyjogging_core.datasource import DataSource
 from .chart_commands import (
     run_load_command,
     run_recovery_command,
-    run_subt_hr_command,
-    run_subt_pace_command,
+    run_subt_command,
     run_time_command,
     run_volume_command,
 )
@@ -210,29 +209,20 @@ COMMANDS = {
         ),
         run=run_recovery_command,
     ),
-    "subt-pace": Command(
-        "subt-pace",
-        "subT and LT1 work-interval pace chart",
-        "subt-pace [output.png] [--days N] [--from DATE] [--to DATE]",
-        ("charts.sh subt-pace --days 365",),
+    "subt": Command(
+        "subt",
+        "subT and LT1 work-interval pace and HR chart",
+        "subt [output.png] [--days N] [--from DATE] [--to DATE]",
+        (
+            "charts.sh subt --days 365",
+            "charts.sh subt --from 2026-01-01 --to 2026-06-30",
+        ),
         parse=partial(
             parse_chart_args,
-            default_output="subt-pace.png",
+            default_output="subt.png",
             default_days=365,
         ),
-        run=run_subt_pace_command,
-    ),
-    "subt-hr": Command(
-        "subt-hr",
-        "subT and LT1 work-interval HR chart",
-        "subt-hr [output.png] [--days N] [--from DATE] [--to DATE]",
-        ("charts.sh subt-hr --days 365",),
-        parse=partial(
-            parse_chart_args,
-            default_output="subt-hr.png",
-            default_days=365,
-        ),
-        run=run_subt_hr_command,
+        run=run_subt_command,
     ),
     "activities": Command(
         "activities",
