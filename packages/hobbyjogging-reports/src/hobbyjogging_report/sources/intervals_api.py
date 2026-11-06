@@ -31,7 +31,12 @@ def to_activity(raw: dict) -> Activity:
         type=canonical_sport(raw.get("type")),
         name=raw.get("name") or "",
         description=raw.get("description") or "",
-        duration_s=raw.get("moving_time") or 0,
+        duration_s=(
+            raw.get("icu_recording_time")
+            or raw.get("moving_time")
+            or 0
+        ),
+        moving_s=raw.get("moving_time"),
         elapsed_s=raw.get("elapsed_time") or 0,
         distance_m=raw.get("distance") or 0,
         avg_hr=raw.get("average_heartrate"),
@@ -59,8 +64,12 @@ def to_event(raw: dict) -> Event:
         name=raw.get("name") or "",
         type=canonical_sport(raw.get("type")),
         description=raw.get("description") or "",
-        duration_s=raw.get("duration"),
+        duration_s=(
+            raw.get("moving_time")
+            or raw.get("duration")
+        ),
         distance_m=raw.get("distance"),
+        training_load=raw.get("icu_training_load"),
     )
 
 
