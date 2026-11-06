@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from hobbyjogging_core.model import Interval, Lap
-from hobbyjogging_core.sports import is_known_sport
+from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
 
 ACTIVITY_COLUMNS = {
     "local_date",
@@ -242,12 +242,23 @@ class TrainingWriter:
         if unknown:
             raise ValueError(f"Unknown activity fields: {sorted(unknown)}")
 
-        exists = self.connection.execute(
-            "SELECT excluded_at FROM activities WHERE id = ?",
+        current = self.connection.execute(
+            "SELECT * FROM activities WHERE id = ?",
             (activity_id,),
         ).fetchone()
 
-        if exists is None:
+        if current is not None and current["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        values = self._apply_distance_policy(
+            activity_id,
+            values,
+            current,
+            source,
+            source_record_id,
+        )
+
+        if current is None:
             columns = ["id", "source_record_id", *values]
             placeholders = ", ".join("?" for _ in columns)
             self.connection.execute(
@@ -264,14 +275,6 @@ class TrainingWriter:
                     value,
                 )
             return []
-
-        if exists["excluded_at"]:
-            raise ValueError(f"activity {activity_id} is excluded")
-
-        current = self.connection.execute(
-            "SELECT * FROM activities WHERE id = ?",
-            (activity_id,),
-        ).fetchone()
 
         self.connection.execute(
             """
@@ -297,6 +300,8 @@ class TrainingWriter:
                     source,
                     value,
                     current[field],
+                    current=current,
+                    values=values,
                 )
 
             if action == "write":
@@ -327,6 +332,102 @@ class TrainingWriter:
 
         return conflicts
 
+    def _apply_distance_policy(
+        self,
+        activity_id: str,
+        values: dict[str, object],
+        current,
+        source: str,
+        source_record_id: int,
+    ) -> dict[str, object]:
+        """Force distance to zero for sports where it is not meaningful.
+
+        Raw source payloads keep whatever the device or service reported; the
+        canonical column and its provenance reflect the sport policy. A manual
+        distance is never touched.
+        """
+        sport = self._effective_distance_sport(
+            activity_id,
+            current,
+            values,
+            source,
+        )
+        if sport not in NO_DISTANCE_SPORTS:
+            return values
+
+        result = dict(values)
+        result.pop("distance_m", None)
+
+        if current is None:
+            result["distance_m"] = 0.0
+            return result
+
+        if self._is_manual_field(activity_id, "distance_m"):
+            return result
+
+        if current["distance_m"] != 0:
+            self.connection.execute(
+                "UPDATE activities SET distance_m = 0, "
+                "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (activity_id,),
+            )
+            self._record_field_source(
+                activity_id,
+                "distance_m",
+                source,
+                source_record_id,
+                0.0,
+            )
+        return result
+
+    def _effective_distance_sport(
+        self,
+        activity_id: str,
+        current,
+        values: dict[str, object],
+        source: str,
+    ) -> str:
+        incoming = str(values.get("sport") or "")
+        if current is None:
+            return incoming
+
+        current_sport = str(current["sport"] or "")
+        if self._is_manual_field(activity_id, "sport"):
+            return current_sport
+        if incoming == current_sport:
+            return current_sport
+        if incoming in ("", "other") and current_sport:
+            return current_sport
+        if current_sport in ("", "other") and incoming:
+            return incoming
+
+        # Both are specific. A cross-source disagreement keeps the current
+        # owner's sport; a same-source refresh is allowed to update it.
+        row = self.connection.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = 'sport'
+            """,
+            (activity_id,),
+        ).fetchone()
+        if row is not None and row["source"] == source:
+            return incoming
+        return current_sport
+
+    def _is_manual_field(
+        self,
+        activity_id: str,
+        field_name: str,
+    ) -> bool:
+        row = self.connection.execute(
+            """
+            SELECT is_manual FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+        return bool(row is not None and row["is_manual"])
+
     def _plan_forced_update(
         self,
         activity_id: str,
@@ -352,6 +453,9 @@ class TrainingWriter:
         source: str,
         value: object,
         current_value: object,
+        *,
+        current=None,
+        values: dict[str, object] | None = None,
     ) -> tuple[str, str]:
         """Decide what to do with one incoming field value.
 
@@ -398,6 +502,22 @@ class TrainingWriter:
                 return "agree", current_source
             if is_known_sport(value) and not is_known_sport(current_value):
                 return "write", current_source
+
+        if (
+            field_name == "duration_s"
+            and current is not None
+            and values is not None
+        ):
+            # Garmin records timer/recording time; Intervals historically
+            # offered moving time. A duration difference that fits inside
+            # either source's pause gap is accounting noise, not a conflict.
+            if _duration_times_agree(
+                current["duration_s"],
+                current["elapsed_s"],
+                value,
+                values.get("elapsed_s"),
+            ):
+                return "agree", current_source
 
         if field_name not in CONFLICT_FIELDS:
             return "agree", current_source
@@ -1225,6 +1345,40 @@ class TrainingWriter:
                 json.dumps(value, default=str),
             ),
         )
+
+
+def _duration_times_agree(
+    current_duration: object,
+    current_elapsed: object,
+    incoming_duration: object,
+    incoming_elapsed: object,
+    tolerance: float = 2.0,
+) -> bool:
+    """True when a duration difference fits inside either source's pause.
+
+    Garmin's ``total_timer_time`` and Intervals' ``icu_recording_time`` both
+    exclude pauses, but services can account around a pause slightly
+    differently. A difference no larger than the pause gap of either source
+    is recording semantics, not a competing measurement.
+    """
+    try:
+        current_duration = float(current_duration)
+        incoming_duration = float(incoming_duration)
+        current_elapsed = float(current_elapsed)
+        incoming_elapsed = float(incoming_elapsed)
+    except (TypeError, ValueError):
+        return False
+
+    if current_duration <= 0 or incoming_duration <= 0:
+        return False
+
+    current_pause = max(0.0, current_elapsed - current_duration)
+    incoming_pause = max(0.0, incoming_elapsed - incoming_duration)
+    return abs(current_duration - incoming_duration) <= max(
+        tolerance,
+        current_pause,
+        incoming_pause,
+    )
 
 
 def _timestamp_difference_s(current: object, incoming: object) -> float | None:

@@ -35,6 +35,23 @@ CANONICAL_SPORTS = frozenset(
     | {"soccer", "racket", "other"}
 )
 
+# Sports where distance is not recorded or not meaningful. The canonical
+# distance is forced to zero for these; a manual distance may still override.
+# "workout" is an Intervals type rather than a canonical sport, but it reaches
+# the database for generic Football/Badminton activities and must not keep
+# GPS drift.
+NO_DISTANCE_SPORTS = frozenset(
+    {
+        "treadmill_run",
+        "virtual_run",
+        "soccer",
+        "racket",
+        "training",
+        "other",
+        "workout",
+    }
+)
+
 SPORT_LABELS = {
     "run": "Run",
     "trail_run": "Trail Run",

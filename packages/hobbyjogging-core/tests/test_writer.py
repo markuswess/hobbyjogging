@@ -175,12 +175,13 @@ class TrainingWriterTests(unittest.TestCase):
             source_record_id=fit_source,
         )
 
-        self.assertEqual(4, len(conflicts))
+        # The 100 s duration difference fits inside the 100 s pause gap, so
+        # it is recording semantics rather than a competing measurement.
+        self.assertEqual(3, len(conflicts))
         self.assertEqual(
             {(c.field_name, c.current_source, c.incoming_source)
              for c in conflicts},
             {
-                ("duration_s", "intervals", "fit"),
                 ("distance_m", "intervals", "fit"),
                 ("avg_hr", "intervals", "fit"),
                 ("training_load", "intervals", "fit"),
@@ -920,6 +921,194 @@ class ForcedActivityUpsertTests(unittest.TestCase):
         sources = self._field_sources()
         self.assertEqual("manual", sources["duration_s"])
         self.assertEqual("intervals", sources["avg_hr"])
+
+
+class DurationSemanticsTests(unittest.TestCase):
+    """A stop between two recordings is not a duration conflict."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.fit_id = self._source("fit", "f1", "c-f")
+        self.intervals_id = self._source("intervals", "i1", "c-i")
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 3600,
+                "elapsed_s": 3900,
+            },
+            source="fit",
+            source_record_id=self.fit_id,
+        )
+
+    def _source(self, source, external_id, checksum):
+        return self.writer.upsert_source_record(
+            source=source,
+            record_type="activity",
+            external_id=external_id,
+            checksum=checksum,
+            import_run_id=self.run_id,
+        )
+
+    def _values(self):
+        return self.conn.execute(
+            "SELECT duration_s, elapsed_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+
+    def _source_of(self, field_name):
+        return self.conn.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = ?
+            """,
+            (field_name,),
+        ).fetchone()["source"]
+
+    def test_pause_gap_absorbs_duration_difference(self):
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3500, "elapsed_s": 3900},
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(3600, self._values()["duration_s"])
+        self.assertEqual("fit", self._source_of("duration_s"))
+
+    def test_difference_beyond_pause_gap_conflicts(self):
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3000, "elapsed_s": 3300},
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        self.assertIn(
+            "duration_s",
+            {conflict.field_name for conflict in conflicts},
+        )
+        self.assertEqual(3600, self._values()["duration_s"])
+
+    def test_same_source_refresh_still_writes(self):
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3500, "elapsed_s": 3900},
+            source="fit",
+            source_record_id=self.fit_id,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(3500, self._values()["duration_s"])
+        self.assertEqual("fit", self._source_of("duration_s"))
+
+
+class DistancePolicyTests(unittest.TestCase):
+    """Distance is canonical zero for sports where it is not meaningful."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.fit_id = self._source("fit", "f1", "c-f")
+        self.intervals_id = self._source("intervals", "i1", "c-i")
+
+    def _source(self, source, external_id, checksum):
+        return self.writer.upsert_source_record(
+            source=source,
+            record_type="activity",
+            external_id=external_id,
+            checksum=checksum,
+            import_run_id=self.run_id,
+        )
+
+    def _insert(self, sport, distance_m):
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": sport,
+                "distance_m": distance_m,
+                "duration_s": 1800,
+            },
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+        return self.conn.execute(
+            "SELECT distance_m FROM activities WHERE id = 'a1'"
+        ).fetchone()["distance_m"]
+
+    def test_no_distance_sports_are_zeroed(self):
+        for sport in (
+            "treadmill_run",
+            "virtual_run",
+            "soccer",
+            "racket",
+            "training",
+            "other",
+            "workout",
+        ):
+            with self.subTest(sport=sport):
+                self.conn.execute("DELETE FROM activities")
+                self.conn.execute("DELETE FROM activity_field_sources")
+                self.assertEqual(0, self._insert(sport, 8000))
+
+    def test_distance_sports_keep_the_value(self):
+        self.assertEqual(10000, self._insert("run", 10000))
+
+    def test_manual_distance_wins(self):
+        self._insert("treadmill_run", 8000)
+        self.writer.set_manual_field("a1", "distance_m", 5000)
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "sport": "treadmill_run",
+                "distance_m": 9000,
+            },
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        row = self.conn.execute(
+            "SELECT distance_m FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(5000, row["distance_m"])
+        source = self.conn.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = 'distance_m'
+            """
+        ).fetchone()
+        self.assertEqual("manual", source["source"])
+        self.assertEqual(1, source["is_manual"])
+
+    def test_sport_update_to_no_distance_sport_zeroes_existing_distance(self):
+        self._insert("other", 529)
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "sport": "soccer",
+                "distance_m": 529,
+            },
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        row = self.conn.execute(
+            "SELECT distance_m, sport FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(0, row["distance_m"])
+        self.assertEqual("soccer", row["sport"])
 
 
 if __name__ == "__main__":
