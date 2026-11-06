@@ -164,16 +164,41 @@ def _planned_rug(ax, dates: list[date], *, label: str = "planned") -> None:
 
 
 def _plot_average_lines(ax, points, windows, *, scale: float = 1.0, label):
-    dates = [point.date for point in points]
+    actual = [point for point in points if not point.projected]
+    projected = [point for point in points if point.projected]
 
     for attribute in ("base", "fitness", "fatigue"):
+        if actual:
+            ax.plot(
+                [point.date for point in actual],
+                [getattr(point, attribute) * scale for point in actual],
+                color=AVERAGE_COLORS[attribute],
+                linewidth=2,
+                label=label(attribute, getattr(windows, attribute)),
+                zorder=2,
+            )
+
+        if projected:
+            # Bridge from the last actual day so the dashed projection
+            # starts exactly where the solid history ends.
+            bridge = actual[-1:] + projected
+            ax.plot(
+                [point.date for point in bridge],
+                [getattr(point, attribute) * scale for point in bridge],
+                color=AVERAGE_COLORS[attribute],
+                linewidth=2,
+                linestyle="--",
+                zorder=2,
+            )
+
+    if projected:
         ax.plot(
-            dates,
-            [getattr(point, attribute) * scale for point in points],
-            color=AVERAGE_COLORS[attribute],
+            [],
+            [],
+            color=AVERAGE_COLORS["base"],
             linewidth=2,
-            label=label(attribute, getattr(windows, attribute)),
-            zorder=2,
+            linestyle="--",
+            label="avg projection",
         )
 
 
@@ -613,12 +638,12 @@ def plot_load(
     _require_data(points)
 
     windows = windows or AverageWindows()
-    dates = [point.date for point in points]
+    actual = [point for point in points if not point.projected]
 
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.bar(
-        dates,
-        [point.load for point in points],
+        [point.date for point in actual],
+        [point.load for point in actual],
         color="lightgrey",
         alpha=0.6,
         label="daily load",

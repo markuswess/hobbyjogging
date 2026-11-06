@@ -73,6 +73,7 @@ class LoadPoint:
     base: float
     fitness: float
     fatigue: float
+    projected: bool = False
 
 
 @dataclass
@@ -84,6 +85,7 @@ class DistancePoint:
     base: float
     fitness: float
     fatigue: float
+    projected: bool = False
 
 
 @dataclass
@@ -95,6 +97,7 @@ class TimePoint:
     base: float
     fitness: float
     fatigue: float
+    projected: bool = False
 
 
 @dataclass

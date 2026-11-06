@@ -46,15 +46,18 @@ def run_volume_chart(
         include_review,
     )
 
+    events = source.events(chart_start, planned_chart_end)
+
     points = distance_averages(
         activities,
         chart_start,
         chart_end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=planned_chart_end,
+        projection_start=end,
     )
-
-    events = source.events(chart_start, planned_chart_end)
 
     path = plot_volume(
         weekly_run_distance(display_activities),
@@ -130,12 +133,17 @@ def run_time_chart(
         chart_end,
         zone_count=zones,
     )
+    events = source.events(chart_start, planned_chart_end)
+
     points = time_averages(
         activities,
         chart_start,
         chart_end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=planned_chart_end,
+        projection_start=end,
     )
     zone_window_days = getattr(windows, zone_window)
     zone_points = zone_time_averages(
@@ -146,8 +154,6 @@ def run_time_chart(
         warmup_days=warmup_days,
         zone_count=zones,
     )
-
-    events = source.events(chart_start, planned_chart_end)
 
     path = plot_time(
         weeks,
@@ -294,15 +300,17 @@ def run_load_chart(
         "no training load (treated as 0)",
     )
 
+    events = source.events(start, planned_end)
+
     points = load_metrics(
         activities,
         start,
         end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=planned_end,
     )
-
-    events = source.events(start, planned_end)
 
     path = plot_load(
         points,

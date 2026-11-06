@@ -241,6 +241,45 @@ class LoadMetricsTests(unittest.TestCase):
         self.assertEqual(0, points[0].fitness)
         self.assertEqual(0, points[0].fatigue)
 
+    def test_load_metrics_project_planned_load(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                training_load=100,
+            ),
+            Event(
+                date=date(2026, 10, 3),
+                type="run",
+                training_load=100,
+            ),
+        ]
+
+        points = load_metrics(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    training_load=100,
+                )
+            ],
+            D,
+            D,
+            warmup_days=10,
+            events=events,
+            projected_end=date(2026, 10, 3),
+        )
+
+        self.assertEqual(3, len(points))
+        self.assertEqual(
+            [False, True, True],
+            [point.projected for point in points],
+        )
+        self.assertEqual(100, points[1].load)
+        self.assertEqual(100, points[2].load)
+        self.assertGreater(points[-1].fitness, points[0].fitness)
+
 
 class DistanceMetricsTests(unittest.TestCase):
 
@@ -308,8 +347,115 @@ class DistanceMetricsTests(unittest.TestCase):
         self.assertEqual(0, points[0].distance_km)
         self.assertEqual(0, points[0].base)
 
+    def test_distance_averages_project_planned_distance(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                distance_m=10000,
+            ),
+        ]
+
+        points = distance_averages(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    distance_m=10000,
+                )
+            ],
+            D,
+            D,
+            warmup_days=10,
+            events=events,
+            projected_end=date(2026, 10, 2),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertEqual(
+            [False, True],
+            [point.projected for point in points],
+        )
+        self.assertEqual(10.0, points[1].distance_km)
+        self.assertGreater(points[-1].fitness, points[0].fitness)
+
+    def test_distance_averages_project_from_the_requested_end(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                distance_m=10000,
+            ),
+            Event(
+                date=date(2026, 10, 3),
+                type="run",
+                distance_m=10000,
+            ),
+        ]
+
+        points = distance_averages(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    distance_m=10000,
+                )
+            ],
+            D,
+            date(2026, 10, 4),
+            warmup_days=10,
+            events=events,
+            projected_end=date(2026, 10, 4),
+            projection_start=D,
+        )
+
+        self.assertEqual(4, len(points))
+        self.assertEqual(
+            [False, True, True, True],
+            [point.projected for point in points],
+        )
+        self.assertEqual(
+            [10.0, 10.0, 10.0, 0.0],
+            [point.distance_km for point in points],
+        )
+
 
 class TimeMetricsTests(unittest.TestCase):
+
+    def test_time_averages_project_planned_time(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                duration_s=3600,
+            ),
+        ]
+
+        points = time_averages(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    duration_s=3600,
+                )
+            ],
+            D,
+            D,
+            warmup_days=10,
+            events=events,
+            projected_end=date(2026, 10, 2),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertEqual(
+            [False, True],
+            [point.projected for point in points],
+        )
+        self.assertEqual(3600, points[1].time_s)
+        self.assertGreater(points[-1].fitness, points[0].fitness)
 
     def test_daily_run_time_sums_running_only(self):
         activities = [

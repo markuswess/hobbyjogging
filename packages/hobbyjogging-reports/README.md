@@ -161,7 +161,8 @@ averages:
 - **Fatigue (7d)** — short-term fatigue
 
 The averages use time-constant EWMA (`alpha = 1 - exp(-1 / days)`) and are
-computed with history before the displayed range. Change the horizons with
+computed with history before the displayed range. Planned load continues
+the averages into the future as dashed lines. Change the horizons with
 `--base-days`, `--fitness-days`, and `--fatigue-days`.
 
 Activities without `training_load` are treated as zero load and get a note.
@@ -227,6 +228,12 @@ extension.
 
 Events without a sport type (illness or travel notes) are ignored.
 The volume chart also skips planned events without a distance.
+
+The 182/42/7-day EWMA lines continue through the planned days as dashed
+segments, using planned daily distance, time, or load and treating
+unplanned days as rest. The time chart's zone panel and the recovery
+averages stay actual-only: there are no planned HR zones or planned
+wellness values to project.
 
 ### Data source selection
 

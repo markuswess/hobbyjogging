@@ -79,6 +79,14 @@ class VolumeChartTests(unittest.TestCase):
         distance_points = [
             DistancePoint(D, 8.0, 7.0, 7.5, 7.8),
             DistancePoint(date(2026, 1, 2), 10.0, 7.1, 7.8, 8.2),
+            DistancePoint(
+                date(2026, 1, 20),
+                0.0,
+                7.2,
+                7.6,
+                7.9,
+                projected=True,
+            ),
         ]
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -123,6 +131,14 @@ class TimeChartTests(unittest.TestCase):
         points = [
             TimePoint(D, 7200, 6000, 6500, 7000),
             TimePoint(date(2026, 1, 2), 5400, 6100, 6500, 6600),
+            TimePoint(
+                date(2026, 1, 20),
+                0,
+                6100,
+                6550,
+                6650,
+                projected=True,
+            ),
         ]
         zone_points = [
             ZoneAveragePoint(D, [1200, 900, 300, 0]),
@@ -162,6 +178,7 @@ class LoadChartTests(unittest.TestCase):
             LoadPoint(D, 50, 40, 45, 48),
             LoadPoint(date(2026, 1, 2), 80, 41, 50, 55),
             LoadPoint(date(2026, 1, 3), 0, 40, 48, 47),
+            LoadPoint(date(2026, 1, 5), 60, 41, 50, 52, projected=True),
         ]
 
         with tempfile.TemporaryDirectory() as tmp:

@@ -32,7 +32,8 @@ Examples:
 Charts accept the same --days / --from / --to / --output options as the
 direct CLI. The volume, load, time, and recovery charts include planned
 workouts and accept --planned-days N (default 28, ignored with --to; 0
-disables the future extension). The load, volume, and time charts also
+disables the future extension). Their average lines continue through the
+planned days as dashed projections. The load, volume, and time charts also
 accept --base-days / --fitness-days / --fatigue-days. The time chart also
 accepts --zones and --zone-window base|fitness|fatigue. The recovery chart
 accepts --window.

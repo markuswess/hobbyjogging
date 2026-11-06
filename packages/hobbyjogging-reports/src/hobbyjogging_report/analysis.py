@@ -142,6 +142,36 @@ def weekly_planned_time(
     return [(week, totals[week]) for week in sorted(totals)]
 
 
+def daily_planned_distance(
+    events: list[Event],
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Planned running distance (km) per day, oldest first."""
+    totals: dict[date, float] = defaultdict(float)
+
+    for event in _planned_events(events, start, end, running_only=True):
+        if event.distance_m:
+            totals[event.date] += event.distance_m / 1000
+
+    return sorted(totals.items())
+
+
+def daily_planned_time(
+    events: list[Event],
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Planned running time (seconds) per day, oldest first."""
+    totals: dict[date, float] = defaultdict(float)
+
+    for event in _planned_events(events, start, end, running_only=True):
+        if event.duration_s:
+            totals[event.date] += event.duration_s
+
+    return sorted(totals.items())
+
+
 def daily_planned_load(
     events: list[Event],
     start: date,
@@ -625,12 +655,21 @@ def _average_rows(
     series: list[tuple[date, float]],
     start: date,
     windows: AverageWindows,
-) -> list[tuple[date, float, float, float, float]]:
-    """Return ``(date, value, base, fitness, fatigue)`` rows in range."""
+    *,
+    projected_start: date | None = None,
+) -> list[tuple[date, float, float, float, float, bool]]:
+    """Return ``(date, value, base, fitness, fatigue, projected)`` rows."""
     base, fitness, fatigue = _ewma_columns(series, windows)
 
     return [
-        (day, value, base_value, fitness_value, fatigue_value)
+        (
+            day,
+            value,
+            base_value,
+            fitness_value,
+            fatigue_value,
+            projected_start is not None and day > projected_start,
+        )
         for (day, value), base_value, fitness_value, fatigue_value in zip(
             series,
             base,
@@ -641,6 +680,16 @@ def _average_rows(
     ]
 
 
+def _extend_series(
+    series: list[tuple[date, float]],
+    planned: list[tuple[date, float]],
+    projected_end: date,
+) -> list[tuple[date, float]]:
+    """Continue a daily series with planned values, zero-filling rest days."""
+    next_day = series[-1][0] + timedelta(days=1)
+    return series + daily_sums(dict(planned), next_day, projected_end)
+
+
 def load_metrics(
     activities: list[Activity],
     start: date,
@@ -648,20 +697,52 @@ def load_metrics(
     *,
     windows: AverageWindows | None = None,
     warmup_days: int | None = None,
+    events: list[Event] | None = None,
+    projected_end: date | None = None,
+    projection_start: date | None = None,
 ) -> list[LoadPoint]:
     """Return daily load with base, fitness, and fatigue EWMAs.
 
     ``activities`` must include the warm-up range before ``start`` so the
-    long average does not begin at zero mid-report.
+    long average does not begin at zero mid-report. When ``events`` and
+    ``projected_end`` are given, the averages continue through planned
+    load; those points are marked ``projected``.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
         warmup_days = average_warmup_days(windows)
 
+    projection_start = projection_start or end
+    projected = (
+        events is not None
+        and projected_end is not None
+        and projected_end > projection_start
+    )
+    series_end = projection_start if projected else end
+
     warm_start = start - timedelta(days=warmup_days)
-    series = daily_training_load(activities, warm_start, end)
-    rows = _average_rows(series, start, windows)
+    series = daily_training_load(activities, warm_start, series_end)
+
+    if projected:
+        series = _extend_series(
+            series,
+            daily_planned_load(
+                events,
+                series_end + timedelta(days=1),
+                projected_end,
+            ),
+            projected_end,
+        )
+    else:
+        projection_start = None
+
+    rows = _average_rows(
+        series,
+        start,
+        windows,
+        projected_start=projection_start,
+    )
 
     return [
         LoadPoint(
@@ -670,8 +751,9 @@ def load_metrics(
             base=base,
             fitness=fitness,
             fatigue=fatigue,
+            projected=projected_value,
         )
-        for day, value, base, fitness, fatigue in rows
+        for day, value, base, fitness, fatigue, projected_value in rows
     ]
 
 
@@ -682,19 +764,51 @@ def distance_averages(
     *,
     windows: AverageWindows | None = None,
     warmup_days: int | None = None,
+    events: list[Event] | None = None,
+    projected_end: date | None = None,
+    projection_start: date | None = None,
 ) -> list[DistancePoint]:
     """Return daily running distance with its three EWMAs.
 
-    ``activities`` must include the warm-up range before ``start``.
+    ``activities`` must include the warm-up range before ``start``. When
+    ``events`` and ``projected_end`` are given, the averages continue
+    through planned distance; those points are marked ``projected``.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
         warmup_days = average_warmup_days(windows)
 
+    projection_start = projection_start or end
+    projected = (
+        events is not None
+        and projected_end is not None
+        and projected_end > projection_start
+    )
+    series_end = projection_start if projected else end
+
     warm_start = start - timedelta(days=warmup_days)
-    series = daily_run_distance(activities, warm_start, end)
-    rows = _average_rows(series, start, windows)
+    series = daily_run_distance(activities, warm_start, series_end)
+
+    if projected:
+        series = _extend_series(
+            series,
+            daily_planned_distance(
+                events,
+                series_end + timedelta(days=1),
+                projected_end,
+            ),
+            projected_end,
+        )
+    else:
+        projection_start = None
+
+    rows = _average_rows(
+        series,
+        start,
+        windows,
+        projected_start=projection_start,
+    )
 
     return [
         DistancePoint(
@@ -703,8 +817,9 @@ def distance_averages(
             base=base,
             fitness=fitness,
             fatigue=fatigue,
+            projected=projected_value,
         )
-        for day, value, base, fitness, fatigue in rows
+        for day, value, base, fitness, fatigue, projected_value in rows
     ]
 
 
@@ -769,19 +884,51 @@ def time_averages(
     *,
     windows: AverageWindows | None = None,
     warmup_days: int | None = None,
+    events: list[Event] | None = None,
+    projected_end: date | None = None,
+    projection_start: date | None = None,
 ) -> list[TimePoint]:
     """Return daily running time with its three EWMAs.
 
-    ``activities`` must include the warm-up range before ``start``.
+    ``activities`` must include the warm-up range before ``start``. When
+    ``events`` and ``projected_end`` are given, the averages continue
+    through planned time; those points are marked ``projected``.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
     if warmup_days is None:
         warmup_days = average_warmup_days(windows)
 
+    projection_start = projection_start or end
+    projected = (
+        events is not None
+        and projected_end is not None
+        and projected_end > projection_start
+    )
+    series_end = projection_start if projected else end
+
     warm_start = start - timedelta(days=warmup_days)
-    series = daily_run_time(activities, warm_start, end)
-    rows = _average_rows(series, start, windows)
+    series = daily_run_time(activities, warm_start, series_end)
+
+    if projected:
+        series = _extend_series(
+            series,
+            daily_planned_time(
+                events,
+                series_end + timedelta(days=1),
+                projected_end,
+            ),
+            projected_end,
+        )
+    else:
+        projection_start = None
+
+    rows = _average_rows(
+        series,
+        start,
+        windows,
+        projected_start=projection_start,
+    )
 
     return [
         TimePoint(
@@ -790,8 +937,9 @@ def time_averages(
             base=base,
             fitness=fitness,
             fatigue=fatigue,
+            projected=projected_value,
         )
-        for day, value, base, fitness, fatigue in rows
+        for day, value, base, fitness, fatigue, projected_value in rows
     ]
 
 
