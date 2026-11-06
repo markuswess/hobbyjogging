@@ -226,6 +226,62 @@ class FitImporterTests(unittest.TestCase):
         self.assertIsNone(activity.vo2max_runalyze)
         self.assertIsNone(activity.vo2max)
 
+    def test_skip_known_skips_imported_paths_without_parsing(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        with patch(
+            "hobbyjogging_import.fit_import.read_fit_file_id"
+        ) as read_fit, patch(
+            "hobbyjogging_import.fit_import.parse_fit_file"
+        ) as parse_fit:
+            summary = self.importer.import_paths(
+                [self.fit_dir],
+                skip_known=True,
+            )
+
+        self.assertEqual(0, read_fit.call_count)
+        self.assertEqual(0, parse_fit.call_count)
+        self.assertEqual(1, summary.files_seen)
+        self.assertEqual(1, summary.files_skipped)
+        self.assertEqual(0, summary.files_imported)
+
+    def test_skip_known_still_imports_new_paths(self):
+        known = self._file("one.fit", b"one")
+        self._import([_summary(known)])
+        new = self._file("two.fit", b"two")
+
+        summary = self._import(
+            [_summary(known), _summary(new)],
+            skip_known=True,
+        )
+
+        self.assertEqual(2, summary.files_seen)
+        self.assertEqual(1, summary.files_skipped)
+        self.assertEqual(1, summary.files_imported)
+        self.assertEqual(1, summary.activities_imported)
+
+    def test_skip_known_only_matches_the_same_path(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+        path.unlink()
+        copied = self._file("copy.fit", b"one")
+
+        summary = self._import([_summary(copied)], skip_known=True)
+
+        self.assertEqual(1, summary.files_imported)
+        self.assertEqual(0, summary.files_skipped)
+
+    def test_full_import_bypasses_skip_known(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        summary = self._import([_summary(path)], skip_known=False)
+
+        self.assertEqual(1, summary.files_seen)
+        self.assertEqual(0, summary.files_skipped)
+        self.assertEqual(1, summary.files_imported)
+
     def test_reimport_is_idempotent(self):
         path = self._file("one.fit", b"one")
         first = self._import([_summary(path)])

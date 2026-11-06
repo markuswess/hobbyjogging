@@ -3,6 +3,38 @@
 Import and normalize training data from external sources into the canonical
 hobbyjogging database.
 
+## Sync
+
+Run the incremental sync job:
+
+```bash
+uv run --env-file .env hobbyjogging-import sync
+```
+
+Default windows:
+
+- activities, wellness, and Garmin: last 30 days (`--days`), or since
+  `--since DATE`
+- planned events: today through today + `--plan-days` (default 182)
+
+Order is deliberate:
+
+1. Garmin fetch
+2. Intervals import (activities, wellness, events; events are reconciled)
+3. FIT archive import (recursive, new paths only unless `--full`)
+4. quality review scan
+
+Useful options:
+
+- `--no-garmin`, `--no-intervals`, `--no-fit`, `--no-scan` — skip a source.
+- `--full` — re-import every FIT file instead of skipping paths already in
+  `source_records`.
+- `--database PATH` — use a database other than `HOBBYJOGGING_DB`.
+
+Each source is wrapped independently: a failure is reported, the remaining
+sources still run, and the command exits with status 1. The final summary
+shows the window, per-source counts, and failures.
+
 ## FIT files
 
 FIT files are read from `data/fit` by default. Set `HOBBYJOGGING_FIT_DIR` to

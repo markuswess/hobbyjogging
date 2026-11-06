@@ -103,12 +103,14 @@ class FitImporter:
         end: date | None = None,
         limit: int | None = None,
         dry_run: bool = False,
+        skip_known: bool = False,
     ) -> FitImportSummary:
         discovered = discover_fit_files(paths, recursive=recursive)
         summary = FitImportSummary(
             dry_run=dry_run,
             files_seen=len(discovered),
         )
+        known_paths = self._known_fit_paths() if skip_known else set()
 
         if not dry_run:
             summary.run_id = self.writer.start_import_run(
@@ -119,19 +121,42 @@ class FitImporter:
                     "start": start.isoformat() if start else None,
                     "end": end.isoformat() if end else None,
                     "limit": limit,
+                    "skip_known": skip_known,
                 },
             )
 
         try:
-            activity_files = self._prefilter(discovered, summary, limit)
+            activity_files = self._prefilter(
+                discovered,
+                summary,
+                limit,
+                skip_known=skip_known,
+                known_paths=known_paths,
+            )
 
             if dry_run:
                 for path in activity_files:
-                    self._import_file(path, summary, start, end, dry_run=True)
+                    self._import_file(
+                        path,
+                        summary,
+                        start,
+                        end,
+                        dry_run=True,
+                        skip_known=skip_known,
+                        known_paths=known_paths,
+                    )
             else:
                 with self.connection:
                     for path in activity_files:
-                        self._import_file(path, summary, start, end, dry_run=False)
+                        self._import_file(
+                            path,
+                            summary,
+                            start,
+                            end,
+                            dry_run=False,
+                            skip_known=skip_known,
+                            known_paths=known_paths,
+                        )
 
                 self.writer.finish_import_run(
                     summary.run_id,
@@ -161,6 +186,9 @@ class FitImporter:
         paths: list[Path],
         summary: FitImportSummary,
         limit: int | None,
+        *,
+        skip_known: bool = False,
+        known_paths: set[str] | None = None,
     ) -> list[Path]:
         if limit is not None and limit <= 0:
             return []
@@ -168,6 +196,14 @@ class FitImporter:
         activity_files: list[Path] = []
 
         for path in paths:
+            if (
+                skip_known
+                and known_paths
+                and _path_known(path, known_paths)
+            ):
+                summary.files_skipped += 1
+                continue
+
             try:
                 file_id = read_fit_file_id(path)
             except Exception as exc:
@@ -186,6 +222,16 @@ class FitImporter:
 
         return activity_files
 
+    def _known_fit_paths(self) -> set[str]:
+        rows = self.connection.execute(
+            """
+            SELECT raw_path FROM source_records
+            WHERE source = ? AND raw_path IS NOT NULL
+            """,
+            (SOURCE,),
+        ).fetchall()
+        return {str(row["raw_path"]) for row in rows}
+
     def _import_file(
         self,
         path: Path,
@@ -194,7 +240,17 @@ class FitImporter:
         end: date | None,
         *,
         dry_run: bool,
+        skip_known: bool = False,
+        known_paths: set[str] | None = None,
     ) -> None:
+        if (
+            skip_known
+            and known_paths
+            and _path_known(path, known_paths)
+        ):
+            summary.files_skipped += 1
+            return
+
         try:
             fit_summary = parse_fit_file(path)
         except Exception as exc:
@@ -567,6 +623,16 @@ def _session_payload(
         separators=(",", ":"),
         default=str,
     )
+
+
+def _path_known(path: Path, known_paths: set[str]) -> bool:
+    """True when this exact file path was already imported."""
+    if str(path) in known_paths:
+        return True
+    try:
+        return str(path.resolve()) in known_paths
+    except OSError:
+        return False
 
 
 def _file_checksum(path: Path) -> str:

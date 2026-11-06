@@ -44,6 +44,11 @@ the package is still waiting on.
   manual/other-source events are untouched, and the summary reports
   fetched/new/updated/unchanged/removed/revived/skipped. `--dry-run` writes
   nothing.
+- **Incremental `sync`.** Runs Garmin fetch, Intervals import, FIT archive
+  import with `skip_known`, and the shared quality scan. `--no-*` flags skip
+  sources, `--full` reimports all FIT paths, failures are reported per source
+  and the command exits non-zero after continuing with the rest. The scan core
+  is shared with `review scan`.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 

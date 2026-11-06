@@ -17,6 +17,7 @@ from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .garmin import GarminFetcher, GarminFetchSummary
 from .intervals import EventSyncSummary, IntervalsImporter
 from .review_cli import run_review
+from .sync import format_sync_summary, run_sync
 
 
 def date_arg(value: str) -> date:
@@ -71,12 +72,61 @@ def resolve_event_range(
     return start, end
 
 
+def resolve_sync_range(
+    days: int,
+    since: date | None,
+    today: date | None = None,
+) -> tuple[date, date]:
+    if days < 0:
+        raise ValueError("--days must be zero or greater")
+
+    today = today or date.today()
+    start = since or today - timedelta(days=days)
+    if start > today:
+        raise ValueError("--since must not be after today")
+    return start, today
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hobbyjogging-import",
         description="Import training data into the canonical database.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    sync = subparsers.add_parser(
+        "sync",
+        help="incrementally sync Garmin, Intervals, FIT, and review",
+    )
+    sync.add_argument("--days", type=int, default=30)
+    sync.add_argument("--since", type=date_arg)
+    sync.add_argument("--plan-days", type=int, default=182)
+    sync.add_argument(
+        "--no-garmin",
+        action="store_true",
+        help="skip the Garmin fetch",
+    )
+    sync.add_argument(
+        "--no-intervals",
+        action="store_true",
+        help="skip the Intervals.icu import",
+    )
+    sync.add_argument(
+        "--no-fit",
+        action="store_true",
+        help="skip the FIT archive scan",
+    )
+    sync.add_argument(
+        "--no-scan",
+        action="store_true",
+        help="skip the quality review scan",
+    )
+    sync.add_argument(
+        "--full",
+        action="store_true",
+        help="re-import all FIT files instead of skipping known paths",
+    )
+    sync.add_argument("--database", type=Path)
 
     intervals = subparsers.add_parser(
         "intervals",
@@ -588,6 +638,42 @@ def run_events(args, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def run_sync_command(args, parser: argparse.ArgumentParser) -> int:
+    try:
+        start, end = resolve_sync_range(args.days, args.since)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    if args.plan_days < 0:
+        parser.error("--plan-days must be zero or greater")
+
+    plan_end = end + timedelta(days=args.plan_days)
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        summary = run_sync(
+            connection,
+            start=start,
+            end=end,
+            plan_end=plan_end,
+            include_garmin=not args.no_garmin,
+            include_intervals=not args.no_intervals,
+            include_fit=not args.no_fit,
+            include_scan=not args.no_scan,
+            full=args.full,
+            fit_dir=default_fit_dir(),
+        )
+    finally:
+        connection.close()
+
+    print(format_sync_summary(summary))
+    return 1 if summary.failures else 0
+
+
 def _print_events_summary(
     summary: EventSyncSummary,
     database_path,
@@ -695,6 +781,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "events":
         return run_events(args, parser)
+
+    if args.command == "sync":
+        return run_sync_command(args, parser)
 
     if args.command == "review":
         return run_review(args, parser)

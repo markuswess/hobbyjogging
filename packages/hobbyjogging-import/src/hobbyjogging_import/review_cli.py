@@ -5,6 +5,7 @@ import json
 from hobbyjogging_core import TrainingWriter, open_database
 from .links import garmin_url, intervals_url
 from .quality import MANUAL_FLAG, record_manual_flag
+from .scan import scan_quality
 
 
 def run_review(args, parser) -> int:
@@ -46,70 +47,27 @@ def run_review(args, parser) -> int:
 
 def _run_scan(args, writer: TrainingWriter, parser) -> int:
     """Apply the canonical quality rule set to existing activities."""
-    from .quality import record_quality_findings
 
-    if args.activity is not None:
-        rows = writer.connection.execute(
-            """
-            SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s
-            FROM activities WHERE id = ?
-            """,
-            (args.activity,),
-        ).fetchall()
+    def on_finding(row, finding) -> None:
+        print(f"finding {finding.rule}: {row['id']} — {finding.detail}")
 
-        if not rows:
-            parser.error(f"unknown activity: {args.activity}")
-    else:
-        rows = writer.connection.execute(
-            """
-            SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s
-            FROM activities
-            ORDER BY local_date, id
-            """
-        ).fetchall()
-
-    total_findings = 0
-    recorded = 0
-
-    for row in rows:
-        from .quality import quality_findings
-
-        findings = quality_findings(
-            sport=row["sport"] or "",
-            duration_s=row["duration_s"] or 0,
-            elapsed_s=row["elapsed_s"] or 0,
-            distance_m=row["distance_m"] or 0,
-            moving_s=row["moving_s"],
-        )
-        if not findings:
-            continue
-
-        total_findings += len(findings)
-
-        for finding in findings:
-            print(f"finding {finding.rule}: {row['id']} — {finding.detail}")
-
-        if args.dry_run:
-            continue
-
-        recorded += record_quality_findings(
+    try:
+        summary = scan_quality(
             writer,
-            activity_id=row["id"],
-            source_record_id=None,
-            import_run_id=None,
-            sport=row["sport"] or "",
-            duration_s=row["duration_s"] or 0,
-            elapsed_s=row["elapsed_s"] or 0,
-            distance_m=row["distance_m"] or 0,
-            moving_s=row["moving_s"],
+            activity_id=args.activity,
+            dry_run=args.dry_run,
+            on_finding=on_finding,
         )
-
-    writer.connection.commit()
+    except ValueError as exc:
+        parser.error(str(exc))
 
     if args.dry_run:
-        print(f"Scan dry run: {total_findings} finding(s)")
+        print(f"Scan dry run: {summary.findings} finding(s)")
     else:
-        print(f"Scan: {total_findings} finding(s), {recorded} new review item(s)")
+        print(
+            f"Scan: {summary.findings} finding(s), "
+            f"{summary.recorded} new review item(s)"
+        )
 
     return 0
 
