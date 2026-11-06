@@ -191,6 +191,29 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual("WORK", intervals[0].type)
         self.assertEqual(150, intervals[0].avg_hr)
 
+    def test_uses_recording_time_for_duration(self):
+        self.client.activity_payloads[0]["icu_recording_time"] = 3650
+
+        self._import()
+
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        self.assertEqual(3650, activity.duration_s)
+        self.assertEqual(3900, activity.elapsed_s)
+
+    def test_falls_back_to_moving_time_for_duration(self):
+        self.client.activity_payloads[0]["icu_recording_time"] = None
+
+        self._import()
+
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        self.assertEqual(3600, activity.duration_s)
+
     def test_import_records_raw_data_and_import_run(self):
         summary = self._import()
 
@@ -513,6 +536,32 @@ class IntervalsImporterTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual("manual", row["source"])
         self.assertEqual(1, row["is_manual"])
+
+    def test_treadmill_distance_is_canonical_zero(self):
+        self.client.activity_payloads[0]["type"] = "TreadmillRun"
+        self.client.activity_payloads[0]["distance"] = 8000
+
+        self._import()
+
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        self.assertEqual("treadmill_run", activity.type)
+        self.assertEqual(0, activity.distance_m)
+
+    def test_soccer_distance_is_canonical_zero(self):
+        self.client.activity_payloads[0]["type"] = "Soccer"
+        self.client.activity_payloads[0]["distance"] = 529
+
+        self._import()
+
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        self.assertEqual("soccer", activity.type)
+        self.assertEqual(0, activity.distance_m)
 
     def test_ambiguous_intervals_match_is_reported(self):
         for activity_id in ("overlap-1", "overlap-2"):

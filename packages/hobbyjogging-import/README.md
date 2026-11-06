@@ -121,6 +121,19 @@ Conflict-tracked fields are `duration_s`, `elapsed_s`, `distance_m`, `avg_hr`,
 keep their current owner silently — two devices naming the same run
 differently is not worth a review item.
 
+### Time and distance semantics
+
+- `duration_s` is **recording/timer time**: FIT `total_timer_time`,
+  Intervals `icu_recording_time` (falling back to `moving_time` for old
+  payloads). A duration difference that fits inside either source's pause gap
+  (`elapsed - duration`) is treated as agreement, not a conflict.
+- `elapsed_s` is total elapsed time.
+- Distance is forced to zero for sports where it is not recorded or not
+  meaningful: `treadmill_run`, `virtual_run`, `soccer`, `racket`, `training`,
+  `other`, and `workout`. A manual distance still wins. Raw FIT/Intervals
+  payloads keep the reported distance; only the canonical value is zeroed.
+- The quality rules do not raise `zero_distance` for those sports.
+
 Sports are normalized through `hobbyjogging_core.sports` before writing, so
 FIT sub-sports and Intervals types map to the same canonical names (for
 example `cycling/gravel_cycling` and `GravelRide` both become `gravel_ride`).

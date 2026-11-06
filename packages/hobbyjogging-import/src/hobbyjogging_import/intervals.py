@@ -451,7 +451,13 @@ def _activity_values(raw: dict) -> dict[str, object]:
         "sport": canonical_sport(raw.get("type")),
         "name": str(raw.get("name") or ""),
         "description": str(raw.get("description") or ""),
-        "duration_s": _float(raw.get("moving_time")) or 0.0,
+        # Garmin records timer/recording time. Intervals' recording time is
+        # the equivalent; moving_time is only a fallback for old payloads.
+        "duration_s": (
+            _float(raw.get("icu_recording_time"))
+            or _float(raw.get("moving_time"))
+            or 0.0
+        ),
         "elapsed_s": _float(raw.get("elapsed_time")) or 0.0,
         "distance_m": _float(raw.get("distance")) or 0.0,
     }

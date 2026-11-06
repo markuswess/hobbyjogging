@@ -24,6 +24,9 @@ def _summary(
     name: str = "FIT Run",
     lap_start: str = "2026-10-01T06:00:00Z",
     vo2max_garmin: float | None = None,
+    sport: str = "running",
+    sub_sport: str = "generic",
+    canonical_sport: str = "run",
 ) -> FitFileSummary:
     return FitFileSummary(
         path=path,
@@ -39,9 +42,9 @@ def _summary(
                 start_time_utc=start_utc,
                 local_start=local_start,
                 tz_offset_min=120,
-                sport="running",
-                sub_sport="generic",
-                canonical_sport="run",
+                sport=sport,
+                sub_sport=sub_sport,
+                canonical_sport=canonical_sport,
                 name=name,
                 elapsed_s=elapsed_s,
                 duration_s=duration_s,
@@ -152,6 +155,51 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(1, run["records_seen"])
         self.assertEqual(1, run["records_imported"])
 
+    def _assert_distance_policy(
+        self,
+        *,
+        sport: str,
+        sub_sport: str,
+        canonical: str,
+    ):
+        path = self._file(f"{canonical}.fit", canonical.encode())
+        self._import(
+            [
+                _summary(
+                    path,
+                    sport=sport,
+                    sub_sport=sub_sport,
+                    canonical_sport=canonical,
+                    distance_m=8000,
+                )
+            ]
+        )
+
+        activity = self._activities()[0]
+        self.assertEqual(canonical, activity.type)
+        self.assertEqual(0, activity.distance_m)
+
+        raw = self.conn.execute(
+            "SELECT payload_json FROM source_records "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        payload = json.loads(raw["payload_json"])
+        self.assertEqual(8000, payload["session"]["distance_m"])
+
+    def test_import_zeroes_treadmill_distance(self):
+        self._assert_distance_policy(
+            sport="running",
+            sub_sport="treadmill",
+            canonical="treadmill_run",
+        )
+
+    def test_import_zeroes_other_sport_distance(self):
+        self._assert_distance_policy(
+            sport="generic",
+            sub_sport="generic",
+            canonical="other",
+        )
+
     def test_import_writes_garmin_vo2max_without_rounding(self):
         path = self._file("one.fit", b"one")
 
@@ -234,7 +282,15 @@ class FitImporterTests(unittest.TestCase):
         )
 
         path = self._file("one.fit", b"one")
-        summary = self._import([_summary(path)])
+        summary = self._import(
+            [
+                _summary(
+                    path,
+                    duration_s=3900,
+                    elapsed_s=4000,
+                )
+            ]
+        )
 
         self.assertEqual(1, summary.activities_matched)
         self.assertEqual(0, summary.activities_created)

@@ -62,6 +62,48 @@ class QualityRuleTests(unittest.TestCase):
             [], _findings(sport="racket", distance_m=0)
         )
 
+    def test_zero_distance_is_skipped_for_no_distance_sports(self):
+        for sport in (
+            "treadmill_run",
+            "virtual_run",
+            "soccer",
+            "racket",
+            "training",
+            "other",
+            "workout",
+        ):
+            with self.subTest(sport=sport):
+                self.assertEqual(
+                    [],
+                    _findings(sport=sport, distance_m=0),
+                )
+
+        findings = _findings(sport="run", distance_m=0)
+        self.assertEqual(1, len(findings))
+        self.assertEqual("zero_distance", findings[0].rule)
+
+    def test_implied_pace_is_skipped_for_no_distance_sports(self):
+        # A spurious 196 m treadmill distance with a 46-minute recording
+        # would otherwise look like an absurd pace.
+        self.assertEqual(
+            [],
+            _findings(
+                sport="treadmill_run",
+                duration_s=2782,
+                distance_m=196.85,
+            ),
+        )
+        self.assertEqual(
+            1,
+            len(
+                _findings(
+                    sport="run",
+                    duration_s=2782,
+                    distance_m=196.85,
+                )
+            ),
+        )
+
     def test_normal_cycling_pace_is_not_flagged(self):
         # ~31 km/h is a normal road-bike pace.
         self.assertEqual(

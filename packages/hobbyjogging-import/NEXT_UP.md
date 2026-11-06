@@ -25,6 +25,14 @@ the package is still waiting on.
 - **Triage Intervals re-import.** `(t)rust Intervals` re-fetches one linked
   activity with `force=True`: Intervals takes ownership of non-manual fields,
   conflicts on those fields resolve, and quality rules re-run.
+- **Recording-time duration.** Intervals `duration_s` now uses
+  `icu_recording_time` (falling back to `moving_time`). A duration difference
+  within either source's pause gap is agreement, so Garmin/Intervals stop-time
+  accounting no longer creates review items.
+- **No-distance sports.** The writer forces canonical distance to zero for
+  `treadmill_run`, `virtual_run`, `soccer`, `racket`, `training`, `other`, and
+  `workout`; manual distance wins, and the quality rules skip
+  `zero_distance` for them.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 

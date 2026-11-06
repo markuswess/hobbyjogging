@@ -12,7 +12,11 @@ import json
 from dataclasses import dataclass
 
 from hobbyjogging_core import TrainingWriter
-from hobbyjogging_core.sports import PACE_SPORTS, RIDE_SPORTS
+from hobbyjogging_core.sports import (
+    NO_DISTANCE_SPORTS,
+    PACE_SPORTS,
+    RIDE_SPORTS,
+)
 
 from .values import format_field
 
@@ -64,13 +68,16 @@ def quality_findings(
             )
         )
 
-    pace_sport = sport in PACE_SPORTS
+    pace_sport = (
+        sport in PACE_SPORTS and sport not in NO_DISTANCE_SPORTS
+    )
+    distance_required = pace_sport
     pace_s_per_km = None
 
     if pace_sport and duration_s > 0 and distance_m > 0:
         pace_s_per_km = duration_s / (distance_m / 1000)
 
-    if distance_m == 0 and pace_sport:
+    if distance_m == 0 and distance_required:
         findings.append(
             Finding(
                 rule="zero_distance",
