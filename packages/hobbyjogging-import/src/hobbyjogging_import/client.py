@@ -18,6 +18,9 @@ class IntervalsApi(Protocol):
     def events(self, start: date, end: date) -> list[dict]:
         ...
 
+    def activity(self, activity_id: str) -> dict:
+        ...
+
     def activity_intervals(self, activity_id: str) -> list[dict]:
         ...
 
@@ -73,7 +76,7 @@ class IntervalsClient:
             {"oldest": start.isoformat(), "newest": end.isoformat()},
         )
 
-    def activity_intervals(self, activity_id: str) -> list[dict]:
+    def activity(self, activity_id: str) -> dict:
         response = requests.get(
             f"https://intervals.icu/api/v1/activity/{activity_id}",
             auth=self.auth,
@@ -81,4 +84,7 @@ class IntervalsClient:
             timeout=self.timeout,
         )
         response.raise_for_status()
-        return response.json().get("icu_intervals") or []
+        return response.json()
+
+    def activity_intervals(self, activity_id: str) -> list[dict]:
+        return self.activity(activity_id).get("icu_intervals") or []

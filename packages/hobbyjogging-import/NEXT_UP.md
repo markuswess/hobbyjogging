@@ -25,6 +25,10 @@ this file now tracks the remaining real-data steps.
   Intervals URL and `cg` copies the Garmin Connect URL. The Garmin id is
   resolved from the `garmin fetch` manifest by file path, then by matching
   `beginTimestamp` to the canonical start. `review show` prints both links.
+- **Triage Intervals re-import.** `(t)rust Intervals` re-fetches one linked
+  Intervals activity and lets it take ownership of non-manual fields. Manual
+  fields stay, conflicts on fields Intervals now owns are resolved, and the
+  quality rules re-run.
 - Tests: import 160, core 79, reports 188 (all green).
 
 ## Remaining (real data, user)

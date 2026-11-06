@@ -145,6 +145,74 @@ class IntervalsImporter:
             )
             raise
 
+    def import_activity(
+        self,
+        external_id: str,
+        *,
+        force: bool = False,
+        include_intervals: bool = False,
+    ) -> ImportSummary:
+        """Re-import one Intervals activity by its external id.
+
+        ``force=True`` lets Intervals take ownership of non-manual fields
+        even when another source currently owns them. This is the human
+        trust decision used by triage; a normal range import never sets it.
+        """
+        summary = ImportSummary(
+            run_id=self.writer.start_import_run(
+                SOURCE,
+                {
+                    "activity": external_id,
+                    "force": force,
+                    "include_intervals": include_intervals,
+                },
+            )
+        )
+
+        try:
+            raw = self.client.activity(external_id)
+            interval_payload = (
+                list(raw.get("icu_intervals") or [])
+                if include_intervals
+                else None
+            )
+            summary.activities_seen = 1
+
+            with self.connection:
+                interval_count = self._import_activity(
+                    raw,
+                    summary,
+                    interval_payload,
+                    force=force,
+                )
+
+            if interval_count is None:
+                summary.activities_skipped += 1
+            else:
+                summary.activities_imported += 1
+                summary.intervals_imported += interval_count
+
+            self.writer.finish_import_run(
+                summary.run_id,
+                "success",
+                records_seen=summary.records_seen,
+                records_imported=summary.records_imported,
+                records_skipped=summary.activities_skipped,
+            )
+            return summary
+
+        except Exception as exc:
+            self.connection.rollback()
+            self.writer.finish_import_run(
+                summary.run_id,
+                "failed",
+                records_seen=summary.records_seen,
+                records_imported=summary.records_imported,
+                records_skipped=summary.activities_skipped,
+                error=str(exc),
+            )
+            raise
+
     def _fetch_intervals(
         self,
         activities: list[dict],
@@ -174,6 +242,8 @@ class IntervalsImporter:
         raw: dict,
         summary: ImportSummary,
         interval_payload: list[dict] | None,
+        *,
+        force: bool = False,
     ) -> int | None:
         external_id = _activity_external_id(raw)
         if external_id is None:
@@ -210,6 +280,7 @@ class IntervalsImporter:
             _activity_values(raw),
             source=SOURCE,
             source_record_id=source_record_id,
+            force=force,
         )
         summary.review_recorded += record_field_conflicts(
             self.writer,

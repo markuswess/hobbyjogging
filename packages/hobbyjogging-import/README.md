@@ -214,9 +214,9 @@ written to the database immediately; quitting (or Ctrl-C) prints a summary.
 
 ```
 #10 warn field_conflict/open  2026-03-14  Gumpoldskirchen Running
-  (v) pick value  (i)nspect  (o)pen  (ci) Intervals  (cg) Garmin
-  (e)nter value  (d)elete  (r)esolve  (x)ignore  (n)ote  (s)kip
-  (h)elp  (q)uit > _
+  (v) pick value  (i)nspect  (t)rust Intervals  (o)pen
+  (ci) Intervals  (cg) Garmin  (e)nter value  (d)elete  (r)esolve
+  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
 ```
 
 - `(i)` shows the full item: activity values, all linked source records with
@@ -226,6 +226,12 @@ written to the database immediately; quitting (or Ctrl-C) prints a summary.
   written as a manual value, so the decision takes ownership of the field and
   later reimports cannot re-open the same conflict. The other conflict items
   for that activity stay in the queue.
+- `(t)` force re-imports the linked Intervals activity (one activity, not the
+  whole range) and lets Intervals take ownership of every non-manual field it
+  provides. Manual fields are kept. Open `field_conflict` items on fields
+  Intervals now owns are resolved, the quality rules re-run, and the changed
+  fields are printed. This differs from `(v)`, which applies a single chosen
+  value as a manual override.
 - `(o)` opens every available activity link in the browser. `(ci)` copies
   the Intervals URL (`https://intervals.icu/activities/<id>`); `(cg)` copies
   the Garmin Connect URL

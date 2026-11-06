@@ -80,6 +80,12 @@ class FakeIntervalsClient:
         self.event_ranges.append((start, end))
         return self.event_payloads
 
+    def activity(self, activity_id):
+        for raw in self.activity_payloads:
+            if str(raw.get("id")) == str(activity_id):
+                return raw
+        raise KeyError(activity_id)
+
     def activity_intervals(self, activity_id):
         return self.interval_payloads.get(activity_id, [])
 
@@ -101,6 +107,38 @@ class IntervalsImporterTests(unittest.TestCase):
             include_intervals=include_intervals,
             plan_end=plan_end,
         )
+
+    def _seed_fit_activity(self, *, duration_s=3600, avg_hr=140):
+        writer = self.importer.writer
+        run_id = writer.start_import_run("fit")
+        source_id = writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="fit-file",
+            checksum="fit-checksum",
+            import_run_id=run_id,
+        )
+        writer.upsert_activity(
+            "fit-uuid",
+            {
+                "local_date": "2026-10-01",
+                "started_at_utc": "2026-10-01T06:00:00Z",
+                "sport": "run",
+                "name": "Run",
+                "duration_s": duration_s,
+                "elapsed_s": 3900,
+                "distance_m": 10000,
+                "avg_hr": avg_hr,
+            },
+            source="fit",
+            source_record_id=source_id,
+        )
+        writer.link_activity_source(
+            "fit-uuid",
+            source_id,
+            match_method="created",
+        )
+        return "fit-uuid", source_id
 
     def test_imports_activities_wellness_events_and_intervals(self):
         summary = self._import()
@@ -413,6 +451,68 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual("intervals", links[1]["source"])
         self.assertEqual(0, links[1]["is_primary"])
         self.assertEqual("temporal_overlap", links[1]["match_method"])
+
+    def test_import_activity_force_takes_ownership(self):
+        self._seed_fit_activity()
+        self.client.activity_payloads[0]["moving_time"] = 3700
+        self.client.activity_payloads[0]["average_heartrate"] = 145
+
+        summary = self.importer.import_activity("i1", force=True)
+
+        self.assertEqual(1, summary.activities_imported)
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )
+        self.assertEqual(["fit-uuid"], [activity.id for activity in activities])
+        self.assertEqual(3700, activities[0].duration_s)
+        self.assertEqual(145, activities[0].avg_hr)
+
+        rows = self.conn.execute(
+            """
+            SELECT field_name, source FROM activity_field_sources
+            WHERE activity_id = 'fit-uuid'
+              AND field_name IN ('duration_s', 'avg_hr')
+            """
+        ).fetchall()
+        self.assertEqual(
+            {"duration_s": "intervals", "avg_hr": "intervals"},
+            {row["field_name"]: row["source"] for row in rows},
+        )
+        self.assertEqual(
+            [],
+            self.importer.writer.review_items(
+                category="field_conflict",
+                status="open",
+            ),
+        )
+
+    def test_import_activity_force_keeps_manual_fields(self):
+        self._seed_fit_activity()
+        self.importer.writer.set_manual_field(
+            "fit-uuid",
+            "duration_s",
+            3550,
+        )
+        self.client.activity_payloads[0]["moving_time"] = 3700
+
+        summary = self.importer.import_activity("i1", force=True)
+
+        self.assertEqual(1, summary.activities_imported)
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        self.assertEqual(3550, activity.duration_s)
+
+        row = self.conn.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = 'fit-uuid' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual("manual", row["source"])
+        self.assertEqual(1, row["is_manual"])
 
     def test_ambiguous_intervals_match_is_reported(self):
         for activity_id in ("overlap-1", "overlap-2"):

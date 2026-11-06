@@ -23,9 +23,10 @@ from .links import (
     INTERVALS_URL,
     garmin_manifest_index,
     garmin_url,
+    intervals_activity_id,
     intervals_url,
 )
-from .quality import CONFLICT
+from .quality import CONFLICT, refresh_activity_quality
 from .review_cli import _format_summary_line
 from .values import (
     format_field,
@@ -38,6 +39,7 @@ KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
   (v) pick value   field conflict: choose which source value stands
+  (t)rust Intervals  force re-import and take ownership of changed fields
   (o)pen           open all available activity links
   (ci)             copy the Intervals activity URL
   (cg)             copy the Garmin Connect activity URL
@@ -94,12 +96,14 @@ class TriageRunner:
         print: Callable = print,
         open_url: Callable[[str], bool] = webbrowser.open,
         copy: Callable[[str], str | None] = copy_text,
+        reimport: Callable[[str], object] | None = None,
     ):
         self.writer = writer
         self.read = read
         self.print = print
         self.open_url = open_url
         self.copy = copy
+        self.reimport = reimport or self._default_reimport
         self.counters: dict[str, int] = {}
         self.pending_note = ""
         self._garmin_index = None
@@ -201,6 +205,8 @@ class TriageRunner:
             keys.append("(ci) Intervals")
         if self._garmin_url(item):
             keys.append("(cg) Garmin")
+        if item["activity_id"] and self._intervals_url(item):
+            keys.append("(t)rust Intervals")
         keys.extend(
             [
                 "(e)nter value",
@@ -247,6 +253,9 @@ class TriageRunner:
 
         if answer == "v":
             return self._pick_value(item)
+
+        if answer == "t":
+            return self._force_intervals(item)
 
         if answer == "o":
             self._open(item)
@@ -555,6 +564,166 @@ class TriageRunner:
             )
         return self._garmin_urls[activity_id]
 
+    def _default_reimport(self, activity_id: str):
+        external_id = intervals_activity_id(
+            self.writer.connection,
+            activity_id,
+        )
+        if external_id is None:
+            raise ValueError("no Intervals activity linked")
+
+        from .intervals import IntervalsImporter
+
+        return IntervalsImporter(self.writer.connection).import_activity(
+            external_id,
+            force=True,
+        )
+
+    def _force_intervals(self, item) -> bool:
+        """Re-import the linked Intervals activity and take field ownership."""
+        activity_id = item["activity_id"]
+        if not activity_id:
+            self.print("  no activity linked to this item")
+            return False
+
+        external_id = intervals_activity_id(
+            self.writer.connection,
+            activity_id,
+        )
+        if external_id is None:
+            self.print("  no Intervals activity linked to this item")
+            return False
+
+        if not self._confirm(
+            f"  re-import {external_id} from Intervals and take ownership "
+            "of its changed fields? [y/N]: "
+        ):
+            self.print("  cancelled")
+            return False
+
+        before = self._field_sources(activity_id)
+        try:
+            summary = self.reimport(activity_id)
+        except Exception as exc:
+            self.print(f"  re-import failed: {exc}")
+            return False
+
+        if getattr(summary, "activities_imported", 1) == 0:
+            self.print("  Intervals did not import an activity")
+            return False
+
+        after = self._field_sources(activity_id)
+        changed = []
+        owned = 0
+        for field in sorted(after):
+            old_entry = before.get(field)
+            new_entry = after[field]
+            old_value = _decode_field_value(old_entry)
+            new_value = _decode_field_value(new_entry)
+            if old_value != new_value:
+                changed.append(
+                    (field, old_value, new_value, new_entry[0])
+                )
+            if old_entry is None or old_entry[0] != new_entry[0]:
+                owned += 1
+
+        resolved, remaining = self._resolve_intervals_conflicts(activity_id)
+        findings = refresh_activity_quality(
+            self.writer,
+            activity_id=activity_id,
+            resolve_note=self.pending_note or "triage: Intervals re-import",
+        )
+        self.writer.connection.commit()
+        self.pending_note = ""
+        self._count("reimported")
+
+        self.print(
+            f"  re-imported {external_id}; "
+            f"{len(changed)} field(s) changed, "
+            f"{owned} ownership transfer(s)"
+        )
+        for field, old_value, new_value, source in changed:
+            self.print(
+                f"    {field}: {format_field(field, old_value)} → "
+                f"{format_field(field, new_value)} ({source})"
+            )
+
+        if resolved:
+            self.print(f"  resolved {resolved} field conflict(s)")
+        if remaining:
+            self.print(f"  {remaining} field conflict(s) still open")
+        if findings:
+            self.print(
+                "  quality: still flagged — "
+                + "; ".join(
+                    f"{finding.rule}: {finding.detail}"
+                    for finding in findings
+                )
+            )
+        else:
+            self.print("  quality: ok")
+        return True
+
+    def _field_sources(self, activity_id: str) -> dict:
+        rows = self.writer.connection.execute(
+            """
+            SELECT field_name, source, value_json, is_manual
+            FROM activity_field_sources
+            WHERE activity_id = ?
+            """,
+            (activity_id,),
+        ).fetchall()
+        return {
+            row["field_name"]: (
+                row["source"],
+                row["value_json"],
+                row["is_manual"],
+            )
+            for row in rows
+        }
+
+    def _resolve_intervals_conflicts(
+        self,
+        activity_id: str,
+    ) -> tuple[int, int]:
+        """Resolve conflicts on fields Intervals now owns."""
+        intervals_fields = {
+            row["field_name"]
+            for row in self.writer.connection.execute(
+                """
+                SELECT field_name FROM activity_field_sources
+                WHERE activity_id = ? AND source = 'intervals'
+                """,
+                (activity_id,),
+            )
+        }
+
+        resolved = 0
+        remaining = 0
+        for conflict in self.writer.review_items(
+            category=CONFLICT,
+            status="open",
+        ):
+            if conflict["activity_id"] != activity_id:
+                continue
+
+            try:
+                context = json.loads(conflict["context_json"] or "{}")
+            except ValueError:
+                context = {}
+
+            if context.get("field") not in intervals_fields:
+                remaining += 1
+                continue
+
+            self.writer.set_review_status(
+                conflict["id"],
+                "resolved",
+                note=self.pending_note or "triage: Intervals re-import",
+            )
+            resolved += 1
+        return resolved, remaining
+
     def _ask_note(self) -> None:
         try:
             note = self.read("  note: ").strip()
@@ -738,3 +907,13 @@ class TriageRunner:
             + (", ".join(parts) if parts else "nothing to do")
         )
         self.print(f"Review items left open: {remaining}")
+
+
+def _decode_field_value(entry) -> object:
+    """Decode a stored ``value_json`` tuple from ``_field_sources``."""
+    if entry is None:
+        return None
+    try:
+        return json.loads(entry[1])
+    except (TypeError, ValueError):
+        return entry[1]

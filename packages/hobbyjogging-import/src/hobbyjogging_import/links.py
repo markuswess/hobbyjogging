@@ -23,6 +23,15 @@ def intervals_url(connection, item) -> str | None:
     if not activity_id:
         return None
 
+    external_id = intervals_activity_id(connection, activity_id)
+    return INTERVALS_URL.format(external_id) if external_id else None
+
+
+def intervals_activity_id(
+    connection,
+    activity_id: str,
+) -> str | None:
+    """Return the linked Intervals external activity id, if any."""
     row = connection.execute(
         """
         SELECT sr.external_id
@@ -34,9 +43,7 @@ def intervals_url(connection, item) -> str | None:
         """,
         (activity_id,),
     ).fetchone()
-    if row is None:
-        return None
-    return INTERVALS_URL.format(row["external_id"])
+    return str(row["external_id"]) if row is not None else None
 
 
 def garmin_url(

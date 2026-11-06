@@ -1,6 +1,7 @@
 import json
 import unittest
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_import.triage import (
@@ -297,6 +298,106 @@ class TriageTests(unittest.TestCase):
 
         self.assertEqual([], self.copied_texts)
         self.assertIn("use ci", "\n".join(lines))
+
+    # -- force Intervals re-import -----------------------------------------
+
+    def _reimport_duration(self, record_id, duration=3600):
+        def reimport(activity_id):
+            self.writer.upsert_activity(
+                activity_id,
+                {"duration_s": duration},
+                source="intervals",
+                source_record_id=record_id,
+                force=True,
+            )
+            self.conn.commit()
+            return SimpleNamespace(activities_imported=1)
+
+        return reimport
+
+    def test_force_intervals_reimport_takes_ownership(self):
+        record_id = self._seed_intervals_link()
+
+        runner, lines, counters = self._runner(
+            ["t", "y", "q"],
+            reimport=self._reimport_duration(record_id),
+        )
+
+        self.assertEqual(1, counters["reimported"])
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(self.item_id)["status"],
+        )
+        row = self.conn.execute(
+            "SELECT duration_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(3600, row["duration_s"])
+        joined = "\n".join(lines)
+        self.assertIn("re-imported i104800507", joined)
+        self.assertIn("quality: ok", joined)
+
+    def test_force_intervals_resolves_conflicts_on_its_fields(self):
+        record_id = self._seed_intervals_link()
+        conflict_id, _ = self.writer.record_review_item(
+            category="field_conflict",
+            detail="duration differs",
+            context={
+                "rule": "field_conflict",
+                "field": "duration_s",
+                "current": {"source": "fit", "value": 0},
+                "incoming": {"source": "intervals", "value": 3600},
+            },
+            fingerprint="fp-force-conflict",
+            activity_id="a1",
+            source_record_id=record_id,
+            import_run_id=self.run_id,
+        )
+        self.conn.commit()
+
+        runner, lines, counters = self._runner(
+            ["t", "y", "q"],
+            reimport=self._reimport_duration(record_id),
+        )
+
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(conflict_id)["status"],
+        )
+        self.assertIn(
+            "resolved 1 field conflict",
+            "\n".join(lines),
+        )
+
+    def test_force_intervals_requires_a_link(self):
+        called = []
+
+        runner, lines, counters = self._runner(
+            ["t", "q"],
+            reimport=lambda activity_id: called.append(activity_id),
+        )
+
+        self.assertEqual([], called)
+        self.assertIn("no Intervals activity", "\n".join(lines))
+
+    def test_force_intervals_can_be_cancelled(self):
+        record_id = self._seed_intervals_link()
+        called = []
+
+        runner, lines, counters = self._runner(
+            ["t", "n", "q"],
+            reimport=lambda activity_id: called.append(activity_id),
+        )
+
+        self.assertEqual([], called)
+        self.assertIn("cancelled", "\n".join(lines))
+
+    def test_key_line_lists_trust_intervals_only_with_a_link(self):
+        runner, lines, counters = self._runner(["q"])
+        self.assertNotIn("(t)rust Intervals", "\n".join(lines))
+
+        self._seed_intervals_link()
+        runner, lines, counters = self._runner(["q"])
+        self.assertIn("(t)rust Intervals", "\n".join(lines))
 
     # -- edit ---------------------------------------------------------------
 
