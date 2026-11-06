@@ -18,6 +18,10 @@ Updated 2026-11-06.
 - **Schema v7.** `events.excluded_at`; the repository hides excluded events.
   `upsert_event` now replaces event fields (including NULLs) and revives an
   excluded event; `exclude_event`/`restore_event` support the sync prune.
+- **Planned-events sync.** `events sync` (and the regular Intervals import)
+  reconciles the calendar: fields are replaced (including NULLs), events that
+  disappeared are soft-excluded, reappearing ones are revived, and only
+  Intervals-linked events are touched. `--dry-run` writes nothing.
 - **Time fields.** Intervals `moving_time` → `moving_s`; FIT
   `total_moving_time` is parsed when present; event duration comes from
   `moving_time` and `training_load` from `icu_training_load`. The
@@ -34,27 +38,25 @@ Updated 2026-11-06.
 
 ## Next
 
-1. **Import package: planned-events sync.** `events sync` (and the regular
-   Intervals import) fetches the current window, overwrites all fields,
-   soft-excludes disappeared events, revives reappearing ones, and leaves
-   manual/other-source events alone. `--dry-run` writes nothing.
-2. **View models + static weekly dashboard** in the reports package (main
+1. **View models + static weekly dashboard** in the reports package (main
    focus): weekly overview, activity list/detail, data-health banner.
-3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
+2. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
-4. **Runalyze enrichment** when the API auth/endpoint details are settled:
+3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-5. **`review scan` prune mode**: resolve stale quality items whose current
+4. **`review scan` prune mode**: resolve stale quality items whose current
    values no longer trigger them.
-6. **Homelab cutover**: DB + importer + dashboard generator + static server,
+5. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 
 ## Notes
 
 - Reports hide activities with open review items by default
   (`--include-review` shows them); excluded activities never appear.
+- `events sync` defaults to today .. today + 182 days; `--from`/`--to`
+  override the window, and `--dry-run` reports without writing.
 - The Garmin key is valid for 30/90/180/365 days; each run exchanges it for a
   24 h bearer token.
 - Runalyze's activity payload exposes no Garmin activity id, so matching stays
