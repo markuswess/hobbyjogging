@@ -52,10 +52,10 @@ reports:
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers.
 - **subt** — subT and LT1 work intervals over the last 365 days by
-  default, with pace on the left axis and average HR on the right.
-  Dots are color-coded by rep length (short/medium/long) or LT1;
-  pace ranges show fastest–slowest, HR ranges show average–max, and
-  both metrics have rolling averages.
+  default, with pace and average HR as two stacked panels sharing a
+  date axis. Dots are color-coded by rep length (short/medium/long)
+  or LT1; pace ranges show fastest–slowest, HR ranges show
+  average–max, and both metrics have rolling averages.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with

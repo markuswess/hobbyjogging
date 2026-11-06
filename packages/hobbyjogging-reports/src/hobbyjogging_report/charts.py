@@ -13,7 +13,6 @@ matplotlib.use("Agg")
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
 
 from .analysis import SUBT_CATEGORIES
@@ -464,19 +463,21 @@ def plot_subt(
     window: int = 5,
     title: str = "subT and LT1 work intervals",
 ) -> str:
-    """Pace and heart rate in one chart, with two y-axes.
+    """Pace and HR in one figure, as two stacked panels sharing a date axis.
 
-    Pace uses the left axis and is inverted so faster paces point up;
-    heart rate uses the right axis. Category colours are shared: pace is
-    shown with filled dots and solid rolling means, HR with open dots and
-    dashed rolling means.
+    The top panel shows pace (inverted so faster paces point up); the
+    bottom panel shows average heart rate. Category colours are shared.
     """
     _require_data(points)
 
-    fig, ax = plt.subplots(figsize=(11, 6))
-    hr_ax = ax.twinx()
+    fig, (pace_ax, hr_ax) = plt.subplots(
+        2,
+        1,
+        sharex=True,
+        figsize=(11, 8),
+        gridspec_kw={"height_ratios": [3, 2]},
+    )
     plotted = False
-    has_hr = False
 
     for category in CHART_CATEGORIES:
         color = SUBT_COLORS[category]
@@ -503,7 +504,7 @@ def plot_subt(
             ]
 
             if bands:
-                ax.vlines(
+                pace_ax.vlines(
                     [day for day, _, _ in bands],
                     [low for _, low, _ in bands],
                     [high for _, _, high in bands],
@@ -514,7 +515,7 @@ def plot_subt(
                 )
 
                 for cap_index in (1, 2):
-                    ax.scatter(
+                    pace_ax.scatter(
                         [band[0] for band in bands],
                         [band[cap_index] for band in bands],
                         marker="_",
@@ -525,7 +526,7 @@ def plot_subt(
                     )
 
             if len(pace) >= 2:
-                ax.plot(
+                pace_ax.plot(
                     dates,
                     sma(values, window),
                     color=color,
@@ -534,7 +535,7 @@ def plot_subt(
                     zorder=2,
                 )
 
-            ax.scatter(
+            pace_ax.scatter(
                 dates,
                 values,
                 s=30,
@@ -553,7 +554,6 @@ def plot_subt(
             continue
 
         plotted = True
-        has_hr = True
         dates = [point.date for point in hr]
         values = [point.avg_hr for point in hr]
         bands = [
@@ -570,7 +570,6 @@ def plot_subt(
                 color=color,
                 alpha=0.3,
                 linewidth=1.1,
-                linestyle=":",
                 zorder=1,
             )
             hr_ax.scatter(
@@ -590,70 +589,39 @@ def plot_subt(
                 color=color,
                 alpha=0.55,
                 linewidth=1.8,
-                linestyle="--",
                 zorder=2,
             )
 
         hr_ax.scatter(
             dates,
             values,
-            s=36,
-            facecolors="none",
-            edgecolors=color,
-            linewidths=1.3,
+            s=30,
+            color=color,
             zorder=3,
         )
 
     if not plotted:
         raise ValueError("no data to plot")
 
-    ax.set_xlabel("date")
-    ax.set_ylabel("pace (min/km)")
-    ax.invert_yaxis()
-    ax.yaxis.set_major_formatter(FuncFormatter(_pace_tick))
-    hr_ax.set_ylabel("heart rate (bpm)")
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-
-    handles, labels = ax.get_legend_handles_labels()
-    handles.append(
-        Line2D(
-            [],
-            [],
-            color="black",
-            marker="o",
-            linestyle="None",
-            markersize=5,
-        )
-    )
-    labels.append("pace (filled)")
-
-    if has_hr:
-        handles.append(
-            Line2D(
-                [],
-                [],
-                color="black",
-                marker="o",
-                markerfacecolor="none",
-                linestyle="None",
-                markersize=6,
-            )
-        )
-        labels.append("HR (open)")
-
-    ax.legend(
-        handles,
-        labels,
+    pace_ax.set_title(title)
+    pace_ax.set_ylabel("pace (min/km)")
+    pace_ax.invert_yaxis()
+    pace_ax.yaxis.set_major_formatter(FuncFormatter(_pace_tick))
+    pace_ax.grid(True, alpha=0.3)
+    pace_ax.legend(
         loc="best",
         fontsize=9,
         framealpha=0.95,
         title=(
-            f"solid/dashed lines = {window}-session mean\n"
-            "ranges = pace fastest–slowest / HR max"
+            f"dots = sessions; lines = {window}-session mean\n"
+            "ranges = fastest–slowest pace / avg–max HR"
         ),
         title_fontsize=8,
     )
+
+    hr_ax.set_ylabel("heart rate (bpm)")
+    hr_ax.set_xlabel("date")
+    hr_ax.grid(True, alpha=0.3)
 
     fig.autofmt_xdate()
     return _save(fig, output)
