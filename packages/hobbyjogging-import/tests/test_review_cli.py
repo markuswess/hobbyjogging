@@ -1,7 +1,9 @@
 import contextlib
 import io
+import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter, open_database
@@ -262,6 +264,48 @@ class ReviewCliTests(unittest.TestCase):
         self.assertIn("a2", output)
         self.assertIn("0.8", output)
         self.assertIn("external_id", output)
+
+    def test_show_prints_activity_links(self):
+        intervals_record = self.seed_writer.upsert_source_record(
+            source="intervals",
+            record_type="activity",
+            external_id="i104800507",
+            checksum="c2",
+            import_run_id=self.run_id,
+        )
+        self.seed_writer.link_activity_source(
+            "a1",
+            intervals_record,
+            match_method="external_id",
+        )
+        started = datetime(2026, 10, 1, 6, 0, tzinfo=timezone.utc)
+        self.seed_writer.upsert_source_record(
+            source="garmin",
+            record_type="activity-file",
+            external_id="24926143497",
+            checksum="c3",
+            payload_json=json.dumps(
+                {"beginTimestamp": int(started.timestamp() * 1000)}
+            ),
+            raw_path="/tmp/garmin/24926143497.fit",
+            import_run_id=self.run_id,
+        )
+        self.seed_writer.connection.commit()
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "show",
+             str(self.quality_id)]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn(
+            "Intervals: https://intervals.icu/activities/i104800507",
+            output,
+        )
+        self.assertIn(
+            "Garmin: https://connect.garmin.com/app/activity/24926143497",
+            output,
+        )
 
     def test_show_unknown_item_errors(self):
         with self.assertRaises(SystemExit):

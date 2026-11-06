@@ -3,6 +3,7 @@
 import json
 
 from hobbyjogging_core import TrainingWriter, open_database
+from .links import garmin_url, intervals_url
 from .quality import MANUAL_FLAG, record_manual_flag
 
 
@@ -146,6 +147,16 @@ def _run_show(args, writer: TrainingWriter, parser) -> int:
     print(f"reported: {item['reported_at']}")
     if item["resolved_at"]:
         print(f"resolved: {item['resolved_at']} ({item['resolved_note']})")
+
+    links = [
+        ("Intervals", intervals_url(writer.connection, item)),
+        ("Garmin", garmin_url(writer.connection, item)),
+    ]
+    available = [(label, url) for label, url in links if url]
+    if available:
+        print("\nlinks:")
+        for label, url in available:
+            print(f"  {label}: {url}")
 
     print("\ndetail:")
     print(f"  {item['detail']}")

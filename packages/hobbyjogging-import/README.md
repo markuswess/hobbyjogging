@@ -214,8 +214,9 @@ written to the database immediately; quitting (or Ctrl-C) prints a summary.
 
 ```
 #10 warn field_conflict/open  2026-03-14  Gumpoldskirchen Running
-  (v) pick value  (i)nspect  (o)pen  (c)opy URL  (e)nter value
-  (d)elete  (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
+  (v) pick value  (i)nspect  (o)pen  (ci) Intervals  (cg) Garmin
+  (e)nter value  (d)elete  (r)esolve  (x)ignore  (n)ote  (s)kip
+  (h)elp  (q)uit > _
 ```
 
 - `(i)` shows the full item: activity values, all linked source records with
@@ -225,9 +226,15 @@ written to the database immediately; quitting (or Ctrl-C) prints a summary.
   written as a manual value, so the decision takes ownership of the field and
   later reimports cannot re-open the same conflict. The other conflict items
   for that activity stay in the queue.
-- `(o)` opens the Intervals activity (`https://intervals.icu/activities/<id>`)
-  in a browser; `(c)` copies the URL via `wl-copy`/`xclip`/`xsel` and echoes
-  it. Items linked only to FIT say "no Intervals activity".
+- `(o)` opens every available activity link in the browser. `(ci)` copies
+  the Intervals URL (`https://intervals.icu/activities/<id>`); `(cg)` copies
+  the Garmin Connect URL
+  (`https://connect.garmin.com/app/activity/<id>`). Both copy actions use
+  `wl-copy`/`xclip`/`xsel` and echo the URL. The Garmin link is resolved from
+  the `garmin fetch` manifest by file path or, for archive-imported
+  activities, by matching the manifest's `beginTimestamp` to the canonical
+  start; items without a manifest say "no Garmin activity linked".
+  `review show` prints the same links.
 - `(e)` manually fixes one value. The field prompt suggests the rule's field
   (`zero_duration` → duration, `zero_distance` → distance, `implied_pace` →
   sport); values parse as `46:20`, `1:02:03`, or seconds / `8.2km`, `8200m`,

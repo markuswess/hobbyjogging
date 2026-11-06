@@ -21,6 +21,10 @@ this file now tracks the remaining real-data steps.
   activity start through `max(--to, today + --plan-days)`; the default
   horizon is 182 days and `--plan-days 0` disables it. Activities and
   wellness keep the original range.
+- **Triage activity links.** `o` opens every available link; `ci` copies the
+  Intervals URL and `cg` copies the Garmin Connect URL. The Garmin id is
+  resolved from the `garmin fetch` manifest by file path, then by matching
+  `beginTimestamp` to the canonical start. `review show` prints both links.
 - Tests: import 160, core 79, reports 188 (all green).
 
 ## Remaining (real data, user)

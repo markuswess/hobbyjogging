@@ -1,8 +1,13 @@
 import json
 import unittest
+from datetime import datetime, timezone
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
-from hobbyjogging_import.triage import INTERVALS_URL, TriageRunner
+from hobbyjogging_import.triage import (
+    GARMIN_URL,
+    INTERVALS_URL,
+    TriageRunner,
+)
 
 
 class TriageTests(unittest.TestCase):
@@ -156,7 +161,8 @@ class TriageTests(unittest.TestCase):
         runner, lines, counters = self._runner(["h", "q"])
 
         joined = "\n".join(lines)
-        self.assertIn("(c)opy URL", joined)
+        self.assertIn("(ci)", joined)
+        self.assertIn("(cg)", joined)
         self.assertIn("(d)elete", joined)
 
     def test_unknown_key_reprompts(self):
@@ -181,7 +187,21 @@ class TriageTests(unittest.TestCase):
         )
         return intervals_record
 
-    def test_open_opens_intervals_activity_url(self):
+    def _seed_garmin_link(self, *, raw_path=None, begin_timestamp=None):
+        payload = {"activityId": 24926143497}
+        if begin_timestamp is not None:
+            payload["beginTimestamp"] = begin_timestamp
+        return self.writer.upsert_source_record(
+            source="garmin",
+            record_type="activity-file",
+            external_id="24926143497",
+            checksum="c3",
+            payload_json=json.dumps(payload),
+            raw_path=raw_path or "/tmp/garmin/24926143497.fit",
+            import_run_id=self.run_id,
+        )
+
+    def test_open_opens_intervals_when_only_link(self):
         self._seed_intervals_link()
         runner, lines, counters = self._runner(["o", "q"])
 
@@ -191,9 +211,28 @@ class TriageTests(unittest.TestCase):
         )
         self.assertIn("opened", "\n".join(lines))
 
-    def test_copy_puts_url_on_clipboard(self):
+    def test_open_opens_all_available_links(self):
         self._seed_intervals_link()
-        runner, lines, counters = self._runner(["c", "q"])
+        self._seed_garmin_link(raw_path="/tmp/run.fit")
+
+        runner, lines, counters = self._runner(["o", "q"])
+
+        self.assertEqual(
+            self.opened_urls,
+            [
+                INTERVALS_URL.format("i104800507"),
+                GARMIN_URL.format("24926143497"),
+            ],
+        )
+        joined = "\n".join(lines)
+        self.assertIn(
+            f"opened {GARMIN_URL.format('24926143497')}",
+            joined,
+        )
+
+    def test_copy_intervals_url(self):
+        self._seed_intervals_link()
+        runner, lines, counters = self._runner(["ci", "q"])
 
         self.assertEqual(
             self.copied_texts[:1],
@@ -201,11 +240,63 @@ class TriageTests(unittest.TestCase):
         )
         self.assertIn("(via wl-copy)", "\n".join(lines))
 
-    def test_fit_only_items_report_no_intervals_link(self):
-        runner, lines, counters = self._runner(["o", "q"])
+    def test_copy_garmin_url_by_path(self):
+        self._seed_garmin_link(raw_path="/tmp/run.fit")
+        runner, lines, counters = self._runner(["cg", "q"])
+
+        self.assertEqual(
+            self.copied_texts[:1],
+            [GARMIN_URL.format("24926143497")],
+        )
+
+    def test_copy_garmin_url_by_start_time(self):
+        started = datetime(
+            2019, 1, 30, 18, 0, tzinfo=timezone.utc
+        )
+        self._seed_garmin_link(
+            begin_timestamp=int(started.timestamp() * 1000),
+        )
+
+        runner, lines, counters = self._runner(["cg", "q"])
+
+        self.assertEqual(
+            self.copied_texts[:1],
+            [GARMIN_URL.format("24926143497")],
+        )
+
+    def test_item_without_links_reports_none(self):
+        runner, lines, counters = self._runner(["o", "ci", "cg", "q"])
 
         self.assertEqual([], self.opened_urls)
-        self.assertIn("no Intervals activity", "\n".join(lines))
+        self.assertEqual([], self.copied_texts)
+        joined = "\n".join(lines)
+        self.assertIn("no web link available", joined)
+        self.assertIn("no Intervals activity", joined)
+        self.assertIn("no Garmin activity", joined)
+
+    def test_key_line_only_lists_available_links(self):
+        runner, lines, counters = self._runner(["q"])
+        joined = "\n".join(lines)
+        self.assertNotIn("(ci)", joined)
+        self.assertNotIn("(cg)", joined)
+
+        self._seed_intervals_link()
+        runner, lines, counters = self._runner(["q"])
+        joined = "\n".join(lines)
+        self.assertIn("(ci)", joined)
+        self.assertNotIn("(cg)", joined)
+
+        self._seed_garmin_link(raw_path="/tmp/run.fit")
+        runner, lines, counters = self._runner(["q"])
+        joined = "\n".join(lines)
+        self.assertIn("(ci)", joined)
+        self.assertIn("(cg)", joined)
+
+    def test_old_copy_key_points_to_new_commands(self):
+        runner, lines, counters = self._runner(["c", "q"])
+
+        self.assertEqual([], self.copied_texts)
+        self.assertIn("use ci", "\n".join(lines))
 
     # -- edit ---------------------------------------------------------------
 

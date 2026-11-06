@@ -4,8 +4,8 @@ One open review item at a time, each decision written immediately:
 
     #1 warn quality/open  2019-01-30  Run  (no timing data: duration is 0 s)
       activity 5d459fa1  fit:2019-01-30_18-02-00.fit
-      (i)nspect  (o)pen  (c)opy URL  (e)nter valid time  (d)elete
-      (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
+      (i)nspect  (o)pen  (ci) Intervals  (cg) Garmin  (e)nter valid time
+      (d)elete  (r)esolve  (x)ignore  (n)ote  (s)kip  (h)elp  (q)uit > _
 """
 
 from __future__ import annotations
@@ -18,6 +18,13 @@ from hobbyjogging_core import TrainingWriter
 
 from .clipboard import copy_text
 from .editing import apply_manual_edit
+from .links import (
+    GARMIN_URL,
+    INTERVALS_URL,
+    garmin_manifest_index,
+    garmin_url,
+    intervals_url,
+)
 from .quality import CONFLICT
 from .review_cli import _format_summary_line
 from .values import (
@@ -27,14 +34,13 @@ from .values import (
     parse_sport,
 )
 
-INTERVALS_URL = "https://intervals.icu/activities/{}"
-
 KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
   (v) pick value   field conflict: choose which source value stands
-  (o)pen           open the Intervals activity in a browser
-  (c)opy URL       copy the Intervals activity URL to the clipboard
+  (o)pen           open all available activity links
+  (ci)             copy the Intervals activity URL
+  (cg)             copy the Garmin Connect activity URL
   (e)nter value    manually edit duration/distance/sport, then re-check
   (d)elete         durably exclude the activity (soft delete)
   (r)esolve        mark handled (activity returns to reports)
@@ -96,6 +102,8 @@ class TriageRunner:
         self.copy = copy
         self.counters: dict[str, int] = {}
         self.pending_note = ""
+        self._garmin_index = None
+        self._garmin_urls: dict[str, str | None] = {}
 
     def run(
         self,
@@ -188,11 +196,13 @@ class TriageRunner:
             keys.append("(v) pick value")
         if self._candidates(item):
             keys.append(f"(1-{len(self._candidates(item))}) choose")
+        keys.extend(["(i)nspect", "(o)pen"])
+        if self._intervals_url(item):
+            keys.append("(ci) Intervals")
+        if self._garmin_url(item):
+            keys.append("(cg) Garmin")
         keys.extend(
             [
-                "(i)nspect",
-                "(o)pen",
-                "(c)opy URL",
                 "(e)nter value",
                 "(d)elete",
                 "(r)esolve",
@@ -242,8 +252,16 @@ class TriageRunner:
             self._open(item)
             return False
 
+        if answer == "ci":
+            self._copy_url(item, "intervals")
+            return False
+
+        if answer == "cg":
+            self._copy_url(item, "garmin")
+            return False
+
         if answer == "c":
-            self._copy_url(item)
+            self.print("  use ci (Intervals) or cg (Garmin)")
             return False
 
         if answer == "e":
@@ -484,45 +502,58 @@ class TriageRunner:
         ).fetchall()
 
     def _open(self, item) -> None:
-        url = self._intervals_url(item)
-        if url is None:
-            self.print("  no Intervals activity linked to this item")
+        urls = [
+            url
+            for url in (
+                self._intervals_url(item),
+                self._garmin_url(item),
+            )
+            if url
+        ]
+        if not urls:
+            self.print("  no web link available")
             return
-        self.open_url(url)
-        self._count("opened")
-        self.print(f"  opened {url}")
 
-    def _copy_url(self, item) -> None:
-        url = self._intervals_url(item)
+        for url in urls:
+            self.open_url(url)
+            self.print(f"  opened {url}")
+        self._count("opened")
+
+    def _copy_url(self, item, kind: str) -> None:
+        if kind == "intervals":
+            url = self._intervals_url(item)
+            label = "Intervals"
+        else:
+            url = self._garmin_url(item)
+            label = "Garmin"
+
         if url is None:
-            self.print("  no Intervals activity linked to this item")
+            self.print(f"  no {label} activity linked to this item")
             return
+
         tool = self.copy(url)
         self._count("copied")
         self.print(f"  copied {url}" + (f" (via {tool})" if tool else ""))
 
     def _intervals_url(self, item) -> str | None:
-        if item["record_source"] == "intervals" and item["external_id"]:
-            return INTERVALS_URL.format(item["external_id"])
+        return intervals_url(self.writer.connection, item)
 
+    def _garmin_url(self, item) -> str | None:
         activity_id = item["activity_id"]
         if not activity_id:
             return None
 
-        row = self.writer.connection.execute(
-            """
-            SELECT sr.external_id
-            FROM activity_sources als
-            JOIN source_records sr ON sr.id = als.source_record_id
-            WHERE als.activity_id = ? AND sr.source = 'intervals'
-            ORDER BY als.is_primary DESC, sr.id
-            LIMIT 1
-            """,
-            (activity_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        return INTERVALS_URL.format(row["external_id"])
+        if activity_id not in self._garmin_urls:
+            if self._garmin_index is None:
+                self._garmin_index = garmin_manifest_index(
+                    self.writer.connection
+                )
+            self._garmin_urls[activity_id] = garmin_url(
+                self.writer.connection,
+                item,
+                index=self._garmin_index,
+            )
+        return self._garmin_urls[activity_id]
 
     def _ask_note(self) -> None:
         try:
