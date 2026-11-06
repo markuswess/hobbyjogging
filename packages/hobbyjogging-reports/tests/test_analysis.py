@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from functools import partial
 
 from hobbyjogging_report.analysis import (
+    daily_planned_load,
     daily_run_distance,
     daily_run_time,
     daily_training_load,
@@ -10,19 +11,22 @@ from hobbyjogging_report.analysis import (
     is_lt1_activity,
     load_metrics,
     average_warmup_days,
+    planned_workout_dates,
     recovery_trends,
     subt_session_point,
     subt_work_points,
     time_averages,
     week_bounds,
     week_start,
+    weekly_planned_distance,
+    weekly_planned_time,
     weekly_run_distance,
     weekly_time_by_zone,
     work_intervals,
     zone_time_averages,
 )
 from hobbyjogging_report.model import AverageWindows
-from hobbyjogging_core.model import Activity, WellnessDay
+from hobbyjogging_core.model import Activity, Event, WellnessDay
 from support import make_interval
 
 D = date(2026, 10, 1)
@@ -519,6 +523,146 @@ class WeeklyVolumeTests(unittest.TestCase):
                 (date(2026, 10, 5), 3.0),
             ],
             weekly_run_distance(activities),
+        )
+
+
+class PlannedWorkoutTests(unittest.TestCase):
+
+    def test_weekly_planned_distance_groups_weeks_and_skips_non_runs(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                distance_m=5000,
+            ),
+            Event(
+                date=date(2026, 10, 4),
+                type="run",
+                distance_m=5000,
+            ),
+            Event(
+                date=date(2026, 10, 5),
+                type="run",
+                distance_m=3000,
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="ride",
+                distance_m=20000,
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="run",
+                distance_m=None,
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="",
+                distance_m=None,
+            ),
+        ]
+
+        self.assertEqual(
+            [
+                (date(2026, 9, 28), 10.0),
+                (date(2026, 10, 5), 3.0),
+            ],
+            weekly_planned_distance(
+                events,
+                date(2026, 9, 1),
+                date(2026, 10, 31),
+            ),
+        )
+
+    def test_weekly_planned_time_sums_running_duration(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                duration_s=3000,
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="run",
+                duration_s=1800,
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="ride",
+                duration_s=7200,
+            ),
+        ]
+
+        self.assertEqual(
+            [(date(2026, 9, 28), 4800)],
+            weekly_planned_time(
+                events,
+                date(2026, 9, 1),
+                date(2026, 10, 31),
+            ),
+        )
+
+    def test_daily_planned_load_sums_all_sports(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                training_load=34,
+            ),
+            Event(
+                date=date(2026, 9, 28),
+                type="ride",
+                training_load=20,
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="run",
+                training_load=None,
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="",
+                training_load=10,
+            ),
+        ]
+
+        self.assertEqual(
+            [(date(2026, 9, 28), 54)],
+            daily_planned_load(
+                events,
+                date(2026, 9, 1),
+                date(2026, 10, 31),
+            ),
+        )
+
+    def test_planned_workout_dates_skips_notes_and_keeps_duplicates(self):
+        events = [
+            Event(date=date(2026, 9, 28), type="run"),
+            Event(date=date(2026, 9, 29), type=""),
+            Event(date=date(2026, 9, 28), type="run"),
+        ]
+
+        self.assertEqual(
+            [date(2026, 9, 28), date(2026, 9, 28)],
+            planned_workout_dates(
+                events,
+                date(2026, 9, 1),
+                date(2026, 10, 31),
+            ),
+        )
+
+    def test_events_outside_range_are_ignored(self):
+        events = [
+            Event(
+                date=date(2026, 11, 5),
+                type="run",
+                distance_m=5000,
+            ),
+        ]
+
+        self.assertEqual(
+            [],
+            weekly_planned_distance(events, D, date(2026, 10, 31)),
         )
 
 

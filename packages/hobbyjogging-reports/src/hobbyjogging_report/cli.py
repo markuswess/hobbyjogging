@@ -6,6 +6,8 @@ from datetime import date, timedelta
 from .model import AverageWindows
 from .sources import DEFAULT_SOURCE, SOURCE_CHOICES
 
+DEFAULT_PLANNED_DAYS = 28
+
 
 def date_arg(value: str) -> date:
     """Parse a YYYY-MM-DD command-line date."""
@@ -140,6 +142,13 @@ def _window_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-days", type=int, default=182)
     parser.add_argument("--fitness-days", type=int, default=42)
     parser.add_argument("--fatigue-days", type=int, default=7)
+    parser.add_argument(
+        "--planned-days",
+        type=int,
+        default=DEFAULT_PLANNED_DAYS,
+        help="extend the chart this many days into the future for planned "
+        "workouts (ignored with --to)",
+    )
     return parser
 
 
@@ -156,12 +165,23 @@ def _window_options(args) -> AverageWindows:
     return windows
 
 
+def _planned_end(args, end: date) -> date:
+    """Extend the chart end for planned workouts unless --to was given."""
+    if args.planned_days < 0:
+        raise ValueError("--planned-days must be zero or greater")
+
+    if args.end is not None:
+        return end
+
+    return end + timedelta(days=args.planned_days)
+
+
 def _range_output(
     args,
     default_output: str,
     default_days: int,
     today: date | None,
-) -> tuple[str, date, date]:
+) -> tuple[str, date, date, date]:
     days = (
         args.days_option
         if args.days_option is not None
@@ -170,7 +190,7 @@ def _range_output(
     start, end = resolve_range(days, args.start, args.end, today=today)
     output = args.output_option or args.output or default_output
 
-    return output, start, end
+    return output, start, end, _planned_end(args, end)
 
 
 def parse_load_args(
@@ -178,19 +198,19 @@ def parse_load_args(
     default_output: str = "load.png",
     default_days: int = 180,
     today: date | None = None,
-) -> tuple[str, date, date, AverageWindows]:
-    """Parse output, range, and EWMA windows for the load chart."""
+) -> tuple[str, date, date, date, AverageWindows]:
+    """Parse output, range, EWMA windows, and planned horizon."""
     parser = _window_parser()
     args = parser.parse_args(argv)
     windows = _window_options(args)
-    output, start, end = _range_output(
+    output, start, end, planned_end = _range_output(
         args,
         default_output,
         default_days,
         today,
     )
 
-    return output, start, end, windows
+    return output, start, end, planned_end, windows
 
 
 def parse_time_args(
@@ -198,8 +218,8 @@ def parse_time_args(
     default_output: str = "time.png",
     default_days: int = 90,
     today: date | None = None,
-) -> tuple[str, date, date, AverageWindows, int, str]:
-    """Parse output, range, windows, zone count, and zone window."""
+) -> tuple[str, date, date, date, AverageWindows, int, str]:
+    """Parse output, range, planned horizon, windows, zones, zone window."""
     parser = _window_parser()
     parser.add_argument("--zones", type=int, default=4)
     parser.add_argument(
@@ -213,7 +233,7 @@ def parse_time_args(
     if args.zones <= 0:
         raise ValueError("--zones must be positive")
 
-    output, start, end = _range_output(
+    output, start, end, planned_end = _range_output(
         args,
         default_output,
         default_days,
@@ -224,6 +244,7 @@ def parse_time_args(
         output,
         start,
         end,
+        planned_end,
         windows,
         args.zones,
         args.zone_window,
@@ -235,22 +256,29 @@ def parse_recovery_args(
     default_output: str = "recovery.png",
     default_days: int = 90,
     today: date | None = None,
-) -> tuple[str, date, date, int]:
-    """Parse output, range, and rolling window for the recovery chart."""
+) -> tuple[str, date, date, date, int]:
+    """Parse output, range, planned horizon, and rolling window."""
     parser = range_parser()
     parser.add_argument("output", nargs="?")
     parser.add_argument("--output", dest="output_option")
     parser.add_argument("--window", type=int, default=7)
+    parser.add_argument(
+        "--planned-days",
+        type=int,
+        default=DEFAULT_PLANNED_DAYS,
+        help="extend the chart this many days into the future for planned "
+        "workouts (ignored with --to)",
+    )
     args = parser.parse_args(argv)
 
     if args.window <= 0:
         raise ValueError("--window must be positive")
 
-    output, start, end = _range_output(
+    output, start, end, planned_end = _range_output(
         args,
         default_output,
         default_days,
         today,
     )
 
-    return output, start, end, args.window
+    return output, start, end, planned_end, args.window

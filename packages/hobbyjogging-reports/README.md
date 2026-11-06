@@ -42,13 +42,15 @@ reports:
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **volume** — Weekly running volume chart with 182/42/7-day
-  distance averages overlaid; last 90 days by default.
+  distance averages and the planned weekly distance; last 90 days by
+  default.
 - **load** — Daily training load with 182-day base, 42-day fitness,
-  and 7-day fatigue exponentially weighted averages.
+  and 7-day fatigue exponentially weighted averages, plus planned load.
 - **time** — Weekly running time stacked by HR zone, with
-  182/42/7-day time averages and a per-zone EWMA panel.
+  182/42/7-day time averages, a per-zone EWMA panel, and planned weekly
+  time.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
-  calendar-day average.
+  calendar-day average and planned-workout markers.
 - **subt-pace** — subT and LT1 work interval pace over the last 365
   days by default, with per-session dots color-coded by rep length
   (short/medium/long) or LT1, vertical bars showing the fastest and
@@ -135,6 +137,7 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh                          # weekly volume, last 90 days
     ./charts.sh volume --days 90
     ./charts.sh volume --output dist.png
+    ./charts.sh volume --planned-days 0
     ./charts.sh load --days 180
     ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
     ./charts.sh time --days 90
@@ -204,6 +207,26 @@ date axis:
 
 Missing values are skipped rather than treated as zero, so a gap in the
 wellness data does not pull an average down.
+
+### Planned workouts
+
+The volume, load, time, and recovery charts include planned workouts.
+Unless `--to` is given, they extend the right edge of the chart by
+`--planned-days N` (default 28); `--planned-days 0` disables the
+extension.
+
+- **volume** — planned running distance per Monday–Sunday week, as a
+  dashed target line.
+- **time** — planned running time per week, as an outlined bar over the
+  actual zone stack. Planned zones are unknown, so the outline shows
+  total time only.
+- **load** — planned load per day for all sports, as outlined daily
+  bars.
+- **recovery** — one tick per planned workout along the bottom of the
+  sleep panel.
+
+Events without a sport type (illness or travel notes) are ignored.
+The volume chart also skips planned events without a distance.
 
 ### Data source selection
 

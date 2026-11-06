@@ -18,6 +18,7 @@ Examples:
   ./charts.sh volume
   ./charts.sh volume --days 90
   ./charts.sh volume --output volume.png
+  ./charts.sh volume --planned-days 0
   ./charts.sh subt-pace --days 365
   ./charts.sh subt-pace --output subt.png
   ./charts.sh subt-hr --from 2026-01-01 --to 2026-06-30 --output hr.png
@@ -29,9 +30,12 @@ Examples:
   ./charts.sh subt-pace --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
-direct CLI. The load, volume, and time charts also accept --base-days /
---fitness-days / --fatigue-days. The time chart also accepts --zones and
---zone-window base|fitness|fatigue. The recovery chart accepts --window.
+direct CLI. The volume, load, time, and recovery charts include planned
+workouts and accept --planned-days N (default 28, ignored with --to; 0
+disables the future extension). The load, volume, and time charts also
+accept --base-days / --fitness-days / --fatigue-days. The time chart also
+accepts --zones and --zone-window base|fitness|fatigue. The recovery chart
+accepts --window.
 EOF
 }
 

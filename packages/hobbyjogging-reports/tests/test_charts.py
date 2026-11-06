@@ -88,6 +88,11 @@ class VolumeChartTests(unittest.TestCase):
                 data,
                 str(output),
                 distance_points=distance_points,
+                planned_distance=[
+                    (date(2026, 1, 5), 45.0),
+                    (date(2026, 1, 12), 50.0),
+                    (date(2026, 1, 19), 55.0),
+                ],
                 windows=AverageWindows(),
             )
 
@@ -131,6 +136,11 @@ class TimeChartTests(unittest.TestCase):
                 weeks,
                 str(output),
                 time_points=points,
+                planned_time=[
+                    (date(2026, 1, 5), 7200),
+                    (date(2026, 1, 12), 8100),
+                    (date(2026, 1, 19), 9000),
+                ],
                 zone_points=zone_points,
                 zone_window_days=42,
                 windows=AverageWindows(),
@@ -160,6 +170,11 @@ class LoadChartTests(unittest.TestCase):
             result = plot_load(
                 points,
                 str(output),
+                planned_load=[
+                    (D, 55),
+                    (date(2026, 1, 2), 70),
+                    (date(2026, 1, 4), 60),
+                ],
                 windows=AverageWindows(base=182, fitness=42, fatigue=7),
             )
 
@@ -202,6 +217,7 @@ class RecoveryChartTests(unittest.TestCase):
             result = plot_recovery(
                 points,
                 str(output),
+                planned_dates=[D, date(2026, 1, 2)],
                 window_days=7,
             )
 

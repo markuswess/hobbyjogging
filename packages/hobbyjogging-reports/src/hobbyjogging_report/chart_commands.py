@@ -19,6 +19,7 @@ def run_volume_chart(
     source: DataSource,
     windows: AverageWindows,
     *,
+    planned_end: date | None = None,
     include_review: bool = False,
 ) -> None:
     """Render weekly running volume with distance-average lines."""
@@ -26,11 +27,15 @@ def run_volume_chart(
         average_warmup_days,
         distance_averages,
         week_bounds,
+        weekly_planned_distance,
         weekly_run_distance,
     )
     from .charts import plot_volume
 
+    planned_end = planned_end or end
     chart_start, chart_end = week_bounds(start, end)
+    _, planned_chart_end = week_bounds(start, planned_end)
+    planned_chart_end = max(chart_end, planned_chart_end)
     warmup_days = average_warmup_days(windows)
 
     display_activities, activities = warmup_reviewed(
@@ -49,10 +54,17 @@ def run_volume_chart(
         warmup_days=warmup_days,
     )
 
+    events = source.events(chart_start, planned_chart_end)
+
     path = plot_volume(
         weekly_run_distance(display_activities),
         output=output,
         distance_points=points,
+        planned_distance=weekly_planned_distance(
+            events,
+            chart_start,
+            planned_chart_end,
+        ),
         windows=windows,
         ylabel="km / week",
     )
@@ -69,6 +81,7 @@ def run_time_chart(
     zones: int,
     zone_window: str,
     *,
+    planned_end: date | None = None,
     include_review: bool = False,
 ) -> None:
     """Render weekly running time stacked by HR zone."""
@@ -77,12 +90,16 @@ def run_time_chart(
         average_warmup_days,
         time_averages,
         week_bounds,
+        weekly_planned_time,
         weekly_time_by_zone,
         zone_time_averages,
     )
     from .charts import plot_time
 
+    planned_end = planned_end or end
     chart_start, chart_end = week_bounds(start, end)
+    _, planned_chart_end = week_bounds(start, planned_end)
+    planned_chart_end = max(chart_end, planned_chart_end)
     warmup_days = average_warmup_days(windows)
 
     display_activities, activities = warmup_reviewed(
@@ -130,10 +147,17 @@ def run_time_chart(
         zone_count=zones,
     )
 
+    events = source.events(chart_start, planned_chart_end)
+
     path = plot_time(
         weeks,
         output=output,
         time_points=points,
+        planned_time=weekly_planned_time(
+            events,
+            chart_start,
+            planned_chart_end,
+        ),
         zone_points=zone_points,
         zone_window_days=zone_window_days,
         windows=windows,
@@ -148,11 +172,14 @@ def run_recovery_chart(
     end: date,
     source: DataSource,
     window_days: int,
+    *,
+    planned_end: date | None = None,
 ) -> None:
     """Render HRV, resting HR, and sleep trends."""
-    from .analysis import recovery_trends
+    from .analysis import planned_workout_dates, recovery_trends
     from .charts import plot_recovery
 
+    planned_end = planned_end or end
     wellness = source.wellness(
         start - timedelta(days=window_days - 1),
         end,
@@ -164,9 +191,12 @@ def run_recovery_chart(
         window_days=window_days,
     )
 
+    events = source.events(start, planned_end)
+
     path = plot_recovery(
         points,
         output=output,
+        planned_dates=planned_workout_dates(events, start, planned_end),
         window_days=window_days,
     )
 
@@ -230,12 +260,18 @@ def run_load_chart(
     source: DataSource,
     windows: AverageWindows,
     *,
+    planned_end: date | None = None,
     include_review: bool = False,
 ) -> None:
     """Render daily load and its base/fitness/fatigue EWMA lines."""
-    from .analysis import average_warmup_days, load_metrics
+    from .analysis import (
+        average_warmup_days,
+        daily_planned_load,
+        load_metrics,
+    )
     from .charts import plot_load
 
+    planned_end = planned_end or end
     warmup_days = average_warmup_days(windows)
 
     display_activities, activities = warmup_reviewed(
@@ -266,51 +302,55 @@ def run_load_chart(
         warmup_days=warmup_days,
     )
 
-    path = plot_load(points, output=output, windows=windows)
+    events = source.events(start, planned_end)
+
+    path = plot_load(
+        points,
+        output=output,
+        planned_load=daily_planned_load(events, start, planned_end),
+        windows=windows,
+    )
     print(path)
 
 
-def run_recovery_command(parsed, source, include_review):
-    """Recovery has a trailing scalars argument, so no positional forwarding."""
-    output, start, end, window_days = parsed
-    run_recovery_chart(
-        output,
-        start,
-        end,
-        source,
-        window_days,
-    )
-    return None
-
-
 def run_volume_command(parsed, source, include_review):
-    output, start, end, windows = parsed
+    output, start, end, planned_end, windows = parsed
     run_volume_chart(
         output,
         start,
         end,
         source,
         windows,
+        planned_end=planned_end,
         include_review=include_review,
     )
     return None
 
 
 def run_load_command(parsed, source, include_review):
-    output, start, end, windows = parsed
+    output, start, end, planned_end, windows = parsed
     run_load_chart(
         output,
         start,
         end,
         source,
         windows,
+        planned_end=planned_end,
         include_review=include_review,
     )
     return None
 
 
 def run_time_command(parsed, source, include_review):
-    output, start, end, windows, zones, zone_window = parsed
+    (
+        output,
+        start,
+        end,
+        planned_end,
+        windows,
+        zones,
+        zone_window,
+    ) = parsed
     run_time_chart(
         output,
         start,
@@ -319,19 +359,22 @@ def run_time_command(parsed, source, include_review):
         windows,
         zones,
         zone_window,
+        planned_end=planned_end,
         include_review=include_review,
     )
     return None
 
 
 def run_recovery_command(parsed, source, include_review):
-    output, start, end, window_days = parsed
+    """Recovery has a trailing scalars argument, so no positional forwarding."""
+    output, start, end, planned_end, window_days = parsed
     run_recovery_chart(
         output,
         start,
         end,
         source,
         window_days,
+        planned_end=planned_end,
     )
     return None
 

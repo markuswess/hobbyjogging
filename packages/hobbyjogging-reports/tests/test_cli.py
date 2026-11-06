@@ -191,15 +191,19 @@ class ChartArgsTests(unittest.TestCase):
 class LoadArgsTests(unittest.TestCase):
 
     def test_defaults(self):
-        output, start, end, windows = parse_load_args([], today=TODAY)
+        output, start, end, planned_end, windows = parse_load_args(
+            [],
+            today=TODAY,
+        )
 
         self.assertEqual("load.png", output)
         self.assertEqual(TODAY - timedelta(days=180), start)
         self.assertEqual(TODAY, end)
+        self.assertEqual(TODAY + timedelta(days=28), planned_end)
         self.assertEqual(AverageWindows(), windows)
 
     def test_custom_windows_and_output(self):
-        output, start, end, windows = parse_load_args(
+        output, start, end, planned_end, windows = parse_load_args(
             [
                 "--days", "30",
                 "--base-days", "100",
@@ -213,13 +217,14 @@ class LoadArgsTests(unittest.TestCase):
         self.assertEqual("custom.png", output)
         self.assertEqual(TODAY - timedelta(days=30), start)
         self.assertEqual(TODAY, end)
+        self.assertEqual(TODAY + timedelta(days=28), planned_end)
         self.assertEqual(
             AverageWindows(base=100, fitness=20, fatigue=5),
             windows,
         )
 
     def test_positional_output(self):
-        output, _, _, _ = parse_load_args(
+        output, _, _, _, _ = parse_load_args(
             ["load.png"],
             today=TODAY,
         )
@@ -233,6 +238,35 @@ class LoadArgsTests(unittest.TestCase):
                 today=TODAY,
             )
 
+    def test_explicit_to_is_not_extended(self):
+        _, _, end, planned_end, _ = parse_load_args(
+            ["--to", "2026-10-31"],
+            today=TODAY,
+        )
+
+        self.assertEqual(date(2026, 10, 31), end)
+        self.assertEqual(end, planned_end)
+
+    def test_planned_days_can_be_disabled(self):
+        _, _, end, planned_end, _ = parse_load_args(
+            ["--planned-days", "0"],
+            today=TODAY,
+        )
+
+        self.assertEqual(end, planned_end)
+
+    def test_custom_planned_days(self):
+        _, _, end, planned_end, _ = parse_load_args(
+            ["--planned-days", "14"],
+            today=TODAY,
+        )
+
+        self.assertEqual(end + timedelta(days=14), planned_end)
+
+    def test_rejects_negative_planned_days(self):
+        with self.assertRaises(ValueError):
+            parse_load_args(["--planned-days", "-1"], today=TODAY)
+
 
 class TimeArgsTests(unittest.TestCase):
 
@@ -241,6 +275,7 @@ class TimeArgsTests(unittest.TestCase):
             output,
             start,
             end,
+            planned_end,
             windows,
             zones,
             zone_window,
@@ -249,6 +284,7 @@ class TimeArgsTests(unittest.TestCase):
         self.assertEqual("time.png", output)
         self.assertEqual(TODAY - timedelta(days=90), start)
         self.assertEqual(TODAY, end)
+        self.assertEqual(TODAY + timedelta(days=28), planned_end)
         self.assertEqual(AverageWindows(), windows)
         self.assertEqual(4, zones)
         self.assertEqual("fitness", zone_window)
@@ -256,6 +292,7 @@ class TimeArgsTests(unittest.TestCase):
     def test_custom_zones_and_zone_window(self):
         (
             output,
+            _,
             _,
             _,
             _,
@@ -282,7 +319,7 @@ class TimeArgsTests(unittest.TestCase):
 class RecoveryArgsTests(unittest.TestCase):
 
     def test_defaults(self):
-        output, start, end, window = parse_recovery_args(
+        output, start, end, planned_end, window = parse_recovery_args(
             [],
             today=TODAY,
         )
@@ -290,16 +327,26 @@ class RecoveryArgsTests(unittest.TestCase):
         self.assertEqual("recovery.png", output)
         self.assertEqual(TODAY - timedelta(days=90), start)
         self.assertEqual(TODAY, end)
+        self.assertEqual(TODAY + timedelta(days=28), planned_end)
         self.assertEqual(7, window)
 
     def test_custom_window_and_output(self):
-        output, _, _, window = parse_recovery_args(
+        output, _, _, _, window = parse_recovery_args(
             ["--window", "14", "--output", "hrv.png"],
             today=TODAY,
         )
 
         self.assertEqual("hrv.png", output)
         self.assertEqual(14, window)
+
+    def test_explicit_to_is_not_extended(self):
+        _, _, end, planned_end, _ = parse_recovery_args(
+            ["--to", "2026-10-31"],
+            today=TODAY,
+        )
+
+        self.assertEqual(date(2026, 10, 31), end)
+        self.assertEqual(end, planned_end)
 
     def test_rejects_non_positive_window(self):
         with self.assertRaises(ValueError):

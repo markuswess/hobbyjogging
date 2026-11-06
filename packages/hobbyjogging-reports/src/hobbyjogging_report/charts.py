@@ -4,6 +4,7 @@ Charts consume plain analysis output only. They know nothing about the data
 source, so they keep working when the source is swapped.
 """
 
+from collections import defaultdict
 from datetime import date, timedelta
 
 import matplotlib
@@ -105,6 +106,63 @@ def _weekly_bars(
     )
 
 
+def _planned_week_lines(ax, weeks, *, label: str) -> None:
+    """Draw one dashed target line per planned week."""
+    for index, (week, value) in enumerate(weeks):
+        ax.plot(
+            [week, week + timedelta(days=7)],
+            [value, value],
+            color="black",
+            linestyle="--",
+            linewidth=1.5,
+            alpha=0.75,
+            label=label if index == 0 else None,
+            zorder=3,
+        )
+
+
+def _planned_bars(ax, values, *, label: str) -> None:
+    """Draw outlined bars for planned totals on top of the actual bars."""
+    ax.bar(
+        [day for day, _ in values],
+        [value for _, value in values],
+        width=7,
+        align="edge",
+        facecolor="none",
+        edgecolor="black",
+        linestyle="--",
+        linewidth=1.4,
+        alpha=0.8,
+        label=label,
+        zorder=4,
+    )
+
+
+def _planned_rug(ax, dates: list[date], *, label: str = "planned") -> None:
+    """Mark planned sessions along the bottom of an axis."""
+    if not dates:
+        return
+
+    levels: dict[date, int] = defaultdict(int)
+
+    for day in sorted(dates):
+        level = levels[day]
+        levels[day] += 1
+        ax.vlines(
+            day,
+            0.01 + level * 0.03,
+            0.05 + level * 0.03,
+            transform=ax.get_xaxis_transform(),
+            color="black",
+            linewidth=2,
+            alpha=0.7,
+            zorder=4,
+        )
+
+    # Add a legend handle without inventing a visible data point.
+    ax.plot([], [], color="black", linewidth=2, alpha=0.7, label=label)
+
+
 def _plot_average_lines(ax, points, windows, *, scale: float = 1.0, label):
     dates = [point.date for point in points]
 
@@ -140,6 +198,7 @@ def plot_volume(
     output: str,
     *,
     distance_points: list[DistancePoint] | None = None,
+    planned_distance: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
     distance_scale: float = 7.0,
     ylabel: str = "km / week",
@@ -148,15 +207,16 @@ def plot_volume(
     """Weekly running volume bars with distance-average lines.
 
     Daily distance averages are multiplied by ``distance_scale`` (default 7)
-    so they are directly comparable to the weekly bars.
+    so they are directly comparable to the weekly bars. Planned weekly
+    distance is drawn as a dashed target line.
     """
     _require_data(data, distance_points)
 
     windows = windows or AverageWindows()
     fig, ax = plt.subplots(figsize=(12, 5))
+    weeks = [week for week, _ in data]
 
     if data:
-        weeks = [week for week, _ in data]
         values = [value for _, value in data]
         _weekly_bars(
             ax,
@@ -167,6 +227,9 @@ def plot_volume(
             edge_width=0.8,
         )
 
+    if planned_distance:
+        _planned_week_lines(ax, planned_distance, label="planned km")
+
     if distance_points:
         _plot_average_lines(
             ax,
@@ -176,8 +239,12 @@ def plot_volume(
             label=lambda attribute, days: f"{days}d avg (weekly)",
         )
 
-    if data:
-        _style_week_axis(ax, weeks)
+    axis_weeks = sorted(
+        set(weeks) | {week for week, _ in planned_distance or []}
+    )
+
+    if axis_weeks:
+        _style_week_axis(ax, axis_weeks)
 
     ax.set_xlabel("week starting (Monday)")
     _finish_week_axis(fig, ax, title=title, ylabel=ylabel)
@@ -189,6 +256,7 @@ def plot_time(
     output: str,
     *,
     time_points: list[TimePoint] | None = None,
+    planned_time: list[tuple[date, float]] | None = None,
     zone_points: list[ZoneAveragePoint] | None = None,
     zone_window_days: int | None = None,
     windows: AverageWindows | None = None,
@@ -197,7 +265,10 @@ def plot_time(
     ylabel: str = "hours / week",
     title: str = "Weekly running time",
 ) -> str:
-    """Weekly running time stacked by HR zone with zone EWMA lines."""
+    """Weekly running time stacked by HR zone with zone EWMA lines.
+
+    Planned weekly time is drawn as an outlined bar over the actual stack.
+    """
     _require_data(weeks, time_points)
 
     windows = windows or AverageWindows()
@@ -253,7 +324,20 @@ def plot_time(
                 bottom=bottoms,
             )
 
-        _style_week_axis(ax, week_dates)
+    if planned_time:
+        _planned_bars(
+            ax,
+            [(week, seconds / 3600) for week, seconds in planned_time],
+            label="planned",
+        )
+
+    axis_weeks = sorted(
+        set(week_dates if weeks else [])
+        | {week for week, _ in planned_time or []}
+    )
+
+    if axis_weeks:
+        _style_week_axis(ax, axis_weeks)
 
     if time_points:
         _plot_average_lines(
@@ -518,10 +602,14 @@ def plot_subt_hr(
 def plot_load(
     points: list[LoadPoint],
     output: str,
+    planned_load: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
     title: str = "Training load",
 ) -> str:
-    """Daily load bars with base, fitness, and fatigue EWMA lines."""
+    """Daily load bars with base, fitness, and fatigue EWMA lines.
+
+    Planned daily load is drawn as an outlined bar over the actual bar.
+    """
     _require_data(points)
 
     windows = windows or AverageWindows()
@@ -536,6 +624,19 @@ def plot_load(
         label="daily load",
         zorder=1,
     )
+
+    if planned_load:
+        ax.bar(
+            [day for day, _ in planned_load],
+            [load for _, load in planned_load],
+            facecolor="none",
+            edgecolor="black",
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.8,
+            label="planned",
+            zorder=4,
+        )
 
     _plot_average_lines(
         ax,
@@ -556,10 +657,14 @@ def plot_load(
 def plot_recovery(
     points: list[RecoveryPoint],
     output: str,
+    planned_dates: list[date] | None = None,
     window_days: int = 7,
     title: str = "Recovery trends",
 ) -> str:
-    """Plot HRV, resting HR, and sleep with rolling averages."""
+    """Plot HRV, resting HR, and sleep with rolling averages.
+
+    Planned workouts are marked along the bottom of the sleep panel.
+    """
     _require_data(points)
 
     metrics = (
@@ -638,6 +743,10 @@ def plot_recovery(
 
         ax.set_ylabel(f"{label} ({unit})")
         ax.grid(True, alpha=0.3)
+
+    if planned_dates:
+        _planned_rug(axes[-1], planned_dates)
+        axes[-1].legend(loc="best", fontsize=8)
 
     axes[0].set_title(title)
     axes[-1].set_xlabel("date")

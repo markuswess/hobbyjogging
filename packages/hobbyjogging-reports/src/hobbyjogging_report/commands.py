@@ -154,7 +154,8 @@ COMMANDS = {
         "volume",
         "Weekly running volume and distance averages",
         "volume [output.png] [--days N] [--from DATE] [--to DATE] "
-        "[--base-days N] [--fitness-days N] [--fatigue-days N]",
+        "[--planned-days N] [--base-days N] [--fitness-days N] "
+        "[--fatigue-days N]",
         ("charts.sh volume --days 90",),
         parse=partial(
             parse_load_args,
@@ -167,7 +168,8 @@ COMMANDS = {
         "load",
         "Daily load with base, fitness, and fatigue averages",
         "load [output.png] [--days N] [--from DATE] [--to DATE] "
-        "[--base-days N] [--fitness-days N] [--fatigue-days N]",
+        "[--planned-days N] [--base-days N] [--fitness-days N] "
+        "[--fatigue-days N]",
         ("charts.sh load --days 180",),
         parse=partial(
             parse_load_args,
@@ -180,7 +182,7 @@ COMMANDS = {
         "time",
         "Weekly running time stacked by HR zone",
         "time [output.png] [--days N] [--from DATE] [--to DATE] "
-        "[--zones N] [--zone-window base|fitness|fatigue]",
+        "[--planned-days N] [--zones N] [--zone-window base|fitness|fatigue]",
         (
             "charts.sh time --days 90",
             "charts.sh time --zones 4 --zone-window base",
@@ -196,7 +198,7 @@ COMMANDS = {
         "recovery",
         "HRV, resting HR, and sleep trends",
         "recovery [output.png] [--days N] [--from DATE] [--to DATE] "
-        "[--window N]",
+        "[--planned-days N] [--window N]",
         (
             "charts.sh recovery --days 90",
             "charts.sh recovery --window 14",
