@@ -834,5 +834,93 @@ class Vo2maxAndTagTests(unittest.TestCase):
             self.writer.replace_activity_tags("a1", ["x"], source="runalyze")
 
 
+class ForcedActivityUpsertTests(unittest.TestCase):
+    """A human-trusted source can take ownership of non-manual fields."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.fit_id = self._source("fit", "f1", "c-f")
+        self.intervals_id = self._source("intervals", "i1", "c-i")
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 3600,
+                "avg_hr": 140,
+            },
+            source="fit",
+            source_record_id=self.fit_id,
+        )
+
+    def _source(self, source, external_id, checksum):
+        return self.writer.upsert_source_record(
+            source=source,
+            record_type="activity",
+            external_id=external_id,
+            checksum=checksum,
+            import_run_id=self.run_id,
+        )
+
+    def _field_sources(self):
+        rows = self.conn.execute(
+            """
+            SELECT field_name, source FROM activity_field_sources
+            WHERE activity_id = 'a1'
+            """
+        ).fetchall()
+        return {
+            row["field_name"]: row["source"]
+            for row in rows
+        }
+
+    def test_force_overwrites_another_source_owner(self):
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3700, "avg_hr": 145},
+            source="intervals",
+            source_record_id=self.intervals_id,
+            force=True,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT duration_s, avg_hr FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(3700, row["duration_s"])
+        self.assertEqual(145, row["avg_hr"])
+
+        sources = self._field_sources()
+        self.assertEqual("intervals", sources["duration_s"])
+        self.assertEqual("intervals", sources["avg_hr"])
+
+    def test_force_keeps_manual_fields(self):
+        self.writer.set_manual_field("a1", "duration_s", 3600)
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3700, "avg_hr": 145},
+            source="intervals",
+            source_record_id=self.intervals_id,
+            force=True,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT duration_s, avg_hr FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(3600, row["duration_s"])
+        self.assertEqual(145, row["avg_hr"])
+
+        sources = self._field_sources()
+        self.assertEqual("manual", sources["duration_s"])
+        self.assertEqual("intervals", sources["avg_hr"])
+
+
 if __name__ == "__main__":
     unittest.main()

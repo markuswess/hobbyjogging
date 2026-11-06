@@ -222,6 +222,7 @@ class TrainingWriter:
         *,
         source: str,
         source_record_id: int,
+        force: bool = False,
     ) -> list[FieldConflict]:
         """Write activity values from one source, without automatic priority.
 
@@ -231,6 +232,11 @@ class TrainingWriter:
         disagreement is returned as a FieldConflict for the review queue and
         leaves the stored value untouched. Re-importing from the same source
         refreshes that source's own fields.
+
+        ``force=True`` lets this source take ownership of every non-manual
+        field in ``values``, replacing another source's value silently. Manual
+        fields are still kept. This is the explicit human trust decision used
+        by triage; normal imports never set it.
         """
         unknown = set(values) - ACTIVITY_COLUMNS
         if unknown:
@@ -279,13 +285,19 @@ class TrainingWriter:
 
         conflicts: list[FieldConflict] = []
         for field, value in values.items():
-            action, owner = self._plan_field_update(
-                activity_id,
-                field,
-                source,
-                value,
-                current[field],
-            )
+            if force:
+                action, owner = self._plan_forced_update(
+                    activity_id,
+                    field,
+                )
+            else:
+                action, owner = self._plan_field_update(
+                    activity_id,
+                    field,
+                    source,
+                    value,
+                    current[field],
+                )
 
             if action == "write":
                 self.connection.execute(
@@ -314,6 +326,24 @@ class TrainingWriter:
                 )
 
         return conflicts
+
+    def _plan_forced_update(
+        self,
+        activity_id: str,
+        field_name: str,
+    ) -> tuple[str, str]:
+        """Force ownership unless the current owner is a manual edit."""
+        row = self.connection.execute(
+            """
+            SELECT is_manual FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+
+        if row is not None and row["is_manual"]:
+            return "agree", "manual"
+        return "write", ""
 
     def _plan_field_update(
         self,
