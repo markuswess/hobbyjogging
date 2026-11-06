@@ -20,12 +20,12 @@ source importers, and source-independent reports.
 
 ## Packages
 
-- `packages/hobbyjogging-core` — canonical model, schema/migrations,
-  `TrainingWriter`, `TrainingRepository`.
-- `packages/hobbyjogging-import` — FIT/Intervals importers, review queue,
-  `review`/triage CLI.
-- `packages/hobbyjogging-reports` — matplotlib reports over `DataSource` and
-  the canonical model.
+- `packages/hobbyjogging-core` — canonical model, schema/migrations, sport
+  vocabulary, `TrainingWriter`, `TrainingRepository`.
+- `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
+  importers, review queue and triage. Runalyze enrichment is planned.
+- `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
+  activities table over `DataSource` and the canonical model.
 
 ## Tests
 
@@ -48,4 +48,9 @@ Cross-package changes must leave all three suites green.
 - Manual values outrank every import source and survive reimports.
 - There is no automatic per-source priority. The first owner keeps a field;
   meaningful cross-source disagreement becomes a `field_conflict` review item.
+- A trusted source may force ownership only on an explicit human action
+  (triage `(t)`); manual fields still win. Normal imports never force.
+- VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →
+  `vo2max_runalyze`. Tags are per-source and manual tags are never replaced.
+- Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
 - Reports use matplotlib only, never pandas.

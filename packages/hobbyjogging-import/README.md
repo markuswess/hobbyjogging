@@ -121,6 +121,17 @@ Conflict-tracked fields are `duration_s`, `elapsed_s`, `distance_m`, `avg_hr`,
 keep their current owner silently — two devices naming the same run
 differently is not worth a review item.
 
+Sports are normalized through `hobbyjogging_core.sports` before writing, so
+FIT sub-sports and Intervals types map to the same canonical names (for
+example `cycling/gravel_cycling` and `GravelRide` both become `gravel_ride`).
+Placeholder sports (`generic`, `other`, `unknown`) never conflict with a
+specific sport; a specific value fills the placeholder.
+
+The one exception to owner-based precedence is an explicit human decision:
+triage `(t)` re-imports a single Intervals activity with `force=True`, letting
+Intervals take ownership of every non-manual field it provides. Normal imports
+never force.
+
 ## Intervals.icu
 
 Set credentials at the repository root:
@@ -173,13 +184,16 @@ not overwritten.
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*
-in the canonical `review_items` table. Every importer runs a small canonical
-quality rule set (zero duration, missing distance for run/ride sports,
-implied pace outside a plausible per-sport window), persists ambiguous
-matches with their candidate lists, and records cross-source field
+in the canonical `review_items` table. Categories are `ambiguous_match`,
+`field_conflict`, `quality`, `duplicate`, and `manual_flag`. Every importer
+runs a small canonical quality rule set (zero duration, missing distance for
+run/ride sports, implied pace outside a plausible per-sport window), persists
+ambiguous matches with their candidate lists, and records cross-source field
 disagreements (`field_conflict`) without touching the stored value. Detection
-is idempotent by fingerprint: reimporting never duplicates items and never
-reopens resolved ones. A changed conflict supersedes its older open item.
+is idempotent by `(category, fingerprint, activity_id)`: reimporting never
+duplicates items and never reopens resolved ones. The source record stays on
+the item for provenance but is not part of the fingerprint. A changed conflict
+supersedes its older open item.
 
 ```bash
 uv run --env-file .env hobbyjogging-import review list

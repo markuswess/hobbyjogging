@@ -1,15 +1,14 @@
 # Next up: import package
 
-Handoff from the root architecture session. Both original tasks are done;
-this file now tracks the remaining real-data steps.
+No open import-package tasks. This file records what was completed and what
+the package is still waiting on.
 
 ## Done
 
 - **Quality review dedupe.** Quality fingerprints no longer include
-  `source_record_id`, and `TrainingWriter.record_review_item` dedupes by
+  `source_record_id`; `record_review_item` dedupes by
   `(category, fingerprint, activity_id)`. The source record stays on the item
-  for provenance. Tests cover an import finding and a later `review scan`
-  finding the same issue.
+  for provenance.
 - **`garmin fetch`.** Personal API client with shared bearer-token cache,
   paged activity list, ZIP download, atomic FIT extraction into
   `HOBBYJOGGING_FIT_DIR/garmin`, a `source_records` manifest, `--dry-run`,
@@ -17,41 +16,32 @@ this file now tracks the remaining real-data steps.
 - **Garmin VO2max.** `fit.py` reads undocumented message 140 field 7
   (`raw * 3.5 / 65536`) into `FitSession.vo2max_garmin`; `fit_import.py`
   writes `vo2max_garmin` at full precision; the FIT summary reports coverage.
-- **Intervals plan horizon.** Planned calendar events are fetched from the
-  activity start through `max(--to, today + --plan-days)`; the default
-  horizon is 182 days and `--plan-days 0` disables it. Activities and
-  wellness keep the original range.
-- **Triage activity links.** `o` opens every available link; `ci` copies the
-  Intervals URL and `cg` copies the Garmin Connect URL. The Garmin id is
-  resolved from the `garmin fetch` manifest by file path, then by matching
-  `beginTimestamp` to the canonical start. `review show` prints both links.
+- **Intervals plan horizon.** Planned calendar events are fetched through
+  `max(--to, today + --plan-days)` (default 182 days); activities and wellness
+  keep the original range.
+- **Triage links.** `o` opens every available link; `ci` copies the Intervals
+  URL and `cg` the Garmin Connect URL (resolved from the fetch manifest by
+  file path, then by start-time match). `review show` prints both.
 - **Triage Intervals re-import.** `(t)rust Intervals` re-fetches one linked
-  Intervals activity and lets it take ownership of non-manual fields. Manual
-  fields stay, conflicts on fields Intervals now owns are resolved, and the
-  quality rules re-run.
-- Tests: import 160, core 79, reports 188 (all green).
+  activity with `force=True`: Intervals takes ownership of non-manual fields,
+  conflicts on those fields resolve, and quality rules re-run.
+- Full FIT archive import and VO2max backfill have been run against the real
+  DB.
 
-## Remaining (real data, user)
+## Waiting on
 
-1. Re-run the normal full archive import against the real DB:
-   `hobbyjogging-import fit` (no batching; ~2.8k activity files). Expect
-   `vo2max_garmin` on roughly 2,836 activities.
-2. Spot-check one value against Garmin Connect (the watch shows two
-   decimals; the database keeps the raw precision).
-3. Run `garmin fetch --dry-run`, then a small real fetch, then
-   `hobbyjogging-import fit --recursive` over the archive.
-4. Later: Runalyze enrichment writes `vo2max_runalyze` and tags.
+- **Runalyze enrichment** (blocked on API auth/endpoint details): comments
+  merged into `description`, tags in `activity_tags`, gear via the
+  equipment-categories endpoint, and `vo2max_runalyze`.
+- The dashboard is reports-package work.
 
 ## Notes / risks
 
-- Message 140 is undocumented; Garmin can strip it. The VO2max line in the
-  FIT import summary is the early warning.
+- Message 140 is undocumented; Garmin can strip it. The VO2max line in the FIT
+  import summary is the early warning.
 - The Personal API activity FIT is byte-identical to the GDPR archive copy
   (4/4 activities tested in November 2026). The JSON `vO2MaxValue` is null;
   the type-44 `max_met_data` files are not needed.
 - The manifest is a bandwidth optimization. The FIT importer is
   checksum-idempotent, so a redownload does not duplicate source records or
   laps.
-- One core change was needed for task 1: the review-item dedupe query no
-  longer includes `source_record_id`. The v5 schema came from the root
-  session.

@@ -1,10 +1,10 @@
-# Intervals Training Reports
+# hobbyjogging-reports
 
 This package is part of the `hobbyjogging` workspace. Run the commands below
 from the repository root.
 
-Generate daily, weekly and monthly summaries from Intervals.icu or the
-canonical hobbyjogging database.
+Generate daily, weekly and monthly summaries from the canonical hobbyjogging
+database (default) or directly from Intervals.icu.
 
 ## Data sources
 
@@ -20,9 +20,10 @@ Intervals.icu. `debug` still dumps raw API payloads and ignores `--source`.
 
 ## What it does
 
-Pulls activity, wellness and planned-session data from the
-[Intervals.icu](https://intervals.icu) API and produces Markdown
-training reports:
+Reads activity, wellness and planned-session data through a `DataSource`
+(canonical database by default, or the
+[Intervals.icu](https://intervals.icu) API) and produces Markdown training
+reports:
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
@@ -376,6 +377,14 @@ separately. The scale is reversed compared with some watches:
 | 4 | Poor |
 | 5 | Weak |
 
+## Static dashboard (planned)
+
+The next renderer is a static HTML dashboard generated from the same analysis
+layer as the Markdown reports: weekly overview (load, volume/time, zones, plan
+vs actual), activity list and detail, and a data-health banner (open review
+items, exclusions, missing data). It is generated on the homelab, written
+atomically, and served read-only; Markdown reports remain the terminal view.
+
 ## Architecture
 
 Data access and analysis are separated so the data source can be
@@ -410,7 +419,6 @@ analysis or chart code:
   one file per report, obtaining model objects through a `DataSource`.
 - `activity_list.py` — the recent-activities table (selection, columns,
   rendering).
-- `sessions.py` — session selection and the detailed session report.
 
 Only `sources/intervals_api.py` knows Intervals.icu field names; the
 `debug` command is the one place that still dumps raw payloads.

@@ -5,10 +5,11 @@ Training data, imports, and reports.
 ## Packages
 
 - `packages/hobbyjogging-core` — canonical training model, database schema,
-  and shared helpers.
-- `packages/hobbyjogging-import` — importers for FIT files, Intervals.icu,
-  Runalyze, and spreadsheet data.
-- `packages/hobbyjogging-reports` — analysis, charts, and Markdown reports.
+  sport vocabulary, and shared helpers.
+- `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
+  importers, plus the review queue and triage. Runalyze enrichment is planned.
+- `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
+  activities table.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, data
 flow, and the planned homelab/static-dashboard deployment.
@@ -27,6 +28,7 @@ export HOBBYJOGGING_DB=<your/path/databasefile.db>
 export HOBBYJOGGING_FIT_DIR=<your/path/fit-directory>
 export INTERVALS_ATHLETE_ID=<your-athlete-id>
 export INTERVALS_API_KEY=<your-api-key>
+export GARMIN_PERSONAL_API_KEY=<your-personal-api-key>
 ```
 
 ## Import
@@ -54,6 +56,17 @@ Import Intervals.icu data:
 uv run --env-file .env hobbyjogging-import intervals --days 90
 ```
 
+Fetch new original FIT files from the Garmin Personal API, then ingest them:
+
+```bash
+uv run --env-file .env hobbyjogging-import garmin fetch --since 2026-01-01
+uv run --env-file .env hobbyjogging-import fit --recursive
+```
+
+The Personal API key is valid for 30/90/180/365 days; each run exchanges it
+for a 24 h bearer token. Known activity ids are skipped via a fetch manifest,
+and API-downloaded FITs are byte-identical to the GDPR archive export.
+
 Import-conflicts and questionable activities land in the review workflow:
 
 ```bash
@@ -66,14 +79,17 @@ The quickest way through the queue is the interactive triage walk:
 uv run --env-file .env hobbyjogging-import review triage
 ```
 
-Each item can be inspected, opened in a browser (Intervals), fixed by
-entering valid values (``46:20``, ``8.2km``), marked resolved/ignored, or
-durably excluded (soft delete). When sources disagree on a field, nothing is
-overwritten automatically: both values are queued as a ``field_conflict`` and
-``(v) pick value`` chooses the one that stands. Manual values outrank every
-import source and survive reimports; see `packages/hobbyjogging-import/README.md`
-for details, or use the non-interactive twins `review edit`, `review exclude`,
-and `review restore`.
+Each item can be inspected, opened in a browser, fixed by entering valid
+values (``46:20``, ``8.2km``), marked resolved/ignored, or durably excluded
+(soft delete). When sources disagree on a field, nothing is overwritten
+automatically: both values are queued as a ``field_conflict`` and
+``(v) pick value`` chooses the one that stands. ``(t)`` force re-imports the
+linked Intervals activity and lets it take ownership of non-manual fields;
+``(o)`` opens every linked activity, and ``(ci)``/``(cg)`` copy the Intervals
+or Garmin Connect URL. Manual values outrank every import source and survive
+reimports; see `packages/hobbyjogging-import/README.md` for details, or use
+the non-interactive twins `review edit`, `review exclude`, and
+`review restore`.
 
 Reports exclude flagged activities until they are resolved; add
 `--include-review` to see them. Excluded (deleted) activities never appear.
@@ -100,6 +116,8 @@ Reports read the canonical database by default.
 ./reports.sh report --days 90
 ./reports.sh report --from 2026-01-01 --to 2026-03-31
 ./reports.sh weekly --source intervals
+./reports.sh activities --limit 20
+./reports.sh activities --days 30 --add id,category
 ```
 
 Charts use `charts.sh` and print the generated file path:
@@ -118,7 +136,7 @@ See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.
 ## Tests
 
 ```bash
-uv run python -m unittest discover -s packages/hobbyjogging-core/tests -v
-uv run python -m unittest discover -s packages/hobbyjogging-import/tests -v
-uv run python -m unittest discover -s packages/hobbyjogging-reports/tests -v
+(cd packages/hobbyjogging-core/tests && uv run python -m unittest discover -q)
+(cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q)
+(cd packages/hobbyjogging-reports/tests && uv run python -m unittest discover -q)
 ```

@@ -77,12 +77,14 @@ The repo is a uv workspace with three packages.
 Canonical model, schema, and read/write access.
 
 - `model.py` — `Activity`, `Lap`, `Interval`, `WellnessDay`, `Event`,
-  `Equipment`, zone models.
+  `Equipment`, zone models; activities carry both VO2max values and tags.
+- `sports.py` — canonical sport names, labels, groups, and the shared alias
+  table for FIT/Intervals/manual entry.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`).
+  (`SCHEMA_VERSION`, currently 5).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
-  intervals, zone times.
+  intervals, zone times, tags.
 - `db/repository.py` — `TrainingRepository`: read queries over the canonical
   model.
 - `datasource.py` — the `DataSource` protocol every report consumer depends
@@ -90,7 +92,8 @@ Canonical model, schema, and read/write access.
 - `db/connection.py` — database path resolution and connection setup.
 
 Core owns the rules that must not drift between packages: field ownership,
-conflict detection, exclusion semantics, review-item fingerprints.
+conflict detection, sport normalization, exclusion semantics, review-item
+fingerprints.
 
 ### `hobbyjogging-import`
 
@@ -101,9 +104,12 @@ Source ingestion and the review queue.
 - `fit_import.py` — file discovery, matching, activity/lap persistence.
 - `garmin.py` — Garmin Personal API client: key → bearer token, activity list,
   original FIT download into the archive, fetch manifest.
-- `client.py`, `intervals.py` — Intervals.icu API access and import.
-- `runalyze.py` — Runalyze enrichment import (comments, tags, gear, VO2max);
-  never writes timing or distance.
+- `client.py`, `intervals.py` — Intervals.icu API access and import, including
+  the planned-event horizon.
+- `links.py` — Intervals/Garmin activity URL resolution for triage and
+  `review show`.
+- `runalyze.py` — planned Runalyze enrichment import (comments, tags, gear,
+  VO2max); never writes timing or distance.
 - `matching.py` — temporal activity matching across sources.
 - `quality.py` — canonical quality rules, field-conflict recording, review
   fingerprints, quality refresh after edits.
@@ -123,10 +129,16 @@ Analysis, views, and rendering.
   pace/HR trends, recovery.
 - `model.py` — typed view models and analysis result types.
 - `classify.py` — workout taxonomy.
-- `reports.py`, `summary.py`, `report_commands.py` — markdown report builders.
+- `daily.py`, `period_report.py`, `subt_report.py` — one Markdown report per
+  file; `report_commands.py` dispatches them.
+- `sessions.py`, `recent.py`, `debug.py` — session detail, shared lookback
+  search, and raw payload dump.
+- `activity_list.py` — the activities table (selection, columns, rendering).
+- `summary.py` — period totals, quality-session lists, recovery averages.
 - `charts.py`, `chart_commands.py` — matplotlib figures over prepared series.
 - `format.py`, `mdpretty.py` — human formatting for the terminal.
-- `commands.py`, `cli.py`, `__main__.py` — command registry and entry point.
+- `commands.py`, `cli.py`, `command_support.py`, `__main__.py` — command
+  registry, shared CLI helpers, and entry point.
 
 The long-term dashboard is a new renderer in this package, not a new analytics
 implementation.
@@ -160,6 +172,11 @@ Two invariants are enforced by the writer:
 - A manual field (`is_manual = 1`) is never overwritten by an import.
 - An excluded activity cannot be written to or linked to.
 
+The only exception to owner-based precedence is an explicit human decision:
+`upsert_activity(..., force=True)` lets one trusted source take ownership of
+every non-manual field. Triage `(t)` uses it to re-import a single Intervals
+activity; normal imports never force.
+
 VO2max has two independent owners: Garmin FIT writes `vo2max_garmin` and
 Runalyze writes `vo2max_runalyze`. Runalyze may fill an empty
 `vo2max_garmin` with its estimate as a fallback, but a later FIT value
@@ -187,7 +204,9 @@ with it. Two different specific sports still become a `field_conflict`.
    - first owner keeps a field while other sources agree within tolerance
      (about 1%, with 2 s / 2 bpm / 10 m floors; 15 s for start times);
    - a meaningful cross-source disagreement changes nothing and is recorded as
-     a `field_conflict` review item.
+     a `field_conflict` review item;
+   - an explicit trusted re-import (`force=True`, triage `(t)`) takes
+     ownership of non-manual fields.
    Conflict-tracked fields are durations, distance, average HR, start
    time/date, timezone offset, sport, and training load. Subjective fields
    keep their owner silently.
@@ -199,21 +218,25 @@ with it. Two different specific sports still become a `field_conflict`.
 
 ### Garmin Personal API fetch
 
-The official Personal API is the automated source for original FIT files.
+The official Personal API is the automated source for original FIT files; it
+is implemented in `hobbyjogging-import` as `garmin fetch`.
 
-- The API key lives in `.env` (`GARMIN_PERSONAL_API_KEY`), valid for up to 365
-  days. Each run exchanges it for a 24 h bearer token; there are no refresh
-  tokens, so a 401 means re-obtain the token. Key expiry is manual and
-  documented.
-- A `garmin fetch --since DATE` step lists activities (paged) and downloads the
+- The API key lives in `.env` (`GARMIN_PERSONAL_API_KEY`, with `GARMIN_API_KEY`
+  as fallback), valid for 30/90/180/365 days. Each run exchanges it for a 24 h
+  bearer token (cached at
+  `~/.config/garmin/connect-personal-api-bearer-token.json`); there are no
+  refresh tokens, so a 401 re-obtains the token.
+- `garmin fetch [--since DATE] [--to DATE] [--days N] [--limit N] [--force]
+  [--fit-dir PATH] [--dry-run]` lists activities (paged) and downloads the
   original file via `/download-service/files/activity/{id}` (a ZIP containing
-  the FIT), extracts it into the FIT archive, and records a fetch manifest so
-  known activity ids are skipped. The existing FIT importer then ingests the
-  files; no separate write path.
-- Garmin may strip some proprietary fields from API-downloaded FITs compared to
-  manually exported ones. Verify a sample before relying on API files as the
-  only archive; the historical manual export stays authoritative if they
-  differ.
+  the FIT), extracts it atomically into the FIT archive, and records a
+  `source_records` manifest (`source = "garmin"`, `record_type =
+  "activity-file"`). The existing FIT importer then ingests the files; there is
+  no separate write path.
+- API-downloaded FITs are byte-identical to the GDPR archive export (verified
+  on four activities in November 2026). Garmin VO2max is still in the FIT as
+  undocumented message 140, field 7 (`raw * 3.5 / 65536`), so the FIT is the
+  VO2max source; the JSON summary's `vO2MaxValue` is null.
 
 ### Runalyze enrichment
 
@@ -231,8 +254,9 @@ timing or distance.
 - Tags land in `activity_tags`; gear is upserted into `equipment` and linked via
   `activity_equipment` (first shoe/bike item primary, rest secondary), with
   canonical types derived from Runalyze's equipment-categories endpoint.
-- `activities.vo2max` stores the effective estimate; `0`/`use_vo2max=false`
-  means missing. The raw payload keeps the variants.
+- `activities.vo2max_runalyze` stores the effective estimate; `0` /
+  `use_vo2max=false` means missing. Runalyze may also fill an empty
+  `vo2max_garmin`; the raw payload keeps the variants.
 
 ## Review workflow
 
@@ -246,9 +270,13 @@ Review categories: `ambiguous_match`, `field_conflict`, `quality`,
 - `review exclude` / `review restore` — durable soft delete of an activity and
   its source records, or undo.
 - `review triage` — interactive walk with per-item decisions committed
-  immediately: inspect, open in Intervals, copy URL, edit, pick a conflicted
-  value (`v`), exclude, resolve, ignore, note, link an ambiguous candidate,
-  skip, quit.
+  immediately: inspect, open every linked activity (`o`), copy the Intervals
+  or Garmin Connect URL (`ci`/`cg`), edit, pick a conflicted value (`v`),
+  force re-import one Intervals activity (`t`), exclude, resolve, ignore,
+  note, link an ambiguous candidate, skip, quit. `review show` prints the same
+  links.
+- Review items dedupe by `(category, fingerprint, activity_id)`; the source
+  record stays on the item for provenance but is not part of the fingerprint.
 
 Reports hide activities with open review items by default (`--include-review`
 shows them); excluded activities never appear. The queue is the quality gate:
@@ -263,7 +291,8 @@ The rule is **compute → render**:
 2. `analysis.py` / `series.py` compute derived metrics and return typed
    results (`model.py`), with no formatting and no I/O.
 3. Renderers turn those results into output:
-   - markdown reports for the terminal (`reports.py`, `mdpretty.py`);
+   - Markdown reports for the terminal (`daily.py`, `period_report.py`,
+     `subt_report.py`, `activity_list.py`, `mdpretty.py`);
    - matplotlib figures (`charts.py`, saved as files);
    - static HTML dashboard pages (planned);
    - JSON for LLM bundles or future clients (planned).
@@ -301,6 +330,17 @@ Coaching is an ongoing conversation, so the bundle will also include a small
 append-only decision log (recommendation, decision, followed or not) to give
 continuity across sessions. Export is intentionally deferred behind the
 dashboard: the view models make it cheap to add later.
+
+## Status (November 2026)
+
+- Canonical pipeline, review workflow, manual editing, and exclusion: done.
+- Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
+  implemented; schema v5 adds the two VO2max owners and activity tags.
+- Reports: Markdown reports, charts, and the activities table; the report code
+  is split per report. The static dashboard is the next build.
+- The review queue still contains warnings the user chose to leave. Reports
+  hide flagged activities by default (`--include-review` shows them).
+- Remaining: Runalyze enrichment (API details), homelab cutover.
 
 ## Deployment
 

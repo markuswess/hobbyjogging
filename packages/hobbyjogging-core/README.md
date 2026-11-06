@@ -9,14 +9,16 @@ Canonical training model, SQLite schema, migrations, and shared helpers.
 
 Canonical types live in `hobbyjogging_core.model`:
 
-- `Activity`
+- `Activity` (including both VO2max values and tags)
 - `WellnessDay`
 - `Event`
 - `Interval`
 - `Equipment`
 - `ActivityEquipment`
 
-`DataSource` lives in `hobbyjogging_core.datasource`.
+`DataSource` lives in `hobbyjogging_core.datasource`. The shared sport
+vocabulary lives in `hobbyjogging_core.sports` (canonical names, labels, sport
+groups, and one alias table for FIT/Intervals/manual entry).
 
 ## Database
 
@@ -31,7 +33,7 @@ conn = open_database()  # data/hobbyjogging.db
 Set `HOBBYJOGGING_DB` to use a different path.
 
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
-`SCHEMA_VERSION` is the current target version.
+`SCHEMA_VERSION` is the current target version (5).
 
 Read canonical data through the repository:
 
@@ -70,12 +72,44 @@ writer.upsert_activity(
 writer.finish_import_run(run_id, "success", records_seen=1, records_imported=1)
 ```
 
+`upsert_activity` returns a list of `FieldConflict` objects for cross-source
+disagreements; importers record them as review items. `force=True` is reserved
+for an explicit human trust decision (triage `(t)`): it lets a source take
+ownership of every non-manual field. Manual fields are always kept.
+
+Tags are written per source:
+
+```python
+writer.replace_activity_tags(
+    "activity-uuid",
+    ["race", "morning"],
+    source="runalyze",
+    source_record_id=source_id,
+)
+```
+
+### Field ownership
+
+- Manual values (`is_manual = 1`) are never overwritten.
+- The first source to write a field keeps it; re-importing from the same
+  source refreshes its own fields.
+- Agreement within tolerance is a no-op; a meaningful disagreement becomes a
+  `field_conflict` review item and changes nothing.
+- `force=True` overrides ownership for one explicit re-import, except for
+  manual fields.
+- VO2max has independent owners: Garmin FIT writes `vo2max_garmin`, Runalyze
+  writes `vo2max_runalyze`, and Runalyze may fill an empty Garmin slot.
+
 ### Schema layers
 
-- `source_records` — immutable raw imports, checksums, and file references.
-- `activities`, `wellness_days`, `events` — canonical merged data.
+- `source_records` — immutable raw imports, checksums, file references, and
+  the Garmin fetch manifest (`source = "garmin"`, `record_type =
+  "activity-file"`).
+- `activities`, `wellness_days`, `events` — canonical merged data, including
+  `vo2max_garmin` and `vo2max_runalyze`.
 - `activity_sources` — links between canonical activities and raw records.
 - `activity_field_sources` — per-field provenance; manual values are marked.
+- `activity_tags` — per-source activity labels (`is_manual = 1` for manual).
 - `review_items` — import conflicts and questionable activities, with a
   fingerprint for idempotent detection and an open/ignored/resolved status.
 - `activity_laps`, `activity_intervals` — FIT laps and structured intervals.

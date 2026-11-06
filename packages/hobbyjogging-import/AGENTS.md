@@ -28,12 +28,16 @@ cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q
 - No per-source priority: the first owner keeps a field, same-source reimports
   refresh their own fields, and a meaningful cross-source disagreement becomes
   a `field_conflict` review item instead of overwriting.
+- `upsert_activity(..., force=True)` is reserved for an explicit human trust
+  decision (triage `(t)`); manual fields still win. Normal imports never force.
 - Manual values (`activity_field_sources.is_manual = 1`) are never overwritten.
 - "Delete" means durable exclusion (`excluded_at`), never a hard delete.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases
   here.
+- VO2max has two owners: FIT writes `vo2max_garmin`, Runalyze writes
+  `vo2max_runalyze`. Tags are per-source; manual tags are never replaced.
 - Raw payloads go to `source_records`; review items are idempotent by
-  fingerprint.
+  `(category, fingerprint, activity_id)`.
 
 ## Conventions
 
