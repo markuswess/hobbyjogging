@@ -101,6 +101,7 @@ class TrainingRepository:
                    training_load
             FROM events
             WHERE local_date BETWEEN ? AND ?
+              AND excluded_at IS NULL
             ORDER BY local_date, name
             """,
             (start.isoformat(), end.isoformat()),

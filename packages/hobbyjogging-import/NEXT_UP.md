@@ -41,6 +41,42 @@ the package is still waiting on.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 
+## Next task: planned-events sync (schema v7)
+
+Core is done: `events.excluded_at`, `upsert_event` replaces fields (including
+NULLs) and revives excluded events, `exclude_event` / `restore_event`, and the
+repository filters excluded events.
+
+Implement in this package:
+
+- `IntervalsImporter.sync_events(start, end, *, dry_run=False)`:
+  1. fetch current events via `client.events(start, end)`;
+  2. upsert each with the current fields (`duration_s` from `moving_time` with
+     `duration` fallback, `training_load` from `icu_training_load`,
+     `distance_m`, date/name/type/description);
+  3. collect the fetched Intervals event ids;
+  4. query DB events joined to `source_records` where `source='intervals'`,
+     `record_type='event'`, `local_date BETWEEN start AND end`,
+     `excluded_at IS NULL`;
+  5. soft-exclude DB events whose external id is not in the fetched set;
+  6. revive fetched events that had been excluded;
+  7. report fetched / new / updated / removed / revived; `--dry-run` writes
+     nothing;
+  8. write an `import_runs` row with `events_sync`, start, end, `plan_days`.
+- Refactor the event portion of `import_range` to call the same sync/prune
+  logic with `start..plan_end`, so a regular Intervals import cannot leave
+  stale plans.
+- CLI: `hobbyjogging-import events sync [--plan-days 182] [--from DATE --to
+  DATE] [--dry-run]`; default window today .. today + plan_days.
+- Only events linked to Intervals source records are pruned; manual and other
+  source events stay untouched.
+- Tests: new/changed/cleared fields, moved date, deleted → excluded,
+  recreated with new id, reappeared → revived, dry run, other-source event
+  untouched, regular import prunes, idempotent re-sync.
+
+Note: event `duration_s` means planned moving time; activities `duration_s`
+means recording time.
+
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments

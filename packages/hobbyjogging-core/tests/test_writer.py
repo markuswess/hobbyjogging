@@ -657,7 +657,7 @@ class TrainingWriterTests(unittest.TestCase):
             "SELECT name, distance_m FROM events WHERE id = 'e1'"
         ).fetchone()
         self.assertEqual("Town race", event["name"])
-        self.assertEqual(5000, event["distance_m"])
+        self.assertIsNone(event["distance_m"])
 
     def test_finish_import_run_records_counts(self):
         self.writer.finish_import_run(
@@ -876,7 +876,8 @@ class Vo2maxAndTagTests(unittest.TestCase):
         self.assertEqual(12984, row["distance_m"])
         self.assertEqual(62, row["training_load"])
 
-        # A later event refresh without a load keeps the existing value.
+        # A later event refresh without a load clears it: Intervals is
+        # authoritative, so stale values must not survive.
         self.writer.upsert_event(
             event_id="e1",
             local_date="2026-04-01",
@@ -885,12 +886,48 @@ class Vo2maxAndTagTests(unittest.TestCase):
             source_record_id=self.intervals_id,
             duration_s=3450,
         )
-        self.assertEqual(
-            62,
+        self.assertIsNone(
             self.conn.execute(
                 "SELECT training_load FROM events WHERE id = 'e1'"
             ).fetchone()[0],
         )
+
+    def test_event_exclusion_and_revival(self):
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-01",
+            name="5x6 LT1",
+            type="run",
+            source_record_id=self.intervals_id,
+            duration_s=3450,
+        )
+
+        self.assertTrue(self.writer.exclude_event("e1"))
+        self.assertFalse(self.writer.exclude_event("e1"))
+        self.assertIsNotNone(
+            self.conn.execute(
+                "SELECT excluded_at FROM events WHERE id = 'e1'"
+            ).fetchone()[0],
+        )
+
+        # Upserting a fetched event revives it and replaces its fields.
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-02",
+            name="5x6 LT1 (moved)",
+            type="run",
+            source_record_id=self.intervals_id,
+        )
+        row = self.conn.execute(
+            "SELECT local_date, name, duration_s, excluded_at FROM events "
+            "WHERE id = 'e1'"
+        ).fetchone()
+        self.assertEqual("2026-04-02", row["local_date"])
+        self.assertEqual("5x6 LT1 (moved)", row["name"])
+        self.assertIsNone(row["duration_s"])
+        self.assertIsNone(row["excluded_at"])
+
+        self.assertFalse(self.writer.restore_event("e1"))
 
 
 class ForcedActivityUpsertTests(unittest.TestCase):

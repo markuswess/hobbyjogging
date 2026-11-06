@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -97,6 +97,11 @@ SET duration_s = COALESCE(
     );
 """
 
+MIGRATION_7_SQL = """
+ALTER TABLE events ADD COLUMN excluded_at TEXT;
+CREATE INDEX idx_events_excluded ON events(excluded_at);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -104,6 +109,7 @@ MIGRATIONS: dict[int, str] = {
     4: MIGRATION_4_SQL,
     5: MIGRATION_5_SQL,
     6: MIGRATION_6_SQL,
+    7: MIGRATION_7_SQL,
 }
 
 

@@ -145,7 +145,7 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 6.
+SQLite, forward-only migrations. Schema version 7.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
@@ -165,7 +165,9 @@ SQLite, forward-only migrations. Schema version 6.
 - `wellness_days`, `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `events` — planned workouts and races: local date, type, description,
-  planned moving duration (`duration_s`), distance, training load.
+  planned moving duration (`duration_s`), distance, training load, and an
+  exclusion timestamp. Intervals is authoritative for events; removed events
+  are soft-excluded rather than deleted.
 - `import_runs` — one row per import with parameters and outcome.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
@@ -227,6 +229,22 @@ with it. Two different specific sports still become a `field_conflict`.
 5. **Record.** Every run is an `import_runs` row; review items are idempotent
    by fingerprint and supersede older items when the underlying conflict
    changes.
+
+### Planned event reconciliation
+
+Intervals is authoritative for planned workouts and races in the planning
+window. The `events sync` command (also run by the regular Intervals import)
+fetches the current events and:
+
+- overwrites every field from the payload, including clearing fields that are
+  now NULL;
+- soft-excludes events that disappeared (deleted or replaced with a new id);
+- revives events that reappear;
+- prunes only events linked to Intervals source records; manual and other
+  source events are untouched.
+
+Reports read events through `TrainingRepository`, which filters
+`excluded_at IS NULL`.
 
 ### Garmin Personal API fetch
 

@@ -45,6 +45,9 @@ Cross-package changes must leave all three suites green.
   `~/projects/laufen_private/data/db/hobbyjogging.db`.
 - Imports write; reports read only (`DataSource` + canonical model).
 - "Delete" means durable soft delete via `excluded_at`, never a hard delete.
+- Events are Intervals-authoritative: fields are replaced (including NULLs),
+  removed events are soft-excluded, and manual/other-source events are left
+  alone.
 - Manual values outrank every import source and survive reimports.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
   `elapsed_s` is elapsed time; all three are owner-tracked.

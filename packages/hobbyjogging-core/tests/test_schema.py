@@ -64,6 +64,7 @@ class SchemaMigrationTests(unittest.TestCase):
             for row in self.conn.execute("PRAGMA table_info(events)")
         }
         self.assertIn("training_load", event_columns)
+        self.assertIn("excluded_at", event_columns)
 
         record_columns = {
             row["name"]
@@ -187,6 +188,27 @@ class SchemaMigrationTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(3450, event["duration_s"])
         self.assertEqual(62, event["training_load"])
+
+    def test_migrates_v6_database_to_v7(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4, 5, 6):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 6")
+        self.conn.execute(
+            "INSERT INTO events (id, local_date, name, type) "
+            "VALUES ('e1', '2026-10-02', 'Town race', 'race')"
+        )
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        row = self.conn.execute(
+            "SELECT excluded_at FROM events WHERE id = 'e1'"
+        ).fetchone()
+        self.assertIsNone(row["excluded_at"])
 
     def test_migrate_is_idempotent(self):
         migrate(self.conn)

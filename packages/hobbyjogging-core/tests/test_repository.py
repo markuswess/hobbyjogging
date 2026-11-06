@@ -197,6 +197,19 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual(1055, activities[0].moving_s)
         self.assertEqual(62, events[0].training_load)
 
+    def test_excluded_events_are_hidden(self):
+        self.conn.execute(
+            "UPDATE events SET excluded_at = CURRENT_TIMESTAMP "
+            "WHERE id = 'e1'"
+        )
+
+        events = self.repository.events(
+            date(2026, 10, 1),
+            date(2026, 10, 6),
+        )
+
+        self.assertEqual(["Long run"], [event.name for event in events])
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

@@ -1289,18 +1289,10 @@ class TrainingWriter:
                 name = excluded.name,
                 type = excluded.type,
                 description = excluded.description,
-                duration_s = COALESCE(
-                    excluded.duration_s,
-                    events.duration_s
-                ),
-                distance_m = COALESCE(
-                    excluded.distance_m,
-                    events.distance_m
-                ),
-                training_load = COALESCE(
-                    excluded.training_load,
-                    events.training_load
-                ),
+                duration_s = excluded.duration_s,
+                distance_m = excluded.distance_m,
+                training_load = excluded.training_load,
+                excluded_at = NULL,
                 updated_at = CURRENT_TIMESTAMP
             """,
             (
@@ -1315,6 +1307,32 @@ class TrainingWriter:
                 training_load,
             ),
         )
+
+    def exclude_event(self, event_id: str) -> bool:
+        """Soft-exclude one event (used by the Intervals sync prune)."""
+        cursor = self.connection.execute(
+            """
+            UPDATE events
+            SET excluded_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND excluded_at IS NULL
+            """,
+            (event_id,),
+        )
+        return cursor.rowcount > 0
+
+    def restore_event(self, event_id: str) -> bool:
+        """Undo an event exclusion."""
+        cursor = self.connection.execute(
+            """
+            UPDATE events
+            SET excluded_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND excluded_at IS NOT NULL
+            """,
+            (event_id,),
+        )
+        return cursor.rowcount > 0
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(
