@@ -44,6 +44,7 @@ class Activity:
     description: str = ""
     duration_s: float = 0
     elapsed_s: float = 0
+    moving_s: float | None = None
     distance_m: float = 0
     avg_hr: float | None = None
     training_load: float | None = None
@@ -84,6 +85,7 @@ class Event:
     description: str = ""
     duration_s: float | None = None
     distance_m: float | None = None
+    training_load: float | None = None
 
 
 @dataclass

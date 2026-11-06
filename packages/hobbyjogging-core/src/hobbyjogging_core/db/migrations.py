@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -57,12 +57,53 @@ CREATE TABLE activity_tags (
 CREATE INDEX idx_activity_tags_tag ON activity_tags(tag);
 """
 
+MIGRATION_6_SQL = """
+ALTER TABLE activities ADD COLUMN moving_s REAL;
+ALTER TABLE events ADD COLUMN training_load REAL;
+
+-- Backfill moving time for activities imported from Intervals. FIT moving
+-- time comes from total_moving_time on the next FIT import.
+UPDATE activities
+SET moving_s = (
+    SELECT json_extract(sr.payload_json, '$.moving_time')
+    FROM activity_sources als
+    JOIN source_records sr ON sr.id = als.source_record_id
+    WHERE als.activity_id = activities.id
+      AND sr.source = 'intervals'
+      AND sr.record_type = 'activity'
+      AND sr.payload_json IS NOT NULL
+    LIMIT 1
+)
+WHERE moving_s IS NULL;
+
+-- Events only expose moving_time; older rows stored NULL because the
+-- importer read the nonexistent `duration` field.
+UPDATE events
+SET duration_s = COALESCE(
+        duration_s,
+        (
+            SELECT json_extract(sr.payload_json, '$.moving_time')
+            FROM source_records sr
+            WHERE sr.id = events.source_record_id
+        )
+    ),
+    training_load = COALESCE(
+        training_load,
+        (
+            SELECT json_extract(sr.payload_json, '$.icu_training_load')
+            FROM source_records sr
+            WHERE sr.id = events.source_record_id
+        )
+    );
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
     3: MIGRATION_3_SQL,
     4: MIGRATION_4_SQL,
     5: MIGRATION_5_SQL,
+    6: MIGRATION_6_SQL,
 }
 
 

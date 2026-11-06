@@ -834,6 +834,64 @@ class Vo2maxAndTagTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.writer.replace_activity_tags("a1", ["x"], source="runalyze")
 
+    def test_moving_time_conflicts_and_manual_override(self):
+        self._upsert({"moving_s": 1055}, "intervals", self.intervals_id)
+
+        conflicts = self._upsert({"moving_s": 1100}, "fit", self.fit_id)
+
+        self.assertEqual(1, len(conflicts))
+        self.assertEqual("moving_s", conflicts[0].field_name)
+        self.assertEqual(
+            1055,
+            self.conn.execute(
+                "SELECT moving_s FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
+
+        self.writer.set_manual_field("a1", "moving_s", 1055)
+        self._upsert({"moving_s": 999}, "fit", self.fit_id)
+        self.assertEqual(
+            1055,
+            self.conn.execute(
+                "SELECT moving_s FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
+
+    def test_event_training_load_is_upserted(self):
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-01",
+            name="5x6 LT1",
+            type="run",
+            source_record_id=self.intervals_id,
+            duration_s=3450,
+            distance_m=12984,
+            training_load=62,
+        )
+        row = self.conn.execute(
+            "SELECT duration_s, distance_m, training_load FROM events "
+            "WHERE id = 'e1'"
+        ).fetchone()
+        self.assertEqual(3450, row["duration_s"])
+        self.assertEqual(12984, row["distance_m"])
+        self.assertEqual(62, row["training_load"])
+
+        # A later event refresh without a load keeps the existing value.
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-01",
+            name="5x6 LT1",
+            type="run",
+            source_record_id=self.intervals_id,
+            duration_s=3450,
+        )
+        self.assertEqual(
+            62,
+            self.conn.execute(
+                "SELECT training_load FROM events WHERE id = 'e1'"
+            ).fetchone()[0],
+        )
+
 
 class ForcedActivityUpsertTests(unittest.TestCase):
     """A human-trusted source can take ownership of non-manual fields."""

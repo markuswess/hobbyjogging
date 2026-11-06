@@ -55,8 +55,15 @@ class SchemaMigrationTests(unittest.TestCase):
         }
         self.assertIn("elapsed_s", columns)
         self.assertIn("excluded_at", columns)
+        self.assertIn("moving_s", columns)
         self.assertIn("vo2max_garmin", columns)
         self.assertIn("vo2max_runalyze", columns)
+
+        event_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(events)")
+        }
+        self.assertIn("training_load", event_columns)
 
         record_columns = {
             row["name"]
@@ -127,6 +134,59 @@ class SchemaMigrationTests(unittest.TestCase):
             1,
             self.conn.execute("SELECT COUNT(*) FROM activity_tags").fetchone()[0],
         )
+
+    def test_migrates_v5_database_to_v6_with_backfill(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4, 5):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 5")
+
+        self.conn.execute(
+            """
+            INSERT INTO source_records (
+                id, source, record_type, external_id, checksum, payload_json
+            ) VALUES (1, 'intervals', 'activity', 'i1', 'c1',
+                      '{"moving_time": 1055, "elapsed_time": 1056}')
+            """
+        )
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport, source_record_id) "
+            "VALUES ('a1', '2026-03-14', 'run', 1)"
+        )
+        self.conn.execute(
+            "INSERT INTO activity_sources "
+            "(activity_id, source_record_id, match_method, is_primary) "
+            "VALUES ('a1', 1, 'external_id', 1)"
+        )
+        self.conn.execute(
+            """
+            INSERT INTO source_records (
+                id, source, record_type, external_id, checksum, payload_json
+            ) VALUES (2, 'intervals', 'event', 'e1', 'c2',
+                      '{"moving_time": 3450, "icu_training_load": 62}')
+            """
+        )
+        self.conn.execute(
+            "INSERT INTO events (id, source_record_id, local_date, name, type) "
+            "VALUES ('e1', 2, '2026-04-01', '5x6 LT1', 'run')"
+        )
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        activity = self.conn.execute(
+            "SELECT moving_s FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(1055, activity["moving_s"])
+
+        event = self.conn.execute(
+            "SELECT duration_s, training_load FROM events WHERE id = 'e1'"
+        ).fetchone()
+        self.assertEqual(3450, event["duration_s"])
+        self.assertEqual(62, event["training_load"])
 
     def test_migrate_is_idempotent(self):
         migrate(self.conn)

@@ -18,6 +18,7 @@ ACTIVITY_COLUMNS = {
     "description",
     "duration_s",
     "elapsed_s",
+    "moving_s",
     "distance_m",
     "avg_hr",
     "training_load",
@@ -31,6 +32,7 @@ ACTIVITY_COLUMNS = {
 MANUAL_FIELDS = (
     "duration_s",
     "elapsed_s",
+    "moving_s",
     "distance_m",
     "avg_hr",
     "started_at_utc",
@@ -50,6 +52,7 @@ CONFLICT_FIELDS = frozenset(
     {
         "duration_s",
         "elapsed_s",
+        "moving_s",
         "distance_m",
         "avg_hr",
         "started_at_utc",
@@ -66,6 +69,7 @@ CONFLICT_FIELDS = frozenset(
 NUMERIC_TOLERANCES = {
     "duration_s": (0.01, 2.0),
     "elapsed_s": (0.01, 2.0),
+    "moving_s": (0.01, 2.0),
     "distance_m": (0.01, 10.0),
     "avg_hr": (0.01, 2.0),
 }
@@ -1271,13 +1275,14 @@ class TrainingWriter:
         description: str = "",
         duration_s: float | None = None,
         distance_m: float | None = None,
+        training_load: float | None = None,
     ) -> None:
         self.connection.execute(
             """
             INSERT INTO events (
                 id, source_record_id, local_date, name, type,
-                description, duration_s, distance_m
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                description, duration_s, distance_m, training_load
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 source_record_id = excluded.source_record_id,
                 local_date = excluded.local_date,
@@ -1292,6 +1297,10 @@ class TrainingWriter:
                     excluded.distance_m,
                     events.distance_m
                 ),
+                training_load = COALESCE(
+                    excluded.training_load,
+                    events.training_load
+                ),
                 updated_at = CURRENT_TIMESTAMP
             """,
             (
@@ -1303,6 +1312,7 @@ class TrainingWriter:
                 description,
                 duration_s,
                 distance_m,
+                training_load,
             ),
         )
 

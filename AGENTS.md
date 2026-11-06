@@ -46,6 +46,8 @@ Cross-package changes must leave all three suites green.
 - Imports write; reports read only (`DataSource` + canonical model).
 - "Delete" means durable soft delete via `excluded_at`, never a hard delete.
 - Manual values outrank every import source and survive reimports.
+- `duration_s` is recording/timer time, `moving_s` is moving time, and
+  `elapsed_s` is elapsed time; all three are owner-tracked.
 - There is no automatic per-source priority. The first owner keeps a field;
   meaningful cross-source disagreement becomes a `field_conflict` review item.
 - A trusted source may force ownership only on an explicit human action

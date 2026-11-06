@@ -177,6 +177,26 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertIsNone(second.vo2max)
         self.assertEqual([], second.tags)
 
+    def test_moving_time_and_event_load_are_mapped(self):
+        self.conn.execute(
+            "UPDATE activities SET moving_s = 1055 WHERE id = 'a1'"
+        )
+        self.conn.execute(
+            "UPDATE events SET training_load = 62 WHERE id = 'e1'"
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+        events = self.repository.events(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+
+        self.assertEqual(1055, activities[0].moving_s)
+        self.assertEqual(62, events[0].training_load)
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

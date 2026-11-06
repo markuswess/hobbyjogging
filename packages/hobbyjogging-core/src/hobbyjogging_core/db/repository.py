@@ -26,7 +26,8 @@ class TrainingRepository:
             SELECT
                 id, local_date, started_at_utc, sport, name, description,
                 duration_s, elapsed_s, distance_m, avg_hr, training_load,
-                rpe, feel, intensity, vo2max_garmin, vo2max_runalyze
+                rpe, feel, intensity, vo2max_garmin, vo2max_runalyze,
+                moving_s
             FROM activities
             WHERE local_date BETWEEN ? AND ?
               AND excluded_at IS NULL
@@ -54,6 +55,7 @@ class TrainingRepository:
                 description=row["description"],
                 duration_s=row["duration_s"],
                 elapsed_s=row["elapsed_s"],
+                moving_s=row["moving_s"],
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 training_load=row["training_load"],
@@ -95,7 +97,8 @@ class TrainingRepository:
     def events(self, start: date, end: date) -> list[Event]:
         rows = self.connection.execute(
             """
-            SELECT local_date, name, type, description, duration_s, distance_m
+            SELECT local_date, name, type, description, duration_s, distance_m,
+                   training_load
             FROM events
             WHERE local_date BETWEEN ? AND ?
             ORDER BY local_date, name
@@ -111,6 +114,7 @@ class TrainingRepository:
                 description=row["description"],
                 duration_s=row["duration_s"],
                 distance_m=row["distance_m"],
+                training_load=row["training_load"],
             )
             for row in rows
         ]

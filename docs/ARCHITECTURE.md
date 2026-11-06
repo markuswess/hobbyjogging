@@ -145,11 +145,12 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 5.
+SQLite, forward-only migrations. Schema version 6.
 
-- `activities` — canonical values: dates, sport, name, description, duration,
-  elapsed, distance, heart rate, training load, subjective fields, both VO2max
-  values (`vo2max_garmin`, `vo2max_runalyze`), exclusion timestamp.
+- `activities` — canonical values: dates, sport, name, description, recording
+  time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
+  rate, training load, subjective fields, both VO2max values
+  (`vo2max_garmin`, `vo2max_runalyze`), exclusion timestamp.
 - `source_records` — raw imported payloads with checksums and provenance
   (`source`, `record_type`, `external_id`, `raw_path`, `payload_json`,
   exclusion timestamp).
@@ -161,8 +162,10 @@ SQLite, forward-only migrations. Schema version 5.
   attached to activities, tagged by source record.
 - `activity_tags` (v5) — activity labels with their source; used for dashboard
   filters and later analysis.
-- `wellness_days`, `events`, `equipment`, `activity_equipment`,
+- `wellness_days`, `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
+- `events` — planned workouts and races: local date, type, description,
+  planned moving duration (`duration_s`), distance, training load.
 - `import_runs` — one row per import with parameters and outcome.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
@@ -182,6 +185,13 @@ Runalyze writes `vo2max_runalyze`. Runalyze may fill an empty
 `vo2max_garmin` with its estimate as a fallback, but a later FIT value
 replaces that fallback. Tags are replaced per source on reimport; manual tags
 (`is_manual = 1`) are never touched.
+
+Time fields have distinct meanings: `duration_s` is recording/timer time
+(Intervals `icu_recording_time`, FIT `total_timer_time`), `moving_s` is moving
+time (Intervals `moving_time`, FIT `total_moving_time` when present), and
+`elapsed_s` is wall-clock elapsed time. Planned events only expose moving time,
+so their `duration_s` is the planned moving duration. A large moving-vs-
+recording gap is a review item.
 
 Sports are normalized through `hobbyjogging_core.sports`: one alias table maps
 FIT sport/sub-sport pairs, Intervals type names, and manual entry to the same

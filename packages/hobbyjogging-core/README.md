@@ -33,7 +33,7 @@ conn = open_database()  # data/hobbyjogging.db
 Set `HOBBYJOGGING_DB` to use a different path.
 
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
-`SCHEMA_VERSION` is the current target version (5).
+`SCHEMA_VERSION` is the current target version (6).
 
 Read canonical data through the repository:
 
@@ -97,6 +97,8 @@ writer.replace_activity_tags(
   `field_conflict` review item and changes nothing.
 - `force=True` overrides ownership for one explicit re-import, except for
   manual fields.
+- `duration_s` (recording/timer), `moving_s` (moving time), and `elapsed_s`
+  are distinct fields; all three are owner-tracked.
 - VO2max has independent owners: Garmin FIT writes `vo2max_garmin`, Runalyze
   writes `vo2max_runalyze`, and Runalyze may fill an empty Garmin slot.
 
@@ -106,7 +108,8 @@ writer.replace_activity_tags(
   the Garmin fetch manifest (`source = "garmin"`, `record_type =
   "activity-file"`).
 - `activities`, `wellness_days`, `events` — canonical merged data, including
-  `vo2max_garmin` and `vo2max_runalyze`.
+  recording/elapsed/moving time, `vo2max_garmin`, `vo2max_runalyze`, and
+  event `training_load`.
 - `activity_sources` — links between canonical activities and raw records.
 - `activity_field_sources` — per-field provenance; manual values are marked.
 - `activity_tags` — per-source activity labels (`is_manual = 1` for manual).
