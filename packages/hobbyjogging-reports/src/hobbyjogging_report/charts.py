@@ -69,6 +69,72 @@ def _style_week_axis(ax, weeks: list[date]) -> None:
     )
 
 
+def _require_data(*series) -> None:
+    if not any(series):
+        raise ValueError("no data to plot")
+
+
+def _save(fig, output: str) -> str:
+    fig.tight_layout()
+    fig.savefig(output, dpi=150)
+    plt.close(fig)
+    return output
+
+
+def _weekly_bars(
+    ax,
+    weeks: list[date],
+    values: list[float],
+    *,
+    color,
+    label: str,
+    bottom: list[float] | None = None,
+    edge_width: float = 0.5,
+) -> None:
+    ax.bar(
+        weeks,
+        values,
+        width=7,
+        align="edge",
+        bottom=bottom if bottom is not None else 0,
+        color=color,
+        edgecolor="white",
+        linewidth=edge_width,
+        label=label,
+        zorder=1,
+    )
+
+
+def _plot_average_lines(ax, points, windows, *, scale: float = 1.0, label):
+    dates = [point.date for point in points]
+
+    for attribute in ("base", "fitness", "fatigue"):
+        ax.plot(
+            dates,
+            [getattr(point, attribute) * scale for point in points],
+            color=AVERAGE_COLORS[attribute],
+            linewidth=2,
+            label=label(attribute, getattr(windows, attribute)),
+            zorder=2,
+        )
+
+
+def _finish_week_axis(
+    fig,
+    ax,
+    *,
+    title: str,
+    ylabel: str,
+    legend_fontsize: int = 9,
+) -> None:
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best", fontsize=legend_fontsize)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+    fig.autofmt_xdate()
+
+
 def plot_volume(
     data: list[tuple[date, float]],
     output: str,
@@ -84,8 +150,7 @@ def plot_volume(
     Daily distance averages are multiplied by ``distance_scale`` (default 7)
     so they are directly comparable to the weekly bars.
     """
-    if not data and not distance_points:
-        raise ValueError("no data to plot")
+    _require_data(data, distance_points)
 
     windows = windows or AverageWindows()
     fig, ax = plt.subplots(figsize=(12, 5))
@@ -93,54 +158,30 @@ def plot_volume(
     if data:
         weeks = [week for week, _ in data]
         values = [value for _, value in data]
-        ax.bar(
+        _weekly_bars(
+            ax,
             weeks,
             values,
-            width=7,
-            align="edge",
             color="lightgrey",
-            edgecolor="white",
-            linewidth=0.8,
             label="weekly km",
-            zorder=1,
+            edge_width=0.8,
         )
 
     if distance_points:
-        dates = [point.date for point in distance_points]
-
-        for attribute, label in (
-            ("base", f"{windows.base}d avg (weekly)"),
-            ("fitness", f"{windows.fitness}d avg (weekly)"),
-            ("fatigue", f"{windows.fatigue}d avg (weekly)"),
-        ):
-            ax.plot(
-                dates,
-                [
-                    getattr(point, attribute) * distance_scale
-                    for point in distance_points
-                ],
-                color=AVERAGE_COLORS[attribute],
-                linewidth=2,
-                label=label,
-                zorder=2,
-            )
-
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.set_xlabel("week starting (Monday)")
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=9)
+        _plot_average_lines(
+            ax,
+            distance_points,
+            windows,
+            scale=distance_scale,
+            label=lambda attribute, days: f"{days}d avg (weekly)",
+        )
 
     if data:
         _style_week_axis(ax, weeks)
 
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    fig.autofmt_xdate()
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
-
-    return output
+    ax.set_xlabel("week starting (Monday)")
+    _finish_week_axis(fig, ax, title=title, ylabel=ylabel)
+    return _save(fig, output)
 
 
 def plot_time(
@@ -157,8 +198,7 @@ def plot_time(
     title: str = "Weekly running time",
 ) -> str:
     """Weekly running time stacked by HR zone with zone EWMA lines."""
-    if not weeks and not time_points:
-        raise ValueError("no data to plot")
+    _require_data(weeks, time_points)
 
     windows = windows or AverageWindows()
     zone_count = (
@@ -188,17 +228,13 @@ def plot_time(
                 week.zones[index] / 3600
                 for week in weeks
             ]
-            ax.bar(
+            _weekly_bars(
+                ax,
                 week_dates,
                 values,
-                width=7,
-                align="edge",
-                bottom=bottoms,
                 color=ZONE_COLORS[index % len(ZONE_COLORS)],
-                edgecolor="white",
-                linewidth=0.5,
                 label=f"Z{index + 1}",
-                zorder=1,
+                bottom=bottoms,
             )
             bottoms = [
                 bottom + value
@@ -208,45 +244,27 @@ def plot_time(
         unzoned = [week.unzoned / 3600 for week in weeks]
 
         if any(unzoned):
-            ax.bar(
+            _weekly_bars(
+                ax,
                 week_dates,
                 unzoned,
-                width=7,
-                align="edge",
-                bottom=bottoms,
                 color=UNZONED_COLOR,
-                edgecolor="white",
-                linewidth=0.5,
                 label="Unzoned",
-                zorder=1,
+                bottom=bottoms,
             )
 
         _style_week_axis(ax, week_dates)
 
     if time_points:
-        dates = [point.date for point in time_points]
+        _plot_average_lines(
+            ax,
+            time_points,
+            windows,
+            scale=time_scale / 3600,
+            label=lambda attribute, days: f"{days}d avg (weekly)",
+        )
 
-        for attribute, label in (
-            ("base", f"{windows.base}d avg (weekly)"),
-            ("fitness", f"{windows.fitness}d avg (weekly)"),
-            ("fatigue", f"{windows.fatigue}d avg (weekly)"),
-        ):
-            ax.plot(
-                dates,
-                [
-                    getattr(point, attribute) * time_scale / 3600
-                    for point in time_points
-                ],
-                color=AVERAGE_COLORS[attribute],
-                linewidth=2,
-                label=label,
-                zorder=2,
-            )
-
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=8)
+    _finish_week_axis(fig, ax, title=title, ylabel=ylabel, legend_fontsize=8)
 
     if zone_ax is not None and zone_points:
         zone_dates = [point.date for point in zone_points]
@@ -303,13 +321,7 @@ def plot_time(
     if zone_ax is None:
         ax.set_xlabel("week starting (Monday)")
 
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    fig.autofmt_xdate()
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
-
-    return output
+    return _save(fig, output)
 
 
 def _pace_tick(seconds, _position):
@@ -340,8 +352,7 @@ def _plot_subt_metric(
     range_caps_both: bool = False,
 ) -> str:
     """Scatter + rolling mean of one work-interval metric."""
-    if not points:
-        raise ValueError("no data to plot")
+    _require_data(points)
 
     fig, ax = plt.subplots(figsize=(10, 6))
     plotted = False
@@ -454,11 +465,7 @@ def _plot_subt_metric(
     )
 
     fig.autofmt_xdate()
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
-
-    return output
+    return _save(fig, output)
 
 
 def plot_subt_paces(
@@ -515,8 +522,7 @@ def plot_load(
     title: str = "Training load",
 ) -> str:
     """Daily load bars with base, fitness, and fatigue EWMA lines."""
-    if not points:
-        raise ValueError("no data to plot")
+    _require_data(points)
 
     windows = windows or AverageWindows()
     dates = [point.date for point in points]
@@ -531,19 +537,12 @@ def plot_load(
         zorder=1,
     )
 
-    for attribute, label in (
-        ("base", f"Base ({windows.base}d)"),
-        ("fitness", f"Fitness ({windows.fitness}d)"),
-        ("fatigue", f"Fatigue ({windows.fatigue}d)"),
-    ):
-        ax.plot(
-            dates,
-            [getattr(point, attribute) for point in points],
-            color=AVERAGE_COLORS[attribute],
-            linewidth=2,
-            label=label,
-            zorder=2,
-        )
+    _plot_average_lines(
+        ax,
+        points,
+        windows,
+        label=lambda attribute, days: f"{attribute.title()} ({days}d)",
+    )
 
     ax.set_xlabel("date")
     ax.set_ylabel("training load")
@@ -551,11 +550,7 @@ def plot_load(
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best", fontsize=9)
     fig.autofmt_xdate()
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
-
-    return output
+    return _save(fig, output)
 
 
 def plot_recovery(
@@ -565,8 +560,7 @@ def plot_recovery(
     title: str = "Recovery trends",
 ) -> str:
     """Plot HRV, resting HR, and sleep with rolling averages."""
-    if not points:
-        raise ValueError("no data to plot")
+    _require_data(points)
 
     metrics = (
         ("hrv", "hrv_avg", "HRV", "ms", 1.0, "tab:blue"),
@@ -648,8 +642,4 @@ def plot_recovery(
     axes[0].set_title(title)
     axes[-1].set_xlabel("date")
     fig.autofmt_xdate()
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
-
-    return output
+    return _save(fig, output)

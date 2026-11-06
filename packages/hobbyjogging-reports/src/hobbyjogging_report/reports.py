@@ -1,4 +1,5 @@
-import json
+"""Markdown training reports."""
+
 from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
@@ -10,15 +11,13 @@ from .analysis import (
     subt_report_blocks,
     subt_report_summary,
 )
-from .api import Intervals
-from .classify import category_breakdown, classify
+from .classify import category_breakdown
 from .format import (
     fmt_time,
     format_activity,
     format_category_table,
     format_feel,
     format_fenced_block,
-    format_session_activity,
     format_subt_block_table,
     format_subt_summary_table,
     last_four_nights,
@@ -55,226 +54,6 @@ def _format_event(event) -> list[str]:
         lines.append(f"- Distance: {event.distance_m/1000:.1f} km")
 
     return lines
-
-
-def debug(resource: str = "all"):
-
-    api = Intervals()
-
-    today = date.today()
-    yesterday = today - timedelta(days=2)
-
-    activities = api.activities(
-        yesterday,
-        today,
-    )
-
-    wellness = api.wellness(
-        yesterday - timedelta(days=3),
-        today
-    )
-
-    events = api.events(
-        today,
-        today + timedelta(days=1),
-    )
-
-    if resource == "activities":
-        data = activities
-
-    elif resource == "wellness":
-        data = wellness
-
-    elif resource == "events":
-        data = events
-
-    elif resource == "all":
-        data = {
-            "activities": activities,
-            "wellness": wellness,
-            "events": events,
-        }
-    elif resource == "intervals":
-
-        if not activities:
-            print("No activities found")
-            return
-
-        activity = api.get_activity(
-            activities[0]["id"]
-        )
-
-        print(
-            json.dumps(
-                activity.get("icu_intervals"),
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
-
-        return
-    else:
-        raise SystemExit(
-            "usage: hobbyjogging_report debug "
-            "[activities|wellness|events|intervals|all]"
-        )
-
-    print(
-        json.dumps(
-            data,
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-SESSION_LOOKBACK_STEPS = (30, 90, 365, 1825, 7300)
-LAST_SELECTORS = {"last", "latest"}
-
-
-def _recent_activities(source, today, days, *, include_review):
-    return exclude_review(
-        source.activities(today - timedelta(days=days), today),
-        include_review=include_review,
-    )
-
-
-def select_session(
-    source,
-    selector=None,
-    *,
-    include_review: bool = False,
-    today: date | None = None,
-):
-    """Resolve a date, activity id, or ``last`` selector.
-
-    Returns ``(day, activities, excluded)``. The selector may be a ``date``,
-    a ``YYYY-MM-DD`` string, an activity id, ``last``/``latest``, or ``None``
-    for the most recent session.
-    """
-    today = today or date.today()
-
-    if isinstance(selector, date):
-        activities, excluded = exclude_review(
-            source.activities(selector, selector),
-            include_review=include_review,
-        )
-        return selector, sorted(activities, key=activity_sort_key), excluded
-
-    text = str(selector).strip() if selector is not None else ""
-
-    if not text or text.lower() in LAST_SELECTORS:
-        excluded_seen = 0
-
-        for days in SESSION_LOOKBACK_STEPS:
-            activities, excluded = _recent_activities(
-                source,
-                today,
-                days,
-                include_review=include_review,
-            )
-            excluded_seen = excluded
-
-            if activities:
-                latest = max(activities, key=activity_sort_key)
-                return latest.date, [latest], excluded
-
-        return today, [], excluded_seen
-
-    try:
-        day = date.fromisoformat(text)
-    except ValueError:
-        day = None
-
-    if day is not None:
-        activities, excluded = exclude_review(
-            source.activities(day, day),
-            include_review=include_review,
-        )
-        return day, sorted(activities, key=activity_sort_key), excluded
-
-    for days in SESSION_LOOKBACK_STEPS:
-        activities, _ = _recent_activities(
-            source,
-            today,
-            days,
-            include_review=include_review,
-        )
-
-        for activity in activities:
-            if activity.id == text:
-                return activity.date, [activity], 0
-
-    return None, [], 0
-
-
-def session_report(
-    selector=None,
-    source: DataSource | None = None,
-    *,
-    include_review: bool = False,
-    today: date | None = None,
-) -> str:
-    """Render a detailed report for one date or session.
-
-    ``selector`` accepts a date, an activity id, ``last``, or ``None`` for the
-    most recent session.
-    """
-    if source is None:
-        with create_source(DEFAULT_SOURCE) as source:
-            return session_report(
-                selector,
-                source,
-                include_review=include_review,
-                today=today,
-            )
-
-    day, activities, excluded = select_session(
-        source,
-        selector,
-        include_review=include_review,
-        today=today,
-    )
-
-    lines = [f"# Session {day}" if day else "# Session"]
-
-    note = review_note(excluded)
-    if note:
-        lines.append(note)
-
-    if not activities:
-        if (
-            isinstance(selector, str)
-            and selector.strip().lower() not in LAST_SELECTORS
-        ):
-            lines.append(
-                f"\n- No activity found for `{selector.strip()}`"
-            )
-            if not include_review:
-                lines.append(
-                    "- An open import review item may hide it; retry with "
-                    "`--include-review`."
-                )
-        else:
-            lines.append("\n- No activity")
-        return "\n".join(lines)
-
-    for activity in activities:
-        try:
-            intervals = source.activity_intervals(activity.id)
-        except Exception:
-            intervals = []
-
-        category = classify(activity, intervals)
-
-        lines.extend(
-            format_session_activity(
-                activity,
-                intervals,
-                category=category.path,
-            )
-        )
-
-    return "\n".join(lines)
 
 
 def subt_report(

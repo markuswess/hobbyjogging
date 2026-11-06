@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Activity
@@ -12,7 +12,7 @@ from .classify import classify
 from .cli import range_parser, resolve_range
 from .format import fmt_time, format_feel, pace, sport_label, table_text
 from .review import exclude_review, review_note
-from .reports import SESSION_LOOKBACK_STEPS
+from .recent import search_recent
 
 DEFAULT_LIMIT = 20
 DEFAULT_RANGE_DAYS = 30
@@ -181,13 +181,12 @@ def select_activities(
         limit = limit or DEFAULT_LIMIT
         today = today or date.today()
 
-        for days in SESSION_LOOKBACK_STEPS:
-            activities, excluded = exclude_review(
-                source.activities(today - timedelta(days=days), today),
-                include_review=include_review,
-            )
-            if len(activities) >= limit:
-                break
+        activities, excluded = search_recent(
+            source,
+            include_review=include_review,
+            today=today,
+            enough=lambda found: len(found) >= limit,
+        )
     else:
         activities, excluded = exclude_review(
             source.activities(start, end),

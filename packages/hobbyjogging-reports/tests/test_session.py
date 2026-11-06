@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core.model import Interval
-from hobbyjogging_report.reports import select_session, session_report
+from hobbyjogging_report.sessions import select_session, session_report
 from support import FakeSource, activity_factory
 
 D1 = date(2026, 10, 1)

@@ -1,17 +1,15 @@
 """Report command handlers."""
 
-from hobbyjogging_core.datasource import DataSource
-
 from .activity_list import activities_report
 from .command_support import reviewed_range
+from .debug import debug
 from .reports import (
     daily,
-    debug,
     period_report,
-    session_report,
     subt_report,
     summary,
 )
+from .sessions import session_report
 
 
 def run_daily_command(parsed, source, include_review):
@@ -71,23 +69,36 @@ def run_subt_report_command(parsed, source, include_review):
 
 
 def run_classify_command(parsed, source, include_review):
+    """Print the category of activities in the given range."""
+    from .analysis import activity_sort_key, is_subt_activity
+    from .classify import classify
+
     start, end = parsed
-    _run_classify(
+    activities = reviewed_range(
+        source,
         start,
         end,
-        source,
-        include_review=include_review,
+        include_review,
     )
+
+    for activity in sorted(activities, key=activity_sort_key):
+        intervals = []
+
+        if is_subt_activity(activity):
+            intervals = source.activity_intervals(activity.id)
+
+        category = classify(activity, intervals)
+        rpe = "-" if activity.rpe is None else f"{activity.rpe:g}"
+
+        print(
+            f"{activity.date} "
+            f"{activity.duration_s / 60:5.0f}min "
+            f"rpe={rpe} "
+            f"{category.path:36s} "
+            f"{activity.name}"
+        )
+
     return None
-
-
-def _run_classify(
-    start,
-    end,
-    source: DataSource,
-    *,
-    include_review: bool = False,
-) -> None:
     """Print the category of activities in the given range."""
     from .analysis import activity_sort_key, is_subt_activity
     from .classify import classify

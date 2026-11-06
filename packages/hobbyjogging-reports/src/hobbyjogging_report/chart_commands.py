@@ -270,6 +270,19 @@ def run_load_chart(
     print(path)
 
 
+def run_recovery_command(parsed, source, include_review):
+    """Recovery has a trailing scalars argument, so no positional forwarding."""
+    output, start, end, window_days = parsed
+    run_recovery_chart(
+        output,
+        start,
+        end,
+        source,
+        window_days,
+    )
+    return None
+
+
 def run_volume_command(parsed, source, include_review):
     output, start, end, windows = parsed
     run_volume_chart(

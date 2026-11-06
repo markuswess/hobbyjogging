@@ -43,6 +43,7 @@ def format_feel(feel):
 
 
 def sport_label(item):
+    """Human-readable sport/type name."""
 
     return SPORT_LABELS.get(
         item.type,
@@ -51,6 +52,7 @@ def sport_label(item):
 
 
 def fmt_time(seconds):
+    """Format seconds as ``50min`` / ``1h02`` for report lines."""
 
     if not seconds:
         return "-"
@@ -106,6 +108,7 @@ def format_fenced_block(text, indent=""):
 
 
 def fmt_zones(zone_times):
+    """Zone times as ``Z1 5min | Z3 30min`` for compact report lines."""
 
     if not zone_times:
         return "-"
@@ -172,6 +175,7 @@ def format_category_table(stats):
 
 
 def pace(activity):
+    """Average pace of one activity as ``M:SS/km``."""
 
     seconds = pace_s_per_km(activity.duration_s, activity.distance_m)
 

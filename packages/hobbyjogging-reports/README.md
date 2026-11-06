@@ -390,6 +390,10 @@ analysis or chart code:
 - `command_support.py` — shared review/fetch helpers for CLI handlers.
 - `report_commands.py` — report command handlers.
 - `chart_commands.py` — chart command handlers.
+- `recent.py` — widening-lookback search shared by session and activity
+  selection.
+- `sessions.py` — session selection and the detailed session report.
+- `debug.py` — raw Intervals.icu payload dump.
 - `sources/__init__.py` — source selection.
 - `sources/database.py` — canonical SQLite database adapter.
 - `sources/intervals_api.py` — the only module that knows raw
