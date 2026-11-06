@@ -51,7 +51,7 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
     if args.activity is not None:
         rows = writer.connection.execute(
             """
-            SELECT id, sport, duration_s, elapsed_s, distance_m
+            SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s
             FROM activities WHERE id = ?
             """,
             (args.activity,),
@@ -62,7 +62,7 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
     else:
         rows = writer.connection.execute(
             """
-            SELECT id, sport, duration_s, elapsed_s, distance_m
+            SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s
             FROM activities
             ORDER BY local_date, id
             """
@@ -79,6 +79,7 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
             duration_s=row["duration_s"] or 0,
             elapsed_s=row["elapsed_s"] or 0,
             distance_m=row["distance_m"] or 0,
+            moving_s=row["moving_s"],
         )
         if not findings:
             continue
@@ -100,6 +101,7 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
             duration_s=row["duration_s"] or 0,
             elapsed_s=row["elapsed_s"] or 0,
             distance_m=row["distance_m"] or 0,
+            moving_s=row["moving_s"],
         )
 
     writer.connection.commit()

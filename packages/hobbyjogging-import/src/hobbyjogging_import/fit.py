@@ -54,6 +54,7 @@ class FitSession:
     elapsed_s: float
     duration_s: float
     distance_m: float
+    moving_s: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
     ascent_m: float | None = None
@@ -201,6 +202,7 @@ def summarize_fit_messages(
                 elapsed_s=_number(session.get("total_elapsed_time")) or 0.0,
                 duration_s=_number(session.get("total_timer_time")) or 0.0,
                 distance_m=_number(session.get("total_distance")) or 0.0,
+                moving_s=_number(session.get("total_moving_time")),
                 avg_hr=_number(session.get("avg_heart_rate")),
                 max_hr=_number(session.get("max_heart_rate")),
                 ascent_m=_number(session.get("total_ascent")),
@@ -269,10 +271,15 @@ def format_fit_file(summary: FitFileSummary) -> str:
                 f"Start: {session.start_time_utc}",
                 f"Local start: {session.local_start or '-'}",
                 f"Elapsed: {format_duration(session.elapsed_s)}",
-                f"Moving: {format_duration(session.duration_s)}",
+                f"Timer: {format_duration(session.duration_s)}",
                 f"Distance: {session.distance_m / 1000:.2f} km",
             ]
         )
+
+        if session.moving_s is not None:
+            lines.append(
+                f"Moving: {format_duration(session.moving_s)}"
+            )
 
         if session.canonical_sport in RUN_SPORTS:
             lines.append(

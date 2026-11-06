@@ -24,6 +24,7 @@ def _summary(
     name: str = "FIT Run",
     lap_start: str = "2026-10-01T06:00:00Z",
     vo2max_garmin: float | None = None,
+    moving_s: float | None = None,
     sport: str = "running",
     sub_sport: str = "generic",
     canonical_sport: str = "run",
@@ -54,6 +55,7 @@ def _summary(
                 ascent_m=20,
                 calories=500,
                 vo2max_garmin=vo2max_garmin,
+                moving_s=moving_s,
                 laps=[
                     FitLap(
                         index=1,
@@ -629,6 +631,12 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(0, summary.activities_imported)
         self.assertEqual(1, summary.activities_skipped)
         self.assertEqual("excluded", summary.actions[0].match_method)
+
+    def test_moving_time_is_written_when_present(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path, moving_s=3550)])
+
+        self.assertEqual(3550, self._activities()[0].moving_s)
 
     def test_parse_error_is_skipped(self):
         self._file("one.fit", b"one")

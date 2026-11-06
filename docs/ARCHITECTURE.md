@@ -221,7 +221,9 @@ with it. Two different specific sports still become a `field_conflict`.
    time/date, timezone offset, sport, and training load. Subjective fields
    keep their owner silently.
 4. **Quality rules.** Canonical values are checked for zero duration, missing
-   distance for pace sports, and implausible implied pace; findings are queued.
+   distance for pace sports, implausible implied pace, and a moving-time vs
+   recording-time gap above `max(10 min, 25% of recording)`; findings are
+   queued.
 5. **Record.** Every run is an `import_runs` row; review items are idempotent
    by fingerprint and supersede older items when the underlying conflict
    changes.

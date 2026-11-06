@@ -22,6 +22,11 @@ the package is still waiting on.
 - **Triage links.** `o` opens every available link; `ci` copies the Intervals
   URL and `cg` the Garmin Connect URL (resolved from the fetch manifest by
   file path, then by start-time match). `review show` prints both.
+- **Time fields.** Intervals `moving_time` is stored as `moving_s` (recording
+  time stays `duration_s`); FIT `total_moving_time` is parsed when present.
+  Planned events get `duration_s` from `moving_time` and `training_load` from
+  `icu_training_load`. The `moving_time_mismatch` quality rule flags a gap
+  larger than `max(10 min, 25% of recording)`.
 - **Triage Intervals re-import.** `(t)rust Intervals` re-fetches one linked
   activity with `force=True`: Intervals takes ownership of non-manual fields,
   conflicts on those fields resolve, and quality rules re-run.
@@ -41,6 +46,8 @@ the package is still waiting on.
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
   merged into `description`, tags in `activity_tags`, gear via the
   equipment-categories endpoint, and `vo2max_runalyze`.
+- **`review scan` prune mode**: resolving stale quality items whose current
+  values no longer trigger them (not implemented yet).
 - The dashboard is reports-package work.
 
 ## Notes / risks

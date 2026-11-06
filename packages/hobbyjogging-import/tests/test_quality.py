@@ -164,6 +164,49 @@ class QualityRuleTests(unittest.TestCase):
         )
 
 
+class MovingTimeMismatchTests(unittest.TestCase):
+
+    def _findings(self, duration_s, moving_s):
+        return quality_findings(
+            sport="run",
+            duration_s=duration_s,
+            elapsed_s=duration_s,
+            distance_m=10000,
+            moving_s=moving_s,
+        )
+
+    def _rules(self, duration_s, moving_s):
+        return {finding.rule for finding in self._findings(duration_s, moving_s)}
+
+    def test_small_gap_is_not_flagged(self):
+        self.assertNotIn("moving_time_mismatch", self._rules(3600, 3500))
+
+    def test_gap_above_ratio_is_flagged(self):
+        findings = self._findings(3600, 2400)
+        self.assertIn("moving_time_mismatch", {f.rule for f in findings})
+
+    def test_gap_at_floor_is_not_flagged(self):
+        # 2400 s recording: tolerance is max(600, 25%) = 600 s.
+        self.assertNotIn("moving_time_mismatch", self._rules(2400, 1800))
+
+    def test_gap_just_above_floor_is_flagged(self):
+        self.assertIn("moving_time_mismatch", self._rules(2400, 1799))
+
+    def test_moving_time_above_recording_is_flagged(self):
+        findings = self._findings(3600, 3700)
+        mismatch = [
+            f for f in findings if f.rule == "moving_time_mismatch"
+        ]
+        self.assertEqual(1, len(mismatch))
+        self.assertIn("exceeds", mismatch[0].detail)
+
+    def test_missing_moving_time_skips_the_rule(self):
+        self.assertNotIn(
+            "moving_time_mismatch",
+            {f.rule for f in self._findings(3600, None)},
+        )
+
+
 class RecordQualityFindingsTests(unittest.TestCase):
 
     def setUp(self):

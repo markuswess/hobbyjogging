@@ -29,6 +29,13 @@ MAX_RUN_PACE_S_PER_KM = 600.0  # 10:00 /km
 MIN_RIDE_PACE_S_PER_KM = 36.0  # ~100 km/h
 MAX_RIDE_PACE_S_PER_KM = 900.0  # 15:00 /km walking pace
 
+# Moving time may legitimately be shorter than recording time (stops, auto
+# pause). Flag only a large gap: more than 25% or 10 minutes, whichever is
+# greater.
+MOVING_TIME_MISMATCH_RATIO = 0.25
+MOVING_TIME_MISMATCH_FLOOR_S = 600.0
+MOVING_EXCEEDS_RECORDING_S = 60.0
+
 AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
@@ -51,6 +58,7 @@ def quality_findings(
     duration_s: float,
     elapsed_s: float,
     distance_m: float,
+    moving_s: float | None = None,
 ) -> list[Finding]:
     """Apply the canonical quality rule set to one activity's values."""
     findings: list[Finding] = []
@@ -67,6 +75,51 @@ def quality_findings(
                 context={"duration_s": duration_s, "elapsed_s": elapsed_s},
             )
         )
+
+    if moving_s is not None and moving_s > 0 and duration_s > 0:
+        difference = duration_s - moving_s
+        tolerance = max(
+            MOVING_TIME_MISMATCH_FLOOR_S,
+            MOVING_TIME_MISMATCH_RATIO * duration_s,
+        )
+        if moving_s > duration_s + MOVING_EXCEEDS_RECORDING_S:
+            findings.append(
+                Finding(
+                    rule="moving_time_mismatch",
+                    detail=(
+                        "moving time "
+                        f"{format_field('duration_s', moving_s)} exceeds "
+                        "recording time "
+                        f"{format_field('duration_s', duration_s)}"
+                    ),
+                    context={
+                        "duration_s": duration_s,
+                        "moving_s": moving_s,
+                        "difference_s": round(difference, 1),
+                        "ratio": round(moving_s / duration_s, 3),
+                    },
+                )
+            )
+        elif difference > tolerance:
+            findings.append(
+                Finding(
+                    rule="moving_time_mismatch",
+                    detail=(
+                        "moving time "
+                        f"{format_field('duration_s', moving_s)} differs from "
+                        "recording time "
+                        f"{format_field('duration_s', duration_s)} by "
+                        f"{format_field('duration_s', difference)} "
+                        f"({moving_s / duration_s:.0%} of recording)"
+                    ),
+                    context={
+                        "duration_s": duration_s,
+                        "moving_s": moving_s,
+                        "difference_s": round(difference, 1),
+                        "ratio": round(moving_s / duration_s, 3),
+                    },
+                )
+            )
 
     pace_sport = (
         sport in PACE_SPORTS and sport not in NO_DISTANCE_SPORTS
@@ -125,6 +178,7 @@ def record_quality_findings(
     duration_s: float,
     elapsed_s: float,
     distance_m: float,
+    moving_s: float | None = None,
 ) -> int:
     """Run the quality rules and record findings as review items.
 
@@ -138,6 +192,7 @@ def record_quality_findings(
         duration_s=duration_s,
         elapsed_s=elapsed_s,
         distance_m=distance_m,
+        moving_s=moving_s,
     ):
         # The source record stays on the item for provenance, but it must not
         # be part of the identity: an import and a later `review scan` detect
@@ -217,7 +272,7 @@ def refresh_activity_quality(
     """
     row = writer.connection.execute(
         """
-        SELECT sport, duration_s, elapsed_s, distance_m
+        SELECT sport, duration_s, elapsed_s, distance_m, moving_s
         FROM activities WHERE id = ?
         """,
         (activity_id,),
@@ -230,12 +285,14 @@ def refresh_activity_quality(
     duration_s = row["duration_s"] or 0
     elapsed_s = row["elapsed_s"] or 0
     distance_m = row["distance_m"] or 0
+    moving_s = row["moving_s"]
 
     findings = quality_findings(
         sport=sport,
         duration_s=duration_s,
         elapsed_s=elapsed_s,
         distance_m=distance_m,
+        moving_s=moving_s,
     )
     current_fingerprints = {
         review_fingerprint([finding.rule, activity_id, finding.context])
@@ -270,6 +327,7 @@ def refresh_activity_quality(
         duration_s=duration_s,
         elapsed_s=elapsed_s,
         distance_m=distance_m,
+        moving_s=moving_s,
     )
 
     return findings

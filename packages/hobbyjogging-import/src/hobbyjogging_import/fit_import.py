@@ -411,6 +411,11 @@ class FitImporter:
             duration_s=float(values.get("duration_s") or 0),
             elapsed_s=float(values.get("elapsed_s") or 0),
             distance_m=float(values.get("distance_m") or 0),
+            moving_s=(
+                float(values["moving_s"])
+                if values.get("moving_s") is not None
+                else None
+            ),
         )
 
         summary.activities_imported += 1
@@ -490,6 +495,7 @@ def _activity_values(session: FitSession) -> dict[str, object]:
             if session.sub_sport and session.sub_sport != "generic"
             else None
         ),
+        "moving_s": session.moving_s,
         "avg_hr": session.avg_hr,
         "vo2max_garmin": session.vo2max_garmin,
     }

@@ -316,6 +316,11 @@ class IntervalsImporter:
             duration_s=float(values.get("duration_s") or 0),
             elapsed_s=float(values.get("elapsed_s") or 0),
             distance_m=float(values.get("distance_m") or 0),
+            moving_s=(
+                float(values["moving_s"])
+                if values.get("moving_s") is not None
+                else None
+            ),
         )
 
         if interval_payload is None:
@@ -427,8 +432,12 @@ class IntervalsImporter:
             name=str(raw.get("name") or ""),
             type=canonical_sport(raw.get("type")),
             description=str(raw.get("description") or ""),
-            duration_s=_float(raw.get("duration")),
+            duration_s=(
+                _float(raw.get("moving_time"))
+                or _float(raw.get("duration"))
+            ),
             distance_m=_float(raw.get("distance")),
+            training_load=_float(raw.get("icu_training_load")),
             source_record_id=source_record_id,
         )
         return True
@@ -466,6 +475,7 @@ def _activity_values(raw: dict) -> dict[str, object]:
         "started_at_utc": raw.get("start_date"),
         "tz_offset_min": _tz_offset_min(raw),
         "sub_sport": raw.get("sub_type"),
+        "moving_s": _float(raw.get("moving_time")),
         "avg_hr": _float(raw.get("average_heartrate")),
         "training_load": _float(raw.get("icu_training_load")),
         "rpe": _float(raw.get("icu_rpe")),

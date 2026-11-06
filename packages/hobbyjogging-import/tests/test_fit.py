@@ -57,6 +57,7 @@ def _sample_messages():
         "sport_profile_name": "Run",
         "total_elapsed_time": 2562.121,
         "total_timer_time": 2562.121,
+        "total_moving_time": 2500.0,
         "total_distance": 10166.61,
         "avg_heart_rate": 151,
         "max_heart_rate": 169,
@@ -106,6 +107,7 @@ class FitSummaryTests(unittest.TestCase):
         self.assertEqual("run", mapped.canonical_sport)
         self.assertEqual("Run", mapped.name)
         self.assertEqual(2562.121, mapped.duration_s)
+        self.assertEqual(2500.0, mapped.moving_s)
         self.assertEqual(10166.61, mapped.distance_m)
         self.assertEqual(151, mapped.avg_hr)
         self.assertEqual(169, mapped.max_hr)

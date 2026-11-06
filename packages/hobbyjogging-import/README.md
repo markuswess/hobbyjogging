@@ -51,6 +51,11 @@ Garmin's current VO2max is read from undocumented activity message 140, field
 carried a Garmin value. Runalyze's own estimate will be stored separately as
 `vo2max_runalyze`; the two are never merged or treated as a conflict.
 
+FIT timer time (`total_timer_time`) is stored as `duration_s`. When the file
+contains `total_moving_time`, it is stored separately as `moving_s`; the
+inspector prints `Timer` and `Moving` lines. Files without the field leave
+`moving_s` empty (reports fall back to `duration_s`).
+
 ## Garmin Personal API
 
 Create a Personal API key on
@@ -115,9 +120,9 @@ decides (see below). Values that agree within tolerance (about 1%, with small
 absolute floors) are not conflicts. Manual edits always outrank every source
 and survive reimports.
 
-Conflict-tracked fields are `duration_s`, `elapsed_s`, `distance_m`, `avg_hr`,
-`started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and
-`training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
+Conflict-tracked fields are `duration_s`, `elapsed_s`, `moving_s`,
+`distance_m`, `avg_hr`, `started_at_utc`, `local_date`, `tz_offset_min`,
+`sport`, and `training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
 keep their current owner silently — two devices naming the same run
 differently is not worth a review item.
 
@@ -194,19 +199,27 @@ Re-importing is idempotent: source records are matched by
 UUIDs derived from the Intervals.icu activity ID. Manual field overrides are
 not overwritten.
 
+Intervals provides recording time (`icu_recording_time`), moving time
+(`moving_time`), and elapsed time. They are stored as `duration_s` (recording),
+`moving_s` (moving), and `elapsed_s` (elapsed). Planned events only expose
+moving time, so their `duration_s` is the planned moving duration and
+`training_load` comes from `icu_training_load`.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*
 in the canonical `review_items` table. Categories are `ambiguous_match`,
 `field_conflict`, `quality`, `duplicate`, and `manual_flag`. Every importer
 runs a small canonical quality rule set (zero duration, missing distance for
-run/ride sports, implied pace outside a plausible per-sport window), persists
-ambiguous matches with their candidate lists, and records cross-source field
-disagreements (`field_conflict`) without touching the stored value. Detection
-is idempotent by `(category, fingerprint, activity_id)`: reimporting never
-duplicates items and never reopens resolved ones. The source record stays on
-the item for provenance but is not part of the fingerprint. A changed conflict
-supersedes its older open item.
+run/ride sports, implied pace outside a plausible per-sport window, and
+moving time differing from recording time by more than
+`max(10 min, 25% of recording)`), persists ambiguous matches with their
+candidate lists, and records cross-source field disagreements
+(`field_conflict`) without touching the stored value. Detection is idempotent
+by `(category, fingerprint, activity_id)`: reimporting never duplicates items
+and never reopens resolved ones. The source record stays on the item for
+provenance but is not part of the fingerprint. A changed conflict supersedes
+its older open item.
 
 ```bash
 uv run --env-file .env hobbyjogging-import review list

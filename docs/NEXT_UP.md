@@ -17,6 +17,10 @@ Updated 2026-11-06.
   `activities.vo2max_garmin`, `activities.vo2max_runalyze`, and
   `activity_tags` (per source, manual tags protected). Existing Intervals
   activities and planned events were backfilled.
+- **Time fields.** Intervals `moving_time` → `moving_s`; FIT
+  `total_moving_time` is parsed when present; event duration comes from
+  `moving_time` and `training_load` from `icu_training_load`. The
+  `moving_time_mismatch` rule flags gaps above `max(10 min, 25%)`.
 - **Quality dedupe.** Review items dedupe by
   `(category, fingerprint, activity_id)`, not by source record.
 - **Reports.** Markdown reports (daily/weekly/monthly/yearly, period, subT,
@@ -29,19 +33,16 @@ Updated 2026-11-06.
 
 ## Next
 
-1. **Import package: time fields.** Map Intervals `moving_time` and FIT
-   `total_moving_time` into `moving_s`; fix event duration from `moving_time`
-   and write `training_load`; add the `moving_time_mismatch` quality rule
-   (flag when recording − moving exceeds `max(10 min, 25% of recording)`), and
-   prune stale quality items in `review scan`.
-2. **View models + static weekly dashboard** in the reports package (main
+1. **View models + static weekly dashboard** in the reports package (main
    focus): weekly overview, activity list/detail, data-health banner.
-3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
+2. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
-4. **Runalyze enrichment** when the API auth/endpoint details are settled:
+3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
+4. **`review scan` prune mode**: resolve stale quality items whose current
+   values no longer trigger them.
 5. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 

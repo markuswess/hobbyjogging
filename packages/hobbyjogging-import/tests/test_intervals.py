@@ -44,8 +44,9 @@ class FakeIntervalsClient:
                 "start_date_local": "2026-10-02T09:00:00",
                 "name": "Town race",
                 "type": "race",
-                "duration": 1800,
+                "moving_time": 1800,
                 "distance": 5000,
+                "icu_training_load": 40,
             }
         ]
         self.activity_ranges = []
@@ -158,6 +159,7 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual("Morning run", activity.name)
         self.assertEqual(3600, activity.duration_s)
         self.assertEqual(3900, activity.elapsed_s)
+        self.assertEqual(3600, activity.moving_s)
         self.assertEqual(10000, activity.distance_m)
         self.assertEqual(140, activity.avg_hr)
         self.assertEqual(50, activity.training_load)
@@ -185,6 +187,8 @@ class IntervalsImporterTests(unittest.TestCase):
             date(2026, 10, 2),
         )
         self.assertEqual("Town race", events[0].name)
+        self.assertEqual(1800, events[0].duration_s)
+        self.assertEqual(40, events[0].training_load)
 
         intervals = self.repository.activity_intervals(activity.id)
         self.assertEqual(1, len(intervals))
@@ -202,6 +206,7 @@ class IntervalsImporterTests(unittest.TestCase):
         )[0]
         self.assertEqual(3650, activity.duration_s)
         self.assertEqual(3900, activity.elapsed_s)
+        self.assertEqual(3600, activity.moving_s)
 
     def test_falls_back_to_moving_time_for_duration(self):
         self.client.activity_payloads[0]["icu_recording_time"] = None
