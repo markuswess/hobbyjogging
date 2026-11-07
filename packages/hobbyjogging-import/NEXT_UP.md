@@ -53,6 +53,13 @@ on.
   conflicts whose recorded values now agree under the current core
   tolerances. FIT/Intervals reimports also resolve a field's old conflict
   automatically when that field agrees again.
+- **Conflict causes and bulk triage.** New `field_conflict` items carry a
+  `cause`/`cause_note` computed from the stored source summaries (`causes.py`).
+  Advisory causes (`elapsed_definition`, `moving_estimate`, `small_difference`,
+  `start_offset`) are `info`; the rest stay `warn` and need a per-activity
+  decision. `review causes`, `review classify [--dry-run]`, `--cause` filters
+  on `list`/`triage`, and `review resolve --cause <cause> [--dry-run]` support
+  the workflow.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 

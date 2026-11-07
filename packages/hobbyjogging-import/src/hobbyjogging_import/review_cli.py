@@ -3,8 +3,16 @@
 import json
 
 from hobbyjogging_core import TrainingWriter, open_database
+from .causes import (
+    UNCLASSIFIED,
+    annotate_conflicts,
+    cause_counts,
+    item_cause,
+    resolve_by_cause,
+)
 from .links import garmin_url, intervals_url
 from .quality import (
+    CONFLICT,
     MANUAL_FLAG,
     prune_field_conflicts,
     record_manual_flag,
@@ -45,6 +53,10 @@ def run_review(args, parser) -> int:
             return _run_scan(args, writer, parser)
         if action == "prune":
             return _run_prune(args, writer)
+        if action == "causes":
+            return _run_causes(args, writer)
+        if action == "classify":
+            return _run_classify(args, writer, parser)
 
         parser.error(f"unknown review action: {action}")
     finally:
@@ -89,11 +101,84 @@ def _run_prune(args, writer: TrainingWriter) -> int:
     return 0
 
 
+def _run_causes(args, writer: TrainingWriter) -> int:
+    """Summarize open field conflicts by cause."""
+    summaries = cause_counts(writer, status=args.status)
+
+    if not summaries:
+        print(f"No {args.status} field conflicts.")
+        return 0
+
+    for entry in summaries:
+        fields = ", ".join(
+            f"{name} {count}"
+            for name, count in sorted(
+                entry.fields.items(),
+                key=lambda pair: (-pair[1], pair[0]),
+            )
+        )
+        action = (
+            "resolve --cause"
+            if entry.resolvable
+            else "triage per activity"
+        )
+        print(
+            f"{entry.cause:<20} {entry.count:>4}  "
+            f"{entry.severity:<4}  {entry.label:<18} "
+            f"{fields}  ({action})"
+        )
+
+    total = sum(entry.count for entry in summaries)
+    print(f"\n{total} {args.status} field conflict(s)")
+
+    unclassified = sum(
+        entry.count
+        for entry in summaries
+        if entry.cause == UNCLASSIFIED
+    )
+    if unclassified:
+        print(
+            f"{unclassified} unclassified: run "
+            "`review classify` to annotate them"
+        )
+
+    return 0
+
+
+def _run_classify(args, writer: TrainingWriter, parser) -> int:
+    """Backfill causes onto existing field-conflict review items."""
+    if args.activity is not None and writer.connection.execute(
+        "SELECT 1 FROM activities WHERE id = ?",
+        (args.activity,),
+    ).fetchone() is None:
+        parser.error(f"unknown activity: {args.activity}")
+
+    summary = annotate_conflicts(
+        writer,
+        activity_id=args.activity,
+        dry_run=args.dry_run,
+    )
+    label = "Classify dry run" if args.dry_run else "Classify"
+    print(
+        f"{label}: {summary.updated} updated, "
+        f"{summary.unchanged} unchanged, {summary.checked} checked"
+    )
+    return 0
+
+
 def _run_list(args, writer: TrainingWriter) -> int:
     items = writer.review_items(
         status=args.status,
         category=args.category,
     )
+
+    if args.cause is not None:
+        items = [
+            item
+            for item in items
+            if item["category"] == CONFLICT
+            and (item_cause(item) or UNCLASSIFIED) == args.cause
+        ]
 
     if args.limit is not None:
         items = items[: args.limit]
@@ -147,6 +232,39 @@ def _run_show(args, writer: TrainingWriter, parser) -> int:
 
 
 def _run_resolve(args, writer: TrainingWriter, parser) -> int:
+    if args.id is None:
+        if args.cause is None:
+            parser.error("review resolve needs an item id or --cause")
+        if args.activity is not None:
+            parser.error("--activity requires a review item id")
+
+        try:
+            summary = resolve_by_cause(
+                writer,
+                args.cause,
+                dry_run=args.dry_run,
+                note=args.note,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+
+        if args.dry_run:
+            print(
+                f"Resolve dry run ({args.cause}): "
+                f"{summary.resolved} item(s) would be resolved"
+            )
+        else:
+            print(
+                f"Resolved {summary.resolved} field conflict(s) "
+                f"with cause {args.cause}"
+            )
+        return 0
+
+    if args.cause is not None or args.dry_run:
+        parser.error(
+            "--cause and --dry-run are bulk options; omit the item id"
+        )
+
     if writer.review_item(args.id) is None:
         parser.error(f"unknown review item: {args.id}")
 
@@ -300,6 +418,7 @@ def _run_triage(args, writer: TrainingWriter, parser) -> int:
         category=args.category,
         severity=args.severity,
         activity_id=args.activity_id,
+        cause=args.cause,
     )
     return 0
 
@@ -311,6 +430,8 @@ def _format_summary_line(item) -> str:
         record = f" [{item['record_source']} {external[:32]}]"
 
     excluded = " [excluded]" if item["activity_excluded_at"] else ""
+    cause = item_cause(item)
+    suffix = f" [{cause}]" if cause else ""
 
     if item["local_date"]:
         name = item["activity_name"] or item["sport"] or ""
@@ -318,11 +439,11 @@ def _format_summary_line(item) -> str:
             f"#{item['id']} {item['severity']:<4} "
             f"{item['category']}/{item['status']}  "
             f"{item['local_date']}{record}  {name}{excluded}  "
-            f"({item['detail'][:64]})"
+            f"({item['detail'][:64]}){suffix}"
         )
 
     return (
         f"#{item['id']} {item['severity']:<4} "
         f"{item['category']}/{item['status']}  "
-        f"{record}{excluded}  ({item['detail'][:64]})"
+        f"{record}{excluded}  ({item['detail'][:64]}){suffix}"
     )

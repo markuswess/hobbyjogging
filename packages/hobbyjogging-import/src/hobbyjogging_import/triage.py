@@ -16,6 +16,7 @@ from typing import Callable
 
 from hobbyjogging_core import TrainingWriter
 
+from .causes import UNCLASSIFIED, item_cause, item_context
 from .clipboard import copy_text
 from .editing import apply_manual_edit
 from .links import (
@@ -116,12 +117,14 @@ class TriageRunner:
         category: str | None = None,
         severity: str | None = None,
         activity_id: str | None = None,
+        cause: str | None = None,
     ) -> dict[str, int]:
         """Walk the open queue. Returns the decision counters."""
         items = self._queue_items(
             category=category,
             severity=severity,
             activity_id=activity_id,
+            cause=cause,
         )
         if limit is not None:
             items = items[:limit]
@@ -147,6 +150,7 @@ class TriageRunner:
         category: str | None,
         severity: str | None,
         activity_id: str | None,
+        cause: str | None = None,
     ) -> list:
         items = self.writer.review_items(
             status="open",
@@ -156,6 +160,13 @@ class TriageRunner:
         if activity_id is not None:
             items = [
                 item for item in items if item["activity_id"] == activity_id
+            ]
+        if cause is not None:
+            items = [
+                item
+                for item in items
+                if item["category"] == CONFLICT
+                and (item_cause(item) or UNCLASSIFIED) == cause
             ]
         return items
 
@@ -189,6 +200,13 @@ class TriageRunner:
                 self.print(f"  candidates: {names}")
             else:
                 self.print("  record-level item (no activity linked yet)")
+
+        cause = item_cause(item)
+        if cause:
+            note = item_context(item).get("cause_note")
+            self.print(
+                f"  cause {cause}" + (f": {note}" if note else "")
+            )
 
         if self.pending_note:
             self.print(f"  note pending: {self.pending_note}")

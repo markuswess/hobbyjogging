@@ -7,6 +7,7 @@ from pathlib import Path
 
 from hobbyjogging_core import default_database_path, open_database
 
+from .causes import CAUSE_NAMES
 from .config import (
     default_fit_dir,
     default_garmin_dir,
@@ -293,6 +294,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="report what would be resolved without writing",
     )
 
+    review_causes = review_sub.add_parser(
+        "causes",
+        help="summarize field conflicts by cause",
+    )
+    review_causes.add_argument(
+        "--status",
+        choices=("open", "ignored", "resolved", "all"),
+        default="open",
+    )
+
+    review_classify = review_sub.add_parser(
+        "classify",
+        help="annotate existing field conflicts with a cause",
+    )
+    review_classify.add_argument(
+        "--activity",
+        metavar="ACTIVITY_ID",
+        help="classify only this activity's conflicts",
+    )
+    review_classify.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing",
+    )
+
     review_scan = review_sub.add_parser(
         "scan",
         help="run quality rules over existing activities and record items",
@@ -310,9 +336,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     review_resolve = review_sub.add_parser(
         "resolve",
-        help="mark a review item resolved",
+        help="mark a review item resolved (or bulk-resolve a conflict cause)",
     )
-    review_resolve.add_argument("id", type=int)
+    review_resolve.add_argument("id", type=int, nargs="?")
     review_resolve.add_argument(
         "--activity",
         metavar="ACTIVITY_ID",
@@ -320,6 +346,19 @@ def build_parser() -> argparse.ArgumentParser:
             "resolve an ambiguous match by linking its source record "
             "to this canonical activity"
         ),
+    )
+    review_resolve.add_argument(
+        "--cause",
+        choices=CAUSE_NAMES,
+        help=(
+            "bulk-resolve every open conflict with this cause "
+            "(only advisory causes are allowed)"
+        ),
+    )
+    review_resolve.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="with --cause: report what would be resolved without writing",
     )
     review_resolve.add_argument("--note", default="")
 
@@ -410,6 +449,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("info", "warn", "error"),
     )
     review_triage.add_argument(
+        "--cause",
+        choices=CAUSE_NAMES,
+        help="triage only field conflicts with this cause",
+    )
+    review_triage.add_argument(
         "--activity",
         dest="activity_id",
         metavar="ACTIVITY_ID",
@@ -434,6 +478,11 @@ def _add_review_status_args(parser: argparse.ArgumentParser) -> None:
             "duplicate",
             "manual_flag",
         ),
+    )
+    parser.add_argument(
+        "--cause",
+        choices=CAUSE_NAMES,
+        help="field conflicts only: filter by classified cause",
     )
 
 

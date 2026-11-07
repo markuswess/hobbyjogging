@@ -305,6 +305,32 @@ Other commands:
 - `review prune [--dry-run]` — resolve open field conflicts whose recorded
   values now agree under the current core tolerances. Reimports also resolve
   a field's old conflict automatically when that field agrees again.
+- `review causes [--status open|all]` — count field conflicts by classified
+  cause, severity, and field. Causes are stored on new items and can be
+  backfilled with `review classify [--activity <id>] [--dry-run]`.
+- `review resolve --cause <cause> [--dry-run]` — bulk-resolve every open
+  conflict with one advisory cause (`elapsed_definition`, `small_difference`,
+  `start_offset`, `moving_estimate`). Causes that need a per-activity decision
+  (`activity_trimmed`, `hr_sensor_anomaly`, `sport_vocabulary`,
+  `distance_estimate`) are rejected; triage them instead.
+
+Conflict causes are advisory:
+
+| cause | meaning | action |
+|---|---|---|
+| `elapsed_definition` | Garmin elapsed is start-to-save (trailing stop), Intervals is last-record offset | bulk resolve |
+| `moving_estimate` | each source's own auto-pause estimate | bulk resolve |
+| `small_difference` | at most 5% (or 5 bpm) apart | bulk resolve |
+| `start_offset` | start timestamps within a minute | bulk resolve |
+| `activity_trimmed` | one upload covers only part of the activity | triage |
+| `hr_sensor_anomaly` | implausible max HR (spikes/dropouts) | triage |
+| `sport_vocabulary` | the sources map to different sports | triage |
+| `distance_estimate` | distance differs beyond 5% without a duration mismatch | triage |
+| `duration_estimate` | timer/recording time differs beyond 5% | triage |
+| `unknown` | no summary-level explanation | triage |
+
+`review list` and `review triage` accept `--cause <cause>`; the cause and its
+note are printed on each conflict item.
 
 ### Interactive triage
 

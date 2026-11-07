@@ -516,5 +516,152 @@ class ReviewCliTests(unittest.TestCase):
         self.assertIn("Scan dry run", output)
 
 
+    # -- conflict causes ----------------------------------------------------
+
+    def _seed_cause_conflict(
+        self,
+        fingerprint,
+        cause,
+        *,
+        field_name="elapsed_s",
+        current=3600,
+        incoming=3700,
+    ):
+        item_id, _ = self.seed_writer.record_review_item(
+            category="field_conflict",
+            detail=f"{field_name} differs",
+            context={
+                "rule": "field_conflict",
+                "field": field_name,
+                "current": {"source": "fit", "value": current},
+                "incoming": {"source": "intervals", "value": incoming},
+                **({"cause": cause} if cause else {}),
+            },
+            fingerprint=fingerprint,
+            activity_id="a1",
+        )
+        self.seed_writer.connection.commit()
+        return item_id
+
+    def test_list_filters_by_cause(self):
+        self._seed_cause_conflict("fp-elapsed", "elapsed_definition")
+        self._seed_cause_conflict(
+            "fp-unknown",
+            "unknown",
+            field_name="avg_hr",
+            current=140,
+            incoming=150,
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "list",
+             "--cause", "elapsed_definition"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("[elapsed_definition]", output)
+        self.assertNotIn("[unknown]", output)
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "list",
+             "--cause", "unknown"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("[unknown]", output)
+        self.assertNotIn("[elapsed_definition]", output)
+
+    def test_causes_summarizes_the_backlog(self):
+        self._seed_cause_conflict("fp-1", "elapsed_definition")
+        self._seed_cause_conflict("fp-2", "elapsed_definition")
+        self._seed_cause_conflict("fp-3", None)
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "causes"]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("elapsed_definition", output)
+        self.assertIn("unclassified", output)
+        self.assertIn("run `review classify`", output)
+        self.assertIn("3 open field conflict(s)", output)
+
+    def test_classify_backfills_existing_conflicts(self):
+        item_id = self._seed_cause_conflict("fp-old", None)
+        self.assertNotIn(
+            "cause",
+            json.loads(self.seed_writer.review_item(item_id)["context_json"]),
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "classify",
+             "--dry-run"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("1 updated", output)
+        self.assertNotIn(
+            "cause",
+            json.loads(self.seed_writer.review_item(item_id)["context_json"]),
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "classify"]
+        )
+        self.assertEqual(0, code)
+        item = self.seed_writer.review_item(item_id)
+        self.assertEqual(
+            "elapsed_definition",
+            json.loads(item["context_json"])["cause"],
+        )
+        self.assertEqual("info", item["severity"])
+
+    def test_resolve_by_cause_bulk_and_dry_run(self):
+        elapsed_id = self._seed_cause_conflict("fp-1", "elapsed_definition")
+        unknown_id = self._seed_cause_conflict(
+            "fp-2",
+            "unknown",
+            field_name="avg_hr",
+            current=140,
+            incoming=150,
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "resolve",
+             "--cause", "elapsed_definition", "--dry-run"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("1 item(s) would be resolved", output)
+        self.assertEqual(
+            "open",
+            self.seed_writer.review_item(elapsed_id)["status"],
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "resolve",
+             "--cause", "elapsed_definition"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("Resolved 1 field conflict", output)
+        self.assertEqual(
+            "resolved",
+            self.seed_writer.review_item(elapsed_id)["status"],
+        )
+        self.assertEqual(
+            "open",
+            self.seed_writer.review_item(unknown_id)["status"],
+        )
+
+    def test_resolve_rejects_non_advisory_cause(self):
+        with self.assertRaises(SystemExit):
+            self._run(
+                ["review", "--database", str(self.database), "resolve",
+                 "--cause", "activity_trimmed"]
+            )
+
+    def test_resolve_without_id_or_cause_errors(self):
+        with self.assertRaises(SystemExit):
+            self._run(
+                ["review", "--database", str(self.database), "resolve"]
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

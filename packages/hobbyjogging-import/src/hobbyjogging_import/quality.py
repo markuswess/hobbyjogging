@@ -23,6 +23,7 @@ from hobbyjogging_core.sports import (
     RIDE_SPORTS,
 )
 
+from .causes import cause_severity, classify_conflict
 from .values import format_field
 
 # Implied whole-activity pace sanity windows, in seconds per kilometer.
@@ -382,6 +383,18 @@ def record_field_conflicts(
     recorded = 0
 
     for conflict in conflicts:
+        cause, cause_note = classify_conflict(
+            writer.connection,
+            activity_id=activity_id,
+            field_name=conflict.field_name,
+            current_source=conflict.current_source,
+            current_value=conflict.current_value,
+            incoming_source=conflict.incoming_source,
+            incoming_value=conflict.incoming_value,
+            incoming_source_record_id=(
+                conflict.source_record_id or source_record_id
+            ),
+        )
         context = {
             "rule": "field_conflict",
             "field": conflict.field_name,
@@ -393,6 +406,8 @@ def record_field_conflicts(
                 "source": conflict.incoming_source,
                 "value": conflict.incoming_value,
             },
+            "cause": cause,
+            "cause_note": cause_note,
         }
         fingerprint = review_fingerprint(
             [
@@ -435,7 +450,7 @@ def record_field_conflicts(
             category=CONFLICT,
             detail=detail,
             context=context,
-            severity="warn",
+            severity=cause_severity(cause),
             fingerprint=fingerprint,
             activity_id=activity_id,
             source_record_id=source_record_id,

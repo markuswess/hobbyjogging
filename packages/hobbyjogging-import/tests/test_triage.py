@@ -62,7 +62,7 @@ class TriageTests(unittest.TestCase):
         self.opened_urls = []
         self.copied_texts = []
 
-    def _runner(self, answers, **kwargs):
+    def _runner(self, answers, run_kwargs=None, **kwargs):
         queue = list(answers)
 
         def read(prompt):
@@ -83,9 +83,8 @@ class TriageTests(unittest.TestCase):
             copy=lambda text: self.copied_texts.append(text) or "wl-copy",
             **kwargs,
         )
-        out = self.writer.connection.commit
-        counters = runner.run()
-        out()
+        counters = runner.run(**(run_kwargs or {}))
+        self.writer.connection.commit()
         return runner, lines, counters
 
     def _item(self):
@@ -650,6 +649,56 @@ class TriageTests(unittest.TestCase):
         runner, lines, counters = self._runner(["e", "q"])
 
         self.assertIn("link a candidate first", "\n".join(lines))
+
+    # -- conflict causes ----------------------------------------------------
+
+    def _seed_cause_conflict(self, fingerprint, cause):
+        item_id, _ = self.writer.record_review_item(
+            category="field_conflict",
+            detail="elapsed_s differs",
+            context={
+                "rule": "field_conflict",
+                "field": "elapsed_s",
+                "current": {"source": "fit", "value": 3600},
+                "incoming": {"source": "intervals", "value": 3700},
+                "cause": cause,
+                "cause_note": f"note for {cause}",
+            },
+            fingerprint=fingerprint,
+            activity_id="a1",
+            source_record_id=self.source_record_id,
+        )
+        self.conn.commit()
+        return item_id
+
+    def test_cause_filter_only_queues_matching_conflicts(self):
+        elapsed_id = self._seed_cause_conflict(
+            "fp-elapsed",
+            "elapsed_definition",
+        )
+        other_id = self._seed_cause_conflict("fp-other", "unknown")
+
+        runner, lines, counters = self._runner(
+            ["r"],
+            run_kwargs={"cause": "elapsed_definition"},
+        )
+
+        joined = "\n".join(lines)
+        self.assertIn("cause elapsed_definition", joined)
+        self.assertIn("note for elapsed_definition", joined)
+        self.assertEqual(1, counters["resolved"])
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(elapsed_id)["status"],
+        )
+        self.assertEqual(
+            "open",
+            self.writer.review_item(other_id)["status"],
+        )
+        self.assertEqual(
+            "open",
+            self.writer.review_item(self.item_id)["status"],
+        )
 
 
 if __name__ == "__main__":
