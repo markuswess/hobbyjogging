@@ -46,7 +46,8 @@ Updated 2026-11-06.
    command for the 620 existing payloads.
 2. **View models + static weekly dashboard** in the reports package (main
    focus): weekly overview, activity list/detail, data-health banner, and the
-   planned zone distribution.
+   planned zone distribution (see
+   `packages/hobbyjogging-reports/NEXT_UP.md`).
 3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
 4. **Runalyze enrichment** when the API auth/endpoint details are settled:
