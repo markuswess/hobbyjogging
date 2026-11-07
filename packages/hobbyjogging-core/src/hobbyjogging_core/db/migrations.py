@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -102,6 +102,20 @@ ALTER TABLE events ADD COLUMN excluded_at TEXT;
 CREATE INDEX idx_events_excluded ON events(excluded_at);
 """
 
+MIGRATION_8_SQL = """
+ALTER TABLE events ADD COLUMN zone_kind TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE event_zone_times (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    zone_index INTEGER,
+    zone_label TEXT NOT NULL,
+    seconds REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (event_id, zone_label)
+);
+
+CREATE INDEX idx_event_zone_times_event ON event_zone_times(event_id);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -110,6 +124,7 @@ MIGRATIONS: dict[int, str] = {
     5: MIGRATION_5_SQL,
     6: MIGRATION_6_SQL,
     7: MIGRATION_7_SQL,
+    8: MIGRATION_8_SQL,
 }
 
 

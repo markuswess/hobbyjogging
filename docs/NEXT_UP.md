@@ -18,6 +18,8 @@ Updated 2026-11-06.
 - **Schema v7.** `events.excluded_at`; the repository hides excluded events.
   `upsert_event` now replaces event fields (including NULLs) and revives an
   excluded event; `exclude_event`/`restore_event` support the sync prune.
+- **Schema v8.** `events.zone_kind` and `event_zone_times` store the planned
+  zone distribution (`Z1`–`Z7`, `SS`); the repository exposes it on `Event`.
 - **Planned-events sync.** `events sync` (and the regular Intervals import)
   reconciles the calendar: fields are replaced (including NULLs), events that
   disappeared are soft-excluded, reappearing ones are revived, and only
@@ -38,17 +40,22 @@ Updated 2026-11-06.
 
 ## Next
 
-1. **View models + static weekly dashboard** in the reports package (main
-   focus): weekly overview, activity list/detail, data-health banner.
-2. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
+1. **Import package: event zone times.** Map `workout_doc.zoneTimes` into
+   `event_zone_times` (kind inferred from targets, sport fallback), have the
+   event sync replace/clear them, and add a local `events backfill-zones`
+   command for the 620 existing payloads.
+2. **View models + static weekly dashboard** in the reports package (main
+   focus): weekly overview, activity list/detail, data-health banner, and the
+   planned zone distribution.
+3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+4. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-4. **`review scan` prune mode**: resolve stale quality items whose current
+5. **`review scan` prune mode**: resolve stale quality items whose current
    values no longer trigger them.
-5. **Homelab cutover**: DB + importer + dashboard generator + static server,
+6. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 
 ## Notes

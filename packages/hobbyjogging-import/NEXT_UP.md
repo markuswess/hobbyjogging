@@ -63,6 +63,26 @@ on.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 
+## Next task: planned-event zone times (schema v8)
+
+Core is done: `events.zone_kind`, `event_zone_times`, and
+`set_event_zone_times(event_id, kind, rows)`; the repository exposes
+`Event.zone_kind` and `Event.zone_times`.
+
+Implement in this package:
+
+- Parse `workout_doc.zoneTimes` (`Z1`–`Z7`, `SS`; zero seconds kept).
+- Infer `zone_kind`: dominant step target (`pace`/`hr`/`power`); if no
+  targets, run/trail → `pace`, ride family → `power`, otherwise `unknown`.
+- Write via `set_event_zone_times` after `upsert_event` in `_import_event`
+  and in `sync_events`; an event without a workout doc clears kind and rows.
+- Add a local `hobbyjogging-import events backfill-zones` command: read the
+  stored Intervals event payloads, infer kinds, write rows, idempotent, no
+  network.
+- Tests: parser/labels, kind inference, sync replace/clear, backfill,
+  other-source events untouched.
+- The planned zone display is a reports-package follow-up.
+
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments

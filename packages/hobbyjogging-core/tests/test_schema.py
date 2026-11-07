@@ -18,6 +18,7 @@ EXPECTED_TABLES = {
     "activity_zone_times",
     "equipment",
     "equipment_source_links",
+    "event_zone_times",
     "events",
     "import_runs",
     "source_records",
@@ -65,6 +66,7 @@ class SchemaMigrationTests(unittest.TestCase):
         }
         self.assertIn("training_load", event_columns)
         self.assertIn("excluded_at", event_columns)
+        self.assertIn("zone_kind", event_columns)
 
         record_columns = {
             row["name"]
@@ -209,6 +211,38 @@ class SchemaMigrationTests(unittest.TestCase):
             "SELECT excluded_at FROM events WHERE id = 'e1'"
         ).fetchone()
         self.assertIsNone(row["excluded_at"])
+
+    def test_migrates_v7_database_to_v8(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4, 5, 6, 7):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 7")
+        self.conn.execute(
+            "INSERT INTO events (id, local_date, name, type) "
+            "VALUES ('e1', '2026-10-02', 'Town race', 'race')"
+        )
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        row = self.conn.execute(
+            "SELECT zone_kind FROM events WHERE id = 'e1'"
+        ).fetchone()
+        self.assertEqual("", row["zone_kind"])
+        self.conn.execute(
+            "INSERT INTO event_zone_times "
+            "(event_id, zone_index, zone_label, seconds) "
+            "VALUES ('e1', 1, 'Z1', 600)"
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
 
     def test_migrate_is_idempotent(self):
         migrate(self.conn)

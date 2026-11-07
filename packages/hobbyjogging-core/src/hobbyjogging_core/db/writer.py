@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 
-from hobbyjogging_core.model import Interval, Lap
+from hobbyjogging_core.model import EventZoneTime, Interval, Lap
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
 
 ACTIVITY_COLUMNS = {
@@ -1333,6 +1333,62 @@ class TrainingWriter:
             (event_id,),
         )
         return cursor.rowcount > 0
+
+    def set_event_zone_times(
+        self,
+        event_id: str,
+        kind: str,
+        zone_times: list[EventZoneTime],
+    ) -> int:
+        """Replace an event's planned zone distribution.
+
+        Intervals is authoritative for events, so the whole set is replaced.
+        An empty list clears it. Returns the number of rows written.
+        """
+        row = self.connection.execute(
+            "SELECT excluded_at FROM events WHERE id = ?",
+            (event_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown event: {event_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"event {event_id} is excluded")
+
+        self.connection.execute(
+            """
+            UPDATE events
+            SET zone_kind = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (kind or "", event_id),
+        )
+        self.connection.execute(
+            "DELETE FROM event_zone_times WHERE event_id = ?",
+            (event_id,),
+        )
+
+        if not zone_times:
+            return 0
+
+        self.connection.executemany(
+            """
+            INSERT INTO event_zone_times (
+                event_id, zone_index, zone_label, seconds
+            ) VALUES (?, ?, ?, ?)
+            """,
+            [
+                (
+                    event_id,
+                    zone.zone_index,
+                    zone.zone_label,
+                    zone.seconds,
+                )
+                for zone in zone_times
+            ],
+        )
+        return len(zone_times)
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(

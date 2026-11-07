@@ -1,7 +1,7 @@
 import unittest
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
-from hobbyjogging_core.model import Interval, Lap
+from hobbyjogging_core.model import EventZoneTime, Interval, Lap
 
 
 class TrainingWriterTests(unittest.TestCase):
@@ -891,6 +891,71 @@ class Vo2maxAndTagTests(unittest.TestCase):
                 "SELECT training_load FROM events WHERE id = 'e1'"
             ).fetchone()[0],
         )
+
+    def test_set_event_zone_times_replaces_and_clears(self):
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-01",
+            name="5x6 LT1",
+            type="run",
+            source_record_id=self.intervals_id,
+        )
+
+        written = self.writer.set_event_zone_times(
+            "e1",
+            "pace",
+            [
+                EventZoneTime("Z1", 1650, 1),
+                EventZoneTime("Z3", 1500, 3),
+                EventZoneTime("Z4", 300, 4),
+            ],
+        )
+        self.assertEqual(3, written)
+        self.assertEqual(
+            "pace",
+            self.conn.execute(
+                "SELECT zone_kind FROM events WHERE id = 'e1'"
+            ).fetchone()[0],
+        )
+        self.assertEqual(
+            3,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
+
+        # Replacing with a different set removes the old rows.
+        self.writer.set_event_zone_times(
+            "e1",
+            "hr",
+            [EventZoneTime("Z2", 1800, 2)],
+        )
+        rows = self.conn.execute(
+            "SELECT zone_label, seconds FROM event_zone_times"
+        ).fetchall()
+        self.assertEqual([("Z2", 1800)], [tuple(row) for row in rows])
+
+        # An empty set clears the distribution and the kind.
+        self.assertEqual(
+            0,
+            self.writer.set_event_zone_times("e1", "", []),
+        )
+        self.assertEqual(
+            0,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
+        self.assertEqual(
+            "",
+            self.conn.execute(
+                "SELECT zone_kind FROM events WHERE id = 'e1'"
+            ).fetchone()[0],
+        )
+
+    def test_set_event_zone_times_rejects_unknown_event(self):
+        with self.assertRaises(ValueError):
+            self.writer.set_event_zone_times("nope", "pace", [])
 
     def test_event_exclusion_and_revival(self):
         self.writer.upsert_event(

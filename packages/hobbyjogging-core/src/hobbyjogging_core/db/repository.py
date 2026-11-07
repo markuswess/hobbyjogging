@@ -8,6 +8,7 @@ from hobbyjogging_core.model import (
     Activity,
     Equipment,
     Event,
+    EventZoneTime,
     Interval,
     Lap,
     WellnessDay,
@@ -97,8 +98,8 @@ class TrainingRepository:
     def events(self, start: date, end: date) -> list[Event]:
         rows = self.connection.execute(
             """
-            SELECT local_date, name, type, description, duration_s, distance_m,
-                   training_load
+            SELECT id, local_date, name, type, description, duration_s,
+                   distance_m, training_load, zone_kind
             FROM events
             WHERE local_date BETWEEN ? AND ?
               AND excluded_at IS NULL
@@ -106,6 +107,11 @@ class TrainingRepository:
             """,
             (start.isoformat(), end.isoformat()),
         ).fetchall()
+
+        if not rows:
+            return []
+
+        zone_times = self._event_zone_times([row["id"] for row in rows])
 
         return [
             Event(
@@ -116,6 +122,8 @@ class TrainingRepository:
                 duration_s=row["duration_s"],
                 distance_m=row["distance_m"],
                 training_load=row["training_load"],
+                zone_kind=row["zone_kind"],
+                zone_times=zone_times[row["id"]],
             )
             for row in rows
         ]
@@ -251,6 +259,33 @@ class TrainingRepository:
         result: dict[str, list[str]] = defaultdict(list)
         for row in rows:
             result[row["activity_id"]].append(row["tag"])
+
+        return result
+
+    def _event_zone_times(
+        self,
+        event_ids: list[str],
+    ) -> dict[str, list[EventZoneTime]]:
+        placeholders = ", ".join("?" for _ in event_ids)
+        rows = self.connection.execute(
+            f"""
+            SELECT event_id, zone_index, zone_label, seconds
+            FROM event_zone_times
+            WHERE event_id IN ({placeholders})
+            ORDER BY event_id, COALESCE(zone_index, 99), zone_label
+            """,
+            event_ids,
+        ).fetchall()
+
+        result: dict[str, list[EventZoneTime]] = defaultdict(list)
+        for row in rows:
+            result[row["event_id"]].append(
+                EventZoneTime(
+                    zone_label=row["zone_label"],
+                    seconds=row["seconds"],
+                    zone_index=row["zone_index"],
+                )
+            )
 
         return result
 

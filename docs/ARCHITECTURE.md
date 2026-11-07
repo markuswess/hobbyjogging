@@ -145,7 +145,7 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 7.
+SQLite, forward-only migrations. Schema version 8.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
@@ -165,9 +165,12 @@ SQLite, forward-only migrations. Schema version 7.
 - `wellness_days`, `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `events` — planned workouts and races: local date, type, description,
-  planned moving duration (`duration_s`), distance, training load, and an
-  exclusion timestamp. Intervals is authoritative for events; removed events
-  are soft-excluded rather than deleted.
+  planned moving duration (`duration_s`), distance, training load, planned
+  zone kind (`zone_kind`), and an exclusion timestamp. Intervals is
+  authoritative for events; removed events are soft-excluded rather than
+  deleted.
+- `event_zone_times` — the planned zone distribution for an event
+  (`zone_label`, `zone_index`, `seconds`), e.g. `Z1`–`Z7` or `SS`.
 - `import_runs` — one row per import with parameters and outcome.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
@@ -238,6 +241,8 @@ fetches the current events and:
 
 - overwrites every field from the payload, including clearing fields that are
   now NULL;
+- replaces the planned zone distribution (`workout_doc.zoneTimes`, with the
+  zone kind inferred from the workout targets);
 - soft-excludes events that disappeared (deleted or replaced with a new id);
 - revives events that reappear;
 - prunes only events linked to Intervals source records; manual and other

@@ -210,6 +210,35 @@ class TrainingRepositoryTests(unittest.TestCase):
 
         self.assertEqual(["Long run"], [event.name for event in events])
 
+    def test_event_zone_times_are_mapped(self):
+        self.conn.execute(
+            "UPDATE events SET zone_kind = 'pace' WHERE id = 'e1'"
+        )
+        self.conn.executemany(
+            "INSERT INTO event_zone_times "
+            "(event_id, zone_index, zone_label, seconds) "
+            "VALUES (?, ?, ?, ?)",
+            [
+                ("e1", 3, "Z3", 1500),
+                ("e1", 1, "Z1", 1650),
+                ("e1", None, "SS", 0),
+            ],
+        )
+
+        events = self.repository.events(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+
+        event = events[0]
+        self.assertEqual("pace", event.zone_kind)
+        self.assertEqual(
+            ["Z1", "Z3", "SS"],
+            [zone.zone_label for zone in event.zone_times],
+        )
+        self.assertEqual([1, 3, None], [zone.zone_index for zone in event.zone_times])
+        self.assertEqual(1650, event.zone_times[0].seconds)
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

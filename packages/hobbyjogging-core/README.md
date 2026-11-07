@@ -33,7 +33,7 @@ conn = open_database()  # data/hobbyjogging.db
 Set `HOBBYJOGGING_DB` to use a different path.
 
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
-`SCHEMA_VERSION` is the current target version (7).
+`SCHEMA_VERSION` is the current target version (8).
 
 Read canonical data through the repository:
 
@@ -105,7 +105,8 @@ writer.replace_activity_tags(
 Planned events follow a different rule: `upsert_event` treats the source as
 authoritative and replaces every field (including NULLs), and revives an
 excluded event. `exclude_event` / `restore_event` manage the soft exclusion
-used by the event sync.
+used by the event sync. `set_event_zone_times(event_id, kind, rows)` replaces
+an event's planned zone distribution.
 
 ### Schema layers
 
@@ -116,6 +117,9 @@ used by the event sync.
   recording/elapsed/moving time, `vo2max_garmin`, `vo2max_runalyze`, and
   event `training_load`. Events carry `excluded_at`; the repository hides
   excluded events.
+- `event_zone_times` — planned event zone distribution (`zone_label`,
+  `zone_index`, `seconds`); `events.zone_kind` names the zone system
+  (`pace`, `hr`, `power`, or `unknown`).
 - `activity_sources` — links between canonical activities and raw records.
 - `activity_field_sources` — per-field provenance; manual values are marked.
 - `activity_tags` — per-source activity labels (`is_manual = 1` for manual).

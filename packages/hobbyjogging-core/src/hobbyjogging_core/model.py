@@ -77,6 +77,15 @@ class WellnessDay:
     sleep_s: float | None = None
 
 
+@dataclass(frozen=True)
+class EventZoneTime:
+    """One planned zone bucket for an event (label + planned seconds)."""
+
+    zone_label: str
+    seconds: float = 0
+    zone_index: int | None = None
+
+
 @dataclass
 class Event:
     date: date
@@ -86,6 +95,8 @@ class Event:
     duration_s: float | None = None
     distance_m: float | None = None
     training_load: float | None = None
+    zone_kind: str = ""
+    zone_times: list[EventZoneTime] = field(default_factory=list)
 
 
 @dataclass
