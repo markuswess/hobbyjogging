@@ -51,7 +51,7 @@ reports:
   and 7-day fatigue exponentially weighted averages, plus planned load.
 - **time** — Weekly running time stacked by HR zone, with
   182/42/7-day time averages, a per-zone EWMA panel, and planned weekly
-  time.
+  time including planned HR zone distributions.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers.
 - **subt** — subT and LT1 work intervals over the last 365 days by
@@ -189,6 +189,12 @@ selected `--zone-window` (`base`, `fitness`, or `fatigue`; default
 `fitness` / 42 days), also in weekly hours. Its boundary lines are
 cumulative: `Z4`, `Z3+Z4`, `Z2+Z3+Z4`, then all zones.
 
+Planned running workouts that carry an HR zone distribution are drawn as
+hatched stacked bars over the actual week. Zones beyond `--zones` fold
+into the last displayed zone, and `SS` buckets are ignored. Weeks whose
+planned workouts have no HR zones keep the dashed total-time outline.
+The lower EWMA panel remains actual-only.
+
     ./charts.sh time
     ./charts.sh time --days 90
     ./charts.sh time --zones 4 --zone-window base
@@ -223,8 +229,9 @@ extension.
 - **volume** — planned running distance per Monday–Sunday week, as a
   dashed target line.
 - **time** — planned running time per week, as an outlined bar over the
-  actual zone stack. Planned zones are unknown, so the outline shows
-  total time only.
+  actual zone stack. Planned HR zone distributions, when available, are
+  drawn as hatched stacked bars; other planned events keep the
+  total-time outline.
 - **load** — planned load per day for all sports, as outlined daily
   bars.
 - **recovery** — one tick per planned workout along the bottom of the
@@ -235,9 +242,9 @@ The volume chart also skips planned events without a distance.
 
 The 182/42/7-day EWMA lines continue through the planned days as dashed
 segments, using planned daily distance, time, or load and treating
-unplanned days as rest. The time chart's zone panel and the recovery
-averages stay actual-only: there are no planned HR zones or planned
-wellness values to project.
+unplanned days as rest. The time chart's weekly zone stack includes
+planned HR zone distributions; its lower EWMA panel and the recovery
+averages stay actual-only.
 
 ### Data source selection
 

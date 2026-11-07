@@ -8,6 +8,7 @@ from hobbyjogging_report.analysis import (
     daily_run_time,
     daily_training_load,
     distance_averages,
+    event_zone_seconds,
     is_lt1_activity,
     load_metrics,
     average_warmup_days,
@@ -20,13 +21,14 @@ from hobbyjogging_report.analysis import (
     week_start,
     weekly_planned_distance,
     weekly_planned_time,
+    weekly_planned_time_by_zone,
     weekly_run_distance,
     weekly_time_by_zone,
     work_intervals,
     zone_time_averages,
 )
 from hobbyjogging_report.model import AverageWindows
-from hobbyjogging_core.model import Activity, Event, WellnessDay
+from hobbyjogging_core.model import Activity, Event, EventZoneTime, WellnessDay
 from support import make_interval
 
 D = date(2026, 10, 1)
@@ -590,6 +592,113 @@ class TimeMetricsTests(unittest.TestCase):
 
         self.assertEqual(400, weeks[0].zones[0])
         self.assertEqual(600, weeks[0].unzoned)
+
+    def test_event_zone_seconds_keeps_first_zones(self):
+        event = Event(
+            date=D,
+            zone_kind="hr",
+            zone_times=[
+                EventZoneTime("Z1", 600, 1),
+                EventZoneTime("Z2", 1200, 2),
+                EventZoneTime("Z3", 1800, 3),
+                EventZoneTime("Z4", 2400, 4),
+            ],
+        )
+
+        self.assertEqual(
+            [600, 1200, 1800, 2400],
+            event_zone_seconds(event, 4),
+        )
+
+    def test_event_zone_seconds_folds_extra_zones(self):
+        event = Event(
+            date=D,
+            zone_kind="hr",
+            zone_times=[
+                EventZoneTime("Z1", 100, 1),
+                EventZoneTime("Z4", 400, 4),
+                EventZoneTime("Z6", 600, 6),
+            ],
+        )
+
+        self.assertEqual(
+            [100, 0, 0, 1000],
+            event_zone_seconds(event, 4),
+        )
+
+    def test_event_zone_seconds_ignores_ss(self):
+        event = Event(
+            date=D,
+            zone_kind="power",
+            zone_times=[
+                EventZoneTime("SS", 900),
+                EventZoneTime("Z1", 600, 1),
+            ],
+        )
+
+        self.assertEqual([600, 0, 0, 0], event_zone_seconds(event, 4))
+
+    def test_event_zone_seconds_parses_labels_without_index(self):
+        event = Event(
+            date=D,
+            zone_kind="hr",
+            zone_times=[EventZoneTime("Z2", 300)],
+        )
+
+        self.assertEqual([0, 300, 0, 0], event_zone_seconds(event, 4))
+
+    def test_event_zone_seconds_returns_none_without_usable_zones(self):
+        self.assertIsNone(event_zone_seconds(Event(date=D), 4))
+        self.assertIsNone(
+            event_zone_seconds(
+                Event(
+                    date=D,
+                    zone_times=[EventZoneTime("Z1", 0, 1)],
+                ),
+                4,
+            )
+        )
+
+    def test_weekly_planned_time_by_zone_filters_kind_and_sums(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                zone_kind="hr",
+                zone_times=[EventZoneTime("Z1", 600, 1)],
+            ),
+            Event(
+                date=date(2026, 10, 4),
+                type="run",
+                zone_kind="hr",
+                zone_times=[
+                    EventZoneTime("Z1", 300, 1),
+                    EventZoneTime("Z3", 900, 3),
+                ],
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="run",
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z1", 5000, 1)],
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="ride",
+                zone_kind="hr",
+                zone_times=[EventZoneTime("Z1", 4000, 1)],
+            ),
+        ]
+
+        weeks = weekly_planned_time_by_zone(
+            events,
+            date(2026, 9, 28),
+            date(2026, 10, 4),
+        )
+
+        self.assertEqual(1, len(weeks))
+        self.assertEqual(date(2026, 9, 28), weeks[0].week)
+        self.assertEqual([900, 0, 900, 0], weeks[0].zones)
 
     def test_zone_time_averages_have_one_series_per_zone(self):
         activity = Activity(

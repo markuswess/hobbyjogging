@@ -94,6 +94,7 @@ def run_time_chart(
         time_averages,
         week_bounds,
         weekly_planned_time,
+        weekly_planned_time_by_zone,
         weekly_time_by_zone,
         zone_time_averages,
     )
@@ -154,6 +155,13 @@ def run_time_chart(
         warmup_days=warmup_days,
         zone_count=zones,
     )
+    planned_zone_weeks = weekly_planned_time_by_zone(
+        events,
+        chart_start,
+        planned_chart_end,
+        kind="hr",
+        zone_count=zones,
+    )
 
     path = plot_time(
         weeks,
@@ -164,6 +172,7 @@ def run_time_chart(
             chart_start,
             planned_chart_end,
         ),
+        planned_zone_weeks=planned_zone_weeks,
         zone_points=zone_points,
         zone_window_days=zone_window_days,
         windows=windows,

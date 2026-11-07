@@ -139,6 +139,16 @@ class TimeChartTests(unittest.TestCase):
             ZoneAveragePoint(D, [1200, 900, 300, 0]),
             ZoneAveragePoint(date(2026, 1, 2),  [1300, 850, 350, 0]),
         ]
+        planned_zone_weeks = [
+            TimeZoneWeek(
+                date(2026, 1, 19),
+                [3600, 1800, 900, 0],
+            ),
+            TimeZoneWeek(
+                date(2026, 1, 26),
+                [1800, 0, 0, 0],
+            ),
+        ]
 
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "time.png"
@@ -152,6 +162,7 @@ class TimeChartTests(unittest.TestCase):
                     (date(2026, 1, 12), 8100),
                     (date(2026, 1, 19), 9000),
                 ],
+                planned_zone_weeks=planned_zone_weeks,
                 zone_points=zone_points,
                 zone_window_days=42,
                 windows=AverageWindows(),

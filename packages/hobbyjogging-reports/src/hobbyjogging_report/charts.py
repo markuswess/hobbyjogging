@@ -13,6 +13,7 @@ matplotlib.use("Agg")
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
 
 from .analysis import SUBT_CATEGORIES
@@ -209,11 +210,18 @@ def _finish_week_axis(
     title: str,
     ylabel: str,
     legend_fontsize: int = 9,
+    extra_handles=None,
 ) -> None:
     ax.set_title(title)
     ax.set_ylabel(ylabel)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=legend_fontsize)
+    handles, labels = ax.get_legend_handles_labels()
+
+    for handle, label in extra_handles or ():
+        handles.append(handle)
+        labels.append(label)
+
+    ax.legend(handles, labels, loc="best", fontsize=legend_fontsize)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
     fig.autofmt_xdate()
 
@@ -282,6 +290,7 @@ def plot_time(
     *,
     time_points: list[TimePoint] | None = None,
     planned_time: list[tuple[date, float]] | None = None,
+    planned_zone_weeks: list[TimeZoneWeek] | None = None,
     zone_points: list[ZoneAveragePoint] | None = None,
     zone_window_days: int | None = None,
     windows: AverageWindows | None = None,
@@ -293,14 +302,22 @@ def plot_time(
     """Weekly running time stacked by HR zone with zone EWMA lines.
 
     Planned weekly time is drawn as an outlined bar over the actual stack.
+    When a planned workout carries an HR zone distribution, the week also
+    gets a hatched stacked bar showing those zones.
     """
     _require_data(weeks, time_points)
 
     windows = windows or AverageWindows()
+
+    if planned_zone_weeks is None:
+        planned_zone_weeks = []
+
     zone_count = (
         len(weeks[0].zones)
         if weeks
-        else len(zone_points[0].zones) if zone_points else 0
+        else len(zone_points[0].zones) if zone_points
+        else len(planned_zone_weeks[0].zones) if planned_zone_weeks
+        else 0
     )
 
     if zone_points:
@@ -349,16 +366,58 @@ def plot_time(
                 bottom=bottoms,
             )
 
-    if planned_time:
-        _planned_bars(
-            ax,
-            [(week, seconds / 3600) for week, seconds in planned_time],
-            label="planned",
+    planned_zone_dates = {week.week for week in planned_zone_weeks}
+
+    if planned_zone_weeks:
+        bottoms = [0.0] * len(planned_zone_weeks)
+
+        for index in range(zone_count):
+            values = [
+                week.zones[index] / 3600
+                for week in planned_zone_weeks
+            ]
+            ax.bar(
+                [week.week for week in planned_zone_weeks],
+                values,
+                width=7,
+                align="edge",
+                bottom=bottoms,
+                facecolor="none",
+                edgecolor=ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)],
+                hatch="//",
+                linewidth=1.0,
+                zorder=4,
+            )
+            bottoms = [
+                bottom + value
+                for bottom, value in zip(bottoms, values)
+            ]
+
+        ax.bar(
+            [week.week for week in planned_zone_weeks],
+            bottoms,
+            width=7,
+            align="edge",
+            facecolor="none",
+            edgecolor="black",
+            linestyle="--",
+            linewidth=1.4,
+            alpha=0.8,
+            zorder=5,
         )
+
+    planned_totals = [
+        (week, seconds / 3600)
+        for week, seconds in planned_time or []
+    ]
+
+    if planned_totals:
+        _planned_bars(ax, planned_totals, label="planned")
 
     axis_weeks = sorted(
         set(week_dates if weeks else [])
         | {week for week, _ in planned_time or []}
+        | planned_zone_dates
     )
 
     if axis_weeks:
@@ -373,7 +432,25 @@ def plot_time(
             label=lambda attribute, days: f"{days}d avg (weekly)",
         )
 
-    _finish_week_axis(fig, ax, title=title, ylabel=ylabel, legend_fontsize=8)
+    _finish_week_axis(
+        fig,
+        ax,
+        title=title,
+        ylabel=ylabel,
+        legend_fontsize=8,
+        extra_handles=(
+            [(
+                Patch(
+                    facecolor="white",
+                    edgecolor="black",
+                    hatch="//",
+                ),
+                "planned zones",
+            )]
+            if planned_zone_weeks
+            else None
+        ),
+    )
 
     if zone_ax is not None and zone_points:
         zone_dates = [point.date for point in zone_points]

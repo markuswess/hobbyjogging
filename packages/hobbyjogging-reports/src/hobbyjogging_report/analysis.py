@@ -1075,6 +1075,89 @@ def weekly_time_by_zone(
     return [weeks[week] for week in sorted(weeks)]
 
 
+def weekly_planned_time_by_zone(
+    events: list[Event],
+    start: date,
+    end: date,
+    *,
+    kind: str = "hr",
+    zone_count: int = DEFAULT_ZONE_COUNT,
+    running_only: bool = True,
+) -> list[TimeZoneWeek]:
+    """Aggregate planned running time by zone for one zone kind.
+
+    Only events whose ``zone_kind`` matches ``kind`` and that carry usable
+    zone times are included. Extra zones fold into the last displayed zone;
+    ``SS`` buckets are ignored.
+    """
+    weeks: dict[date, TimeZoneWeek] = {}
+
+    for event in _planned_events(events, start, end, running_only=running_only):
+        if event.zone_kind != kind:
+            continue
+
+        zones = event_zone_seconds(event, zone_count)
+
+        if zones is None:
+            continue
+
+        week = week_start(event.date)
+        row = weeks.get(week)
+
+        if row is None:
+            row = weeks[week] = TimeZoneWeek(
+                week=week,
+                zones=[0.0] * zone_count,
+            )
+
+        for index, seconds in enumerate(zones):
+            row.zones[index] += seconds
+
+    return [weeks[week] for week in sorted(weeks)]
+
+
+def event_zone_seconds(
+    event: Event,
+    zone_count: int = DEFAULT_ZONE_COUNT,
+) -> list[float] | None:
+    """Normalize an event's planned zone times to ``zone_count`` buckets.
+
+    Zones past ``zone_count`` fold into the last bucket so planned totals are
+    preserved. ``SS`` and unparseable labels are ignored. Returns ``None``
+    when the event has no usable zone times.
+    """
+    if zone_count <= 0:
+        raise ValueError("zone_count must be positive")
+
+    if not event.zone_times:
+        return None
+
+    result = [0.0] * zone_count
+    found = False
+
+    for zone in event.zone_times:
+        index = zone.zone_index
+
+        if index is None:
+            label = (zone.zone_label or "").strip().upper()
+
+            if not label.startswith("Z"):
+                continue
+
+            try:
+                index = int(label[1:])
+            except ValueError:
+                continue
+
+        if index < 1 or (zone.seconds or 0) <= 0:
+            continue
+
+        result[min(index, zone_count) - 1] += zone.seconds
+        found = True
+
+    return result if found else None
+
+
 def recovery_trends(
     wellness: list[WellnessDay],
     start: date,
