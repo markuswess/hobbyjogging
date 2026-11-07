@@ -253,10 +253,27 @@ The default window is today through today + `--plan-days` (182). The sync:
 
 - replaces every event field with the current Intervals value, including
   clearing fields that were removed;
+- stores the planned zone distribution (`workout_doc.zoneTimes`) and infers
+  `zone_kind` from the dominant step target (`pace`, `hr`, or `power`); a
+  workout with no targets falls back to the sport's natural kind
+  (run/trail → pace, ride family → power);
+- clears an event's zone kind and rows when its workout document disappears;
 - soft-excludes events that disappeared from the window;
 - revives events that reappear;
 - leaves manual and other-source events alone;
-- reports fetched/new/updated/unchanged/removed/revived/skipped.
+- reports fetched/new/updated/unchanged/removed/revived/skipped. A change to
+  only the zone distribution counts as `updated`.
+
+Stored payloads can repair zone data for the whole plan without touching the
+network:
+
+```bash
+uv run --env-file .env hobbyjogging-import events backfill-zones --dry-run
+uv run --env-file .env hobbyjogging-import events backfill-zones
+```
+
+The backfill reads the saved Intervals event payloads, skips soft-excluded
+events, writes only rows that differ, and is idempotent.
 
 The regular `intervals` import runs the same reconciliation over its event
 range, so it cannot leave stale plans behind.

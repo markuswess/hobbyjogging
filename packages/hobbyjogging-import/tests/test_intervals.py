@@ -2,7 +2,12 @@ import json
 import unittest
 from datetime import date, timedelta
 
-from hobbyjogging_core import TrainingRepository, connect, migrate
+from hobbyjogging_core import (
+    EventZoneTime,
+    TrainingRepository,
+    connect,
+    migrate,
+)
 from hobbyjogging_import.cli import build_parser, resolve_event_range
 from hobbyjogging_import.intervals import IntervalsImporter
 
@@ -194,6 +199,36 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual(1, len(intervals))
         self.assertEqual("WORK", intervals[0].type)
         self.assertEqual(150, intervals[0].avg_hr)
+
+    def test_imports_planned_event_zone_times(self):
+        self.client.event_payloads[0]["workout_doc"] = {
+            "steps": [
+                {
+                    "duration": 600,
+                    "pace": {"units": "%pace", "value": 70},
+                }
+            ],
+            "zoneTimes": [
+                {"id": "Z1", "secs": 600},
+                {"id": "Z2", "secs": 0},
+            ],
+        }
+
+        self._import()
+
+        event = self.repository.events(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )[0]
+        self.assertEqual("pace", event.zone_kind)
+        self.assertEqual(
+            ["Z1", "Z2"],
+            [zone.zone_label for zone in event.zone_times],
+        )
+        self.assertEqual(
+            [600, 0],
+            [zone.seconds for zone in event.zone_times],
+        )
 
     def test_uses_recording_time_for_duration(self):
         self.client.activity_payloads[0]["icu_recording_time"] = 3650
@@ -715,6 +750,178 @@ class EventSyncTests(unittest.TestCase):
         return self.conn.execute(
             "SELECT COUNT(*) FROM events"
         ).fetchone()[0]
+
+    def _set_workout(
+        self,
+        *,
+        target="pace",
+        zone_times=None,
+    ):
+        self.client.event_payloads[0]["workout_doc"] = {
+            "steps": [
+                {
+                    "duration": 600,
+                    target: {"units": "%pace", "value": 70},
+                }
+            ],
+            "zoneTimes": zone_times
+            or [
+                {"id": "Z1", "secs": 600},
+                {"id": "Z2", "secs": 0},
+            ],
+        }
+
+    def test_sync_stores_planned_zone_times(self):
+        self._set_workout(
+            zone_times=[
+                {"id": "Z1", "secs": 600},
+                {"id": "Z2", "secs": 0},
+                {"id": "Z5", "secs": 300},
+            ]
+        )
+
+        self._sync()
+
+        event = self._events()[0]
+        self.assertEqual("pace", event.zone_kind)
+        self.assertEqual(
+            ["Z1", "Z2", "Z5"],
+            [zone.zone_label for zone in event.zone_times],
+        )
+        self.assertEqual(
+            [600, 0, 300],
+            [zone.seconds for zone in event.zone_times],
+        )
+        self.assertEqual(
+            [1, 2, 5],
+            [zone.zone_index for zone in event.zone_times],
+        )
+
+    def test_sync_replaces_changed_zone_distribution(self):
+        self._set_workout(
+            zone_times=[
+                {"id": "Z1", "secs": 600},
+                {"id": "Z2", "secs": 300},
+            ]
+        )
+        self._sync()
+
+        self._set_workout(
+            target="hr",
+            zone_times=[
+                {"id": "Z1", "secs": 100},
+                {"id": "Z4", "secs": 800},
+            ],
+        )
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        event = self._events()[0]
+        self.assertEqual("hr", event.zone_kind)
+        self.assertEqual(
+            [("Z1", 100), ("Z4", 800)],
+            [
+                (zone.zone_label, zone.seconds)
+                for zone in event.zone_times
+            ],
+        )
+
+    def test_sync_counts_a_zone_only_change_as_updated(self):
+        self._set_workout(zone_times=[{"id": "Z1", "secs": 600}])
+        self._sync()
+
+        self._set_workout(zone_times=[{"id": "Z1", "secs": 700}])
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        self.assertEqual(700, self._events()[0].zone_times[0].seconds)
+
+    def test_sync_clears_zones_when_workout_disappears(self):
+        self._set_workout()
+        self._sync()
+
+        self.client.event_payloads[0].pop("workout_doc")
+        summary = self._sync()
+
+        self.assertEqual(1, summary.updated)
+        event = self._events()[0]
+        self.assertEqual("", event.zone_kind)
+        self.assertEqual([], event.zone_times)
+
+    def test_sync_infers_power_for_a_ride(self):
+        self.client.event_payloads[0]["type"] = "Ride"
+        self._set_workout(target="power")
+
+        self._sync()
+
+        self.assertEqual("power", self._events()[0].zone_kind)
+
+    def test_sync_falls_back_to_the_sport_without_targets(self):
+        self.client.event_payloads[0]["type"] = "Run"
+        self.client.event_payloads[0]["workout_doc"] = {
+            "steps": [],
+            "zoneTimes": [{"id": "Z1", "secs": 600}],
+        }
+
+        self._sync()
+
+        event = self._events()[0]
+        self.assertEqual("pace", event.zone_kind)
+        self.assertEqual(
+            ["Z1"],
+            [zone.zone_label for zone in event.zone_times],
+        )
+
+    def test_sync_dry_run_writes_no_zone_times(self):
+        self._set_workout()
+
+        summary = self._sync(dry_run=True)
+
+        self.assertEqual(1, summary.new)
+        self.assertEqual(
+            0,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
+
+    def test_sync_leaves_other_source_zone_times_untouched(self):
+        run_id = self.importer.writer.start_import_run("manual")
+        source_id = self.importer.writer.upsert_source_record(
+            source="manual",
+            record_type="event",
+            external_id="m1",
+            checksum="c-manual",
+            import_run_id=run_id,
+        )
+        self.importer.writer.upsert_event(
+            event_id="m1",
+            local_date="2026-10-02",
+            name="Manual event",
+            type="run",
+            source_record_id=source_id,
+        )
+        self.importer.writer.set_event_zone_times(
+            "m1",
+            "hr",
+            [EventZoneTime("Z2", 1200, 2)],
+        )
+        self.conn.commit()
+
+        self._set_workout()
+        self._sync()
+
+        row = self.conn.execute(
+            "SELECT zone_kind FROM events WHERE id = 'm1'"
+        ).fetchone()
+        rows = self.conn.execute(
+            """
+            SELECT zone_label, seconds FROM event_zone_times
+            WHERE event_id = 'm1'
+            """
+        ).fetchall()
+        self.assertEqual("hr", row["zone_kind"])
+        self.assertEqual([("Z2", 1200)], [tuple(row) for row in rows])
 
     def test_sync_adds_new_event(self):
         summary = self._sync()

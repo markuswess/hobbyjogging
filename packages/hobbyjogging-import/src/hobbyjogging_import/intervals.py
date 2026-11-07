@@ -7,12 +7,13 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
-from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core import EventZoneTime, TrainingWriter
 from hobbyjogging_core.db.writer import CONFLICT_FIELDS
 from hobbyjogging_core.model import Interval
 from hobbyjogging_core.sports import canonical_sport
 
 from .client import IntervalsApi, IntervalsClient
+from .event_zones import current_zone_times, event_zone_data
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
 from .quality import (
     record_ambiguous_match,
@@ -564,7 +565,7 @@ class IntervalsImporter:
             """
             SELECT e.id, e.local_date, e.name, e.type, e.description,
                    e.duration_s, e.distance_m, e.training_load,
-                   e.excluded_at, sr.external_id
+                   e.zone_kind, e.excluded_at, sr.external_id
             FROM events e
             JOIN source_records sr ON sr.id = e.source_record_id
             WHERE sr.source = ? AND sr.record_type = 'event'
@@ -576,6 +577,10 @@ class IntervalsImporter:
             str(row["external_id"]): row
             for row in rows
         }
+        existing_zones = current_zone_times(
+            self.connection,
+            [row["id"] for row in rows],
+        )
 
         fetched_ids: set[str] = set()
 
@@ -587,12 +592,19 @@ class IntervalsImporter:
                 summary.skipped += 1
                 continue
 
+            kind, zones = event_zone_data(raw, str(values["type"]))
             row = existing.get(external_id)
             if row is None:
                 summary.new += 1
             elif row["excluded_at"]:
                 summary.revived += 1
-            elif _event_changed(row, values):
+            elif _event_changed(
+                row,
+                values,
+                kind=kind,
+                zones=zones,
+                existing_zones=existing_zones.get(row["id"], {}),
+            ):
                 summary.updated += 1
             else:
                 summary.unchanged += 1
@@ -619,6 +631,11 @@ class IntervalsImporter:
                 distance_m=values["distance_m"],
                 training_load=values["training_load"],
                 source_record_id=source_record_id,
+            )
+            self.writer.set_event_zone_times(
+                values["event_id"],
+                kind,
+                zones,
             )
 
         for external_id, row in existing.items():
@@ -668,7 +685,14 @@ def _event_values(raw: dict) -> dict[str, object] | None:
     }
 
 
-def _event_changed(row, values: dict[str, object]) -> bool:
+def _event_changed(
+    row,
+    values: dict[str, object],
+    *,
+    kind: str,
+    zones: list[EventZoneTime],
+    existing_zones: dict[str, float],
+) -> bool:
     return (
         row["local_date"] != values["local_date"]
         or row["name"] != values["name"]
@@ -677,6 +701,9 @@ def _event_changed(row, values: dict[str, object]) -> bool:
         or row["duration_s"] != values["duration_s"]
         or row["distance_m"] != values["distance_m"]
         or row["training_load"] != values["training_load"]
+        or row["zone_kind"] != kind
+        or existing_zones
+        != {zone.zone_label: float(zone.seconds) for zone in zones}
     )
 
 

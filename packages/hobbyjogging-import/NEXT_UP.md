@@ -44,6 +44,14 @@ on.
   manual/other-source events are untouched, and the summary reports
   fetched/new/updated/unchanged/removed/revived/skipped. `--dry-run` writes
   nothing.
+- **Planned-event zone times (schema v8).** Event sync parses
+  `workout_doc.zoneTimes` (`Z1`–`Z7`, `SS`, zero seconds kept), infers
+  `zone_kind` from the dominant step target (`pace`/`hr`/`power`) or the
+  sport's natural kind, and writes via `set_event_zone_times`. An event
+  without a workout document clears its kind and rows. A zone-only change
+  counts as `updated`. `events backfill-zones [--dry-run]` repairs stored
+  events from their saved Intervals payloads without network access and is
+  idempotent.
 - **Incremental `sync`.** Runs Garmin fetch, Intervals import, FIT archive
   import with `skip_known`, and the shared quality scan. `--no-*` flags skip
   sources, `--full` reimports all FIT paths, failures are reported per source
@@ -63,26 +71,6 @@ on.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 
-## Next task: planned-event zone times (schema v8)
-
-Core is done: `events.zone_kind`, `event_zone_times`, and
-`set_event_zone_times(event_id, kind, rows)`; the repository exposes
-`Event.zone_kind` and `Event.zone_times`.
-
-Implement in this package:
-
-- Parse `workout_doc.zoneTimes` (`Z1`–`Z7`, `SS`; zero seconds kept).
-- Infer `zone_kind`: dominant step target (`pace`/`hr`/`power`); if no
-  targets, run/trail → `pace`, ride family → `power`, otherwise `unknown`.
-- Write via `set_event_zone_times` after `upsert_event` in `_import_event`
-  and in `sync_events`; an event without a workout doc clears kind and rows.
-- Add a local `hobbyjogging-import events backfill-zones` command: read the
-  stored Intervals event payloads, infer kinds, write rows, idempotent, no
-  network.
-- Tests: parser/labels, kind inference, sync replace/clear, backfill,
-  other-source events untouched.
-- The planned zone display is a reports-package follow-up.
-
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
@@ -95,6 +83,7 @@ Implement in this package:
   avg-HR tolerances that produce the minimal FIT/Intervals conflicts, plus
   the `standuppaddling`, `openwaterswim`, and `nordicski` aliases.
 - The dashboard is reports-package work.
+- The planned-event zone display is reports-package work.
 
 ## Notes / risks
 
