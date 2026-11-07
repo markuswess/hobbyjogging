@@ -283,6 +283,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     review_show.add_argument("id", type=int)
 
+    review_prune = review_sub.add_parser(
+        "prune",
+        help="resolve field conflicts whose values now agree",
+    )
+    review_prune.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would be resolved without writing",
+    )
+
     review_scan = review_sub.add_parser(
         "scan",
         help="run quality rules over existing activities and record items",

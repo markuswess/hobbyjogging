@@ -302,6 +302,9 @@ Other commands:
 - `review scan [--activity <id>] [--dry-run]` — run the quality rule set
   over existing activities and record findings; useful for backfilling after
   the rules change.
+- `review prune [--dry-run]` — resolve open field conflicts whose recorded
+  values now agree under the current core tolerances. Reimports also resolve
+  a field's old conflict automatically when that field agrees again.
 
 ### Interactive triage
 

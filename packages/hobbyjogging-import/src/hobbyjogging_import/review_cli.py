@@ -4,7 +4,11 @@ import json
 
 from hobbyjogging_core import TrainingWriter, open_database
 from .links import garmin_url, intervals_url
-from .quality import MANUAL_FLAG, record_manual_flag
+from .quality import (
+    MANUAL_FLAG,
+    prune_field_conflicts,
+    record_manual_flag,
+)
 from .scan import scan_quality
 
 
@@ -39,6 +43,8 @@ def run_review(args, parser) -> int:
             return _run_flag(args, writer, parser)
         if action == "scan":
             return _run_scan(args, writer, parser)
+        if action == "prune":
+            return _run_prune(args, writer)
 
         parser.error(f"unknown review action: {action}")
     finally:
@@ -69,6 +75,17 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
             f"{summary.recorded} new review item(s)"
         )
 
+    return 0
+
+
+def _run_prune(args, writer: TrainingWriter) -> int:
+    """Resolve field conflicts whose recorded values now agree."""
+    summary = prune_field_conflicts(writer, dry_run=args.dry_run)
+    label = "Prune dry run" if args.dry_run else "Prune"
+    print(
+        f"{label}: {summary.resolved} resolved, "
+        f"{summary.kept} kept, {summary.checked} checked"
+    )
     return 0
 
 

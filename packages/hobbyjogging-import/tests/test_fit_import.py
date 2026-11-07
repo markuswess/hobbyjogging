@@ -282,6 +282,31 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(0, summary.files_skipped)
         self.assertEqual(1, summary.files_imported)
 
+    def test_reimport_resolves_old_conflict_when_values_agree(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+        activity = self._activities()[0]
+        conflict_id, _ = self.importer.writer.record_review_item(
+            category="field_conflict",
+            detail="avg_hr differs",
+            context={
+                "rule": "field_conflict",
+                "field": "avg_hr",
+                "current": {"source": "fit", "value": 140},
+                "incoming": {"source": "intervals", "value": 141},
+            },
+            fingerprint="fp-old-hr",
+            activity_id=activity.id,
+        )
+        self.conn.commit()
+
+        self._import([_summary(path)])
+
+        self.assertEqual(
+            "resolved",
+            self.importer.writer.review_item(conflict_id)["status"],
+        )
+
     def test_reimport_is_idempotent(self):
         path = self._file("one.fit", b"one")
         first = self._import([_summary(path)])

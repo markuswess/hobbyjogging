@@ -6,11 +6,13 @@ from hobbyjogging_import.quality import (
     CONFLICT,
     MANUAL_FLAG,
     QUALITY,
+    prune_field_conflicts,
     quality_findings,
     record_field_conflicts,
     record_manual_flag,
     record_quality_findings,
     refresh_activity_quality,
+    resolve_agreed_field_conflicts,
     review_fingerprint,
 )
 
@@ -314,6 +316,93 @@ class RecordQualityFindingsTests(unittest.TestCase):
 
         items = self.writer.review_items()
         self.assertEqual(2, len(items))
+
+
+class FieldConflictPruneTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run"},
+            source="test",
+            source_record_id=None,
+        )
+
+    def _conflict(self, field, current, incoming, fingerprint):
+        return self.writer.record_review_item(
+            category=CONFLICT,
+            detail=f"{field} differs",
+            context={
+                "rule": "field_conflict",
+                "field": field,
+                "current": {"source": "fit", "value": current},
+                "incoming": {"source": "intervals", "value": incoming},
+            },
+            fingerprint=fingerprint,
+            activity_id="a1",
+        )[0]
+
+    def test_prunes_conflicts_within_current_tolerance(self):
+        duration_id = self._conflict("duration_s", 3600, 3610, "fp-duration")
+        hr_id = self._conflict("avg_hr", 140, 141, "fp-hr")
+        kept_id = self._conflict("avg_hr", 140, 150, "fp-hr-kept")
+        self.conn.commit()
+
+        summary = prune_field_conflicts(self.writer)
+
+        self.assertEqual(3, summary.checked)
+        self.assertEqual(2, summary.resolved)
+        self.assertEqual(1, summary.kept)
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(duration_id)["status"],
+        )
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(hr_id)["status"],
+        )
+        self.assertEqual(
+            "open",
+            self.writer.review_item(kept_id)["status"],
+        )
+
+    def test_dry_run_does_not_write(self):
+        conflict_id = self._conflict("duration_s", 3600, 3610, "fp-duration")
+        self.conn.commit()
+
+        summary = prune_field_conflicts(self.writer, dry_run=True)
+
+        self.assertEqual(1, summary.resolved)
+        self.assertEqual(
+            "open",
+            self.writer.review_item(conflict_id)["status"],
+        )
+
+    def test_resolve_agreed_field_conflicts_is_field_scoped(self):
+        duration_id = self._conflict("duration_s", 3600, 3610, "fp-duration")
+        hr_id = self._conflict("avg_hr", 140, 141, "fp-hr")
+        self.conn.commit()
+
+        resolved = resolve_agreed_field_conflicts(
+            self.writer,
+            activity_id="a1",
+            fields={"duration_s"},
+        )
+
+        self.assertEqual(1, resolved)
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(duration_id)["status"],
+        )
+        self.assertEqual(
+            "open",
+            self.writer.review_item(hr_id)["status"],
+        )
 
 
 class RefreshActivityQualityTests(unittest.TestCase):

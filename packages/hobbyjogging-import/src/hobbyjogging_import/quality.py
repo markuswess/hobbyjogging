@@ -10,8 +10,13 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.db.writer import (
+    NUMERIC_TOLERANCES,
+    START_TOLERANCE_S,
+)
 from hobbyjogging_core.sports import (
     NO_DISTANCE_SPORTS,
     PACE_SPORTS,
@@ -40,6 +45,13 @@ AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
 CONFLICT = "field_conflict"
+
+
+@dataclass
+class PruneSummary:
+    checked: int = 0
+    resolved: int = 0
+    kept: int = 0
 
 
 @dataclass(frozen=True)
@@ -432,6 +444,124 @@ def record_field_conflicts(
         recorded += created
 
     return recorded
+
+
+def prune_field_conflicts(
+    writer: TrainingWriter,
+    *,
+    dry_run: bool = False,
+) -> PruneSummary:
+    """Resolve open field conflicts whose recorded values now agree.
+
+    The comparison uses the same tolerances as the writer. This is the
+    manual/one-off twin of the automatic cleanup performed after an import.
+    """
+    summary = PruneSummary()
+
+    for item in writer.review_items(
+        category=CONFLICT,
+        status="open",
+    ):
+        summary.checked += 1
+        try:
+            context = json.loads(item["context_json"] or "{}")
+        except ValueError:
+            summary.kept += 1
+            continue
+
+        field = context.get("field")
+        current = (context.get("current") or {}).get("value")
+        incoming = (context.get("incoming") or {}).get("value")
+
+        if not field or not _conflict_values_agree(
+            field,
+            current,
+            incoming,
+        ):
+            summary.kept += 1
+            continue
+
+        summary.resolved += 1
+        if not dry_run:
+            writer.set_review_status(
+                item["id"],
+                "resolved",
+                note=f"pruned: {field} values agree",
+            )
+
+    if not dry_run:
+        writer.connection.commit()
+
+    return summary
+
+
+def resolve_agreed_field_conflicts(
+    writer: TrainingWriter,
+    *,
+    activity_id: str,
+    fields: set[str],
+    note: str = "reimport: values agree",
+) -> int:
+    """Resolve old conflicts for fields that no longer conflict on import."""
+    if not fields:
+        return 0
+
+    rows = writer.connection.execute(
+        """
+        SELECT id, context_json FROM review_items
+        WHERE category = ? AND status = 'open' AND activity_id = ?
+        """,
+        (CONFLICT, activity_id),
+    ).fetchall()
+
+    resolved = 0
+    for item in rows:
+        try:
+            context = json.loads(item["context_json"] or "{}")
+        except ValueError:
+            continue
+        if context.get("field") not in fields:
+            continue
+
+        writer.set_review_status(item["id"], "resolved", note=note)
+        resolved += 1
+    return resolved
+
+
+def _conflict_values_agree(
+    field_name: str,
+    current: object,
+    incoming: object,
+) -> bool:
+    if current is None or incoming is None:
+        return False
+
+    if field_name == "started_at_utc":
+        try:
+            difference = abs(
+                (_timestamp(current) - _timestamp(incoming)).total_seconds()
+            )
+        except (TypeError, ValueError):
+            return current == incoming
+        return difference <= START_TOLERANCE_S
+
+    if (
+        field_name in NUMERIC_TOLERANCES
+        and isinstance(current, (int, float))
+        and isinstance(incoming, (int, float))
+    ):
+        relative, absolute = NUMERIC_TOLERANCES[field_name]
+        tolerance = max(absolute, relative * abs(float(current)))
+        return abs(float(current) - float(incoming)) <= tolerance
+
+    return current == incoming
+
+
+def _timestamp(value: object) -> datetime:
+    moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
 
 
 def _conflict_signature(field_name: str, value: object) -> object:

@@ -1,7 +1,7 @@
 # Next up: import package
 
-No open import-package tasks. This file records what was completed and what
-the package is still waiting on.
+This file records what was completed and what the package is still waiting
+on.
 
 ## Done
 
@@ -49,6 +49,10 @@ the package is still waiting on.
   sources, `--full` reimports all FIT paths, failures are reported per source
   and the command exits non-zero after continuing with the rest. The scan core
   is shared with `review scan`.
+- **Field-conflict prune.** `review prune [--dry-run]` resolves open field
+  conflicts whose recorded values now agree under the current core
+  tolerances. FIT/Intervals reimports also resolve a field's old conflict
+  automatically when that field agrees again.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 
@@ -57,8 +61,12 @@ the package is still waiting on.
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
   merged into `description`, tags in `activity_tags`, gear via the
   equipment-categories endpoint, and `vo2max_runalyze`.
-- **`review scan` prune mode**: resolving stale quality items whose current
-  values no longer trigger them (not implemented yet).
+- **`review scan` quality prune**: resolving stale quality items whose
+  current values no longer trigger them (field conflicts are pruned; quality
+  items are not yet).
+- **Core tolerance / sport-alias decisions** (root session): the duration and
+  avg-HR tolerances that produce the minimal FIT/Intervals conflicts, plus
+  the `standuppaddling`, `openwaterswim`, and `nordicski` aliases.
 - The dashboard is reports-package work.
 
 ## Notes / risks

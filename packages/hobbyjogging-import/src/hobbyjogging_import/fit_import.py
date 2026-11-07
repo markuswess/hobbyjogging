@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.db.writer import CONFLICT_FIELDS
 from hobbyjogging_core.model import Lap
 
 from .fit import (
@@ -30,6 +31,7 @@ from .quality import (
     record_ambiguous_match,
     record_field_conflicts,
     record_quality_findings,
+    resolve_agreed_field_conflicts,
 )
 
 SOURCE = "fit"
@@ -431,9 +433,10 @@ class FitImporter:
         if source_record_id is None:
             raise RuntimeError("FIT source record was not created")
 
+        values = _activity_values(session)
         conflicts = self.writer.upsert_activity(
             activity_id,
-            _activity_values(session),
+            values,
             source=SOURCE,
             source_record_id=source_record_id,
         )
@@ -443,6 +446,14 @@ class FitImporter:
             source_record_id=source_record_id,
             import_run_id=summary.run_id,
             conflicts=conflicts,
+        )
+        resolve_agreed_field_conflicts(
+            self.writer,
+            activity_id=activity_id,
+            fields=(
+                (set(values) & CONFLICT_FIELDS)
+                - {conflict.field_name for conflict in conflicts}
+            ),
         )
         self.writer.link_activity_source(
             activity_id,
@@ -457,7 +468,6 @@ class FitImporter:
             source_record_id=source_record_id,
         )
 
-        values = _activity_values(session)
         summary.review_recorded += record_quality_findings(
             self.writer,
             activity_id=activity_id,

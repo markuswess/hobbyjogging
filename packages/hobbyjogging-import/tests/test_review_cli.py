@@ -307,6 +307,58 @@ class ReviewCliTests(unittest.TestCase):
             output,
         )
 
+    def test_prune_resolves_conflicts_within_tolerance(self):
+        conflict_id, _ = self.seed_writer.record_review_item(
+            category="field_conflict",
+            detail="duration differs",
+            context={
+                "rule": "field_conflict",
+                "field": "duration_s",
+                "current": {"source": "fit", "value": 3600},
+                "incoming": {"source": "intervals", "value": 3610},
+            },
+            fingerprint="fp-prune",
+            activity_id="a1",
+        )
+        self.seed_writer.connection.commit()
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "prune"]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Prune: 1 resolved", output)
+        self.assertEqual(
+            "resolved",
+            self.seed_writer.review_item(conflict_id)["status"],
+        )
+
+    def test_prune_dry_run_does_not_write(self):
+        conflict_id, _ = self.seed_writer.record_review_item(
+            category="field_conflict",
+            detail="duration differs",
+            context={
+                "rule": "field_conflict",
+                "field": "duration_s",
+                "current": {"source": "fit", "value": 3600},
+                "incoming": {"source": "intervals", "value": 3610},
+            },
+            fingerprint="fp-prune-dry",
+            activity_id="a1",
+        )
+        self.seed_writer.connection.commit()
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "prune", "--dry-run"]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Prune dry run: 1 resolved", output)
+        self.assertEqual(
+            "open",
+            self.seed_writer.review_item(conflict_id)["status"],
+        )
+
     def test_show_unknown_item_errors(self):
         with self.assertRaises(SystemExit):
             self._run(

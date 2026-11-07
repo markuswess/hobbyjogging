@@ -318,6 +318,33 @@ class IntervalsImporterTests(unittest.TestCase):
         )
         self.assertEqual(["Future workout"], [event.name for event in events])
 
+    def test_reimport_resolves_old_conflict_when_values_agree(self):
+        self._import()
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 1),
+        )[0]
+        conflict_id, _ = self.importer.writer.record_review_item(
+            category="field_conflict",
+            detail="avg_hr differs",
+            context={
+                "rule": "field_conflict",
+                "field": "avg_hr",
+                "current": {"source": "intervals", "value": 140},
+                "incoming": {"source": "fit", "value": 141},
+            },
+            fingerprint="fp-old-hr",
+            activity_id=activity.id,
+        )
+        self.conn.commit()
+
+        self._import()
+
+        self.assertEqual(
+            "resolved",
+            self.importer.writer.review_item(conflict_id)["status"],
+        )
+
     def test_reimport_is_idempotent_and_preserves_manual_fields(self):
         first = self._import()
         activity = self.repository.activities(
