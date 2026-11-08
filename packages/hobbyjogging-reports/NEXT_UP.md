@@ -4,13 +4,16 @@ Current focus: planned-event zone distribution in reports and the dashboard.
 
 ## Done
 
-- **Time chart planned HR zones.** Planned running workouts with an HR zone
+- **Time chart planned zones.** Planned running workouts with a zone
   distribution render as hatched weekly stacked bars over the actual HR-zone
-  stack. Weeks without planned HR zones keep the dashed total-time outline.
+  stack. The planned bars use each event's own `zone_kind` (usually pace);
+  the legend names it (`planned pace zones`, `planned HR zones`, or
+  `planned zones` when mixed). Weeks without planned zones keep the dashed
+  total-time outline.
 - **Normalization.** `event_zone_seconds()` folds zones beyond the displayed
   count into the last zone and ignores `SS`;
-  `weekly_planned_time_by_zone()` aggregates per Monday–Sunday week and
-  filters by `zone_kind`.
+  `weekly_planned_time_by_zone()` aggregates per Monday–Sunday week and can
+  filter by `zone_kind` or include all kinds.
 - **Empty data.** Missing or all-zero event zone times leave the total-time
   outline in place; no empty legend entry or panel is added.
 - **Planned report Z3+4 column.** The planned-workouts table sums each
@@ -24,11 +27,12 @@ Current focus: planned-event zone distribution in reports and the dashboard.
    `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled with `zone_kind`.
 2. **Planned vs actual detail.** Match planned events to activities by
    date + sport so pace and HR distributions can be compared session by
-   session. The time chart currently overlays planned HR zones by week, not
+   session. The time chart currently overlays planned zones by week, not
    by matched session. Power comparisons remain impossible because
    activities do not store power zone times; do not fake them.
-3. **Planned pace zones.** Upcoming events are mostly `pace` kind, and there
-   is no pace-zone chart yet. Do not mix pace and HR zones in one stack.
+3. **Pace-zone actual stack.** Planned pace zones now appear as hatched
+   bars, but the actual weekly stack is still HR zones. A pace-zone variant
+   (or a `--zone-kind` option) would allow like-for-like pace comparison.
 4. **Dashboard.** Reuse the weekly planned-zone aggregation for the planned
    zone distribution in the static dashboard.
 
@@ -36,7 +40,7 @@ Current focus: planned-event zone distribution in reports and the dashboard.
 
 Covered now:
 
-- planned zone seconds are summed per label/kind;
+- planned zone seconds are summed per label/kind and across all kinds;
 - normalization handles 4/5/7 zones and `SS`;
 - empty zone times fall back to the total-time outline.
 
@@ -49,4 +53,4 @@ Still needed when the remaining work lands:
 ## Docs
 
 - `packages/hobbyjogging-reports/README.md` documents the time chart's
-  planned HR-zone stack and its limits.
+  planned zone stack and its limits.

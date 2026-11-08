@@ -291,6 +291,7 @@ def plot_time(
     time_points: list[TimePoint] | None = None,
     planned_time: list[tuple[date, float]] | None = None,
     planned_zone_weeks: list[TimeZoneWeek] | None = None,
+    planned_zone_label: str = "planned zones",
     zone_points: list[ZoneAveragePoint] | None = None,
     zone_window_days: int | None = None,
     windows: AverageWindows | None = None,
@@ -302,8 +303,9 @@ def plot_time(
     """Weekly running time stacked by HR zone with zone EWMA lines.
 
     Planned weekly time is drawn as an outlined bar over the actual stack.
-    When a planned workout carries an HR zone distribution, the week also
-    gets a hatched stacked bar showing those zones.
+    When a planned workout carries a zone distribution, the week also gets a
+    hatched stacked bar. Planned bars use the events' own zone kind, which may
+    differ from the actual HR stack; ``planned_zone_label`` names it.
     """
     _require_data(weeks, time_points)
 
@@ -385,7 +387,8 @@ def plot_time(
                 facecolor="none",
                 edgecolor=ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)],
                 hatch="//",
-                linewidth=1.0,
+                linewidth=0.8,
+                alpha=0.5,
                 zorder=4,
             )
             bottoms = [
@@ -445,7 +448,7 @@ def plot_time(
                     edgecolor="black",
                     hatch="//",
                 ),
-                "planned zones",
+                planned_zone_label,
             )]
             if planned_zone_weeks
             else None
@@ -489,7 +492,7 @@ def plot_time(
 
         if zone_window_days:
             zone_ax.set_title(
-                f"{zone_window_days}-day EWMA stacked by zone",
+                f"{zone_window_days}-day EWMA stacked by HR zone",
                 fontsize=10,
             )
 

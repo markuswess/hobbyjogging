@@ -75,6 +75,15 @@ def run_volume_chart(
     print(path)
 
 
+def _planned_zone_label(kinds: set[str]) -> str:
+    """Legend label for the planned zone stack."""
+    if len(kinds) == 1:
+        kind = next(iter(kinds))
+        name = {"hr": "HR"}.get(kind, kind)
+        return f"planned {name} zones"
+    return "planned zones"
+
+
 def run_time_chart(
     output: str,
     start: date,
@@ -159,9 +168,16 @@ def run_time_chart(
         events,
         chart_start,
         planned_chart_end,
-        kind="hr",
+        kind=None,
         zone_count=zones,
     )
+    planned_zone_label = _planned_zone_label({
+        event.zone_kind
+        for event in events
+        if event.type in RUN_TYPES
+        and event.zone_times
+        and event.zone_kind
+    })
 
     path = plot_time(
         weeks,
@@ -173,6 +189,7 @@ def run_time_chart(
             planned_chart_end,
         ),
         planned_zone_weeks=planned_zone_weeks,
+        planned_zone_label=planned_zone_label,
         zone_points=zone_points,
         zone_window_days=zone_window_days,
         windows=windows,

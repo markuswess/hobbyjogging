@@ -729,6 +729,35 @@ class TimeMetricsTests(unittest.TestCase):
         self.assertEqual(date(2026, 9, 28), weeks[0].week)
         self.assertEqual([900, 0, 900, 0], weeks[0].zones)
 
+    def test_weekly_planned_time_by_zone_can_include_all_kinds(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                zone_kind="hr",
+                zone_times=[EventZoneTime("Z1", 600, 1)],
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="run",
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 300, 1),
+                    EventZoneTime("Z3", 1500, 3),
+                ],
+            ),
+        ]
+
+        weeks = weekly_planned_time_by_zone(
+            events,
+            date(2026, 9, 28),
+            date(2026, 10, 4),
+            kind=None,
+        )
+
+        self.assertEqual(1, len(weeks))
+        self.assertEqual([900, 0, 1500, 0], weeks[0].zones)
+
     def test_zone_time_averages_have_one_series_per_zone(self):
         activity = Activity(
             id="a",

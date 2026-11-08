@@ -1080,20 +1080,21 @@ def weekly_planned_time_by_zone(
     start: date,
     end: date,
     *,
-    kind: str = "hr",
+    kind: str | None = "hr",
     zone_count: int = DEFAULT_ZONE_COUNT,
     running_only: bool = True,
 ) -> list[TimeZoneWeek]:
-    """Aggregate planned running time by zone for one zone kind.
+    """Aggregate planned running time by zone.
 
-    Only events whose ``zone_kind`` matches ``kind`` and that carry usable
-    zone times are included. Extra zones fold into the last displayed zone;
+    With a ``kind``, only events whose ``zone_kind`` matches it are included.
+    With ``kind=None``, every event carrying usable zone times is included,
+    regardless of kind. Extra zones fold into the last displayed zone;
     ``SS`` buckets are ignored.
     """
     weeks: dict[date, TimeZoneWeek] = {}
 
     for event in _planned_events(events, start, end, running_only=running_only):
-        if event.zone_kind != kind:
+        if kind is not None and event.zone_kind != kind:
             continue
 
         zones = event_zone_seconds(event, zone_count)
