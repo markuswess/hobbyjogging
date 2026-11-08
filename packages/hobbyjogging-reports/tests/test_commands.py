@@ -23,6 +23,7 @@ EXPECTED = {
     "time",
     "recovery",
     "subt",
+    "vo2max",
     "debug",
 }
 

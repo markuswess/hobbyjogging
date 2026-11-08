@@ -19,6 +19,7 @@ from hobbyjogging_report.analysis import (
     subt_session_point,
     subt_work_points,
     time_averages,
+    vo2max_points,
     week_bounds,
     week_start,
     weekly_planned_distance,
@@ -1121,6 +1122,106 @@ class RecoveryTrendTests(unittest.TestCase):
     def test_rejects_non_positive_window(self):
         with self.assertRaises(ValueError):
             recovery_trends(self.wellness, D, D, window_days=0)
+
+
+class Vo2maxTests(unittest.TestCase):
+
+    def test_uses_running_garmin_values_and_daily_mean(self):
+        activities = [
+            Activity(id="a", date=D, type="run", vo2max_garmin=60),
+            Activity(id="b", date=D, type="run", vo2max_garmin=58),
+            Activity(
+                id="c",
+                date=D,
+                type="ride",
+                vo2max_garmin=50,
+            ),
+            Activity(
+                id="d",
+                date=D,
+                type="run",
+                vo2max_runalyze=55,
+            ),
+            Activity(
+                id="e",
+                date=D + timedelta(days=1),
+                type="trail_run",
+                vo2max_garmin=62,
+            ),
+        ]
+
+        points = vo2max_points(
+            activities,
+            D,
+            D + timedelta(days=1),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertEqual(59, points[0].value)
+        self.assertEqual(62, points[1].value)
+        self.assertIsNotNone(points[0].avg_7)
+        self.assertIsNotNone(points[0].avg_42)
+
+    def test_carries_the_last_value_forward(self):
+        activities = [
+            Activity(id="a", date=D, type="run", vo2max_garmin=60),
+        ]
+
+        points = vo2max_points(
+            activities,
+            D,
+            D + timedelta(days=1),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertIsNone(points[1].value)
+        self.assertEqual(60, points[1].avg_7)
+        self.assertEqual(60, points[1].avg_42)
+
+    def test_short_average_moves_faster_than_long(self):
+        activities = [
+            Activity(id="a", date=D, type="run", vo2max_garmin=50),
+            Activity(
+                id="b",
+                date=D + timedelta(days=30),
+                type="run",
+                vo2max_garmin=60,
+            ),
+        ]
+
+        points = vo2max_points(
+            activities,
+            D,
+            D + timedelta(days=30),
+        )
+
+        self.assertGreater(points[-1].avg_7, points[-1].avg_42)
+
+    def test_returns_nothing_without_garmin_running_values(self):
+        activities = [
+            Activity(id="a", date=D, type="ride", vo2max_garmin=50),
+            Activity(id="b", date=D, type="run", vo2max_runalyze=55),
+        ]
+
+        self.assertEqual([], vo2max_points(activities, D, D))
+
+    def test_starts_at_start_when_history_exists(self):
+        activities = [
+            Activity(id="a", date=D, type="run", vo2max_garmin=60),
+        ]
+
+        points = vo2max_points(
+            activities,
+            D + timedelta(days=2),
+            D + timedelta(days=3),
+        )
+
+        self.assertEqual(
+            [D + timedelta(days=2), D + timedelta(days=3)],
+            [point.date for point in points],
+        )
+        self.assertEqual(60, points[0].avg_7)
+        self.assertEqual(60, points[0].avg_42)
 
 
 if __name__ == "__main__":

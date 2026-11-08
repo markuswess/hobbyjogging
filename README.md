@@ -143,6 +143,7 @@ Charts use `charts.sh` and print the generated file path:
 ./charts.sh time --days 90
 ./charts.sh recovery --days 90
 ./charts.sh subt --days 365
+./charts.sh vo2max --days 365
 ```
 
 See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.

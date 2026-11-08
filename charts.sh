@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [volume|subt|load|time|recovery] [args...]
+  ./charts.sh [volume|subt|vo2max|load|time|recovery] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -22,6 +22,7 @@ Examples:
   ./charts.sh subt --days 365
   ./charts.sh subt --output subt.png
   ./charts.sh subt --from 2026-01-01 --to 2026-06-30 --output subt.png
+  ./charts.sh vo2max --days 365
   ./charts.sh load --days 180
   ./charts.sh load --base-days 182 --fitness-days 42 --fatigue-days 7
   ./charts.sh time --days 90
@@ -66,7 +67,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|subt|load|time|recovery)
+    volume|subt|vo2max|load|time|recovery)
         ;;
     *)
         usage >&2

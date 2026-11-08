@@ -346,6 +346,44 @@ def run_load_chart(
     print(path)
 
 
+def run_vo2max_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render Garmin running VO2max with 7- and 42-day EWMA lines."""
+    from .analysis import RUN_TYPES, VO2MAX_WARMUP_DAYS, vo2max_points
+    from .charts import plot_vo2max
+
+    display_activities, activities = warmup_reviewed(
+        source,
+        start,
+        end,
+        VO2MAX_WARMUP_DAYS,
+        include_review,
+    )
+
+    non_running = sum(
+        1
+        for activity in display_activities
+        if activity.type not in RUN_TYPES and activity.vo2max_garmin
+    )
+    print_count_note(
+        non_running,
+        "activity",
+        "activities",
+        "non-running Garmin VO2max (ignored)",
+    )
+
+    points = vo2max_points(activities, start, end)
+
+    path = plot_vo2max(points, output=output)
+    print(path)
+
+
 def run_volume_command(parsed, source, include_review):
     output, start, end, planned_end, windows = parsed
     run_volume_chart(
@@ -369,6 +407,18 @@ def run_load_command(parsed, source, include_review):
         source,
         windows,
         planned_end=planned_end,
+        include_review=include_review,
+    )
+    return None
+
+
+def run_vo2max_command(parsed, source, include_review):
+    output, start, end = parsed
+    run_vo2max_chart(
+        output,
+        start,
+        end,
+        source,
         include_review=include_review,
     )
     return None

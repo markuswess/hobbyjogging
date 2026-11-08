@@ -26,6 +26,7 @@ from .model import (
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
+    Vo2maxPoint,
     ZoneAveragePoint,
 )
 from .series import sma
@@ -791,6 +792,53 @@ def plot_load(
 
     ax.set_xlabel("date")
     ax.set_ylabel("training load")
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best", fontsize=9)
+    fig.autofmt_xdate()
+    return _save(fig, output)
+
+
+def plot_vo2max(
+    points: list[Vo2maxPoint],
+    output: str,
+    title: str = "Garmin running VO2max",
+) -> str:
+    """Daily Garmin VO2max dots with 7- and 42-day EWMA lines."""
+    _require_data(points)
+
+    measured = [point for point in points if point.value is not None]
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+    ax.scatter(
+        [point.date for point in measured],
+        [point.value for point in measured],
+        s=18,
+        color="tab:blue",
+        alpha=0.55,
+        edgecolors="none",
+        label="Garmin VO2max",
+        zorder=3,
+    )
+    ax.plot(
+        [point.date for point in points],
+        [point.avg_7 for point in points],
+        color="tab:orange",
+        linewidth=2,
+        label="7-day avg",
+        zorder=2,
+    )
+    ax.plot(
+        [point.date for point in points],
+        [point.avg_42 for point in points],
+        color="tab:red",
+        linewidth=2,
+        label="42-day avg",
+        zorder=2,
+    )
+
+    ax.set_xlabel("date")
+    ax.set_ylabel("VO2max (mL/kg/min)")
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best", fontsize=9)

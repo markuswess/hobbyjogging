@@ -8,6 +8,7 @@ from hobbyjogging_report.charts import (
     plot_recovery,
     plot_subt,
     plot_time,
+    plot_vo2max,
     plot_volume,
 )
 from hobbyjogging_report.model import (
@@ -18,6 +19,7 @@ from hobbyjogging_report.model import (
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
+    Vo2maxPoint,
     ZoneAveragePoint,
 )
 
@@ -256,6 +258,29 @@ class RecoveryChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_recovery([], str(Path(tmp) / "recovery.png"))
+
+
+class Vo2maxChartTests(unittest.TestCase):
+
+    def test_vo2max_chart_writes_file(self):
+        points = [
+            Vo2maxPoint(D, 60.0, 59.5, 59.0),
+            Vo2maxPoint(date(2026, 1, 2), None, 59.6, 59.1),
+            Vo2maxPoint(date(2026, 1, 3), 61.0, 60.0, 59.3),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "vo2max.png"
+
+            result = plot_vo2max(points, str(output))
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_vo2max_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_vo2max([], str(Path(tmp) / "vo2max.png"))
 
 
 if __name__ == "__main__":

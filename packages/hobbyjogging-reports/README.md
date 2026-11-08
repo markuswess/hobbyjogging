@@ -34,9 +34,6 @@ reports:
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
-- **compare years|months** — A compact table of runs, cross-training
-  sessions, run/cross time, run km, average run pace, and average run HR
-  per year or calendar month.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **planned** — Upcoming planned workouts starting tomorrow, as a compact
@@ -63,6 +60,8 @@ reports:
   date axis. Dots are color-coded by rep length (short/medium/long)
   or LT1; pace ranges show fastest–slowest, HR ranges show
   average–max, and both metrics have rolling averages.
+- **vo2max** — Garmin running VO2max values as daily dots with 7- and
+  42-day exponentially weighted averages; last 365 days by default.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with
@@ -91,8 +90,6 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report yearly
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
-    uv run --env-file .env python -m hobbyjogging_report compare years
-    uv run --env-file .env python -m hobbyjogging_report compare months
     uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
     uv run --env-file .env python -m hobbyjogging_report planned
     uv run --env-file .env python -m hobbyjogging_report activities --limit 20
@@ -105,6 +102,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report time [output.png]
     uv run --env-file .env python -m hobbyjogging_report recovery [output.png]
     uv run --env-file .env python -m hobbyjogging_report subt [output.png]
+    uv run --env-file .env python -m hobbyjogging_report vo2max [output.png]
     uv run --env-file .env python -m hobbyjogging_report classify [days]
 
 Every command supports `--help`, for example:
@@ -124,9 +122,6 @@ and tables for the terminal:
     ./reports.sh monthly
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
-    ./reports.sh compare years
-    ./reports.sh compare months
-    ./reports.sh compare months --from 2025-01-01 --to 2025-12-31
     ./reports.sh subt-report --days 90
     ./reports.sh planned
     ./reports.sh planned --days 56
@@ -159,6 +154,7 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh subt --days 365
     ./charts.sh subt --output subt.png
     ./charts.sh subt --from 2026-01-01 --to 2026-06-30 --output subt.png
+    ./charts.sh vo2max --days 365
     ./charts.sh subt --source intervals
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
@@ -230,6 +226,22 @@ date axis:
 
 Missing values are skipped rather than treated as zero, so a gap in the
 wellness data does not pull an average down.
+
+### VO2max chart
+
+`vo2max` plots Garmin's running VO2max as one dot per day, with 7-day
+and 42-day exponentially weighted averages. It uses running activities
+only and ignores Runalyze estimates and cycling/swimming VO2max values.
+
+Same-day Garmin values are averaged. Days without a measurement carry
+the last value forward, so the averages track the metric's standing
+value rather than dropping to zero. The averages use
+`alpha = 1 - exp(-1 / days)` and 210 days of history before the display
+range. The chart defaults to the last 365 days.
+
+    ./charts.sh vo2max
+    ./charts.sh vo2max --days 365
+    ./charts.sh vo2max --from 2026-01-01 --to 2026-06-30
 
 ### Planned workouts
 
@@ -341,23 +353,6 @@ elapsed, distance, pace, avg_hr, load, rpe, feel, intensity, category.
 The category is only computed when requested, and uses intervals for
 subT/LT1-named sessions.
 
-## Compare report
-
-`compare years` and `compare months` render one row per period with:
-
-- **Runs** — `run`, `trail_run`, and the other running sports.
-- **Cross** — sessions in every other sport.
-- **Run time / Cross time** — total recorded duration.
-- **Run km** — total running distance.
-- **Avg pace** — total running time divided by total running distance,
-  using runs that have both.
-- **Avg HR** — the mean of the runs' average HR values; runs without HR
-  are ignored.
-
-`compare years` starts at the first year present in the data source.
-`compare months` defaults to the last 12 calendar months. Both accept
-`--from`, `--to`, and `--days`; missing periods appear as zero rows.
-
 ## Date ranges
 
 `report`, `subt-report`, `volume`, `load`, `time`, `recovery`,
@@ -372,11 +367,6 @@ subT/LT1-named sessions.
     --days N              next N days from today (default 28)
     --from YYYY-MM-DD     start date (inclusive)
     --to YYYY-MM-DD       end date (inclusive)
-
-`compare` accepts the same options, with these defaults:
-
-    compare years         first year in the data source → today
-    compare months        last 12 calendar months → today
 
 The chart commands also accept:
 
@@ -393,9 +383,6 @@ Examples:
     uv run --env-file .env python -m hobbyjogging_report planned
     uv run --env-file .env python -m hobbyjogging_report planned --days 56
     uv run --env-file .env python -m hobbyjogging_report planned --to 2026-12-31
-    uv run --env-file .env python -m hobbyjogging_report compare years
-    uv run --env-file .env python -m hobbyjogging_report compare months
-    uv run --env-file .env python -m hobbyjogging_report compare months --from 2025-01-01 --to 2025-12-31
 
 Rules:
 

@@ -53,6 +53,8 @@ Updated 2026-11-08.
   zones; planned zone distributions appear as hatched weekly bars and the
   EWMA panel continues through them as dashed projections. Extra zones fold
   into the last displayed zone and `SS` is ignored.
+- **Reports: VO2max chart.** Garmin running VO2max appears as daily dots
+  with 7- and 42-day exponentially weighted averages.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
@@ -69,15 +71,13 @@ Updated 2026-11-08.
    planned zone distribution (see
    `packages/hobbyjogging-reports/NEXT_UP.md`). The time chart already covers
    planned pace zones; the dashboard should reuse that aggregation.
-2. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
-   show planned load in the planned-session sections.
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-4. **`review scan` prune mode**: resolve stale quality items whose current
+3. **`review scan` prune mode**: resolve stale quality items whose current
    values no longer trigger them.
-5. **Homelab cutover**: DB + importer + dashboard generator + static server,
+4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 
 ## Notes
@@ -90,6 +90,9 @@ Updated 2026-11-08.
   scan); `--no-garmin`, `--no-intervals`, `--no-fit`, and `--no-scan` skip
   sources.
 - The `planned` report always starts tomorrow.
+- Reports use `duration_s` (recording/timer time) for pace and time.
+  `moving_s` is stored for provenance and the `moving_time_mismatch` rule
+  only; it is not a report denominator.
 - The Garmin key is valid for 30/90/180/365 days; each run exchanges it for a
   24 h bearer token.
 - Runalyze's activity payload exposes no Garmin activity id, so matching stays

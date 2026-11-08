@@ -11,6 +11,7 @@ from .chart_commands import (
     run_recovery_command,
     run_subt_command,
     run_time_command,
+    run_vo2max_command,
     run_volume_command,
 )
 from .cli import (
@@ -250,6 +251,18 @@ COMMANDS = {
             default_days=365,
         ),
         run=run_subt_command,
+    ),
+    "vo2max": Command(
+        "vo2max",
+        "Garmin running VO2max with 7- and 42-day averages",
+        "vo2max [output.png] [--days N] [--from DATE] [--to DATE]",
+        ("charts.sh vo2max --days 365",),
+        parse=partial(
+            parse_chart_args,
+            default_output="vo2max.png",
+            default_days=365,
+        ),
+        run=run_vo2max_command,
     ),
     "activities": Command(
         "activities",

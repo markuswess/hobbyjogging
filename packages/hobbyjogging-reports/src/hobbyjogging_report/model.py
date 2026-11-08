@@ -143,3 +143,13 @@ class ComparePeriod:
     run_distance_m: float = 0
     pace_s_per_km: float | None = None
     avg_hr: float | None = None
+
+
+@dataclass
+class Vo2maxPoint:
+    """Daily Garmin VO2max value plus its 7- and 42-day EWMAs."""
+
+    date: date
+    value: float | None = None
+    avg_7: float | None = None
+    avg_42: float | None = None

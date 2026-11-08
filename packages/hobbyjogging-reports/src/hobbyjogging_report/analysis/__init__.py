@@ -54,6 +54,12 @@ from .subt import (
     subt_session_point,
     subt_work_points,
 )
+from .vo2max import (
+    VO2MAX_LONG_DAYS,
+    VO2MAX_SHORT_DAYS,
+    VO2MAX_WARMUP_DAYS,
+    vo2max_points,
+)
 from .zones import (
     daily_planned_zone_time,
     daily_run_time,
@@ -76,6 +82,9 @@ __all__ = [
     "RUN_TYPES",
     "SUBT_CATEGORIES",
     "SUBT_CATEGORY_ORDER",
+    "VO2MAX_LONG_DAYS",
+    "VO2MAX_SHORT_DAYS",
+    "VO2MAX_WARMUP_DAYS",
     "activity_sort_key",
     "average_warmup_days",
     "classify_interval",
@@ -103,6 +112,7 @@ __all__ = [
     "subt_session_point",
     "subt_work_points",
     "time_averages",
+    "vo2max_points",
     "week_bounds",
     "week_end",
     "week_start",
