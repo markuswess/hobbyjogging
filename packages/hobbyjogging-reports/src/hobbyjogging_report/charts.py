@@ -246,7 +246,7 @@ def plot_volume(
     _require_data(data, distance_points)
 
     windows = windows or AverageWindows()
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(12, 10))
     weeks = [week for week, _ in data]
 
     if data:
@@ -326,11 +326,11 @@ def plot_time(
             2,
             1,
             sharex=True,
-            figsize=(12, 8),
+            figsize=(12, 16),
             gridspec_kw={"height_ratios": [3, 2]},
         )
     else:
-        fig, ax = plt.subplots(figsize=(12, 5))
+        fig, ax = plt.subplots(figsize=(12, 10))
         zone_ax = None
 
     if weeks:
@@ -590,7 +590,7 @@ def plot_subt(
         2,
         1,
         sharex=True,
-        figsize=(11, 8),
+        figsize=(11, 16),
         gridspec_kw={"height_ratios": [3, 2]},
     )
     plotted = False
@@ -759,7 +759,7 @@ def plot_load(
     windows = windows or AverageWindows()
     actual = [point for point in points if not point.projected]
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(12, 10))
     ax.bar(
         [point.date for point in actual],
         [point.load for point in actual],
@@ -831,7 +831,7 @@ def plot_recovery(
         ),
     )
 
-    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(12, 9))
+    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(12, 18))
 
     for ax, (
         raw_attr,
