@@ -1116,6 +1116,24 @@ def weekly_planned_time_by_zone(
     return [weeks[week] for week in sorted(weeks)]
 
 
+def _event_zone_index(zone) -> int | None:
+    """Return an event zone's 1-based index, or ``None`` for ``SS``."""
+    index = zone.zone_index
+
+    if index is not None:
+        return index
+
+    label = (zone.zone_label or "").strip().upper()
+
+    if not label.startswith("Z"):
+        return None
+
+    try:
+        return int(label[1:])
+    except ValueError:
+        return None
+
+
 def event_zone_seconds(
     event: Event,
     zone_count: int = DEFAULT_ZONE_COUNT,
@@ -1136,26 +1154,46 @@ def event_zone_seconds(
     found = False
 
     for zone in event.zone_times:
-        index = zone.zone_index
+        index = _event_zone_index(zone)
 
-        if index is None:
-            label = (zone.zone_label or "").strip().upper()
-
-            if not label.startswith("Z"):
-                continue
-
-            try:
-                index = int(label[1:])
-            except ValueError:
-                continue
-
-        if index < 1 or (zone.seconds or 0) <= 0:
+        if index is None or index < 1 or (zone.seconds or 0) <= 0:
             continue
 
         result[min(index, zone_count) - 1] += zone.seconds
         found = True
 
     return result if found else None
+
+
+def event_zone_time(
+    event: Event,
+    zone_indices: tuple[int, ...],
+) -> float | None:
+    """Sum planned seconds in the given 1-based zones.
+
+    ``SS`` and unparseable labels are ignored. Returns ``None`` when the
+    event has no usable zone times; otherwise returns the sum, which may be
+    zero when the requested zones are empty.
+    """
+    if not event.zone_times:
+        return None
+
+    wanted = set(zone_indices)
+    total = 0.0
+    found = False
+
+    for zone in event.zone_times:
+        index = _event_zone_index(zone)
+
+        if index is None or index < 1 or (zone.seconds or 0) <= 0:
+            continue
+
+        found = True
+
+        if index in wanted:
+            total += zone.seconds
+
+    return total if found else None
 
 
 def recovery_trends(

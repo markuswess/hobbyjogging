@@ -13,6 +13,9 @@ Current focus: planned-event zone distribution in reports and the dashboard.
   filters by `zone_kind`.
 - **Empty data.** Missing or all-zero event zone times leave the total-time
   outline in place; no empty legend entry or panel is added.
+- **Planned report Z3+4 column.** The planned-workouts table sums each
+  event's own Z3 and Z4 time (pace, HR, or power), ignoring `SS`. Missing
+  zone data shows `-`; genuine zero Z3+4 time shows `0min`.
 
 ## Remaining
 

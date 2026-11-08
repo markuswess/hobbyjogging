@@ -9,6 +9,7 @@ from hobbyjogging_report.analysis import (
     daily_training_load,
     distance_averages,
     event_zone_seconds,
+    event_zone_time,
     is_lt1_activity,
     load_metrics,
     average_warmup_days,
@@ -657,6 +658,34 @@ class TimeMetricsTests(unittest.TestCase):
                 ),
                 4,
             )
+        )
+
+    def test_event_zone_time_sums_requested_zones_only(self):
+        event = Event(
+            date=D,
+            zone_kind="pace",
+            zone_times=[
+                EventZoneTime("Z1", 600, 1),
+                EventZoneTime("Z3", 1500, 3),
+                EventZoneTime("Z4", 300, 4),
+                EventZoneTime("Z5", 900, 5),
+                EventZoneTime("SS", 120),
+            ],
+        )
+
+        self.assertEqual(1800, event_zone_time(event, (3, 4)))
+
+    def test_event_zone_time_distinguishes_missing_from_empty(self):
+        self.assertIsNone(event_zone_time(Event(date=D), (3, 4)))
+        self.assertEqual(
+            0,
+            event_zone_time(
+                Event(
+                    date=D,
+                    zone_times=[EventZoneTime("Z1", 600, 1)],
+                ),
+                (3, 4),
+            ),
         )
 
     def test_weekly_planned_time_by_zone_filters_kind_and_sums(self):

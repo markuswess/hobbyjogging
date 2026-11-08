@@ -37,8 +37,8 @@ reports:
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **planned** — Upcoming planned workouts as a compact key-facts table
-  (date, weekday, workout, sport, distance, time, load); next 28 days
-  by default.
+  (date, weekday, workout, sport, distance, time, planned Z3+4 time,
+  load); next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, totals, zones,
   description, the full interval table, and subT/LT1 work reps.
