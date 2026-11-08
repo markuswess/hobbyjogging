@@ -74,8 +74,8 @@ on.
   raw row in `source_records.payload_json`. Start times are matched at
   minute precision; matched activities keep their precise start, and rows
   without a start create dated activities. Imports are stable and idempotent.
-- Full FIT archive import and VO2max backfill have been run against the real
-  DB.
+- Full FIT archive import, VO2max backfill, and the historical spreadsheet
+  import have been run against the real DB.
 
 ## Waiting on
 

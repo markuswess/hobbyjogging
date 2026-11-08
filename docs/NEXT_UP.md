@@ -57,8 +57,10 @@ Updated 2026-11-08.
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (2,848 activities, 2,802 with a Garmin VO2max;
-  668 events with 2,808 planned zone rows). The review queue is currently
-  empty (0 open items).
+  668 events with 2,808 planned zone rows). The historical spreadsheet import
+  added the 2009–2021 log (1,292 activities, 10 equipment items, 1,842 shoe
+  links); the review queue holds 238 open items (230 field conflicts, 5
+  quality, 3 ambiguous matches).
 
 ## Next
 
