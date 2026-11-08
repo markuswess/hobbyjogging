@@ -196,7 +196,9 @@ replaces that fallback. Tags are replaced per source on reimport; manual tags
 Time fields have distinct meanings: `duration_s` is recording/timer time
 (Intervals `icu_recording_time`, FIT `total_timer_time`), `moving_s` is moving
 time (Intervals `moving_time`, FIT `total_moving_time` when present), and
-`elapsed_s` is wall-clock elapsed time. Planned events only expose moving time,
+`elapsed_s` is wall-clock elapsed time. Observed per-source differences and
+the Gumpoldskirchen example are documented in
+[SOURCE_NOTES.md](SOURCE_NOTES.md). Planned events only expose moving time,
 so their `duration_s` is the planned moving duration. A large moving-vs-
 recording gap is a review item.
 

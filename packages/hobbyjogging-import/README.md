@@ -1,7 +1,9 @@
 # hobbyjogging-import
 
 Import and normalize training data from external sources into the canonical
-hobbyjogging database.
+hobbyjogging database. Observed FIT/Intervals field differences (elapsed,
+moving, recording time and average HR) are documented in
+[../../docs/SOURCE_NOTES.md](../../docs/SOURCE_NOTES.md).
 
 ## Sync
 

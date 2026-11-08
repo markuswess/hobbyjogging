@@ -12,7 +12,8 @@ Training data, imports, and reports.
   activities table.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, data
-flow, and the planned homelab/static-dashboard deployment.
+flow, and the planned homelab/static-dashboard deployment. Source-specific
+field differences are documented in [docs/SOURCE_NOTES.md](docs/SOURCE_NOTES.md).
 
 ## Setup
 
