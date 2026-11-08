@@ -976,6 +976,37 @@ def daily_zone_time(
     ]
 
 
+def daily_planned_zone_time(
+    events: list[Event],
+    start: date,
+    end: date,
+    *,
+    kind: str | None = "pace",
+    zone_count: int = DEFAULT_ZONE_COUNT,
+) -> list[tuple[date, list[float]]]:
+    """Planned running seconds per zone, zero-filled, for events in range."""
+    by_day: dict[date, list[float]] = {}
+
+    for event in _planned_events(events, start, end, running_only=True):
+        if kind is not None and event.zone_kind != kind:
+            continue
+
+        zones = event_zone_seconds(event, zone_count)
+
+        if zones is None:
+            continue
+
+        row = by_day.setdefault(event.date, [0.0] * zone_count)
+
+        for index, seconds in enumerate(zones):
+            row[index] += seconds
+
+    return [
+        (day, by_day.get(day, [0.0] * zone_count))
+        for day in date_range(start, end)
+    ]
+
+
 def zone_time_averages(
     activities: list[Activity],
     start: date,
@@ -984,21 +1015,49 @@ def zone_time_averages(
     window_days: int,
     warmup_days: int | None = None,
     zone_count: int = DEFAULT_ZONE_COUNT,
+    events: list[Event] | None = None,
+    projected_end: date | None = None,
+    projection_start: date | None = None,
+    kind: str | None = "pace",
 ) -> list[ZoneAveragePoint]:
-    """Return one EWMA series per pace zone for the selected window."""
+    """Return one EWMA series per pace zone for the selected window.
+
+    When ``events`` and ``projected_end`` are given, the averages continue
+    through planned zone time; those points are marked ``projected``.
+    """
     if window_days <= 0:
         raise ValueError("window_days must be positive")
 
     if warmup_days is None:
         warmup_days = AVERAGE_WARMUP_FACTOR * window_days
 
+    projection_start = projection_start or end
+    projected = (
+        events is not None
+        and projected_end is not None
+        and projected_end > projection_start
+    )
+    series_end = projection_start if projected else end
+
     warm_start = start - timedelta(days=warmup_days)
     series = daily_zone_time(
         activities,
         warm_start,
-        end,
+        series_end,
         zone_count=zone_count,
     )
+
+    if projected:
+        series = series + daily_planned_zone_time(
+            events,
+            series_end + timedelta(days=1),
+            projected_end,
+            kind=kind,
+            zone_count=zone_count,
+        )
+    else:
+        projection_start = None
+
     alpha = alpha_from_time_constant(window_days)
 
     columns = [
@@ -1019,6 +1078,10 @@ def zone_time_averages(
             ZoneAveragePoint(
                 date=day,
                 zones=[column[row_index] for column in columns],
+                projected=(
+                    projection_start is not None
+                    and day > projection_start
+                ),
             )
         )
 

@@ -4,6 +4,7 @@ from functools import partial
 
 from hobbyjogging_report.analysis import (
     daily_planned_load,
+    daily_planned_zone_time,
     daily_run_distance,
     daily_run_time,
     daily_training_load,
@@ -789,6 +790,82 @@ class TimeMetricsTests(unittest.TestCase):
             sum(points[0].zones),
             points[0].zones[0] * 4,
         )
+
+    def test_daily_planned_zone_time_sums_and_filters(self):
+        events = [
+            Event(
+                date=D,
+                type="run",
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 600, 1),
+                    EventZoneTime("Z3", 300, 3),
+                ],
+            ),
+            Event(
+                date=D,
+                type="run",
+                zone_kind="hr",
+                zone_times=[EventZoneTime("Z1", 900, 1)],
+            ),
+            Event(
+                date=D,
+                type="ride",
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z1", 5000, 1)],
+            ),
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z4", 1200, 4)],
+            ),
+        ]
+
+        series = daily_planned_zone_time(
+            events,
+            D,
+            date(2026, 10, 2),
+        )
+
+        self.assertEqual(2, len(series))
+        self.assertEqual([600, 0, 300, 0], series[0][1])
+        self.assertEqual([0, 0, 0, 1200], series[1][1])
+
+    def test_zone_time_averages_project_planned_zones(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z3", 3600, 3)],
+            ),
+        ]
+
+        points = zone_time_averages(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    duration_s=3600,
+                    pace_zone_times=[3600, 0, 0, 0],
+                )
+            ],
+            D,
+            D,
+            window_days=7,
+            warmup_days=10,
+            events=events,
+            projected_end=date(2026, 10, 2),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertEqual(
+            [False, True],
+            [point.projected for point in points],
+        )
+        self.assertGreater(points[-1].zones[2], points[0].zones[2])
 
 
 class WeeklyVolumeTests(unittest.TestCase):

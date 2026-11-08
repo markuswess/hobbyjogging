@@ -194,7 +194,9 @@ hatched stacked bars over the actual week. Zones beyond `--zones` fold
 into the last displayed zone, and `SS` buckets are ignored. Planned zones
 of other kinds (HR or power) are ignored so the stack matches the actual
 pace zones. Weeks whose planned workouts have no pace zones keep the
-dashed total-time outline. The lower EWMA panel remains actual-only.
+dashed total-time outline. The lower EWMA panel continues through planned
+pace zones as dashed projections, using planned daily zone time and
+treating unplanned days as rest.
 
     ./charts.sh time
     ./charts.sh time --days 90
@@ -243,9 +245,9 @@ The volume chart also skips planned events without a distance.
 
 The 182/42/7-day EWMA lines continue through the planned days as dashed
 segments, using planned daily distance, time, or load and treating
-unplanned days as rest. The time chart's weekly pace-zone stack includes
-planned pace zones; its lower EWMA panel and the recovery averages stay
-actual-only.
+unplanned days as rest. The time chart's weekly pace-zone stack and its
+pace-zone EWMA panel include planned pace zones; the recovery averages
+stay actual-only.
 
 ### Data source selection
 

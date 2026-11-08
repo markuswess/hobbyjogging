@@ -456,6 +456,10 @@ def plot_time(
 
     if zone_ax is not None and zone_points:
         zone_dates = [point.date for point in zone_points]
+        actual_count = sum(
+            1 for point in zone_points if not point.projected
+        )
+        has_projected = actual_count < len(zone_points)
         lower = [0.0] * len(zone_points)
 
         for index in range(zone_count - 1, -1, -1):
@@ -471,23 +475,56 @@ def plot_time(
                 f"Z{zone + 1}"
                 for zone in range(index, zone_count)
             )
+            color = ZONE_COLORS[index % len(ZONE_COLORS)]
+            line_color = ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)]
 
-            zone_ax.fill_between(
-                zone_dates,
-                lower,
-                upper,
-                color=ZONE_COLORS[index % len(ZONE_COLORS)],
-                alpha=0.65,
-                linewidth=0,
-            )
-            zone_ax.plot(
-                zone_dates,
-                upper,
-                color=ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)],
-                linewidth=1.8,
-                label=label,
-            )
+            if actual_count:
+                zone_ax.fill_between(
+                    zone_dates[:actual_count],
+                    lower[:actual_count],
+                    upper[:actual_count],
+                    color=color,
+                    alpha=0.65,
+                    linewidth=0,
+                )
+                zone_ax.plot(
+                    zone_dates[:actual_count],
+                    upper[:actual_count],
+                    color=line_color,
+                    linewidth=1.8,
+                    label=label,
+                )
+
+            if has_projected:
+                start = max(actual_count - 1, 0)
+                zone_ax.fill_between(
+                    zone_dates[start:],
+                    lower[start:],
+                    upper[start:],
+                    color=color,
+                    alpha=0.3,
+                    linewidth=0,
+                )
+                zone_ax.plot(
+                    zone_dates[start:],
+                    upper[start:],
+                    color=line_color,
+                    linewidth=1.8,
+                    linestyle="--",
+                    label=label if not actual_count else None,
+                )
+
             lower = upper
+
+        if has_projected:
+            zone_ax.plot(
+                [],
+                [],
+                color="black",
+                linestyle="--",
+                linewidth=1.2,
+                label="projected",
+            )
 
         if zone_window_days:
             zone_ax.set_title(
@@ -501,7 +538,7 @@ def plot_time(
         zone_ax.legend(
             loc="best",
             fontsize=8,
-            ncol=min(zone_count, 4),
+            ncol=min(zone_count + (1 if has_projected else 0), 5),
         )
     elif zone_ax is not None:
         zone_ax.set_visible(False)

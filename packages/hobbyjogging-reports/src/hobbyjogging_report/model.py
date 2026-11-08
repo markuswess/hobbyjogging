@@ -106,6 +106,7 @@ class ZoneAveragePoint:
 
     date: date
     zones: list[float]
+    projected: bool = False
 
 
 @dataclass

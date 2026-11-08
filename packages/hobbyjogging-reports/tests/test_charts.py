@@ -138,6 +138,11 @@ class TimeChartTests(unittest.TestCase):
         zone_points = [
             ZoneAveragePoint(D, [1200, 900, 300, 0]),
             ZoneAveragePoint(date(2026, 1, 2),  [1300, 850, 350, 0]),
+            ZoneAveragePoint(
+                date(2026, 1, 20),
+                [1400, 800, 400, 100],
+                projected=True,
+            ),
         ]
         planned_zone_weeks = [
             TimeZoneWeek(

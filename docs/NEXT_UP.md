@@ -34,8 +34,9 @@ Updated 2026-11-06.
   session, activities table), charts, and the terminal renderer; report code
   is split per report.
 - **Reports: pace zones.** The time chart stacks actual and planned pace
-  zones; planned zone distributions appear as hatched weekly bars. Extra
-  zones fold into the last displayed zone and `SS` is ignored.
+  zones; planned zone distributions appear as hatched weekly bars and the
+  EWMA panel continues through them as dashed projections. Extra zones fold
+  into the last displayed zone and `SS` is ignored.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (2,840 activities, 2,797 with a Garmin VO2max).
   The queue cleanup is mostly done; remaining warnings are intentionally left

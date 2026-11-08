@@ -166,6 +166,10 @@ def run_time_chart(
         window_days=zone_window_days,
         warmup_days=warmup_days,
         zone_count=zones,
+        events=events,
+        projected_end=planned_chart_end,
+        projection_start=end,
+        kind=TIME_ZONE_KIND,
     )
     planned_zone_weeks = weekly_planned_time_by_zone(
         events,

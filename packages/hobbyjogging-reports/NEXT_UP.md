@@ -5,10 +5,11 @@ Current focus: planned-event zone distribution in reports and the dashboard.
 ## Done
 
 - **Time chart uses pace zones.** The weekly stack and the zone EWMA panel
-  now use activity pace zones. Planned running workouts with a pace zone
-  distribution render as hatched weekly stacked bars over the actual stack;
-  planned zones of other kinds are ignored. Weeks without planned pace zones
-  keep the dashed total-time outline.
+  use activity pace zones. Planned running workouts with a pace zone
+  distribution render as hatched weekly stacked bars over the actual stack,
+  and the EWMA panel continues through planned pace zones as dashed
+  projections. Planned zones of other kinds are ignored. Weeks without
+  planned pace zones keep the dashed total-time outline.
 - **Normalization.** `event_zone_seconds()` folds zones beyond the displayed
   count into the last zone and ignores `SS`;
   `weekly_planned_time_by_zone()` aggregates per Monday–Sunday week and can
@@ -40,7 +41,9 @@ Covered now:
 
 - planned zone seconds are summed per label/kind and across all kinds;
 - normalization handles 4/5/7 zones and `SS`;
-- empty zone times fall back to the total-time outline.
+- empty zone times fall back to the total-time outline;
+- zone EWMA points past the requested end are marked projected and include
+  planned zone time.
 
 Still needed when the remaining work lands:
 
