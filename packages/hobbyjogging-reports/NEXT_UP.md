@@ -4,12 +4,11 @@ Current focus: planned-event zone distribution in reports and the dashboard.
 
 ## Done
 
-- **Time chart planned zones.** Planned running workouts with a zone
-  distribution render as hatched weekly stacked bars over the actual HR-zone
-  stack. The planned bars use each event's own `zone_kind` (usually pace);
-  the legend names it (`planned pace zones`, `planned HR zones`, or
-  `planned zones` when mixed). Weeks without planned zones keep the dashed
-  total-time outline.
+- **Time chart uses pace zones.** The weekly stack and the zone EWMA panel
+  now use activity pace zones. Planned running workouts with a pace zone
+  distribution render as hatched weekly stacked bars over the actual stack;
+  planned zones of other kinds are ignored. Weeks without planned pace zones
+  keep the dashed total-time outline.
 - **Normalization.** `event_zone_seconds()` folds zones beyond the displayed
   count into the last zone and ignores `SS`;
   `weekly_planned_time_by_zone()` aggregates per Monday–Sunday week and can
@@ -26,13 +25,12 @@ Current focus: planned-event zone distribution in reports and the dashboard.
    upcoming/current planned workout, e.g.
    `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled with `zone_kind`.
 2. **Planned vs actual detail.** Match planned events to activities by
-   date + sport so pace and HR distributions can be compared session by
-   session. The time chart currently overlays planned zones by week, not
-   by matched session. Power comparisons remain impossible because
-   activities do not store power zone times; do not fake them.
-3. **Pace-zone actual stack.** Planned pace zones now appear as hatched
-   bars, but the actual weekly stack is still HR zones. A pace-zone variant
-   (or a `--zone-kind` option) would allow like-for-like pace comparison.
+   date + sport so pace distributions can be compared session by session.
+   The time chart currently overlays planned pace zones by week, not by
+   matched session. Power comparisons remain impossible because activities
+   do not store power zone times; do not fake them.
+3. **Optional HR-zone variant.** The time chart now uses pace zones. An
+   HR-zone variant (or a `--zone-kind` option) would restore the old view.
 4. **Dashboard.** Reuse the weekly planned-zone aggregation for the planned
    zone distribution in the static dashboard.
 

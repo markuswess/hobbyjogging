@@ -298,14 +298,13 @@ def plot_time(
     time_scale: float = 7.0,
     zone_scale: float = 7.0,
     ylabel: str = "hours / week",
-    title: str = "Weekly running time",
+    title: str = "Weekly running time by pace zone",
 ) -> str:
-    """Weekly running time stacked by HR zone with zone EWMA lines.
+    """Weekly running time stacked by pace zone with zone EWMA lines.
 
     Planned weekly time is drawn as an outlined bar over the actual stack.
-    When a planned workout carries a zone distribution, the week also gets a
-    hatched stacked bar. Planned bars use the events' own zone kind, which may
-    differ from the actual HR stack; ``planned_zone_label`` names it.
+    When a planned workout carries a pace zone distribution, the week also
+    gets a hatched stacked bar. ``planned_zone_label`` names that stack.
     """
     _require_data(weeks, time_points)
 
@@ -492,7 +491,7 @@ def plot_time(
 
         if zone_window_days:
             zone_ax.set_title(
-                f"{zone_window_days}-day EWMA stacked by HR zone",
+                f"{zone_window_days}-day EWMA stacked by pace zone",
                 fontsize=10,
             )
 

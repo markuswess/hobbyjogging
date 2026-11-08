@@ -827,12 +827,12 @@ def _normalized_zone_times(
     activity: Activity,
     zone_count: int,
 ) -> list[float]:
-    """Return HR zone seconds padded/folded to ``zone_count`` zones."""
+    """Return pace zone seconds padded/folded to ``zone_count`` zones."""
     if zone_count <= 0:
         raise ValueError("zone_count must be positive")
 
     total = activity.duration_s or 0.0
-    zones = list(activity.hr_zone_times or [])
+    zones = list(activity.pace_zone_times or [])
 
     if total <= 0 or not zones:
         return [0.0] * zone_count
@@ -950,7 +950,7 @@ def daily_zone_time(
     *,
     zone_count: int = DEFAULT_ZONE_COUNT,
 ) -> list[tuple[date, list[float]]]:
-    """Daily running seconds per HR zone, zero-filled."""
+    """Daily running seconds per pace zone, zero-filled."""
     by_day: dict[date, list[float]] = {}
 
     for activity in activities:
@@ -985,7 +985,7 @@ def zone_time_averages(
     warmup_days: int | None = None,
     zone_count: int = DEFAULT_ZONE_COUNT,
 ) -> list[ZoneAveragePoint]:
-    """Return one EWMA series per HR zone for the selected window."""
+    """Return one EWMA series per pace zone for the selected window."""
     if window_days <= 0:
         raise ValueError("window_days must be positive")
 
@@ -1032,9 +1032,9 @@ def weekly_time_by_zone(
     *,
     zone_count: int = DEFAULT_ZONE_COUNT,
 ) -> list[TimeZoneWeek]:
-    """Aggregate weekly running time by HR zone.
+    """Aggregate weekly running time by pace zone.
 
-    Activities without HR zone data, or time outside the recorded zones,
+    Activities without pace zone data, or time outside the recorded zones,
     become an ``unzoned`` remainder so the stack still equals running time.
     """
     weeks: dict[date, TimeZoneWeek] = {}

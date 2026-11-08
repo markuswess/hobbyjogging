@@ -516,21 +516,21 @@ class TimeMetricsTests(unittest.TestCase):
         self.assertLess(last.base, last.fitness)
         self.assertLess(last.fitness, last.fatigue)
 
-    def test_weekly_time_by_zone_uses_hr_zones_and_monday_weeks(self):
+    def test_weekly_time_by_zone_uses_pace_zones_and_monday_weeks(self):
         activities = [
             Activity(
                 id="a",
                 date=date(2026, 9, 28),
                 type="run",
                 duration_s=3600,
-                hr_zone_times=[600, 1200, 1800],
+                pace_zone_times=[600, 1200, 1800],
             ),
             Activity(
                 id="b",
                 date=date(2026, 10, 4),
                 type="run",
                 duration_s=1800,
-                hr_zone_times=[1800],
+                pace_zone_times=[1800],
             ),
             Activity(
                 id="c",
@@ -543,7 +543,7 @@ class TimeMetricsTests(unittest.TestCase):
                 date=date(2026, 10, 5),
                 type="ride",
                 duration_s=5000,
-                hr_zone_times=[5000],
+                pace_zone_times=[5000],
             ),
         ]
 
@@ -571,7 +571,7 @@ class TimeMetricsTests(unittest.TestCase):
             date=D,
             type="run",
             duration_s=1000,
-            hr_zone_times=[500, 1000],
+            pace_zone_times=[500, 1000],
         )
 
         weeks = weekly_time_by_zone([activity], D, D)
@@ -586,7 +586,7 @@ class TimeMetricsTests(unittest.TestCase):
             date=D,
             type="run",
             duration_s=1000,
-            hr_zone_times=[400],
+            pace_zone_times=[400],
         )
 
         weeks = weekly_time_by_zone([activity], D, D)
@@ -764,14 +764,14 @@ class TimeMetricsTests(unittest.TestCase):
             date=D,
             type="run",
             duration_s=3600,
-            hr_zone_times=[900, 900, 900, 900],
+            pace_zone_times=[900, 900, 900, 900],
         )
         ride = Activity(
             id="b",
             date=D,
             type="ride",
             duration_s=3600,
-            hr_zone_times=[3600],
+            pace_zone_times=[3600],
         )
 
         points = zone_time_averages(

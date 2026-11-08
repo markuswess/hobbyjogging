@@ -84,6 +84,9 @@ def _planned_zone_label(kinds: set[str]) -> str:
     return "planned zones"
 
 
+TIME_ZONE_KIND = "pace"
+
+
 def run_time_chart(
     output: str,
     start: date,
@@ -96,7 +99,7 @@ def run_time_chart(
     planned_end: date | None = None,
     include_review: bool = False,
 ) -> None:
-    """Render weekly running time stacked by HR zone."""
+    """Render weekly running time stacked by pace zone."""
     from .analysis import (
         RUN_TYPES,
         average_warmup_days,
@@ -128,13 +131,13 @@ def run_time_chart(
         for activity in display_activities
         if activity.type in RUN_TYPES
         and (activity.duration_s or 0) > 0
-        and not activity.hr_zone_times
+        and not activity.pace_zone_times
     )
     print_count_note(
         unzoned,
         "activity",
         "activities",
-        "no HR zone data (shown as unzoned)",
+        "no pace zone data (shown as unzoned)",
     )
 
     weeks = weekly_time_by_zone(
@@ -168,16 +171,10 @@ def run_time_chart(
         events,
         chart_start,
         planned_chart_end,
-        kind=None,
+        kind=TIME_ZONE_KIND,
         zone_count=zones,
     )
-    planned_zone_label = _planned_zone_label({
-        event.zone_kind
-        for event in events
-        if event.type in RUN_TYPES
-        and event.zone_times
-        and event.zone_kind
-    })
+    planned_zone_label = _planned_zone_label({TIME_ZONE_KIND})
 
     path = plot_time(
         weeks,

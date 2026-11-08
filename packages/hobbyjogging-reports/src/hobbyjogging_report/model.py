@@ -102,7 +102,7 @@ class TimePoint:
 
 @dataclass
 class ZoneAveragePoint:
-    """Smoothed daily time in each HR zone."""
+    """Smoothed daily time in each pace zone."""
 
     date: date
     zones: list[float]
@@ -123,7 +123,7 @@ class RecoveryPoint:
 
 @dataclass
 class TimeZoneWeek:
-    """Weekly training seconds split by HR zone, plus unzoned time."""
+    """Weekly training seconds split by pace zone, plus unzoned time."""
 
     week: date
     zones: list[float]

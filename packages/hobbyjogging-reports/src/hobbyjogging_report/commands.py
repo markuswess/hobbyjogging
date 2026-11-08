@@ -192,7 +192,7 @@ COMMANDS = {
     ),
     "time": Command(
         "time",
-        "Weekly running time stacked by HR zone",
+        "Weekly running time stacked by pace zone",
         "time [output.png] [--days N] [--from DATE] [--to DATE] "
         "[--planned-days N] [--zones N] [--zone-window base|fitness|fatigue]",
         (

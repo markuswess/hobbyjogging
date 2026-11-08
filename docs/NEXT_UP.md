@@ -33,10 +33,9 @@ Updated 2026-11-06.
 - **Reports.** Markdown reports (daily/weekly/monthly/yearly, period, subT,
   session, activities table), charts, and the terminal renderer; report code
   is split per report.
-- **Reports: planned zones.** The time chart overlays planned zone
-  distributions as hatched weekly stacked bars, using each event's own
-  `zone_kind`; extra zones fold into the last displayed zone and `SS` is
-  ignored.
+- **Reports: pace zones.** The time chart stacks actual and planned pace
+  zones; planned zone distributions appear as hatched weekly bars. Extra
+  zones fold into the last displayed zone and `SS` is ignored.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (2,840 activities, 2,797 with a Garmin VO2max).
   The queue cleanup is mostly done; remaining warnings are intentionally left
@@ -52,7 +51,7 @@ Updated 2026-11-06.
    focus): weekly overview, activity list/detail, data-health banner, and the
    planned zone distribution (see
    `packages/hobbyjogging-reports/NEXT_UP.md`). The time chart already covers
-   planned HR zones; the dashboard should reuse that aggregation.
+   planned pace zones; the dashboard should reuse that aggregation.
 3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
 4. **Runalyze enrichment** when the API auth/endpoint details are settled:
