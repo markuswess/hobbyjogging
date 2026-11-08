@@ -1,6 +1,6 @@
 # Status and next steps
 
-Updated 2026-11-06.
+Updated 2026-11-08.
 
 ## Done
 
@@ -24,10 +24,20 @@ Updated 2026-11-06.
   reconciles the calendar: fields are replaced (including NULLs), events that
   disappeared are soft-excluded, reappearing ones are revived, and only
   Intervals-linked events are touched. `--dry-run` writes nothing.
+- **One-command sync.** `hobbyjogging-import sync` (wrapped by `./sync.sh`)
+  runs Garmin fetch → Intervals import → FIT scan (skipping known paths) →
+  quality review scan, continues past a failing source, and exits non-zero at
+  the end.
+- **Event zone times.** `workout_doc.zoneTimes` is stored in
+  `event_zone_times` with an inferred `zone_kind` (pace/HR/power); the event
+  sync replaces/clears them and `events backfill-zones` populated the existing
+  payloads (2,808 rows).
 - **Time fields.** Intervals `moving_time` → `moving_s`; FIT
   `total_moving_time` is parsed when present; event duration comes from
   `moving_time` and `training_load` from `icu_training_load`. The
   `moving_time_mismatch` rule flags gaps above `max(10 min, 25%)`.
+- **Time authority.** `moving_s` and `elapsed_s` are Intervals-authoritative
+  and never produce review items; `duration_s` remains owner-tracked.
 - **Quality dedupe.** Review items dedupe by
   `(category, fingerprint, activity_id)`, not by source record.
 - **Reports.** Markdown reports (daily/weekly/monthly/yearly, period, subT,
@@ -37,31 +47,29 @@ Updated 2026-11-06.
   zones; planned zone distributions appear as hatched weekly bars and the
   EWMA panel continues through them as dashed projections. Extra zones fold
   into the last displayed zone and `SS` is ignored.
+- **Reports: planned workouts.** The `planned` report starts tomorrow and ends
+  with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
-  against the real database (2,840 activities, 2,797 with a Garmin VO2max).
-  The queue cleanup is mostly done; remaining warnings are intentionally left
-  in the review list and hide their activities from reports until handled.
+  against the real database (2,848 activities, 2,802 with a Garmin VO2max;
+  668 events with 2,808 planned zone rows). The review queue is currently
+  empty (0 open items).
 
 ## Next
 
-1. **Import package: event zone times.** Map `workout_doc.zoneTimes` into
-   `event_zone_times` (kind inferred from targets, sport fallback), have the
-   event sync replace/clear them, and add a local `events backfill-zones`
-   command for the 620 existing payloads.
-2. **View models + static weekly dashboard** in the reports package (main
+1. **View models + static weekly dashboard** in the reports package (main
    focus): weekly overview, activity list/detail, data-health banner, and the
    planned zone distribution (see
    `packages/hobbyjogging-reports/NEXT_UP.md`). The time chart already covers
    planned pace zones; the dashboard should reuse that aggregation.
-3. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
+2. **Reports: moving time.** Use `moving_s or duration_s` for pace/volume and
    show planned load in the planned-session sections.
-4. **Runalyze enrichment** when the API auth/endpoint details are settled:
+3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-5. **`review scan` prune mode**: resolve stale quality items whose current
+4. **`review scan` prune mode**: resolve stale quality items whose current
    values no longer trigger them.
-6. **Homelab cutover**: DB + importer + dashboard generator + static server,
+5. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 
 ## Notes
@@ -70,6 +78,10 @@ Updated 2026-11-06.
   (`--include-review` shows them); excluded activities never appear.
 - `events sync` defaults to today .. today + 182 days; `--from`/`--to`
   override the window, and `--dry-run` reports without writing.
+- `./sync.sh` runs the incremental sync (Garmin → Intervals → FIT → review
+  scan); `--no-garmin`, `--no-intervals`, `--no-fit`, and `--no-scan` skip
+  sources.
+- The `planned` report always starts tomorrow.
 - The Garmin key is valid for 30/90/180/365 days; each run exchanges it for a
   24 h bearer token.
 - Runalyze's activity payload exposes no Garmin activity id, so matching stays
