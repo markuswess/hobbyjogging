@@ -11,8 +11,8 @@ in time, so one forest run can carry GPS/HR data from a FIT file and subjective
 data (RPE, feel, training load) from Intervals. There is no automatic
 per-source field priority: the first owner keeps a field, and any cross-source
 disagreement is queued for a human decision, except that Intervals owns moving
-and elapsed time. The raw source records are kept as provenance next to the
-canonical values.
+and elapsed time, and average-HR differences only count beyond 5 bpm. The raw
+source records are kept as provenance next to the canonical values.
 
 The review mechanism is in place: suspicious data (zero durations, absurd
 paces, ambiguous matches, field conflicts) is recorded as review items, and
@@ -51,7 +51,22 @@ Static-first, generated on the homelab and served read-only:
 - **CSV import** — optional/deferred. Third-party exports that are neither FIT
   nor Intervals, ingested through the same owner/conflict review rules.
 
-## 5. Later ideas
+## 5. Race tracking & reports
+
+Turn planned races into a first-class part of the record:
+
+- store race metadata on events (Intervals `category`/priority, goal time and
+  distance) and race results (official time, placing, participants,
+  conditions);
+- link a planned race event to the completed activity so plan and execution
+  sit side by side;
+- sources: Intervals race categories, Runalyze `race_result`, and manual entry
+  for older races;
+- reports: an upcoming-race calendar with countdown, a past-results table, and
+  a race-day report (pacing, HR/zone execution vs plan, splits);
+- dashboard: a races card and race-detail page.
+
+## 6. Later ideas
 
 - equipment/shoe mileage tracking from the canonical distance data
 - wellness data (HRV, sleep) in recovery views
