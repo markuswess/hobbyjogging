@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.model import Event, EventZoneTime
 from hobbyjogging_report.planned import planned_report
@@ -7,6 +7,7 @@ from support import FakeSource
 
 D1 = date(2026, 11, 6)
 D2 = date(2026, 11, 8)
+TODAY = date(2026, 11, 5)  # D1 is tomorrow
 
 
 class PlannedReportTests(unittest.TestCase):
@@ -33,7 +34,7 @@ class PlannedReportTests(unittest.TestCase):
             ]
         )
 
-        report = planned_report(D1, D2, source)
+        report = planned_report(D1, D2, source, today=TODAY)
 
         self.assertIn("# Planned Workouts", report)
         self.assertIn(
@@ -56,14 +57,14 @@ class PlannedReportTests(unittest.TestCase):
             events=[Event(date=D1, name="Travel", description="Away")]
         )
 
-        report = planned_report(D1, D1, source)
+        report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn("- No planned sessions", report)
         self.assertNotIn("Travel", report)
         self.assertNotIn("| Date |", report)
 
     def test_empty_range_has_no_table(self):
-        report = planned_report(D1, D2, FakeSource())
+        report = planned_report(D1, D2, FakeSource(), today=TODAY)
 
         self.assertIn("- No planned sessions", report)
         self.assertNotIn("| Date |", report)
@@ -73,7 +74,7 @@ class PlannedReportTests(unittest.TestCase):
             events=[Event(date=D1, name="A | B", type="ride")]
         )
 
-        report = planned_report(D1, D1, source)
+        report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn(
             "| 2026-11-06 | Fri | A / B | Ride | - | - | - | - |",
@@ -99,7 +100,7 @@ class PlannedReportTests(unittest.TestCase):
             ]
         )
 
-        report = planned_report(D1, D1, source)
+        report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn(
             "| 2026-11-06 | Fri | 5x5 subT | Run | - | - | 30min | - |",
@@ -110,6 +111,85 @@ class PlannedReportTests(unittest.TestCase):
             "(pace, HR, or power).",
             report,
         )
+
+    def test_always_starts_from_tomorrow(self):
+        source = FakeSource(
+            events=[
+                Event(date=D1, name="Today", type="run"),
+                Event(date=D2, name="Tomorrow", type="run"),
+            ]
+        )
+
+        report = planned_report(D1, D2, source, today=D1)
+
+        self.assertNotIn("Today", report)
+        self.assertIn("Tomorrow", report)
+        self.assertIn(f"{D1 + timedelta(days=1)} to {D2}", report)
+
+    def test_summary_reports_weekly_totals(self):
+        source = FakeSource(
+            events=[
+                Event(
+                    date=D1,
+                    name="A",
+                    type="run",
+                    duration_s=3000,
+                    zone_kind="pace",
+                    zone_times=[
+                        EventZoneTime("Z1", 2400, 1),
+                        EventZoneTime("Z3", 600, 3),
+                    ],
+                ),
+                Event(
+                    date=D2,
+                    name="B",
+                    type="run",
+                    duration_s=4200,
+                    zone_kind="pace",
+                    zone_times=[
+                        EventZoneTime("Z1", 3000, 1),
+                        EventZoneTime("Z4", 1200, 4),
+                    ],
+                ),
+            ]
+        )
+
+        report = planned_report(
+            D1,
+            D1 + timedelta(days=6),
+            source,
+            today=TODAY,
+        )
+
+        self.assertIn("- Total time: 2h00 / 7 days", report)
+        self.assertIn("- Z3+4 time: 30min / 7 days", report)
+        self.assertNotIn("Averaged over", report)
+
+    def test_summary_normalizes_to_seven_days(self):
+        source = FakeSource(
+            events=[
+                Event(date=D1, name="A", type="run", duration_s=7200),
+            ]
+        )
+
+        report = planned_report(
+            D1,
+            D1 + timedelta(days=13),
+            source,
+            today=TODAY,
+        )
+
+        self.assertIn("- Total time: 1h00 / 7 days", report)
+        self.assertIn("Averaged over 14 days.", report)
+
+    def test_summary_has_no_zone_value_without_zone_data(self):
+        source = FakeSource(
+            events=[Event(date=D1, name="A", type="run", duration_s=3600)]
+        )
+
+        report = planned_report(D1, D1, source, today=TODAY)
+
+        self.assertIn("- Z3+4 time: - / 7 days", report)
 
     def test_zone_column_shows_zero_when_z3_plus_z4_is_empty(self):
         source = FakeSource(
@@ -126,7 +206,7 @@ class PlannedReportTests(unittest.TestCase):
             ]
         )
 
-        report = planned_report(D1, D1, source)
+        report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn(
             "| 2026-11-06 | Fri | Easy | Run | - | - | 0min | - |",

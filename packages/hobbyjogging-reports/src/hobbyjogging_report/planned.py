@@ -1,6 +1,6 @@
 """Upcoming planned workouts report."""
 
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
 
@@ -34,11 +34,16 @@ def planned_report(
     source: DataSource,
     *,
     include_review: bool = False,
+    today: date | None = None,
 ) -> str:
     """Render a compact table of planned sessions in a forward range.
 
-    Events without a sport type (illness or travel notes) are skipped.
+    The report always starts tomorrow, even when ``start`` is today or in the
+    past. Events without a sport type (illness or travel notes) are skipped.
     """
+    today = today or date.today()
+    start = max(start, today + timedelta(days=1))
+
     events = sorted(
         (
             event
@@ -80,4 +85,35 @@ def planned_report(
             "(pace, HR, or power).",
         ])
 
+    lines.extend(_summary_lines(events, start, end))
+
     return "\n".join(lines)
+
+
+def _summary_lines(events, start: date, end: date) -> list[str]:
+    """Weekly-average planned totals for the report range."""
+    range_days = max((end - start).days + 1, 1)
+    weekly_factor = 7 / range_days
+
+    total_s = sum(event.duration_s or 0 for event in events)
+    zone_values = [event_zone_time(event, (3, 4)) for event in events]
+    has_zone_data = any(value is not None for value in zone_values)
+    zone_s = sum(value or 0 for value in zone_values)
+
+    lines = [
+        "",
+        "## Summary",
+        f"- Total time: {fmt_time(total_s * weekly_factor)} / 7 days",
+        "- Z3+4 time: "
+        + (
+            f"{fmt_time(zone_s * weekly_factor)} / 7 days"
+            if has_zone_data
+            else "- / 7 days"
+        ),
+    ]
+
+    if range_days != 7:
+        unit = "day" if range_days == 1 else "days"
+        lines.append(f"\nAveraged over {range_days} {unit}.")
+
+    return lines
