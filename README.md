@@ -67,6 +67,15 @@ The Personal API key is valid for 30/90/180/365 days; each run exchanges it
 for a 24 h bearer token. Known activity ids are skipped via a fetch manifest,
 and API-downloaded FITs are byte-identical to the GDPR archive export.
 
+Keep everything current with one command (Garmin fetch, Intervals import,
+FIT scan, quality review scan):
+
+```bash
+./sync.sh
+./sync.sh --days 14
+./sync.sh --no-garmin
+```
+
 Import-conflicts and questionable activities land in the review workflow:
 
 ```bash
