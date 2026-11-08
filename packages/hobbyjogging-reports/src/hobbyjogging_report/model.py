@@ -129,3 +129,17 @@ class TimeZoneWeek:
     week: date
     zones: list[float]
     unzoned: float = 0.0
+
+
+@dataclass(frozen=True)
+class ComparePeriod:
+    """Basic training totals for one year or calendar month."""
+
+    label: str
+    runs: int = 0
+    cross_sessions: int = 0
+    run_time_s: float = 0
+    cross_time_s: float = 0
+    run_distance_m: float = 0
+    pace_s_per_km: float | None = None
+    avg_hr: float | None = None

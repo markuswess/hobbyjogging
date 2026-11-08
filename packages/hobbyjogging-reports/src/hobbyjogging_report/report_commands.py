@@ -2,6 +2,7 @@
 
 from .activity_list import activities_report
 from .command_support import reviewed_range
+from .compare import compare_report
 from .daily import daily
 from .debug import debug
 from .period_report import period_report, summary
@@ -50,6 +51,17 @@ def run_report_command(parsed, source, include_review):
         start,
         end,
         "Custom Training Report",
+        source,
+        include_review=include_review,
+    )
+
+
+def run_compare_command(parsed, source, include_review):
+    mode, start, end = parsed
+    return compare_report(
+        mode,
+        start,
+        end,
         source,
         include_review=include_review,
     )

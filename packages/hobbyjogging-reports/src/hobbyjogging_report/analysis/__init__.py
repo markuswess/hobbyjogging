@@ -9,6 +9,7 @@ from .averages import (
     DEFAULT_AVERAGE_WINDOWS,
     average_warmup_days,
 )
+from .compare import COMPARE_MODES, compare_periods
 from .common import (
     CATEGORY_LONG,
     CATEGORY_MEDIUM,
@@ -68,6 +69,7 @@ __all__ = [
     "CATEGORY_LONG",
     "CATEGORY_MEDIUM",
     "CATEGORY_SHORT",
+    "COMPARE_MODES",
     "DEFAULT_AVERAGE_WINDOWS",
     "DEFAULT_ZONE_COUNT",
     "LT1_WORDS",
@@ -77,6 +79,7 @@ __all__ = [
     "activity_sort_key",
     "average_warmup_days",
     "classify_interval",
+    "compare_periods",
     "daily_planned_distance",
     "daily_planned_load",
     "daily_planned_time",

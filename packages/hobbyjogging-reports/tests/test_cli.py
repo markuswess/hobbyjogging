@@ -9,6 +9,7 @@ from hobbyjogging_report.cli import (
     extract_source,
     parse_chart_args,
     parse_classify_args,
+    parse_compare_args,
     parse_load_args,
     parse_planned_args,
     parse_recovery_args,
@@ -462,6 +463,67 @@ class RecoveryArgsTests(unittest.TestCase):
     def test_rejects_non_positive_window(self):
         with self.assertRaises(ValueError):
             parse_recovery_args(["--window", "0"], today=TODAY)
+
+
+class CompareArgsTests(unittest.TestCase):
+
+    def test_years_default_to_all_years(self):
+        self.assertEqual(
+            ("years", None, TODAY),
+            parse_compare_args(["years"], today=TODAY),
+        )
+
+    def test_months_default_to_last_12_calendar_months(self):
+        self.assertEqual(
+            ("months", date(2025, 11, 1), TODAY),
+            parse_compare_args(["months"], today=TODAY),
+        )
+
+    def test_explicit_range(self):
+        self.assertEqual(
+            ("months", date(2026, 1, 1), date(2026, 3, 31)),
+            parse_compare_args(
+                ["months", "--from", "2026-01-01", "--to", "2026-03-31"],
+                today=TODAY,
+            ),
+        )
+
+    def test_to_only_months_uses_12_months_ending_there(self):
+        self.assertEqual(
+            ("months", date(2025, 12, 1), date(2026, 11, 30)),
+            parse_compare_args(
+                ["months", "--to", "2026-11-30"],
+                today=TODAY,
+            ),
+        )
+
+    def test_days_option(self):
+        self.assertEqual(
+            ("months", TODAY - timedelta(days=30), TODAY),
+            parse_compare_args(
+                ["months", "--days", "30"],
+                today=TODAY,
+            ),
+        )
+
+    def test_rejects_negative_days(self):
+        with self.assertRaises(ValueError):
+            parse_compare_args(
+                ["months", "--days", "-1"],
+                today=TODAY,
+            )
+
+    def test_rejects_reversed_range(self):
+        with self.assertRaises(ValueError):
+            parse_compare_args(
+                ["years", "--from", "2026-02-01", "--to", "2026-01-01"],
+                today=TODAY,
+            )
+
+    def test_rejects_unknown_mode(self):
+        with self.assertRaises(SystemExit):
+            with redirect_stderr(io.StringIO()):
+                parse_compare_args(["weeks"], today=TODAY)
 
 
 class SourceArgTests(unittest.TestCase):

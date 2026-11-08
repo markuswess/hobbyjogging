@@ -16,6 +16,7 @@ from .chart_commands import (
 from .cli import (
     parse_chart_args,
     parse_classify_args,
+    parse_compare_args,
     parse_load_args,
     parse_planned_args,
     parse_recovery_args,
@@ -31,6 +32,7 @@ from .report_commands import (
     run_activities_command,
     run_all_command,
     run_classify_command,
+    run_compare_command,
     run_daily_command,
     run_debug_command,
     run_planned_command,
@@ -121,6 +123,18 @@ COMMANDS = {
         ),
         parse=parse_report_args,
         run=run_report_command,
+    ),
+    "compare": Command(
+        "compare",
+        "Compare training by year or month",
+        "compare years|months [--days N] [--from DATE] [--to DATE]",
+        (
+            "reports.sh compare years",
+            "reports.sh compare months",
+            "reports.sh compare months --from 2025-01-01 --to 2025-12-31",
+        ),
+        parse=parse_compare_args,
+        run=run_compare_command,
     ),
     "subt-report": Command(
         "subt-report",

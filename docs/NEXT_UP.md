@@ -46,9 +46,9 @@ Updated 2026-11-08.
   minute-precision start matching, shoe links, tags, and the normal
   owner/conflict review rules. Equipment upsert/link methods are in the
   writer.
-- **Reports.** Markdown reports (daily/weekly/monthly/yearly, period, subT,
-  session, activities table), charts, and the terminal renderer; report code
-  is split per report.
+- **Reports.** Markdown reports (daily/weekly/monthly/yearly, period,
+  year/month comparison, subT, session, activities table), charts, and the
+  terminal renderer; report code is split per report.
 - **Reports: pace zones.** The time chart stacks actual and planned pace
   zones; planned zone distributions appear as hatched weekly bars and the
   EWMA panel continues through them as dashed projections. Extra zones fold

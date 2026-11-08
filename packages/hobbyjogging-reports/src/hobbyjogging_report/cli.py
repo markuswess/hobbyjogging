@@ -157,6 +157,52 @@ def parse_planned_args(
     return resolve_forward_range(days, args.start, args.end, today=today)
 
 
+def _months_before(day: date, months: int) -> date:
+    """First day of the month ``months`` before ``day``."""
+    index = day.year * 12 + day.month - 1 - months
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def parse_compare_args(
+    argv: list[str],
+    today: date | None = None,
+) -> tuple[str, date | None, date]:
+    """Parse a comparison mode and range.
+
+    ``years`` defaults to ``start=None`` so the report can begin at the
+    first year present in the source. ``months`` defaults to the last 12
+    calendar months.
+    """
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("mode", choices=("years", "months"))
+    parser.add_argument("--days", dest="days_option", type=int)
+    parser.add_argument("--from", dest="start", type=date_arg)
+    parser.add_argument("--to", dest="end", type=date_arg)
+    args = parser.parse_args(argv)
+    today = today or date.today()
+    end = args.end or today
+
+    if args.days_option is not None and args.days_option < 0:
+        raise ValueError("--days must be zero or greater")
+
+    if args.start is not None:
+        if args.start > end:
+            raise ValueError("--from must not be after --to")
+        return args.mode, args.start, end
+
+    if args.days_option is not None:
+        return (
+            args.mode,
+            end - timedelta(days=args.days_option),
+            end,
+        )
+
+    if args.mode == "years":
+        return args.mode, None, end
+
+    return args.mode, _months_before(end, 11), end
+
+
 def parse_chart_args(
     argv: list[str],
     default_output: str,

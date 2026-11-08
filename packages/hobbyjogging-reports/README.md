@@ -34,6 +34,9 @@ reports:
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
+- **compare years|months** — A compact table of runs, cross-training
+  sessions, run/cross time, run km, average run pace, and average run HR
+  per year or calendar month.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **planned** — Upcoming planned workouts starting tomorrow, as a compact
@@ -88,6 +91,8 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report yearly
     uv run --env-file .env python -m hobbyjogging_report all
     uv run --env-file .env python -m hobbyjogging_report report --days 90
+    uv run --env-file .env python -m hobbyjogging_report compare years
+    uv run --env-file .env python -m hobbyjogging_report compare months
     uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
     uv run --env-file .env python -m hobbyjogging_report planned
     uv run --env-file .env python -m hobbyjogging_report activities --limit 20
@@ -119,6 +124,9 @@ and tables for the terminal:
     ./reports.sh monthly
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
+    ./reports.sh compare years
+    ./reports.sh compare months
+    ./reports.sh compare months --from 2025-01-01 --to 2025-12-31
     ./reports.sh subt-report --days 90
     ./reports.sh planned
     ./reports.sh planned --days 56
@@ -333,6 +341,23 @@ elapsed, distance, pace, avg_hr, load, rpe, feel, intensity, category.
 The category is only computed when requested, and uses intervals for
 subT/LT1-named sessions.
 
+## Compare report
+
+`compare years` and `compare months` render one row per period with:
+
+- **Runs** — `run`, `trail_run`, and the other running sports.
+- **Cross** — sessions in every other sport.
+- **Run time / Cross time** — total recorded duration.
+- **Run km** — total running distance.
+- **Avg pace** — total running time divided by total running distance,
+  using runs that have both.
+- **Avg HR** — the mean of the runs' average HR values; runs without HR
+  are ignored.
+
+`compare years` starts at the first year present in the data source.
+`compare months` defaults to the last 12 calendar months. Both accept
+`--from`, `--to`, and `--days`; missing periods appear as zero rows.
+
 ## Date ranges
 
 `report`, `subt-report`, `volume`, `load`, `time`, `recovery`,
@@ -347,6 +372,11 @@ subT/LT1-named sessions.
     --days N              next N days from today (default 28)
     --from YYYY-MM-DD     start date (inclusive)
     --to YYYY-MM-DD       end date (inclusive)
+
+`compare` accepts the same options, with these defaults:
+
+    compare years         first year in the data source → today
+    compare months        last 12 calendar months → today
 
 The chart commands also accept:
 
@@ -363,6 +393,9 @@ Examples:
     uv run --env-file .env python -m hobbyjogging_report planned
     uv run --env-file .env python -m hobbyjogging_report planned --days 56
     uv run --env-file .env python -m hobbyjogging_report planned --to 2026-12-31
+    uv run --env-file .env python -m hobbyjogging_report compare years
+    uv run --env-file .env python -m hobbyjogging_report compare months
+    uv run --env-file .env python -m hobbyjogging_report compare months --from 2025-01-01 --to 2025-12-31
 
 Rules:
 

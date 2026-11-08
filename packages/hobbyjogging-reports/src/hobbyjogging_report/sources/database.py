@@ -45,6 +45,21 @@ class DatabaseSource:
     def events(self, start: date, end: date) -> list[Event]:
         return self.repository.events(start, end)
 
+    def earliest_activity_date(self) -> date | None:
+        """Return the first non-excluded activity date, if any."""
+        row = self.connection.execute(
+            """
+            SELECT MIN(local_date)
+            FROM activities
+            WHERE excluded_at IS NULL
+            """
+        ).fetchone()
+
+        if row is None or row[0] is None:
+            return None
+
+        return date.fromisoformat(row[0])
+
     def activity_intervals(self, activity_id: str) -> list[Interval]:
         return self.repository.activity_intervals(activity_id)
 

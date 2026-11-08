@@ -71,6 +71,17 @@ class DatabaseSourceTests(unittest.TestCase):
         self.assertEqual("WORK", intervals[0].type)
         self.assertEqual("Pegasus 40", equipment[0].name)
 
+    def test_earliest_activity_date(self):
+        self.assertEqual(
+            date(2026, 10, 1),
+            self.source.earliest_activity_date(),
+        )
+
+    def test_earliest_activity_date_is_none_without_activities(self):
+        self.conn.execute("DELETE FROM activities")
+
+        self.assertIsNone(self.source.earliest_activity_date())
+
     def test_close_does_not_close_external_connection(self):
         self.source.close()
 

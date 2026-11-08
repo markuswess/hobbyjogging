@@ -75,5 +75,11 @@ class FakeSource:
     def events(self, start, end):
         return self._in_range(self._events, start, end)
 
+    def earliest_activity_date(self):
+        return min(
+            (activity.date for activity in self._activities),
+            default=None,
+        )
+
     def activity_intervals(self, activity_id):
         return self._intervals.get(activity_id, [])

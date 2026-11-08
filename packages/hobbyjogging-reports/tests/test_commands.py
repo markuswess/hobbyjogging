@@ -13,6 +13,7 @@ EXPECTED = {
     "yearly",
     "all",
     "report",
+    "compare",
     "subt-report",
     "planned",
     "session",
