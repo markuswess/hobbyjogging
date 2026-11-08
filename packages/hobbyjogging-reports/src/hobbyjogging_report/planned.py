@@ -33,7 +33,6 @@ def planned_report(
     end: date,
     source: DataSource,
     *,
-    include_review: bool = False,
     today: date | None = None,
 ) -> str:
     """Render a compact table of planned sessions in a forward range.

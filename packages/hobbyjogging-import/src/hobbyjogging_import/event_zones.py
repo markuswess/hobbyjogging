@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from hobbyjogging_core import EventZoneTime, TrainingWriter
 from hobbyjogging_core.sports import RIDE_SPORTS, RUN_SPORTS
+from .numeric import number as _number
 
 PACE = "pace"
 HR = "hr"
@@ -296,16 +297,3 @@ def _positive_int(value: object) -> int | None:
     if number is None or number < 1:
         return None
     return int(number)
-
-
-def _number(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value)
-        except ValueError:
-            return None
-    return None

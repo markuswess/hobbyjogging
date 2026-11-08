@@ -68,12 +68,7 @@ def run_subt_report_command(parsed, source, include_review):
 
 def run_planned_command(parsed, source, include_review):
     start, end = parsed
-    return planned_report(
-        start,
-        end,
-        source,
-        include_review=include_review,
-    )
+    return planned_report(start, end, source)
 
 
 def run_classify_command(parsed, source, include_review):

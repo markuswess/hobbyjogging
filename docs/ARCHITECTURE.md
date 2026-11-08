@@ -124,7 +124,8 @@ Analysis, views, and rendering.
 
 - `sources/` — `DataSource` implementations: canonical database (default) and
   direct Intervals.icu API.
-- `analysis.py`, `series.py` — pure functions over canonical activities,
+- `analysis/` (`common`, `averages`, `load`, `zones`, `subt`, `planned`,
+  `recovery`), `series.py` — pure functions over canonical activities,
   intervals, and wellness; derived metrics such as load, zone distribution,
   pace/HR trends, recovery.
 - `model.py` — typed view models and analysis result types.
@@ -330,7 +331,7 @@ trusted.
 The rule is **compute → render**:
 
 1. `sources/` fetches canonical data for a date range through `DataSource`.
-2. `analysis.py` / `series.py` compute derived metrics and return typed
+2. `analysis/` / `series.py` compute derived metrics and return typed
    results (`model.py`), with no formatting and no I/O.
 3. Renderers turn those results into output:
    - Markdown reports for the terminal (`daily.py`, `period_report.py`,

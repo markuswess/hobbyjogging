@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass, field
 
 from .values import format_field
+from .numeric import number as _number
 
 CONFLICT_CATEGORY = "field_conflict"
 UNCLASSIFIED = "unclassified"
@@ -644,16 +645,3 @@ def _span(summary: SourceSummary) -> str:
     if summary.distance_m is not None:
         parts.append(format_field("distance_m", summary.distance_m))
     return " / ".join(parts) if parts else "unknown span"
-
-
-def _number(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value)
-        except ValueError:
-            return None
-    return None
