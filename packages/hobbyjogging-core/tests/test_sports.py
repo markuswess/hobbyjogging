@@ -6,6 +6,7 @@ from hobbyjogging_core.sports import (
     RIDE_SPORTS,
     RUN_SPORTS,
     SPORT_LABELS,
+    WATER_SPORTS,
     canonical_sport,
     is_known_sport,
     normalize_token,
@@ -47,7 +48,11 @@ class CanonicalSportTests(unittest.TestCase):
             "virtual_run",
             canonical_sport("running", "virtual_activity"),
         )
-        self.assertEqual("swim", canonical_sport("swimming", "open_water"))
+        self.assertEqual("swim", canonical_sport("swimming", "lap_swimming"))
+        self.assertEqual(
+            "openwaterswim",
+            canonical_sport("swimming", "open_water"),
+        )
         self.assertEqual(
             "training",
             canonical_sport("training", "strength_training"),
@@ -64,6 +69,16 @@ class CanonicalSportTests(unittest.TestCase):
         self.assertEqual("virtual_ride", canonical_sport("VirtualRide"))
         self.assertEqual("racket", canonical_sport("Padel"))
         self.assertEqual("soccer", canonical_sport("Football"))
+        self.assertEqual("sup", canonical_sport("StandUpPaddling"))
+        self.assertEqual(
+            "cross_country_skiing",
+            canonical_sport("NordicSki"),
+        )
+        self.assertEqual(
+            "openwaterswim",
+            canonical_sport("OpenWaterSwim"),
+        )
+        self.assertEqual("sail", canonical_sport("Sail"))
 
     def test_generic_becomes_other(self):
         self.assertEqual("other", canonical_sport("generic"))
@@ -91,6 +106,8 @@ class CanonicalSportTests(unittest.TestCase):
         self.assertIn("run", RUN_SPORTS)
         self.assertIn("treadmill_run", RUN_SPORTS)
         self.assertIn("gravel_ride", RIDE_SPORTS)
+        self.assertIn("openwaterswim", WATER_SPORTS)
+        self.assertIn("sail", WATER_SPORTS)
         self.assertEqual(RUN_SPORTS | RIDE_SPORTS, PACE_SPORTS)
         self.assertNotIn("walk", PACE_SPORTS)
 

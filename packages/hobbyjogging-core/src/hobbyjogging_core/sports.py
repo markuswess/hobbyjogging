@@ -19,7 +19,9 @@ RIDE_SPORTS = frozenset(
 )
 PACE_SPORTS = RUN_SPORTS | RIDE_SPORTS
 WALK_SPORTS = frozenset({"walk", "hike"})
-WATER_SPORTS = frozenset({"swim", "row", "kayaking", "sup", "surfing"})
+WATER_SPORTS = frozenset(
+    {"swim", "openwaterswim", "row", "kayaking", "sup", "surfing", "sail"}
+)
 SNOW_SPORTS = frozenset(
     {"alpine_skiing", "cross_country_skiing", "snowboarding"}
 )
@@ -63,12 +65,14 @@ SPORT_LABELS = {
     "mtb_ride": "MTB Ride",
     "virtual_ride": "Virtual Ride",
     "swim": "Swim",
+    "openwaterswim": "Open Water Swim",
     "walk": "Walk",
     "hike": "Hike",
     "row": "Row",
     "kayaking": "Kayaking",
     "sup": "SUP",
     "surfing": "Surfing",
+    "sail": "Sail",
     "alpine_skiing": "Alpine Skiing",
     "cross_country_skiing": "Cross-Country Skiing",
     "snowboarding": "Snowboarding",
@@ -109,6 +113,7 @@ SPORT_ALIASES = {
     "ebikeride": "ride",
     "alpineski": "alpine_skiing",
     "crosscountryskiing": "cross_country_skiing",
+    "nordicski": "cross_country_skiing",
     "snowboarding": "snowboarding",
     "soccer": "soccer",
     "football": "soccer",
@@ -118,6 +123,7 @@ SPORT_ALIASES = {
     "badminton": "racket",
     "strengthtraining": "training",
     "weighttraining": "training",
+    "standuppaddling": "sup",
     "other": "other",
     "unknown": "other",
 }
@@ -142,7 +148,7 @@ SUB_SPORT_ALIASES = {
     ("running", "virtual_activity"): "virtual_run",
     ("running", "generic"): "run",
     ("swimming", "lap_swimming"): "swim",
-    ("swimming", "open_water"): "swim",
+    ("swimming", "open_water"): "openwaterswim",
     ("training", "strength_training"): "training",
     ("alpine_skiing", "backcountry"): "alpine_skiing",
     ("cross_country_skiing", "skate_skiing"): "cross_country_skiing",

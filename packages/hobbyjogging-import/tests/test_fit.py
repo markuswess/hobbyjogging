@@ -321,7 +321,10 @@ class FitFormattingTests(unittest.TestCase):
             "treadmill_run",
             canonical_sport("running", "treadmill"),
         )
-        self.assertEqual("swim", canonical_sport("swimming", "open_water"))
+        self.assertEqual(
+            "openwaterswim",
+            canonical_sport("swimming", "open_water"),
+        )
 
     def test_format_duration(self):
         self.assertEqual("0:00", format_duration(0))
