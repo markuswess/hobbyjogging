@@ -382,8 +382,8 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(1, len(activities))
         activity = activities[0]
         self.assertEqual(existing_id, activity.id)
-        # No source has automatic priority: the Intervals owner keeps every
-        # field it wrote, and FIT's disagreeing values become review items.
+        # Intervals owns moving/elapsed by fixed policy; every other field
+        # stays with its first owner unless the values agree.
         self.assertEqual("Morning run", activity.name)
         self.assertEqual(3550, activity.duration_s)
         self.assertEqual(3650, activity.elapsed_s)
@@ -396,7 +396,7 @@ class FitImporterTests(unittest.TestCase):
             status="open",
         )
         self.assertEqual(
-            {"duration_s", "elapsed_s"},
+            {"duration_s"},
             {json.loads(item["context_json"])["field"] for item in conflicts},
         )
         for item in conflicts:

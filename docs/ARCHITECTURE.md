@@ -180,7 +180,8 @@ Two invariants are enforced by the writer:
 - A manual field (`is_manual = 1`) is never overwritten by an import.
 - An excluded activity cannot be written to or linked to.
 
-The only exception to owner-based precedence is an explicit human decision:
+Beyond the fixed Intervals authority for `moving_s` and `elapsed_s`, the only
+exception to owner-based precedence is an explicit human decision:
 `upsert_activity(..., force=True)` lets one trusted source take ownership of
 every non-manual field. Triage `(t)` uses it to re-import a single Intervals
 activity; normal imports never force.
@@ -213,18 +214,24 @@ with it. Two different specific sports still become a `field_conflict`.
 2. **Match.** A FIT session is matched to a canonical activity by temporal
    overlap; ambiguous one-to-many matches are queued, not guessed. Intervals
    matches by external id, then temporally.
-3. **Write with owner-based precedence.** There is no per-source priority:
+3. **Write with owner-based precedence.** There is no per-source priority,
+   except that `moving_s` and `elapsed_s` are Intervals-authoritative:
    - manual field → never written;
    - same source reimporting → refreshes its own field;
-   - first owner keeps a field while other sources agree within tolerance
-     (about 1%, with 2 s / 2 bpm / 10 m floors; 15 s for start times);
-   - a meaningful cross-source disagreement changes nothing and is recorded as
-     a `field_conflict` review item;
+   - Intervals `moving_s`/`elapsed_s` → replaces another source's value
+     silently; a non-Intervals value keeps the Intervals value and is not a
+     conflict;
+   - first owner keeps every other field while other sources agree within
+     tolerance (about 1%, with 2 s / 2 bpm / 10 m floors; 15 s for start
+     times);
+   - a meaningful cross-source disagreement on any other field changes nothing
+     and is recorded as a `field_conflict` review item;
    - an explicit trusted re-import (`force=True`, triage `(t)`) takes
      ownership of non-manual fields.
-   Conflict-tracked fields are durations, distance, average HR, start
-   time/date, timezone offset, sport, and training load. Subjective fields
-   keep their owner silently.
+   Conflict-tracked fields are `duration_s`, distance, average HR, start
+   time/date, timezone offset, sport, and training load. `moving_s` and
+   `elapsed_s` resolve to Intervals without review. Subjective fields keep
+   their owner silently.
 4. **Quality rules.** Canonical values are checked for zero duration, missing
    distance for pace sports, implausible implied pace, and a moving-time vs
    recording-time gap above `max(10 min, 25% of recording)`; findings are

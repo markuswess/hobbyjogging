@@ -77,6 +77,16 @@ DEFAULT_NUMERIC_TOLERANCE = (0.01, 0.5)
 START_TOLERANCE_S = 15.0
 DATETIME_FIELDS = frozenset({"started_at_utc"})
 
+# Fixed source authority for fields where a cross-source disagreement is not
+# worth a review item. The authoritative source replaces another source's
+# value; other sources keep the authoritative value without opening a
+# conflict. Manual values still win, and same-source reimports still refresh
+# their own fields. `duration_s` deliberately remains owner-tracked.
+FIELD_AUTHORITY = {
+    "moving_s": "intervals",
+    "elapsed_s": "intervals",
+}
+
 
 @dataclass(frozen=True)
 class FieldConflict:
@@ -236,6 +246,11 @@ class TrainingWriter:
         disagreement is returned as a FieldConflict for the review queue and
         leaves the stored value untouched. Re-importing from the same source
         refreshes that source's own fields.
+
+        The fixed exception is ``moving_s`` and ``elapsed_s``: Intervals is
+        authoritative, so its value replaces another source's value silently
+        and a non-Intervals value never overrides or reports a conflict
+        against it. Manual values still win.
 
         ``force=True`` lets this source take ownership of every non-manual
         field in ``values``, replacing another source's value silently. Manual
@@ -489,6 +504,12 @@ class TrainingWriter:
 
         if value is None:
             return "agree", current_source  # incoming source has no value
+
+        authority = FIELD_AUTHORITY.get(field_name)
+        if authority is not None:
+            if source == authority:
+                return "write", current_source
+            return "agree", current_source
 
         if field_name == "vo2max_garmin":
             # FIT owns the Garmin estimate. Runalyze may only fill an empty

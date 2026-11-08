@@ -143,18 +143,23 @@ carries message 140, so the FIT is the VO2max source. The separate type-44
 
 ## Source precedence
 
-There is no automatic per-source priority. For every field, the source that
-wrote it keeps ownership; a later source may refresh its own fields, and a
-field nobody has written yet is simply filled. When two sources report a
+There is one fixed source rule: `moving_s` and `elapsed_s` are always
+Intervals-authoritative. An Intervals value replaces another source's value
+silently, and a non-Intervals value never overrides it or creates a review
+item. Manual edits still win.
+
+For every other field there is no automatic per-source priority. The source
+that wrote it keeps ownership; a later source may refresh its own fields, and
+a field nobody has written yet is simply filled. When two sources report a
 measurably different value for the same field, nothing is overwritten: the
 disagreement is recorded as a `field_conflict` review item and the human
 decides (see below). Values that agree within tolerance (about 1%, with small
 absolute floors) are not conflicts. Manual edits always outrank every source
 and survive reimports.
 
-Conflict-tracked fields are `duration_s`, `elapsed_s`, `moving_s`,
-`distance_m`, `avg_hr`, `started_at_utc`, `local_date`, `tz_offset_min`,
-`sport`, and `training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
+Conflict-tracked fields are `duration_s`, `distance_m`, `avg_hr`,
+`started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and
+`training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
 keep their current owner silently — two devices naming the same run
 differently is not worth a review item.
 
@@ -164,7 +169,8 @@ differently is not worth a review item.
   Intervals `icu_recording_time` (falling back to `moving_time` for old
   payloads). A duration difference that fits inside either source's pause gap
   (`elapsed - duration`) is treated as agreement, not a conflict.
-- `elapsed_s` is total elapsed time.
+- `elapsed_s` is total elapsed time and `moving_s` is moving time; both are
+  Intervals-authoritative on any cross-source disagreement.
 - Distance is forced to zero for sports where it is not recorded or not
   meaningful: `treadmill_run`, `virtual_run`, `soccer`, `racket`, `training`,
   `other`, and `workout`. A manual distance still wins. Raw FIT/Intervals
@@ -177,8 +183,9 @@ example `cycling/gravel_cycling` and `GravelRide` both become `gravel_ride`).
 Placeholder sports (`generic`, `other`, `unknown`) never conflict with a
 specific sport; a specific value fills the placeholder.
 
-The one exception to owner-based precedence is an explicit human decision:
-triage `(t)` re-imports a single Intervals activity with `force=True`, letting
+Beyond the fixed Intervals authority for moving and elapsed time, the only
+exception to owner-based precedence is an explicit human decision: triage
+`(t)` re-imports a single Intervals activity with `force=True`, letting
 Intervals take ownership of every non-manual field it provides. Normal imports
 never force.
 

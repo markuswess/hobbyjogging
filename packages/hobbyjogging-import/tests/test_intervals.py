@@ -507,25 +507,27 @@ class IntervalsImporterTests(unittest.TestCase):
             date(2026, 10, 1),
         )
         self.assertEqual(["fit-uuid"], [activity.id for activity in activities])
-        # The FIT owner keeps its values; only the elapsed-time disagreement
-        # becomes a review item.
+        # Intervals is authoritative for elapsed time, so its value replaces
+        # FIT's without a review item; FIT keeps the other fields.
         self.assertEqual("Run", activities[0].name)
         self.assertEqual(3600, activities[0].duration_s)
-        self.assertEqual(3700, activities[0].elapsed_s)
+        self.assertEqual(3900, activities[0].elapsed_s)
         self.assertEqual(10100, activities[0].distance_m)
         self.assertEqual(141, activities[0].avg_hr)
+
+        elapsed_source = self.conn.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = 'fit-uuid' AND field_name = 'elapsed_s'
+            """
+        ).fetchone()
+        self.assertEqual("intervals", elapsed_source["source"])
 
         conflicts = writer.review_items(
             category="field_conflict",
             status="open",
         )
-        self.assertEqual(1, len(conflicts))
-        context = json.loads(conflicts[0]["context_json"])
-        self.assertEqual("elapsed_s", context["field"])
-        self.assertEqual("fit", context["current"]["source"])
-        self.assertEqual("intervals", context["incoming"]["source"])
-        self.assertEqual(3700, context["current"]["value"])
-        self.assertEqual(3900, context["incoming"]["value"])
+        self.assertEqual([], conflicts)
 
         links = self.conn.execute(
             """

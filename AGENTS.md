@@ -50,8 +50,10 @@ Cross-package changes must leave all three suites green.
   alone.
 - Manual values outrank every import source and survive reimports.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
-  `elapsed_s` is elapsed time; all three are owner-tracked.
-- There is no automatic per-source priority. The first owner keeps a field;
+  `elapsed_s` is elapsed time. `duration_s` is owner-tracked; `moving_s` and
+  `elapsed_s` are Intervals-authoritative and never produce a review item.
+- There is no automatic per-source priority, except the fixed `moving_s` /
+  `elapsed_s` authority above. The first owner keeps every other field;
   meaningful cross-source disagreement becomes a `field_conflict` review item.
 - A trusted source may force ownership only on an explicit human action
   (triage `(t)`); manual fields still win. Normal imports never force.

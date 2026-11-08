@@ -10,8 +10,9 @@ activity model; activities from different sources are unified when they overlap
 in time, so one forest run can carry GPS/HR data from a FIT file and subjective
 data (RPE, feel, training load) from Intervals. There is no automatic
 per-source field priority: the first owner keeps a field, and any cross-source
-disagreement is queued for a human decision; the raw source records are kept as
-provenance next to the canonical values.
+disagreement is queued for a human decision, except that Intervals owns moving
+and elapsed time. The raw source records are kept as provenance next to the
+canonical values.
 
 The review mechanism is in place: suspicious data (zero durations, absurd
 paces, ambiguous matches, field conflicts) is recorded as review items, and

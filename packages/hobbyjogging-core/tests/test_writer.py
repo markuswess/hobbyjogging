@@ -834,13 +834,16 @@ class Vo2maxAndTagTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.writer.replace_activity_tags("a1", ["x"], source="runalyze")
 
-    def test_moving_time_conflicts_and_manual_override(self):
-        self._upsert({"moving_s": 1055}, "intervals", self.intervals_id)
+    def test_moving_time_is_intervals_authoritative(self):
+        self._upsert({"moving_s": 1100}, "fit", self.fit_id)
 
-        conflicts = self._upsert({"moving_s": 1100}, "fit", self.fit_id)
+        conflicts = self._upsert(
+            {"moving_s": 1055},
+            "intervals",
+            self.intervals_id,
+        )
 
-        self.assertEqual(1, len(conflicts))
-        self.assertEqual("moving_s", conflicts[0].field_name)
+        self.assertEqual([], conflicts)
         self.assertEqual(
             1055,
             self.conn.execute(
@@ -848,8 +851,19 @@ class Vo2maxAndTagTests(unittest.TestCase):
             ).fetchone()[0],
         )
 
+        # A later FIT value neither overrides Intervals nor opens a conflict.
+        conflicts = self._upsert({"moving_s": 1200}, "fit", self.fit_id)
+        self.assertEqual([], conflicts)
+        self.assertEqual(
+            1055,
+            self.conn.execute(
+                "SELECT moving_s FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
+
+        # Manual still wins over the authoritative source.
         self.writer.set_manual_field("a1", "moving_s", 1055)
-        self._upsert({"moving_s": 999}, "fit", self.fit_id)
+        self._upsert({"moving_s": 999}, "intervals", self.intervals_id)
         self.assertEqual(
             1055,
             self.conn.execute(
@@ -1154,7 +1168,44 @@ class DurationSemanticsTests(unittest.TestCase):
             "duration_s",
             {conflict.field_name for conflict in conflicts},
         )
+        self.assertNotIn(
+            "elapsed_s",
+            {conflict.field_name for conflict in conflicts},
+        )
         self.assertEqual(3600, self._values()["duration_s"])
+        self.assertEqual(3300, self._values()["elapsed_s"])
+        self.assertEqual("intervals", self._source_of("elapsed_s"))
+
+    def test_intervals_elapsed_overrides_fit_silently(self):
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"elapsed_s": 3300},
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(3300, self._values()["elapsed_s"])
+        self.assertEqual("intervals", self._source_of("elapsed_s"))
+
+    def test_fit_elapsed_does_not_override_intervals(self):
+        self.writer.upsert_activity(
+            "a1",
+            {"elapsed_s": 3300},
+            source="intervals",
+            source_record_id=self.intervals_id,
+        )
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"elapsed_s": 3900},
+            source="fit",
+            source_record_id=self.fit_id,
+        )
+
+        self.assertEqual([], conflicts)
+        self.assertEqual(3300, self._values()["elapsed_s"])
+        self.assertEqual("intervals", self._source_of("elapsed_s"))
 
     def test_same_source_refresh_still_writes(self):
         conflicts = self.writer.upsert_activity(
