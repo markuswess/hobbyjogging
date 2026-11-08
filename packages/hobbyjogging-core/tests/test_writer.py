@@ -1356,5 +1356,174 @@ class DistancePolicyTests(unittest.TestCase):
         self.assertEqual("soccer", row["sport"])
 
 
+class EquipmentTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.sheet_source = self._source("sheet", "1", "c-sheet")
+        self.fit_source = self._source("fit", "f1", "c-fit")
+
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run"},
+            source="fit",
+            source_record_id=self.fit_source,
+        )
+
+    def _source(self, source, external_id, checksum):
+        return self.writer.upsert_source_record(
+            source=source,
+            record_type="equipment",
+            external_id=external_id,
+            checksum=checksum,
+            import_run_id=self.run_id,
+        )
+
+    def _equipment(self, equipment_id="sheet:equipment:1"):
+        self.writer.upsert_equipment(
+            equipment_id,
+            type="shoe",
+            name="Asics GT-2000 1",
+            brand="Asics",
+            model="GT-2000 1",
+            acquired_on="2008-01-01",
+            retired_on="2018-04-09",
+            notes="size 42.5",
+            source_record_id=self.sheet_source,
+        )
+
+    def _links(self):
+        return self.conn.execute(
+            """
+            SELECT equipment_id, role, source, is_manual
+            FROM activity_equipment WHERE activity_id = 'a1'
+            """
+        ).fetchall()
+
+    def test_equipment_upsert_is_idempotent(self):
+        self._equipment()
+        created = self.writer.upsert_equipment(
+            "sheet:equipment:1",
+            type="shoe",
+            name="Asics GT-2000 1",
+            brand="Asics",
+            model="GT-2000 1",
+            acquired_on="2008-01-01",
+            retired_on="2018-04-09",
+            notes="size 42.5",
+            source_record_id=self.sheet_source,
+        )
+
+        self.assertFalse(created)
+        rows = self.writer.connection.execute(
+            "SELECT * FROM equipment"
+        ).fetchall()
+        self.assertEqual(1, len(rows))
+        self.assertEqual("Asics", rows[0]["brand"])
+        self.assertEqual("2008-01-01", rows[0]["acquired_on"])
+
+        linked = self.conn.execute(
+            """
+            SELECT equipment_id FROM equipment_source_links
+            WHERE source_record_id = ?
+            """,
+            (self.sheet_source,),
+        ).fetchall()
+        self.assertEqual(["sheet:equipment:1"], [r[0] for r in linked])
+
+    def test_link_equipment_is_idempotent_and_manual_wins(self):
+        self._equipment()
+
+        self.assertTrue(
+            self.writer.link_activity_equipment(
+                "a1",
+                "sheet:equipment:1",
+                source="sheet",
+                source_record_id=self.sheet_source,
+            )
+        )
+        self.assertFalse(
+            self.writer.link_activity_equipment(
+                "a1",
+                "sheet:equipment:1",
+                source="sheet",
+                source_record_id=self.sheet_source,
+            )
+        )
+
+        self.writer.link_activity_equipment(
+            "a1",
+            "sheet:equipment:1",
+            source="manual",
+            is_manual=True,
+        )
+        self.writer.upsert_equipment("sheet:equipment:2", type="shoe", name="Other")
+        self.assertFalse(
+            self.writer.link_activity_equipment(
+                "a1",
+                "sheet:equipment:2",
+                source="sheet",
+            )
+        )
+
+        self.assertEqual(
+            [("sheet:equipment:1", "primary", "manual", 1)],
+            [tuple(row) for row in self._links()],
+        )
+
+    def test_first_source_keeps_the_link(self):
+        self._equipment()
+        self.writer.upsert_equipment("sheet:equipment:2", type="shoe", name="Other")
+
+        self.writer.link_activity_equipment(
+            "a1", "sheet:equipment:1", source="sheet"
+        )
+        self.assertFalse(
+            self.writer.link_activity_equipment(
+                "a1", "sheet:equipment:2", source="fit"
+            )
+        )
+
+        self.assertEqual(
+            [("sheet:equipment:1", "primary", "sheet", 0)],
+            [tuple(row) for row in self._links()],
+        )
+
+    def test_same_source_can_repoint_the_link(self):
+        self._equipment()
+        self.writer.upsert_equipment("sheet:equipment:2", type="shoe", name="Other")
+
+        self.writer.link_activity_equipment(
+            "a1", "sheet:equipment:1", source="sheet"
+        )
+        self.assertTrue(
+            self.writer.link_activity_equipment(
+                "a1", "sheet:equipment:2", source="sheet"
+            )
+        )
+
+        self.assertEqual(
+            [("sheet:equipment:2", "primary", "sheet", 0)],
+            [tuple(row) for row in self._links()],
+        )
+
+    def test_link_rejects_unknown_rows(self):
+        with self.assertRaises(ValueError):
+            self.writer.link_activity_equipment(
+                "a1", "missing", source="sheet"
+            )
+        self._equipment()
+        with self.assertRaises(ValueError):
+            self.writer.link_activity_equipment(
+                "missing", "sheet:equipment:1", source="sheet"
+            )
+        with self.assertRaises(ValueError):
+            self.writer.upsert_equipment("", type="shoe", name="x")
+
+
 if __name__ == "__main__":
     unittest.main()

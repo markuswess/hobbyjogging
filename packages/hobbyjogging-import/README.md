@@ -90,6 +90,69 @@ contains `total_moving_time`, it is stored separately as `moving_s`; the
 inspector prints `Timer` and `Moving` lines. Files without the field leave
 `moving_s` empty (reports fall back to `duration_s`).
 
+## Historical spreadsheet
+
+Import the hand-maintained OpenDocument training log (`data/laufen.ods`,
+gitignored user data):
+
+```bash
+hobbyjogging-import sheet data/laufen.ods --sheet Material
+hobbyjogging-import sheet data/laufen.ods --sheet Rohdaten
+hobbyjogging-import sheet data/laufen.ods --sheet Alternativtraining
+hobbyjogging-import sheet --inspect data/laufen.ods
+```
+
+Options: `--sheet NAME`, `--timezone` (default `Europe/Vienna`), `--from` /
+`--to`, `--limit`, `--dry-run`, and `--database`. Import `Material` first so
+the shoe ids referenced by `Rohdaten` resolve.
+
+The reader (`ods.py`) uses only the standard library: it expands repeated
+rows/columns, drops LibreOffice's trailing padding, preserves merged-cell
+positions as empty, and reads typed values (numbers, percentages, dates,
+ISO-duration times, booleans, strings, cached formula results).
+
+### Rohdaten
+
+| Sheet column | Canonical |
+|---|---|
+| `Datum` | `local_date` |
+| `Datum` + `Startzeit` | `started_at_utc` + `tz_offset_min` (Europe/Vienna) |
+| `Strecke` | `name` |
+| `Distanz in m` | `distance_m` |
+| `Zeit` | `duration_s` and `elapsed_s` |
+| `d. Hf` | `avg_hr` |
+| `Beschreibung` | `description` |
+| `Trainigstyp`, `Trainingsgebiet` | `activity_tags` (source `sheet`) |
+| `Schuhe` | equipment link (Material id or name) |
+
+`Startzeit` is minute-precision. It is used to match an existing FIT/Intervals
+activity temporally; a matched activity keeps its second-precision start time,
+so the log does not open a timing review item on every row. Rows without a
+start time create a dated activity and are never matched. The raw row (max HR,
+ascent, cadence, contact time, oscillation, temperature, meters/beat, map link)
+is kept in `source_records.payload_json`.
+
+### Alternativtraining
+
+`Datum` + `Uhrzeit` → date/start, `Zeit` → `duration_s`, `Puls Durchschnitt` →
+`avg_hr`, `Beschreibung` → description. `Distanz` is kilometres. `Was` maps
+through the core sport aliases (`Kicken` → soccer, `Badminton`/`Padel`/
+`Tischtennis` → racket, `Radfahren`/`Lastenrad` → ride, `Mountainbike` →
+mtb_ride, `Schwimmen` → swim, `Wandern` → hike, `Laufband` → treadmill_run,
+`Kraft` → training, `SUP` → sup); anything else becomes `other`.
+
+### Material
+
+Upserts equipment keyed by the sheet id (`sheet:equipment:<id>`), parses
+`Kaufdatum`/`Entsorgungsdatum` (`D.M.YYYY`), and keeps size, price, colour,
+mileage, and remarks in `equipment.notes`. Mileage is descriptive; usage is
+derived from linked activities.
+
+Activity ids are stable: date + start time + route, with a content-hash suffix
+for duplicate keys. Reimports update the same source records and follow the
+normal owner/manual/conflict rules; disagreements become `field_conflict`
+review items.
+
 ## Garmin Personal API
 
 Create a Personal API key on

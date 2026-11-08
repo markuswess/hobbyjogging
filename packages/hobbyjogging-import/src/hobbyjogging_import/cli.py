@@ -17,8 +17,10 @@ from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .garmin import GarminFetcher, GarminFetchSummary
 from .intervals import EventSyncSummary, IntervalsImporter
+from .ods import OdsError, read_sheets
 from .parsers import build_parser
 from .review_cli import run_review
+from .sheet_import import SheetImporter, format_sheet_summary
 from .sync import format_sync_summary, run_sync
 
 
@@ -157,6 +159,76 @@ def _run_fit_import(args, parser: argparse.ArgumentParser) -> int:
         args.database or default_database_path(),
         dry_run=args.dry_run,
     )
+    return 0
+
+
+def run_sheet(args, parser: argparse.ArgumentParser) -> int:
+    if args.inspect is not None:
+        return _run_sheet_inspect(args, parser)
+
+    if not args.sheet_name:
+        parser.error("--sheet is required (or use --inspect)")
+
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+
+    if args.start is not None and args.end is not None and args.start > args.end:
+        parser.error("--from must not be after --to")
+
+    path = args.path or Path("data/laufen.ods")
+    if not path.is_file():
+        parser.error(f"ODS file not found: {path}")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            importer = SheetImporter(
+                connection,
+                timezone_name=args.timezone,
+            )
+            summary = importer.import_sheet(
+                path,
+                args.sheet_name,
+                start=args.start,
+                end=args.end,
+                limit=args.limit,
+                dry_run=args.dry_run,
+            )
+        except (ValueError, OdsError) as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(
+        format_sheet_summary(
+            summary,
+            args.database or default_database_path(),
+        )
+    )
+    return 0
+
+
+def _run_sheet_inspect(args, parser: argparse.ArgumentParser) -> int:
+    path = args.inspect
+    if not path.is_file():
+        parser.error(f"ODS file not found: {path}")
+
+    try:
+        sheets = read_sheets(path)
+    except OdsError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    for sheet in sheets:
+        print(f"{sheet.name}: {len(sheet.rows)} rows")
+        for row in sheet.rows[:3]:
+            values = [str(value) for value in row if value is not None]
+            if values:
+                print("  " + " | ".join(values))
+
     return 0
 
 
@@ -458,6 +530,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fit":
         return run_fit(args, parser)
+
+    if args.command == "sheet":
+        return run_sheet(args, parser)
 
     if args.command == "garmin":
         return run_garmin(args, parser)

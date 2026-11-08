@@ -40,6 +40,12 @@ Updated 2026-11-08.
   and never produce review items; `duration_s` remains owner-tracked.
 - **Quality dedupe.** Review items dedupe by
   `(category, fingerprint, activity_id)`, not by source record.
+- **Historical spreadsheet.** `hobbyjogging-import sheet` imports the
+  hand-maintained `.ods` log (`Rohdaten`, `Alternativtraining`, `Material`)
+  through a standard-library ODS reader, with German column mapping,
+  minute-precision start matching, shoe links, tags, and the normal
+  owner/conflict review rules. Equipment upsert/link methods are in the
+  writer.
 - **Reports.** Markdown reports (daily/weekly/monthly/yearly, period, subT,
   session, activities table), charts, and the terminal renderer; report code
   is split per report.

@@ -155,6 +155,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="FIT files or directories (default: configured FIT directory)",
     )
 
+    sheet = subparsers.add_parser(
+        "sheet",
+        help="import the historical training-log spreadsheet (.ods)",
+    )
+    sheet.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        help="ODS workbook (default: data/laufen.ods)",
+    )
+    sheet.add_argument(
+        "--inspect",
+        type=Path,
+        metavar="FILE",
+        help="list worksheets and headers without importing",
+    )
+    sheet.add_argument(
+        "--sheet",
+        dest="sheet_name",
+        metavar="NAME",
+        help="worksheet to import: Rohdaten, Alternativtraining, or Material",
+    )
+    sheet.add_argument("--timezone", default="Europe/Vienna")
+    sheet.add_argument("--from", dest="start", type=date_arg)
+    sheet.add_argument("--to", dest="end", type=date_arg)
+    sheet.add_argument("--limit", type=int)
+    sheet.add_argument("--dry-run", action="store_true")
+    sheet.add_argument("--database", type=Path)
+
     garmin = subparsers.add_parser(
         "garmin",
         help="fetch original FIT files from Garmin Connect",

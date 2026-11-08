@@ -126,6 +126,16 @@ SPORT_ALIASES = {
     "standuppaddling": "sup",
     "other": "other",
     "unknown": "other",
+    # Historical spreadsheet (German labels)
+    "kicken": "soccer",
+    "radfahren": "ride",
+    "lastenrad": "ride",
+    "mountainbike": "mtb_ride",
+    "schwimmen": "swim",
+    "wandern": "hike",
+    "laufband": "treadmill_run",
+    "kraft": "training",
+    "tischtennis": "racket",
 }
 
 # FIT records both a sport and a sub-sport; the pair carries the specificity

@@ -78,6 +78,22 @@ class CanonicalSportTests(unittest.TestCase):
             "openwaterswim",
             canonical_sport("OpenWaterSwim"),
         )
+
+    def test_german_spreadsheet_labels(self):
+        self.assertEqual("soccer", canonical_sport("Kicken"))
+        self.assertEqual("racket", canonical_sport("Badminton"))
+        self.assertEqual("racket", canonical_sport("Tischtennis"))
+        self.assertEqual("ride", canonical_sport("Radfahren"))
+        self.assertEqual("ride", canonical_sport("Lastenrad"))
+        self.assertEqual("mtb_ride", canonical_sport("Mountainbike"))
+        self.assertEqual("swim", canonical_sport("Schwimmen"))
+        self.assertEqual("hike", canonical_sport("Wandern"))
+        self.assertEqual("treadmill_run", canonical_sport("Laufband"))
+        self.assertEqual("training", canonical_sport("Kraft"))
+        self.assertEqual("sup", canonical_sport("SUP"))
+        # Unrecognized labels pass through normalized; the sheet importer
+        # falls back to "other" for them.
+        self.assertEqual("einrad", canonical_sport("Einrad"))
         self.assertEqual("sail", canonical_sport("Sail"))
 
     def test_generic_becomes_other(self):

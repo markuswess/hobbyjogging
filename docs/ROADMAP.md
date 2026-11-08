@@ -48,6 +48,11 @@ Static-first, generated on the homelab and served read-only:
   `activity_tags`, gear via the equipment-categories endpoint, and
   `vo2max_runalyze`. Enrichment only — never timing or distance. Unmatched rows
   create activities so old history stays complete.
+- **Historical spreadsheet import** — done. `hobbyjogging-import sheet`
+  ingests the hand-maintained `.ods` log (`Rohdaten`, `Alternativtraining`,
+  `Material`) with German column mapping, minute-precision start times,
+  equipment links, and the same owner/conflict review rules. The ODS reader
+  uses only the standard library.
 - **CSV import** — optional/deferred. Third-party exports that are neither FIT
   nor Intervals, ingested through the same owner/conflict review rules.
 

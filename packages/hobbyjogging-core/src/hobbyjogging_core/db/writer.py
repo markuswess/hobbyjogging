@@ -3,7 +3,7 @@
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from hobbyjogging_core.model import EventZoneTime, Interval, Lap
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
@@ -1058,6 +1058,164 @@ class TrainingWriter:
 
         return len(cleaned)
 
+    def upsert_equipment(
+        self,
+        equipment_id: str,
+        *,
+        type: str,
+        name: str,
+        brand: str = "",
+        model: str = "",
+        acquired_on: date | str | None = None,
+        retired_on: date | str | None = None,
+        target_distance_m: float | None = None,
+        notes: str = "",
+        source_record_id: int | None = None,
+    ) -> bool:
+        """Create or update one piece of equipment.
+
+        Equipment is keyed by a stable id, so reimporting the same source row
+        refreshes it instead of duplicating it. Returns ``True`` when the row
+        was created.
+        """
+        if not str(equipment_id).strip():
+            raise ValueError("equipment id must not be empty")
+        if not str(name).strip():
+            raise ValueError("equipment name must not be empty")
+
+        existing = self.connection.execute(
+            "SELECT 1 FROM equipment WHERE id = ?",
+            (equipment_id,),
+        ).fetchone()
+
+        self.connection.execute(
+            """
+            INSERT INTO equipment (
+                id, type, name, brand, model,
+                acquired_on, retired_on, target_distance_m, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                type = excluded.type,
+                name = excluded.name,
+                brand = excluded.brand,
+                model = excluded.model,
+                acquired_on = excluded.acquired_on,
+                retired_on = excluded.retired_on,
+                target_distance_m = excluded.target_distance_m,
+                notes = excluded.notes,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                str(equipment_id),
+                str(type),
+                str(name),
+                str(brand or ""),
+                str(model or ""),
+                _iso_date(acquired_on),
+                _iso_date(retired_on),
+                target_distance_m,
+                str(notes or ""),
+            ),
+        )
+
+        if source_record_id is not None:
+            self.connection.execute(
+                """
+                DELETE FROM equipment_source_links
+                WHERE source_record_id = ?
+                """,
+                (source_record_id,),
+            )
+            self.connection.execute(
+                """
+                INSERT OR IGNORE INTO equipment_source_links (
+                    equipment_id, source_record_id
+                ) VALUES (?, ?)
+                """,
+                (str(equipment_id), source_record_id),
+            )
+
+        return existing is None
+
+    def link_activity_equipment(
+        self,
+        activity_id: str,
+        equipment_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        role: str = "primary",
+        is_manual: bool = False,
+    ) -> bool:
+        """Attach equipment to an activity.
+
+        A manual link is never replaced by an import, and the first import
+        source keeps the primary slot until a human changes it. Returns
+        ``True`` when a link was written or refreshed.
+        """
+        activity = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if activity is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if activity["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        equipment = self.connection.execute(
+            "SELECT 1 FROM equipment WHERE id = ?",
+            (equipment_id,),
+        ).fetchone()
+        if equipment is None:
+            raise ValueError(f"unknown equipment: {equipment_id}")
+
+        existing = self.connection.execute(
+            """
+            SELECT equipment_id, source, is_manual
+            FROM activity_equipment
+            WHERE activity_id = ? AND role = ?
+            """,
+            (activity_id, role),
+        ).fetchone()
+
+        if existing is not None:
+            if not is_manual:
+                if existing["is_manual"]:
+                    return False
+                if existing["source"] != source:
+                    return False
+            if (
+                existing["equipment_id"] == equipment_id
+                and bool(existing["is_manual"]) == is_manual
+            ):
+                return False
+            self.connection.execute(
+                """
+                DELETE FROM activity_equipment
+                WHERE activity_id = ? AND role = ?
+                """,
+                (activity_id, role),
+            )
+
+        self.connection.execute(
+            """
+            INSERT INTO activity_equipment (
+                activity_id, equipment_id, role, source,
+                source_record_id, is_manual
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                activity_id,
+                equipment_id,
+                role,
+                source,
+                source_record_id,
+                1 if is_manual else 0,
+            ),
+        )
+        return True
+
     def record_review_item(
         self,
         *,
@@ -1512,6 +1670,18 @@ def _parse_timestamp(value: object) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return datetime.fromisoformat(value)
+
+
+def _iso_date(value: date | str | None) -> str | None:
+    """Normalize an optional date to the ISO text stored in SQLite."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value).strip()
+    return text or None
 
 
 def _clean_tags(tags: list[str]) -> list[str]:
