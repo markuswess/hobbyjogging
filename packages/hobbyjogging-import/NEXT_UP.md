@@ -71,6 +71,131 @@ on.
 - Full FIT archive import and VO2max backfill have been run against the real
   DB.
 
+## Next task: .ods spreadsheet import
+
+Import the historical training log from `data/laufen.ods` (gitignored user
+data; tests must use synthetic `.ods` fixtures). No schema changes: max HR,
+ascent, cadence, contact time, temperature, weight, and links stay in
+`source_records.payload_json`.
+
+### Scope
+
+Import these sheets:
+
+- `Rohdaten` — historical runs (2,042 rows, from 2011).
+- `Alternativtraining` — cross-training (256 rows).
+- `Material` — shoes/gear (15 rows).
+
+Skip `Leistungstests` / `Leistungstests_Graph` (race results/time trials),
+`7Tage`, `28Tage`, `Monatsbilanz`, `Strecken`, `Trainingsbereiche`, and
+`Läufe_Graph`.
+
+### ODS reader
+
+Add `ods.py` using only the standard library (`zipfile` +
+`xml.etree.ElementTree`), no new dependency:
+
+- read `content.xml`, list `table:table` sheets by name;
+- expand `table:number-columns-repeated` and
+  `table:number-rows-repeated`, but skip trailing empty repeats and cap
+  expansions (LibreOffice pads sheets to ~1M rows);
+- handle `table:covered-table-cell` (merged cells) and typed values:
+  `office:value-type` `float`/`percentage`/`currency`/`date`/`time`/`boolean`/
+  `string`, using `office:value`, `office:date-value`, `office:time-value`,
+  and cached formula values;
+- return `headers + rows` with cell positions preserved; trim trailing empty
+  columns/rows.
+
+ODS time values are ISO durations (`PT11H30M00S`, fractional seconds
+possible), not clock strings. Dates are `YYYY-MM-DD`.
+
+### Import
+
+Add `sheet.py` / `sheet_import.py` and a CLI:
+
+```bash
+hobbyjogging-import sheet data/laufen.ods --sheet Rohdaten
+hobbyjogging-import sheet data/laufen.ods --sheet Alternativtraining
+hobbyjogging-import sheet data/laufen.ods --sheet Material
+hobbyjogging-import sheet data/laufen.ods --sheet Rohdaten --dry-run
+hobbyjogging-import sheet --inspect data/laufen.ods   # list sheets/headers
+```
+
+Options: `--sheet NAME`, `--timezone` (default `Europe/Vienna`), `--from`/
+`--to`, `--limit`, `--dry-run`, `--database`.
+
+**Rohdaten mapping**
+
+| Sheet column | Canonical |
+|---|---|
+| `Datum` | `local_date` |
+| `Datum` + `Startzeit` | `started_at_utc` + `tz_offset_min` (Europe/Vienna) |
+| `Distanz in m` | `distance_m` |
+| `Zeit` | `duration_s` |
+| `d. Hf` | `avg_hr` |
+| `Strecke` | `name` |
+| `Beschreibung` | `description` |
+| `Trainigstyp`, `Trainingsgebiet` | `activity_tags` (source `sheet`) |
+| `Schuhe` | equipment link by name |
+
+- `sport='run'`; `Startzeit` missing → store `local_date` only and create
+  (no temporal match).
+- Raw row JSON goes to `source_records.payload_json`; keep max HR, ascent,
+  cadence, contact time, oscillation, temperature, meters/beat, and gmap link
+  there.
+- Ignore `/`, `N/A`, `#REF!`, and empty strings as missing.
+
+**Alternativtraining mapping**
+
+- `Datum` + `Uhrzeit` → date/start (Europe/Vienna).
+- `Was` → sport: `Kicken` → `soccer`, `Badminton` → `racket`, else `other`
+  (extend the alias map as needed).
+- `Zeit` → `duration_s`, `Distanz` → `distance_m` (verify units),
+  `Puls Durchschnitt` → `avg_hr`, `Beschreibung` → description.
+- Raw row JSON in `source_records`.
+
+**Material mapping**
+
+- Upsert `equipment` keyed by the sheet id; parse `Kaufdatum` and
+  `Entsorgungsdatum` (`D.M.YYYY`), brand/type/name, and notes.
+- Store size/price/`gesamt km` in `equipment.notes` (mileage is derived from
+  linked activities, not stored as a target).
+- Link `Rohdaten.Schuhe` to equipment by name.
+
+**Core prerequisite:** the writer currently has no `upsert_equipment` /
+`link_activity_equipment` methods (tables exist). That is a small core
+addition with no schema change; do it in a root session first, or coordinate
+before touching core.
+
+### Idempotency and precedence
+
+- `source='sheet'`; `record_type='activity'` / `'equipment'`.
+- Stable activity external id from date/time/route (hash fallback for
+  duplicate rows); checksum over the row JSON. Reimport updates the same
+  records.
+- Synthesize UTC from date + time and match existing activities temporally;
+  rows without a start time create a dated activity.
+- Owner-based precedence applies; disagreements with FIT/Intervals become
+  `field_conflict` items, manual values win.
+
+### Tests
+
+- ODS parser: typed cells, repeated rows/columns, trailing padding, multiple
+  sheets, covered cells, cached formula values.
+- Mapping: German headers, ODS date/time durations, missing markers,
+  distance/HR, sport aliases, timezone.
+- Import: new/matched/idempotent/dry-run/limit/from-to, conflict recording.
+- Equipment: upsert, shoe links, missing ids.
+- Synthetic `.ods` fixtures only; never read the real `data/laufen.ods` in
+  tests.
+
+### Docs
+
+- Update `packages/hobbyjogging-import/README.md` with the `sheet` command and
+  the German column mapping.
+- Update `docs/ROADMAP.md` (spreadsheet import moved from deferred) and
+  `docs/NEXT_UP.md` when it lands.
+
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
