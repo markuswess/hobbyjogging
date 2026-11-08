@@ -350,13 +350,14 @@ class FieldConflictPruneTests(unittest.TestCase):
     def test_prunes_conflicts_within_current_tolerance(self):
         duration_id = self._conflict("duration_s", 3600, 3610, "fp-duration")
         hr_id = self._conflict("avg_hr", 140, 141, "fp-hr")
+        drift_id = self._conflict("avg_hr", 140, 145, "fp-hr-drift")
         kept_id = self._conflict("avg_hr", 140, 150, "fp-hr-kept")
         self.conn.commit()
 
         summary = prune_field_conflicts(self.writer)
 
-        self.assertEqual(3, summary.checked)
-        self.assertEqual(2, summary.resolved)
+        self.assertEqual(4, summary.checked)
+        self.assertEqual(3, summary.resolved)
         self.assertEqual(1, summary.kept)
         self.assertEqual(
             "resolved",
@@ -365,6 +366,10 @@ class FieldConflictPruneTests(unittest.TestCase):
         self.assertEqual(
             "resolved",
             self.writer.review_item(hr_id)["status"],
+        )
+        self.assertEqual(
+            "resolved",
+            self.writer.review_item(drift_id)["status"],
         )
         self.assertEqual(
             "open",

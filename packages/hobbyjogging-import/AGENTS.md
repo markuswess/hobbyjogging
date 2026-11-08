@@ -30,7 +30,8 @@ cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q
   another source never overrides it or opens a review item. For every other
   field, the first owner keeps it, same-source reimports refresh their own
   fields, and a meaningful cross-source disagreement becomes a
-  `field_conflict` review item instead of overwriting.
+  `field_conflict` review item instead of overwriting. `avg_hr` only counts
+  as a disagreement beyond 5 bpm.
 - `upsert_activity(..., force=True)` is reserved for an explicit human trust
   decision (triage `(t)`); manual fields still win. Normal imports never force.
 - Manual values (`activity_field_sources.is_manual = 1`) are never overwritten.

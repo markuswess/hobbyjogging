@@ -154,8 +154,9 @@ a field nobody has written yet is simply filled. When two sources report a
 measurably different value for the same field, nothing is overwritten: the
 disagreement is recorded as a `field_conflict` review item and the human
 decides (see below). Values that agree within tolerance (about 1%, with small
-absolute floors) are not conflicts. Manual edits always outrank every source
-and survive reimports.
+absolute floors) are not conflicts; average HR uses a wider 5 bpm floor, since
+a watch's session average and a stream average legitimately drift by a few
+bpm. Manual edits always outrank every source and survive reimports.
 
 Conflict-tracked fields are `duration_s`, `distance_m`, `avg_hr`,
 `started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and

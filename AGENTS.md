@@ -55,6 +55,7 @@ Cross-package changes must leave all three suites green.
 - There is no automatic per-source priority, except the fixed `moving_s` /
   `elapsed_s` authority above. The first owner keeps every other field;
   meaningful cross-source disagreement becomes a `field_conflict` review item.
+  For average HR, a disagreement is only meaningful beyond 5 bpm.
 - A trusted source may force ownership only on an explicit human action
   (triage `(t)`); manual fields still win. Normal imports never force.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →

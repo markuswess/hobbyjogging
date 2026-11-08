@@ -222,16 +222,16 @@ with it. Two different specific sports still become a `field_conflict`.
      silently; a non-Intervals value keeps the Intervals value and is not a
      conflict;
    - first owner keeps every other field while other sources agree within
-     tolerance (about 1%, with 2 s / 2 bpm / 10 m floors; 15 s for start
-     times);
+     tolerance (about 1%, with 2 s / 10 m floors; average HR has a wider
+     5 bpm floor; 15 s for start times);
    - a meaningful cross-source disagreement on any other field changes nothing
      and is recorded as a `field_conflict` review item;
    - an explicit trusted re-import (`force=True`, triage `(t)`) takes
      ownership of non-manual fields.
    Conflict-tracked fields are `duration_s`, distance, average HR, start
    time/date, timezone offset, sport, and training load. `moving_s` and
-   `elapsed_s` resolve to Intervals without review. Subjective fields keep
-   their owner silently.
+   `elapsed_s` resolve to Intervals without review, and average HR only opens
+   a review item beyond 5 bpm. Subjective fields keep their owner silently.
 4. **Quality rules.** Canonical values are checked for zero duration, missing
    distance for pace sports, implausible implied pace, and a moving-time vs
    recording-time gap above `max(10 min, 25% of recording)`; findings are

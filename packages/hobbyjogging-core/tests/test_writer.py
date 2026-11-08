@@ -168,7 +168,7 @@ class TrainingWriterTests(unittest.TestCase):
                 "duration_s": 3700,
                 "elapsed_s": 3700,
                 "distance_m": 10500,
-                "avg_hr": 145,
+                "avg_hr": 147,
                 "training_load": 99,
             },
             source="fit",
@@ -271,6 +271,40 @@ class TrainingWriterTests(unittest.TestCase):
         self.assertEqual(
             (3600, 3700, 10000),
             (row["duration_s"], row["elapsed_s"], row["distance_m"]),
+        )
+
+    def test_avg_hr_tolerance_is_five_bpm(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run", "avg_hr": 140},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        # Device averages and stream averages drift by a few bpm; that is not
+        # worth a review item.
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"avg_hr": 145},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual([], conflicts)
+
+        # A wider gap is still a real disagreement.
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"avg_hr": 146},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual(["avg_hr"], [c.field_name for c in conflicts])
+        self.assertEqual(
+            140,
+            self.conn.execute(
+                "SELECT avg_hr FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
         )
 
     def test_absolute_floor_protects_short_values(self):

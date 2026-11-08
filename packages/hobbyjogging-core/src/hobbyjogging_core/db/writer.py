@@ -71,7 +71,10 @@ NUMERIC_TOLERANCES = {
     "elapsed_s": (0.01, 2.0),
     "moving_s": (0.01, 2.0),
     "distance_m": (0.01, 10.0),
-    "avg_hr": (0.01, 2.0),
+    # A device session average and a stream average legitimately drift by a
+    # few bpm (smart recording, stopped time, rounding), so only a wider gap
+    # is worth a human decision.
+    "avg_hr": (0.01, 5.0),
 }
 DEFAULT_NUMERIC_TOLERANCE = (0.01, 0.5)
 START_TOLERANCE_S = 15.0
