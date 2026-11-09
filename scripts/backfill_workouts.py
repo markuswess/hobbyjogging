@@ -2,9 +2,11 @@
 """One-off backfill of workout methods/targets from the classifier and sheet.
 
 The reports classifier proposes a set from the activity name/RPE/intervals;
-the historical sheet proposes a set from its ``Trainigstyp`` code. When both
-propose and the sets disagree, the activity is listed as a conflict and its
-classification is left for review. Semantic sheet tags (hills, strength,
+the historical sheet proposes a set from its ``Trainigstyp`` code. A sheet
+run with no code and an average HR below 140 bpm defaults to an easy run
+(``continuous`` / ``base``). When both sources propose and the sets disagree,
+the activity is listed as a conflict and its classification is left for
+review. Semantic sheet tags (hills, strength,
 bad data) are merged into the existing ``sheet`` tags.
 
 Run with ``--dry-run`` first.
@@ -23,6 +25,7 @@ from hobbyjogging_core import (
     TrainingWriter,
     open_database,
 )
+from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
     classification_for_category,
     classification_for_sheet_code,
@@ -177,10 +180,21 @@ def run(args) -> int:
         )
 
         if not classifier_has and not sheet_has:
-            counts["unclassified"] += 1
-            continue
+            # A sheet run with no training code and a low average HR is an
+            # easy run by default.
+            if (
+                sheet is not None
+                and activity.type in RUN_SPORTS
+                and activity.avg_hr is not None
+                and activity.avg_hr < 140
+            ):
+                counts["easy_default"] += 1
+                methods, targets = {"continuous"}, {"base"}
+            else:
+                counts["unclassified"] += 1
+                continue
 
-        if classifier_has and not sheet_has:
+        elif classifier_has and not sheet_has:
             counts["classifier_only"] += 1
             methods, targets = classifier.methods, classifier.targets
         elif sheet_has and not classifier_has:
@@ -248,6 +262,7 @@ def run(args) -> int:
     print(f"  sheet only: {counts['sheet_only']}")
     print(f"  both agree: {counts['both']}")
     print(f"Conflicts: {counts['conflicts']}")
+    print(f"Easy defaults (sheet, no code, HR < 140): {counts['easy_default']}")
     print(f"Unclassified: {counts['unclassified']}")
     print(f"Tagged activities: {counts['tagged_activities']}")
     print(f"Tags added: {counts['tags_added']}")

@@ -57,7 +57,8 @@ Updated 2026-11-08.
   with 7- and 42-day exponentially weighted averages.
 - **Workout classification (schema v9).** Set-based methods/targets on
   activities and events; quality is derived from methods/targets. The
-  classifier + sheet backfill classified 2,579 activities and tagged 56;
+  classifier + sheet backfill classified 2,686 activities (including 107
+  easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
   (overview, recovery and health, activities list, activity detail, data
