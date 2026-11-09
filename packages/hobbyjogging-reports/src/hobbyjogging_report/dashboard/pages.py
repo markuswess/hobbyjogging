@@ -237,8 +237,8 @@ def overview_page(
     volume_html += (
         f'<p class="muted">Daily running hours over {range_text}, stacked '
         "by pace zone; lines are 182/42-day EWMAs. Planned workouts appear "
-        "as hatched future bars and dashed lines are projected through "
-        "them.</p>"
+        "as hatched bars on days without a recorded run; dashed lines show "
+        "the projected averages.</p>"
     )
 
     if any(value > 0 for _, value in load_series):

@@ -34,7 +34,7 @@ from .views import (
     daily_zone_groups,
     in_window,
     overview_ewma,
-    planned_daily_zone_groups,
+    planned_bars_without_actual,
     planned_overview,
     planned_summary,
     summarize_window,
@@ -133,9 +133,10 @@ def build_dashboard(
         chart_start,
         today,
     )
-    planned_bars = planned_daily_zone_groups(
+    planned_bars = planned_bars_without_actual(
         chart_events,
-        today + timedelta(days=1),
+        volume_bars,
+        today,
         chart_end,
     )
     planned_next = planned_overview(

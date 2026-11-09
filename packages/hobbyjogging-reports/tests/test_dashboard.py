@@ -9,6 +9,7 @@ from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
 from hobbyjogging_report.dashboard.views import (
     overview_ewma,
+    planned_bars_without_actual,
     planned_overview,
 )
 from support import FakeSource, activity_factory, make_interval
@@ -298,6 +299,81 @@ class DashboardOutputTests(unittest.TestCase):
 
 
 class DashboardEwmaTests(unittest.TestCase):
+
+    def test_planned_bars_include_today_without_an_actual_run(self):
+        events = [
+            Event(
+                date=TODAY,
+                name="Today plan",
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 600, 1),
+                    EventZoneTime("Z3", 300, 3),
+                ],
+            ),
+            Event(
+                date=TODAY + timedelta(days=1),
+                name="Tomorrow plan",
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 600, 1),
+                    EventZoneTime("Z3", 300, 3),
+                ],
+            ),
+        ]
+        actual_bars = [
+            (TODAY, 0.0, 0.0, 0.0),
+            (TODAY - timedelta(days=1), 600.0, 0.0, 0.0),
+        ]
+
+        bars = planned_bars_without_actual(
+            events,
+            actual_bars,
+            TODAY,
+            TODAY + timedelta(days=1),
+        )
+
+        self.assertEqual(
+            [TODAY, TODAY + timedelta(days=1)],
+            [row[0] for row in bars],
+        )
+
+    def test_planned_bars_drop_today_after_an_actual_run(self):
+        events = [
+            Event(
+                date=TODAY,
+                name="Today plan",
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z1", 600, 1)],
+            ),
+            Event(
+                date=TODAY + timedelta(days=1),
+                name="Tomorrow plan",
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z1", 600, 1)],
+            ),
+        ]
+        actual_bars = [(TODAY, 600.0, 0.0, 0.0)]
+
+        bars = planned_bars_without_actual(
+            events,
+            actual_bars,
+            TODAY,
+            TODAY + timedelta(days=1),
+        )
+
+        self.assertEqual(
+            [TODAY + timedelta(days=1)],
+            [row[0] for row in bars],
+        )
 
     def test_planned_overview_totals_next_period(self):
         source = _source()

@@ -270,3 +270,30 @@ def planned_daily_zone_groups(
         rows.append((day, low, high, unzoned))
 
     return rows
+
+
+def planned_bars_without_actual(
+    events: list[Event],
+    actual_bars: list[tuple[date, float, float, float]],
+    start: date,
+    end: date,
+    *,
+    zone_count: int = 4,
+) -> list[tuple[date, float, float, float]]:
+    """Planned bars, dropping days that already have actual running time."""
+    actual_days = {
+        day
+        for day, low, high, unzoned in actual_bars
+        if low + high + unzoned > 0
+    }
+
+    return [
+        row
+        for row in planned_daily_zone_groups(
+            events,
+            start,
+            end,
+            zone_count=zone_count,
+        )
+        if row[0] not in actual_days
+    ]

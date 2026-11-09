@@ -513,8 +513,10 @@ Pages:
 The main chart shows daily running hours stacked into **Z1+2** and **Z3+4**
 with **182-day** and **42-day** EWMAs of total daily running time. It defaults
 to **70 days back and 14 days forward**; `--chart-days` and `--future-days`
-change those. Planned workouts appear as hatched future bars and the EWMA
-projection is dashed. Events without pace zones count as unzoned.
+change those. Planned workouts appear as hatched bars on days without a
+recorded run, including today, so an uncompleted planned session is visible;
+once a run is recorded, the actual bar replaces the plan bar. Events without
+pace zones count as unzoned.
 
 Charts are plotly figures embedded in the page, so the overview can be
 zoomed and panned. The pages remain static snapshots: there is no
