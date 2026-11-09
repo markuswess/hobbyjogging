@@ -8,7 +8,7 @@ comparison.
 ## Done
 
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
-  overview (running volume by pace zone with 182/42-day EWMAs, load, plan vs
+  overview (7/42/182-day EWMAs, running volume by pace zone, load, plan vs
   actual), recovery and health charts, activity list and detail pages, and a
   canonical data-health banner; it opens the browser. `sync.sh` regenerates
   the same site after a successful sync without opening a browser. Charts use

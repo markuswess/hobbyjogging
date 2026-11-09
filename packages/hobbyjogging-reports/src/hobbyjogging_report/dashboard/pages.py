@@ -29,7 +29,7 @@ from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, TimePoint
 from .charts import load_chart, recovery_chart, running_volume_chart
 from .health import DataHealth, banner
-from .views import PlannedSummary, WindowSummary
+from .views import EwmaRow, PlannedSummary, WindowSummary
 
 
 def activity_filename(activity_id: str) -> str:
@@ -103,21 +103,6 @@ def _recovery_stat(
     return current_value, average_text
 
 
-def _count_delta(current: int, previous: int, days: int) -> str:
-    if previous == 0:
-        return "new vs previous window" if current else "unchanged"
-    difference = current - previous
-    if difference == 0:
-        return f"unchanged vs previous {days} days"
-    return f"{difference:+d} vs previous {days} days"
-
-
-def _pct_delta(current: float, previous: float, days: int) -> str:
-    if previous == 0:
-        return "new vs previous window" if current else ""
-    return f"{(current - previous) / previous:+.0%} vs previous {days} days"
-
-
 def _zone_seconds(event: Event) -> str:
     seconds = event_zone_time(event, (3, 4))
 
@@ -136,6 +121,21 @@ def _event_load(event) -> str:
     return "-" if event.training_load is None else f"{event.training_load:.0f}"
 
 
+def _ewma_cell(row: EwmaRow, tau: int) -> str:
+    value = row.values[tau]
+
+    if row.kind == "count":
+        return f"{value:.1f}"
+    if row.kind == "time":
+        return _duration(value)
+    if row.kind == "distance":
+        return f"{value:,.1f}"
+    if row.kind == "load":
+        return f"{value:.0f}"
+
+    return f"{value:g}"
+
+
 def overview_page(
     *,
     generated_at: str,
@@ -145,7 +145,7 @@ def overview_page(
     end: date,
     days: int,
     summary: WindowSummary,
-    previous: WindowSummary,
+    ewma_rows: list[EwmaRow],
     last7: WindowSummary,
     events: list[Event],
     planned: PlannedSummary,
@@ -157,42 +157,24 @@ def overview_page(
     load_series: list[tuple[date, float]],
     detail_ids: set[str],
 ) -> str:
-    stats = [
-        (
-            "Runs",
-            str(summary.runs),
-            _count_delta(summary.runs, previous.runs, days),
-        ),
-        (
-            "Cross sessions",
-            str(summary.cross),
-            _count_delta(summary.cross, previous.cross, days),
-        ),
-        (
-            "Run time",
-            _duration(summary.run_time_s),
-            _pct_delta(summary.run_time_s, previous.run_time_s, days),
-        ),
-        (
-            "Run km",
-            _km(summary.run_distance_m),
-            _pct_delta(
-                summary.run_distance_m,
-                previous.run_distance_m,
-                days,
-            ),
-        ),
-        (
-            "Load",
-            _load(summary.load),
-            _pct_delta(summary.load, previous.load, days),
-        ),
-        (
-            "Z3+4 time",
-            _duration(summary.z3_z4_s),
-            _pct_delta(summary.z3_z4_s, previous.z3_z4_s, days),
-        ),
-    ]
+    ewma_table = table(
+        ["Metric", "7-day EWMA", "42-day EWMA", "182-day EWMA"],
+        [
+            [
+                esc(row.label),
+                esc(_ewma_cell(row, 7)),
+                esc(_ewma_cell(row, 42)),
+                esc(_ewma_cell(row, 182)),
+            ]
+            for row in ewma_rows
+        ],
+        numeric=(1, 2, 3),
+    )
+    ewma_html = (
+        ewma_table
+        + '<p class="muted">Weekly equivalents of the daily EWMA ending '
+        "today.</p>"
+    )
 
     volume_html = chart(
         running_volume_chart(
@@ -298,7 +280,7 @@ def overview_page(
     )
 
     body = (
-        stat_grid(stats)
+        card("Training overview — EWMA", ewma_html)
         + card("Running volume by pace zone", volume_html)
         + card(
             f"Training load — last {days} days",

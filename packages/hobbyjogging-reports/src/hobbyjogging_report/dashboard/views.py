@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 
@@ -11,10 +12,17 @@ from ..analysis import (
     RUN_TYPES,
     daily_planned_time,
     daily_planned_zone_time,
+    daily_run_distance,
     daily_run_time,
+    daily_training_load,
     daily_zone_time,
 )
-from ..series import date_range
+from ..model import AverageWindows
+from ..series import (
+    alpha_from_time_constant,
+    date_range,
+    ewma,
+)
 from ..summary import summarize_training
 
 
@@ -37,6 +45,75 @@ class PlannedSummary:
     run_time_s: float
     run_distance_m: float
     load: float
+
+
+@dataclass(frozen=True)
+class EwmaRow:
+    label: str
+    kind: str
+    values: dict[int, float]
+
+
+def overview_ewma(
+    activities: list[Activity],
+    start: date,
+    end: date,
+    *,
+    windows: AverageWindows | None = None,
+) -> list[EwmaRow]:
+    """Weekly-equivalent EWMAs of daily training metrics ending at ``end``."""
+    if start > end:
+        return []
+
+    windows = windows or AverageWindows()
+    days = date_range(start, end)
+    runs_by_day: dict[date, float] = defaultdict(float)
+    cross_by_day: dict[date, float] = defaultdict(float)
+
+    for activity in activities:
+        if not (start <= activity.date <= end):
+            continue
+
+        if activity.type in RUN_TYPES:
+            runs_by_day[activity.date] += 1
+        else:
+            cross_by_day[activity.date] += 1
+
+    runs = [runs_by_day.get(day, 0.0) for day in days]
+    cross = [cross_by_day.get(day, 0.0) for day in days]
+    run_time = [value for _, value in daily_run_time(activities, start, end)]
+    run_distance = [
+        value for _, value in daily_run_distance(activities, start, end)
+    ]
+    load = [value for _, value in daily_training_load(activities, start, end)]
+    z3_z4 = [
+        sum(zones[2:4])
+        for _, zones in daily_zone_time(
+            activities,
+            start,
+            end,
+            zone_count=4,
+        )
+    ]
+    taus = (windows.fatigue, windows.fitness, windows.base)
+
+    def weekly(series: list[float]) -> dict[int, float]:
+        return {
+            tau: ewma(
+                series,
+                alpha_from_time_constant(tau),
+            )[-1] * 7
+            for tau in taus
+        }
+
+    return [
+        EwmaRow("Runs / week", "count", weekly(runs)),
+        EwmaRow("Cross / week", "count", weekly(cross)),
+        EwmaRow("Run time / week", "time", weekly(run_time)),
+        EwmaRow("Run km / week", "distance", weekly(run_distance)),
+        EwmaRow("Load / week", "load", weekly(load)),
+        EwmaRow("Z3+4 / week", "time", weekly(z3_z4)),
+    ]
 
 
 def summarize_window(activities: list[Activity]) -> WindowSummary:

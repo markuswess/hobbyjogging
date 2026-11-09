@@ -33,6 +33,7 @@ from .pages import (
 from .views import (
     daily_zone_groups,
     in_window,
+    overview_ewma,
     planned_daily_zone_groups,
     planned_summary,
     summarize_window,
@@ -82,22 +83,14 @@ def build_dashboard(
 
     today = today or date.today()
     start = today - timedelta(days=days - 1)
-    previous_end = start - timedelta(days=1)
-    previous_start = previous_end - timedelta(days=days - 1)
 
     raw_activities = source.activities(start, today)
     activities, _ = exclude_review(
         raw_activities,
         include_review=include_review,
     )
-    previous_raw = source.activities(previous_start, previous_end)
-    previous_activities, _ = exclude_review(
-        previous_raw,
-        include_review=include_review,
-    )
 
     summary = summarize_window(activities)
-    previous = summarize_window(previous_activities)
     last7_start = max(start, today - timedelta(days=6))
     last7 = summarize_window(
         in_window(activities, last7_start, today)
@@ -122,6 +115,12 @@ def build_dashboard(
             today,
         ),
         include_review=include_review,
+    )
+    ewma_rows = overview_ewma(
+        chart_activities,
+        today - timedelta(days=warmup_days),
+        today,
+        windows=windows,
     )
     chart_events = [
         event
@@ -199,7 +198,7 @@ def build_dashboard(
             end=today,
             days=days,
             summary=summary,
-            previous=previous,
+            ewma_rows=ewma_rows,
             last7=last7,
             events=events,
             planned=planned,

@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
+from hobbyjogging_report.dashboard.views import overview_ewma
 from support import FakeSource, activity_factory, make_interval
 
 TODAY = date(2026, 11, 9)
@@ -141,8 +142,15 @@ class DashboardBuildTests(unittest.TestCase):
 
             index = (target / "index.html").read_text()
             self.assertIn("Training overview", index)
-            self.assertIn("Runs", index)
-            self.assertIn("Cross sessions", index)
+            self.assertIn("Runs / week", index)
+            self.assertIn("Cross / week", index)
+            self.assertIn("Run time / week", index)
+            self.assertIn("Run km / week", index)
+            self.assertIn("Load / week", index)
+            self.assertIn("Z3+4 / week", index)
+            self.assertIn("7-day EWMA", index)
+            self.assertIn("42-day EWMA", index)
+            self.assertIn("182-day EWMA", index)
             self.assertIn("5x5 subT", index)
             self.assertIn("Running volume by pace zone", index)
             self.assertIn("Z1+2", index)
@@ -280,6 +288,39 @@ class DashboardOutputTests(unittest.TestCase):
                 Path("data/dashboard"),
                 resolve_output_dir(),
             )
+
+
+class DashboardEwmaTests(unittest.TestCase):
+
+    def test_ewma_rows_are_weekly_equivalents(self):
+        activities = [
+            activity(
+                id=f"run{index}",
+                date=TODAY - timedelta(days=index),
+                duration_s=3600,
+                distance_m=10000,
+            )
+            for index in range(100)
+        ]
+
+        rows = {
+            row.label: row
+            for row in overview_ewma(
+                activities,
+                TODAY - timedelta(days=99),
+                TODAY,
+            )
+        }
+
+        runs = rows["Runs / week"]
+        self.assertGreater(runs.values[7], runs.values[42])
+        self.assertGreater(runs.values[42], runs.values[182])
+        self.assertLessEqual(runs.values[7], 7)
+
+        run_time = rows["Run time / week"]
+        self.assertGreater(run_time.values[7], run_time.values[42])
+        self.assertGreater(run_time.values[42], run_time.values[182])
+        self.assertLessEqual(run_time.values[7], 7 * 3600)
 
 
 if __name__ == "__main__":
