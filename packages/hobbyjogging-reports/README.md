@@ -33,8 +33,8 @@ reports plus a static HTML dashboard:
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **dashboard** — Generate the static HTML dashboard (weekly overview,
-  activity list, activity detail pages, data health); writes a directory and
-  prints its path.
+  recovery and health, activity list, activity detail pages, data health);
+  writes a directory and prints its path.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
@@ -503,7 +503,10 @@ Pages:
   per-activity pages.
 - `activity/<id>.html` — one activity's metrics, zone times, description,
   interval table, and subT/LT1 work reps.
-- `health.html` — review-hidden activities and missing-data counts.
+- `recovery.html` — HRV, resting HR, and sleep as interactive plotly panels
+  with 7-day averages and a data-completeness note.
+- `health.html` (Data Health) — review-hidden activities and missing-data
+  counts.
 
 Charts are plotly figures embedded in the page, so the overview can be
 zoomed and panned. The pages remain static snapshots: there is no

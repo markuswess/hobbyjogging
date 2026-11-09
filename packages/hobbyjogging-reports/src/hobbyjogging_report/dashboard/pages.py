@@ -26,7 +26,8 @@ from ..format import (
     sport_label,
 )
 from ..html import card, chart, esc, link, page, stat_grid, table
-from .charts import load_chart, zone_mix_chart
+from ..model import RecoveryPoint
+from .charts import load_chart, recovery_chart, zone_mix_chart
 from .health import DataHealth, banner
 from .views import PlannedSummary, WindowSummary
 
@@ -61,6 +62,45 @@ def _load(value: float) -> str:
 
 def _hr(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f}"
+
+
+def _latest(points: list[RecoveryPoint], attribute: str):
+    for point in reversed(points):
+        value = getattr(point, attribute)
+        if value is not None:
+            return value
+    return None
+
+
+def _recovery_stat(
+    points: list[RecoveryPoint],
+    attribute: str,
+    average_attribute: str,
+    *,
+    scale: float = 1.0,
+    unit: str,
+    decimals: int = 0,
+) -> tuple[str, str]:
+    value = _latest(points, attribute)
+    average = (
+        getattr(points[-1], average_attribute)
+        if points
+        else None
+    )
+
+    if value is None:
+        current_value = "-"
+    else:
+        current_value = f"{value * scale:.{decimals}f} {unit}"
+
+    if average is None:
+        average_text = "7-day avg -"
+    else:
+        average_text = (
+            f"7-day avg {average * scale:.{decimals}f} {unit}"
+        )
+
+    return current_value, average_text
 
 
 def _count_delta(current: int, previous: int, days: int) -> str:
@@ -447,6 +487,76 @@ def activity_page(
     )
 
 
+def recovery_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    points: list[RecoveryPoint],
+    start: date,
+    end: date,
+) -> str:
+    hrv_value, hrv_average = _recovery_stat(
+        points,
+        "hrv",
+        "hrv_avg",
+        unit="ms",
+    )
+    rhr_value, rhr_average = _recovery_stat(
+        points,
+        "resting_hr",
+        "resting_hr_avg",
+        unit="bpm",
+    )
+    sleep_value, sleep_average = _recovery_stat(
+        points,
+        "sleep_s",
+        "sleep_avg",
+        scale=1 / 3600,
+        unit="h",
+        decimals=1,
+    )
+
+    stats = [
+        ("HRV", hrv_value, hrv_average),
+        ("Resting HR", rhr_value, rhr_average),
+        ("Sleep", sleep_value, sleep_average),
+    ]
+
+    if points:
+        chart_html = chart(recovery_chart(points))
+    else:
+        chart_html = '<p class="muted">No wellness data in this window.</p>'
+
+    total_days = (end - start).days + 1
+    completeness = (
+        f"{len(points)} of {total_days} days have wellness data."
+    )
+
+    body = (
+        stat_grid(stats)
+        + card("Recovery trends", chart_html)
+        + card(
+            "Data completeness",
+            f'<p class="muted">{esc(completeness)}</p>'
+            '<p class="muted">Daily values are points; lines are 7-day '
+            "calendar-day averages. Missing values are skipped.</p>",
+        )
+    )
+
+    return page(
+        title=f"Recovery and Health · {start} → {end}",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        active="recovery",
+        plotly=True,
+    )
+
+
 def health_page(
     *,
     generated_at: str,
@@ -507,7 +617,7 @@ def health_page(
     )
 
     return page(
-        title=f"Data health · {health.start} → {health.end}",
+        title=f"Data Health · {health.start} → {health.end}",
         body=body,
         generated_at=generated_at,
         health_html=banner(

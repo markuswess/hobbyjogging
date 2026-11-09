@@ -11,7 +11,7 @@ from pathlib import Path
 from hobbyjogging_core.datasource import DataSource
 
 from ..activity_list import select_activities
-from ..analysis import daily_training_load
+from ..analysis import daily_training_load, recovery_trends
 from ..classify import classify
 from ..review import exclude_review
 from .charts import plotly_js
@@ -22,6 +22,7 @@ from .pages import (
     activities_page,
     health_page,
     overview_page,
+    recovery_page,
 )
 from .views import (
     actual_zone_totals,
@@ -106,6 +107,17 @@ def build_dashboard(
     )
     load_series = daily_training_load(activities, start, today)
 
+    wellness = source.wellness(
+        start - timedelta(days=6),
+        today,
+    )
+    recovery = recovery_trends(
+        wellness,
+        start,
+        today,
+        window_days=7,
+    )
+
     health = collect_health(
         raw_activities,
         activities,
@@ -159,6 +171,14 @@ def build_dashboard(
             include_review=include_review,
             activities=listed_activities,
             excluded=listed_excluded,
+        ),
+        "recovery.html": recovery_page(
+            generated_at=generated_at,
+            health=health,
+            include_review=include_review,
+            points=recovery,
+            start=start,
+            end=today,
         ),
         "health.html": health_page(
             generated_at=generated_at,

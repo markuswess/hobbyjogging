@@ -60,9 +60,10 @@ Updated 2026-11-08.
   classifier + sheet backfill classified 2,579 activities and tagged 56;
   216 conflicts were left unclassified for review.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
-  (overview, activities list, activity detail, data health) with embedded
-  plotly charts, bundled `plotly.min.js`, and atomic directory swaps. It
-  opens the browser; `sync.sh` regenerates the same site without opening one.
+  (overview, recovery and health, activities list, activity detail, data
+  health) with embedded plotly charts, bundled `plotly.min.js`, and atomic
+  directory swaps. It opens the browser; `sync.sh` regenerates the same site
+  without opening one.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
@@ -78,10 +79,10 @@ Updated 2026-11-08.
    saved at `data/workout-classification-conflicts.txt`; the affected
    activities were left unclassified.
 2. **Dashboard follow-ups.** The first static dashboard is done (overview,
-   activity list and detail, canonical data-health banner) and `sync.sh`
-   regenerates it after a successful sync. Next: expose the actual review-item
-   queue through `DataSource`, then add race cards and session-level
-   planned-vs-actual views.
+   recovery and health, activity list and detail, canonical data-health
+   banner) and `sync.sh` regenerates it after a successful sync. Next: expose
+   the actual review-item queue through `DataSource`, then add race cards and
+   session-level planned-vs-actual views.
 3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create

@@ -184,7 +184,8 @@ footer {
 NAV = (
     ("overview", "index.html", "Overview"),
     ("activities", "activities.html", "Activities"),
-    ("health", "health.html", "Health"),
+    ("recovery", "recovery.html", "Recovery and Health"),
+    ("health", "health.html", "Data Health"),
 )
 
 

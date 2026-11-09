@@ -370,7 +370,8 @@ Static-first, generated on the homelab:
 - Self-contained HTML with embedded plotly charts and plain tables; no SPA,
   no client-side data fetching. `plotly.min.js` is bundled into the site.
 - Views: weekly overview (load, zone mix, plan vs actual, last 14 days,
-  quality sessions), activity list, activity detail, data-health summary.
+  quality sessions), recovery and health (HRV, resting HR, sleep with 7-day
+  averages), activity list, activity detail, data-health summary.
 - Every page carries a generation timestamp and a data-health banner (open
   review items, missing data).
 - Generation writes to a temporary directory and atomically swaps, so a

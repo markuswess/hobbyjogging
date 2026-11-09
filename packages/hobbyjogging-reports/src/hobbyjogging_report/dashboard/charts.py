@@ -6,7 +6,9 @@ from datetime import date
 
 import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs
+from plotly.subplots import make_subplots
 
+from ..model import RecoveryPoint
 from ..series import alpha_from_time_constant, ewma
 
 PLOTLY_CONFIG = {
@@ -99,6 +101,91 @@ def load_chart(series: list[tuple[date, float]]) -> str:
     figure.update_layout(
         **PLOTLY_LAYOUT,
         yaxis_title="training load",
+    )
+
+    return _to_html(figure)
+
+
+def recovery_chart(points: list[RecoveryPoint]) -> str:
+    """HRV, resting HR, and sleep with their 7-day averages."""
+    dates = [point.date.isoformat() for point in points]
+    figure = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=("HRV (ms)", "Resting HR (bpm)", "Sleep (hours)"),
+    )
+
+    metrics = (
+        (
+            "hrv",
+            "hrv_avg",
+            1.0,
+            "HRV",
+            "#4c78a8",
+        ),
+        (
+            "resting_hr",
+            "resting_hr_avg",
+            1.0,
+            "Resting HR",
+            "#d1495b",
+        ),
+        (
+            "sleep_s",
+            "sleep_avg",
+            1 / 3600,
+            "Sleep",
+            "#8064a2",
+        ),
+    )
+
+    for row, (value_key, average_key, scale, _name, color) in enumerate(
+        metrics,
+        start=1,
+    ):
+        values = [
+            getattr(point, value_key) * scale
+            if getattr(point, value_key) is not None
+            else None
+            for point in points
+        ]
+        averages = [
+            getattr(point, average_key) * scale
+            if getattr(point, average_key) is not None
+            else None
+            for point in points
+        ]
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=values,
+                mode="markers",
+                marker={"color": color, "size": 5, "opacity": 0.45},
+                name="daily",
+                showlegend=False,
+            ),
+            row=row,
+            col=1,
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=averages,
+                mode="lines",
+                line={"color": color, "width": 2},
+                name="7-day avg",
+                showlegend=False,
+            ),
+            row=row,
+            col=1,
+        )
+
+    figure.update_layout(
+        template="plotly_white",
+        height=700,
+        margin={"l": 55, "r": 20, "t": 40, "b": 40},
     )
 
     return _to_html(figure)

@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-from hobbyjogging_core.model import Event, EventZoneTime
+from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
 from support import FakeSource, activity_factory, make_interval
 
@@ -96,6 +96,20 @@ def _source():
                 name="Travel note",
             ),
         ],
+        wellness=[
+            WellnessDay(
+                date=TODAY - timedelta(days=1),
+                hrv=60,
+                resting_hr=45,
+                sleep_s=8 * 3600,
+            ),
+            WellnessDay(
+                date=TODAY - timedelta(days=2),
+                hrv=55,
+                resting_hr=46,
+                sleep_s=7.5 * 3600,
+            ),
+        ],
     )
 
 
@@ -116,6 +130,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertEqual(target, result)
             self.assertTrue((target / "index.html").exists())
             self.assertTrue((target / "activities.html").exists())
+            self.assertTrue((target / "recovery.html").exists())
             self.assertTrue((target / "health.html").exists())
             self.assertTrue((target / "activity" / "run1.html").exists())
             self.assertTrue((target / ".hobbyjogging-dashboard").exists())
@@ -134,6 +149,17 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Plotly.newPlot", index)
             self.assertIn("plotly.min.js", index)
             self.assertIn("activities with open review items are hidden", index)
+            self.assertIn("Recovery and Health", index)
+            self.assertIn(">Data Health</a>", index)
+
+            recovery = (target / "recovery.html").read_text()
+            self.assertIn("Recovery and Health", recovery)
+            self.assertIn("HRV", recovery)
+            self.assertIn("60 ms", recovery)
+            self.assertIn("7-day avg 58 ms", recovery)
+            self.assertIn("8.0 h", recovery)
+            self.assertIn("2 of 14 days have wellness data", recovery)
+            self.assertIn("Plotly.newPlot", recovery)
 
             activities = (target / "activities.html").read_text()
             self.assertIn("activity/run1.html", activities)
@@ -186,6 +212,7 @@ class DashboardBuildTests(unittest.TestCase):
             )
 
             self.assertTrue((target / "index.html").exists())
+            self.assertTrue((target / "recovery.html").exists())
             self.assertIn(
                 "No activities found",
                 (target / "activities.html").read_text(),
@@ -193,6 +220,10 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn(
                 "No planned sessions",
                 (target / "index.html").read_text(),
+            )
+            self.assertIn(
+                "No wellness data",
+                (target / "recovery.html").read_text(),
             )
 
     def test_second_build_replaces_dashboard_atomically(self):
