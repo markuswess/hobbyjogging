@@ -10,6 +10,7 @@ from hobbyjogging_report.cli import (
     parse_chart_args,
     parse_classify_args,
     parse_compare_args,
+    parse_dashboard_args,
     parse_load_args,
     parse_planned_args,
     parse_recovery_args,
@@ -524,6 +525,31 @@ class CompareArgsTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             with redirect_stderr(io.StringIO()):
                 parse_compare_args(["weeks"], today=TODAY)
+
+
+class DashboardArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        self.assertEqual(
+            (None, 14, 50),
+            parse_dashboard_args([]),
+        )
+
+    def test_custom_output_and_limits(self):
+        self.assertEqual(
+            ("/tmp/site", 30, 100),
+            parse_dashboard_args(
+                ["--output", "/tmp/site", "--days", "30", "--activities", "100"]
+            ),
+        )
+
+    def test_rejects_non_positive_days(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--days", "0"])
+
+    def test_rejects_non_positive_activities(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--activities", "0"])
 
 
 class SourceArgTests(unittest.TestCase):

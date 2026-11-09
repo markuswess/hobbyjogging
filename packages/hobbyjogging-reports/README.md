@@ -23,7 +23,7 @@ Intervals.icu. `debug` still dumps raw API payloads and ignores `--source`.
 Reads activity, wellness and planned-session data through a `DataSource`
 (canonical database by default, or the
 [Intervals.icu](https://intervals.icu) API) and produces Markdown training
-reports:
+reports plus a static HTML dashboard:
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
@@ -32,6 +32,9 @@ reports:
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
+- **dashboard** — Generate the static HTML dashboard (weekly overview,
+  activity list, activity detail pages, data health); writes a directory and
+  prints its path.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`).
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
@@ -76,11 +79,14 @@ Install dependencies:
 Create environment (`.env`):
 
     export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
+    export HOBBYJOGGING_DASHBOARD_DIR=~/projects/laufen_private/reports
     export INTERVALS_ATHLETE_ID=<your-athlete-id>
     export INTERVALS_API_KEY=<your-api-key>
 
 The Intervals.icu variables are only needed for `--source intervals` and
-`debug`.
+`debug`. The dashboard is written to
+`$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, and to
+`data/dashboard` otherwise.
 
 Run:
 
@@ -89,6 +95,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report monthly
     uv run --env-file .env python -m hobbyjogging_report yearly
     uv run --env-file .env python -m hobbyjogging_report all
+    uv run --env-file .env python -m hobbyjogging_report dashboard
     uv run --env-file .env python -m hobbyjogging_report report --days 90
     uv run --env-file .env python -m hobbyjogging_report subt-report --days 90
     uv run --env-file .env python -m hobbyjogging_report planned
@@ -120,6 +127,8 @@ and tables for the terminal:
     ./reports.sh                 # daily
     ./reports.sh daily
     ./reports.sh monthly
+    ./reports.sh dashboard
+    ./reports.sh dashboard --days 30 --activities 100
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh subt-report --days 90
@@ -134,6 +143,9 @@ The clipboard receives the original Markdown before terminal
 formatting, so pasting gives clean Markdown. Use `NO_COPY=1` to skip
 the clipboard, `NO_COLOR=1` to disable ANSI colours, or `NO_PRETTY=1`
 to print raw Markdown.
+
+`dashboard` is the exception: it prints the generated directory path and
+skips the clipboard and terminal Markdown rendering.
 
 When stdout is a terminal, the direct CLI also displays reports with
 the same formatting. Redirected or piped output remains raw Markdown.
@@ -465,13 +477,42 @@ separately. The scale is reversed compared with some watches:
 | 4 | Poor |
 | 5 | Weak |
 
-## Static dashboard (planned)
+## Static dashboard
 
-The next renderer is a static HTML dashboard generated from the same analysis
-layer as the Markdown reports: weekly overview (load, volume/time, zones, plan
-vs actual), activity list and detail, and a data-health banner (open review
-items, exclusions, missing data). It is generated on the homelab, written
-atomically, and served read-only; Markdown reports remain the terminal view.
+`dashboard` writes a self-contained static HTML site to
+`$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, or to
+`data/dashboard` otherwise. `--output DIR` overrides the location exactly.
+It prints the generated directory.
+
+    ./reports.sh dashboard
+    ./reports.sh dashboard --days 30 --activities 100
+    ./reports.sh dashboard --output /tmp/dashboard
+
+Pages:
+
+- `index.html` — the overview window (default 14 days): run/cross counts,
+  time, distance, load, Z3+4, deltas, a load chart, actual vs planned
+  pace-zone mix, plan vs actual, the next 7 planned days, and quality
+  sessions.
+- `activities.html` — the recent activity table (default 50), linked to
+  per-activity pages.
+- `activity/<id>.html` — one activity's metrics, zone times, description,
+  interval table, and subT/LT1 work reps.
+- `health.html` — review-hidden activities and missing-data counts.
+
+Charts are plotly figures embedded in the page, so the overview can be
+zoomed and panned. The pages remain static snapshots: there is no
+client-side data fetching and no server-side report process. `plotly.min.js`
+is bundled into the generated site so it works offline.
+
+Generation builds a temporary directory and atomically swaps it into place.
+It refuses to replace a non-empty directory unless it is a previous
+dashboard (marked with `.hobbyjogging-dashboard`).
+
+The data-health banner is canonical-only for now: it counts activities with
+open review items, missing load, missing pace zones, missing HR, and missing
+distance. Individual review-item categories still require a core
+`DataSource` addition and are planned for a later pass.
 
 ## Architecture
 

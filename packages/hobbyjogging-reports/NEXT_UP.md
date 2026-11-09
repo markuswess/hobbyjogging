@@ -1,12 +1,16 @@
 # Next up: reports package
 
-Updated 2026-11-08.
+Updated 2026-11-09.
 
 Current focus: daily planned-zone display and session-level planned-vs-actual
 comparison.
 
 ## Done
 
+- **Static dashboard.** `dashboard` writes a self-contained site with an
+  overview (load, actual vs planned pace-zone mix, plan vs actual), activity
+  list and detail pages, and a canonical data-health banner. Charts use
+  bundled plotly; generation is atomic.
 - **Time chart uses pace zones.** The weekly stack and zone EWMA panel use
   activity pace zones. Planned pace zones appear as hatched weekly bars and
   continue through the EWMA panel as dashed projections. Planned zones of
@@ -17,6 +21,8 @@ comparison.
 - **Zone helpers.** `event_zone_seconds()`, `event_zone_time()`,
   `daily_planned_zone_time()`, and `weekly_planned_time_by_zone()` handle
   normalization, `SS`, empty zones, and weekly aggregation.
+- **Dashboard data health is canonical-only.** The actual review-item queue
+  needs a core `DataSource` addition; see the follow-up below.
 
 ## Next
 
@@ -24,13 +30,14 @@ comparison.
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
 2. **Planned vs actual by session.** Match events to activities by date +
-   sport and compare pace distributions. The time chart currently compares
-   by week only. Power comparisons remain impossible until activities store
-   power zone times; do not fake them.
+   sport and compare pace distributions. The time chart and dashboard
+   currently compare by week only. Power comparisons remain impossible until
+   activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Dashboard.** Reuse the weekly planned-zone aggregation for the static
-   dashboard's planned zone distribution.
+4. **Review queue in the dashboard.** Expose unresolved `review_items`
+   through `DataSource` (root/core change) for a richer health page and
+   category links.
 
 ## Tests and docs
 

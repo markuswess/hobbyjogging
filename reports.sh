@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities] [args...]
+  ./reports.sh [daily|weekly|monthly|yearly|all|dashboard|report|compare|subt-report|planned|session|classify|activities] [args...]
   ./reports.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the daily report. The generated Markdown is copied to
@@ -17,6 +17,8 @@ For charts, use ./charts.sh.
 Examples:
   ./reports.sh
   ./reports.sh weekly
+  ./reports.sh dashboard
+  ./reports.sh dashboard --days 30 --activities 100
   ./reports.sh report --days 90
   ./reports.sh report --from 2026-01-01 --to 2026-03-31
   ./reports.sh compare years
@@ -66,7 +68,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    daily|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities)
+    daily|weekly|monthly|yearly|all|dashboard|report|compare|subt-report|planned|session|classify|activities)
         ;;
     *)
         usage >&2
@@ -78,6 +80,11 @@ if (( explicit_mode == 0 )); then
     args=("$mode" "${args[@]}")
 fi
 
+is_dashboard=0
+if [[ "$mode" == "dashboard" ]]; then
+    is_dashboard=1
+fi
+
 tmp="$(mktemp "${TMPDIR:-/tmp}/hobbyjogging-report.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 
@@ -86,7 +93,7 @@ if ! uv run --env-file .env python -m hobbyjogging_report "${args[@]}" >"$tmp"; 
     exit 1
 fi
 
-if [[ "${NO_COPY:-0}" != "1" ]]; then
+if [[ "${NO_COPY:-0}" != "1" && "$is_dashboard" != "1" ]]; then
     if command -v wl-copy >/dev/null 2>&1; then
         if ! wl-copy <"$tmp"; then
             echo "warning: wl-copy failed; clipboard was not updated" >&2
@@ -96,7 +103,7 @@ if [[ "${NO_COPY:-0}" != "1" ]]; then
     fi
 fi
 
-if [[ -t 1 && "${NO_PRETTY:-0}" != "1" ]]; then
+if [[ -t 1 && "${NO_PRETTY:-0}" != "1" && "$is_dashboard" != "1" ]]; then
     python_bin="$ROOT/.venv/bin/python"
 
     if [[ ! -x "$python_bin" ]]; then

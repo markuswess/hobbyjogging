@@ -4,6 +4,7 @@ from .activity_list import activities_report
 from .command_support import reviewed_range
 from .compare import compare_report
 from .daily import daily
+from .dashboard import build_dashboard
 from .debug import debug
 from .period_report import period_report, summary
 from .planned import planned_report
@@ -65,6 +66,19 @@ def run_compare_command(parsed, source, include_review):
         source,
         include_review=include_review,
     )
+
+
+def run_dashboard_command(parsed, source, include_review):
+    output, days, activity_limit = parsed
+    path = build_dashboard(
+        source,
+        output,
+        days=days,
+        activity_limit=activity_limit,
+        include_review=include_review,
+    )
+    print(path)
+    return None
 
 
 def run_subt_report_command(parsed, source, include_review):

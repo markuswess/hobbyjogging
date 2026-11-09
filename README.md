@@ -123,6 +123,7 @@ Reports read the canonical database by default.
 ```bash
 ./reports.sh
 ./reports.sh daily
+./reports.sh dashboard
 ./reports.sh report --days 90
 ./reports.sh report --from 2026-01-01 --to 2026-03-31
 ./reports.sh compare years

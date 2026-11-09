@@ -30,15 +30,20 @@ reports hide flagged activities until they are handled.
 
 The database is now trustworthy enough to build on.
 
-## 3. Dashboard — next
+## 3. Dashboard — done (first static version)
 
 Static-first, generated on the homelab and served read-only:
 
 - view models over the same analysis layer the Markdown reports use;
 - weekly overview (load, volume/time, zones, plan vs actual, data health),
   activity list, and activity detail;
-- self-contained HTML + SVG, generation timestamp, atomic swap;
+- self-contained HTML with bundled plotly charts, generation timestamp, and
+  atomic swap;
 - Markdown reports remain the terminal view; no SPA or phone interactivity.
+
+Follow-ups: expose the review queue through `DataSource`, add race cards and
+session-level planned-vs-actual views, and fold the dashboard into the homelab
+sync job.
 
 ## 4. More sources
 
@@ -89,4 +94,5 @@ Turn planned races into a first-class part of the record:
 - **Doubtful data is surfaced, never silently mixed in.** Anything the rules
   flag waits in the review queue; reports exclude open items but never churn
   because of them.
-- **Terminal-first, matplotlib-only, no heavyweight deps.**
+- **Terminal-first, no pandas; matplotlib for CLI charts, plotly for the
+  dashboard.**

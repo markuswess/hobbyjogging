@@ -55,6 +55,11 @@ Updated 2026-11-08.
   into the last displayed zone and `SS` is ignored.
 - **Reports: VO2max chart.** Garmin running VO2max appears as daily dots
   with 7- and 42-day exponentially weighted averages.
+- **Static dashboard.** `reports.sh dashboard` writes a self-contained static
+  site (overview, activities list, activity detail, data health) with
+  embedded plotly charts, bundled `plotly.min.js`, and atomic directory
+  swaps. It defaults to `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` or
+  `data/dashboard`.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
@@ -66,11 +71,10 @@ Updated 2026-11-08.
 
 ## Next
 
-1. **View models + static weekly dashboard** in the reports package (main
-   focus): weekly overview, activity list/detail, data-health banner, and the
-   planned zone distribution (see
-   `packages/hobbyjogging-reports/NEXT_UP.md`). The time chart already covers
-   planned pace zones; the dashboard should reuse that aggregation.
+1. **Dashboard follow-ups.** The first static dashboard is done (overview,
+   activity list and detail, canonical data-health banner). Next: expose the
+   actual review-item queue through `DataSource`, add race cards and
+   session-level planned-vs-actual views, and fold generation into `sync.sh`.
 2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create

@@ -12,6 +12,7 @@ EXPECTED = {
     "monthly",
     "yearly",
     "all",
+    "dashboard",
     "report",
     "compare",
     "subt-report",

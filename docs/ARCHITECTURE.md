@@ -339,27 +339,31 @@ The rule is **compute → render**:
    - Markdown reports for the terminal (`daily.py`, `period_report.py`,
      `subt_report.py`, `activity_list.py`, `mdpretty.py`);
    - matplotlib figures (`charts.py`, saved as files);
-   - static HTML dashboard pages (planned);
+   - static HTML dashboard pages (`html.py`, `dashboard/`);
    - JSON for LLM bundles or future clients (planned).
 
 Charts consume prepared series and return figures; they never read the
 database or parse report text. Adding a report means adding analysis plus a
 renderer, not a new data path.
 
-### Dashboard (planned)
+### Dashboard
 
 Static-first, generated on the homelab:
 
-- Self-contained HTML with embedded SVG charts and plain tables; no SPA, no
-  client-side data fetching.
-- Initial views: weekly overview (load, volume/time, zone mix, plan vs actual,
-  last 14 days), activity list, activity detail, data-health summary.
+- Self-contained HTML with embedded plotly charts and plain tables; no SPA,
+  no client-side data fetching. `plotly.min.js` is bundled into the site.
+- Views: weekly overview (load, zone mix, plan vs actual, last 14 days,
+  quality sessions), activity list, activity detail, data-health summary.
 - Every page carries a generation timestamp and a data-health banner (open
-  review items, exclusions, missing data).
+  review items, missing data).
 - Generation writes to a temporary directory and atomically swaps, so a
-  partially written dashboard is never served.
-- Interactivity (filters, drill-down) is deferred until the static views are
-  proven; server-rendered HTML over the same view models is the upgrade path.
+  partially written dashboard is never served. A marker file prevents
+  replacing an unrelated directory.
+- Data health is canonical-only for now: it counts review-hidden activities
+  and missing load/pace-zone/HR/distance data. The individual review-item
+  queue needs a core `DataSource` addition.
+- Interactivity is limited to plotly zoom/pan; filters and server-rendered
+  drill-down are the upgrade path.
 
 ### LLM coaching export (planned, lower priority)
 
@@ -381,11 +385,12 @@ dashboard: the view models make it cheap to add later.
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
 - Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
   implemented; schema v5 adds the two VO2max owners and activity tags.
-- Reports: Markdown reports, charts, and the activities table; the report code
-  is split per report. The static dashboard is the next build.
+- Reports: Markdown reports, charts, the activities table, the year/month
+  comparison, and the static dashboard; report code is split per report.
 - The review queue still contains warnings the user chose to leave. Reports
   hide flagged activities by default (`--include-review` shows them).
-- Remaining: Runalyze enrichment (API details), homelab cutover.
+- Remaining: Runalyze enrichment (API details), review-queue dashboard API,
+  homelab cutover.
 
 ## Deployment
 
@@ -405,7 +410,7 @@ dashboard: the view models make it cheap to add later.
 
 ## Non-goals and deferred work
 
-- No pandas; matplotlib only.
+- No pandas. Matplotlib for CLI charts; plotly for the interactive dashboard.
 - No SPA or client-side analytics framework.
 - No phone interactivity for now.
 - No direct remote database access; clients read rendered pages.
