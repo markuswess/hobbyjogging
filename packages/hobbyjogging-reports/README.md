@@ -127,8 +127,6 @@ and tables for the terminal:
     ./reports.sh                 # daily
     ./reports.sh daily
     ./reports.sh monthly
-    ./reports.sh dashboard
-    ./reports.sh dashboard --days 30 --activities 100
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh subt-report --days 90
@@ -139,13 +137,19 @@ and tables for the terminal:
     ./reports.sh session last
     ./reports.sh weekly --source intervals
 
+The static dashboard has its own wrapper:
+
+    ./dashboard.sh
+    ./dashboard.sh --days 30 --activities 100
+    ./dashboard.sh --no-open
+
+`dashboard.sh` also opens the generated `index.html` in the browser. Use
+`--no-open` or `NO_OPEN=1` to skip that.
+
 The clipboard receives the original Markdown before terminal
 formatting, so pasting gives clean Markdown. Use `NO_COPY=1` to skip
 the clipboard, `NO_COLOR=1` to disable ANSI colours, or `NO_PRETTY=1`
 to print raw Markdown.
-
-`dashboard` is the exception: it prints the generated directory path and
-skips the clipboard and terminal Markdown rendering.
 
 When stdout is a terminal, the direct CLI also displays reports with
 the same formatting. Redirected or piped output remains raw Markdown.
@@ -482,11 +486,12 @@ separately. The scale is reversed compared with some watches:
 `dashboard` writes a self-contained static HTML site to
 `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, or to
 `data/dashboard` otherwise. `--output DIR` overrides the location exactly.
-It prints the generated directory.
+`./dashboard.sh` prints the generated directory and opens the browser;
+`./sync.sh` regenerates it after a successful sync without opening a browser.
 
-    ./reports.sh dashboard
-    ./reports.sh dashboard --days 30 --activities 100
-    ./reports.sh dashboard --output /tmp/dashboard
+    ./dashboard.sh
+    ./dashboard.sh --days 30 --activities 100
+    ./dashboard.sh --output /tmp/dashboard
 
 Pages:
 

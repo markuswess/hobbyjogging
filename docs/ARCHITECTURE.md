@@ -399,7 +399,8 @@ dashboard: the view models make it cheap to add later.
   regeneration. One command, idempotent, prints a diff summary (new activities,
   changed fields, new conflicts, new findings).
 - **Static serving** via Caddy or nginx; regeneration triggered by the sync
-  job, not per request.
+  job, not per request. `./sync.sh` regenerates after a successful sync;
+  `./dashboard.sh` is the interactive wrapper that also opens the page.
 - **Refresh**: wall screens use meta-refresh; phones reload manually.
 - **Backups**: periodic `sqlite3 .backup` or Litestream; the database is the
   only irreplaceable artifact.

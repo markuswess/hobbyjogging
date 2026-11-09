@@ -121,9 +121,9 @@ COMMANDS = {
         "Generate the static HTML dashboard",
         "dashboard [--output DIR] [--days N] [--activities N]",
         (
-            "reports.sh dashboard",
-            "reports.sh dashboard --days 30 --activities 100",
-            "reports.sh dashboard --output /tmp/dashboard",
+            "dashboard.sh",
+            "dashboard.sh --days 30 --activities 100",
+            "dashboard.sh --output /tmp/dashboard",
         ),
         parse=parse_dashboard_args,
         run=run_dashboard_command,

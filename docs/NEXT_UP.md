@@ -55,11 +55,10 @@ Updated 2026-11-08.
   into the last displayed zone and `SS` is ignored.
 - **Reports: VO2max chart.** Garmin running VO2max appears as daily dots
   with 7- and 42-day exponentially weighted averages.
-- **Static dashboard.** `reports.sh dashboard` writes a self-contained static
-  site (overview, activities list, activity detail, data health) with
-  embedded plotly charts, bundled `plotly.min.js`, and atomic directory
-  swaps. It defaults to `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` or
-  `data/dashboard`.
+- **Static dashboard.** `dashboard.sh` writes a self-contained static site
+  (overview, activities list, activity detail, data health) with embedded
+  plotly charts, bundled `plotly.min.js`, and atomic directory swaps. It
+  opens the browser; `sync.sh` regenerates the same site without opening one.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
@@ -72,9 +71,10 @@ Updated 2026-11-08.
 ## Next
 
 1. **Dashboard follow-ups.** The first static dashboard is done (overview,
-   activity list and detail, canonical data-health banner). Next: expose the
-   actual review-item queue through `DataSource`, add race cards and
-   session-level planned-vs-actual views, and fold generation into `sync.sh`.
+   activity list and detail, canonical data-health banner) and `sync.sh`
+   regenerates it after a successful sync. Next: expose the actual review-item
+   queue through `DataSource`, then add race cards and session-level
+   planned-vs-actual views.
 2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
@@ -91,8 +91,10 @@ Updated 2026-11-08.
 - `events sync` defaults to today .. today + 182 days; `--from`/`--to`
   override the window, and `--dry-run` reports without writing.
 - `./sync.sh` runs the incremental sync (Garmin → Intervals → FIT → review
-  scan); `--no-garmin`, `--no-intervals`, `--no-fit`, and `--no-scan` skip
-  sources.
+  scan) and then regenerates the dashboard; `--no-garmin`, `--no-intervals`,
+  `--no-fit`, `--no-scan`, and `--no-dashboard` skip those steps.
+- `./dashboard.sh` regenerates the dashboard and opens `index.html` in the
+  browser; `--no-open` or `NO_OPEN=1` suppresses the browser.
 - The `planned` report always starts tomorrow.
 - Reports use `duration_s` (recording/timer time) for pace and time.
   `moving_s` is stored for provenance and the `moving_time_mismatch` rule

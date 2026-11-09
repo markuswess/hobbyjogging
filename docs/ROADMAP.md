@@ -42,8 +42,8 @@ Static-first, generated on the homelab and served read-only:
 - Markdown reports remain the terminal view; no SPA or phone interactivity.
 
 Follow-ups: expose the review queue through `DataSource`, add race cards and
-session-level planned-vs-actual views, and fold the dashboard into the homelab
-sync job.
+session-level planned-vs-actual views, and keep the dashboard generation in the
+sync job as those views grow.
 
 ## 4. More sources
 
