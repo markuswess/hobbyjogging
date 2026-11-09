@@ -11,7 +11,9 @@ from hobbyjogging_report.dashboard.views import (
     overview_ewma,
     planned_bars_without_actual,
     planned_overview,
+    zone_group_series,
 )
+from hobbyjogging_report.model import AverageWindows
 from support import FakeSource, activity_factory, make_interval
 
 TODAY = date(2026, 11, 9)
@@ -161,11 +163,14 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("15min", index)
             self.assertIn("5x5 subT", index)
             self.assertIn("Running volume by pace zone", index)
-            self.assertIn("Z1+2", index)
-            self.assertIn("Z3+4", index)
-            self.assertIn("182-day EWMA", index)
-            self.assertIn("42-day EWMA", index)
-            self.assertIn("planned Z1+2", index)
+            self.assertIn("Hard 7d", index)
+            self.assertIn("Hard 42d", index)
+            self.assertIn("Hard 182d", index)
+            self.assertIn("Easy 7d", index)
+            self.assertIn("Easy 42d", index)
+            self.assertIn("Easy 182d", index)
+            self.assertIn("planned hard", index)
+            self.assertIn("planned easy", index)
             self.assertIn("2026-09-01", index)
             self.assertIn("2026-11-23", index)
             self.assertIn("Plan vs actual", index)
@@ -374,6 +379,69 @@ class DashboardEwmaTests(unittest.TestCase):
             [TODAY + timedelta(days=1)],
             [row[0] for row in bars],
         )
+
+    def test_zone_group_series_uses_planned_when_no_actual(self):
+        events = [
+            Event(
+                date=TODAY,
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 600, 1),
+                    EventZoneTime("Z3", 300, 3),
+                ],
+            )
+        ]
+
+        series = zone_group_series(
+            [],
+            events,
+            TODAY,
+            TODAY,
+            windows=AverageWindows(),
+        )
+
+        self.assertEqual(1, len(series.points))
+        point = series.points[0]
+        self.assertTrue(point.projected)
+        self.assertEqual(600, point.easy_s)
+        self.assertEqual(300, point.hard_s)
+        self.assertGreater(point.easy_7, 0)
+        self.assertGreater(point.hard_7, 0)
+
+    def test_zone_group_series_prefers_actual_over_planned(self):
+        events = [
+            Event(
+                date=TODAY,
+                type="run",
+                duration_s=3600,
+                zone_kind="pace",
+                zone_times=[EventZoneTime("Z3", 1800, 3)],
+            )
+        ]
+        activities = [
+            activity(
+                id="actual",
+                date=TODAY,
+                duration_s=3600,
+                distance_m=10000,
+                pace_zone_times=[600, 600, 1800, 600],
+            )
+        ]
+
+        series = zone_group_series(
+            activities,
+            events,
+            TODAY,
+            TODAY,
+            windows=AverageWindows(),
+        )
+
+        point = series.points[0]
+        self.assertFalse(point.projected)
+        self.assertEqual(1200, point.easy_s)
+        self.assertEqual(2400, point.hard_s)
 
     def test_planned_overview_totals_next_period(self):
         source = _source()

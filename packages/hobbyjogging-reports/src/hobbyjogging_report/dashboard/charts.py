@@ -8,8 +8,26 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs
 from plotly.subplots import make_subplots
 
-from ..model import RecoveryPoint, TimePoint
+from ..model import RecoveryPoint
 from ..series import alpha_from_time_constant, ewma
+from ..style import (
+    EASY_COLOR,
+    EASY_EDGE,
+    EASY_LINE_COLORS,
+    EASY_PLANNED_COLOR,
+    HARD_COLOR,
+    HARD_EDGE,
+    HARD_LINE_COLORS,
+    HARD_PLANNED_COLOR,
+    LINE_STYLES,
+    LINE_WIDTHS,
+    PLANNED_PATTERN,
+    PROJECTED_OPACITY,
+    UNZONED_COLOR,
+    UNZONED_EDGE,
+    UNZONED_PLANNED_COLOR,
+)
+from .views import ZoneGroupSeries
 
 PLOTLY_CONFIG = {
     "displaylogo": False,
@@ -40,30 +58,30 @@ def _to_html(figure: go.Figure) -> str:
 def running_volume_chart(
     actual_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
-    points: list[TimePoint],
+    zone_series: ZoneGroupSeries,
     start: date,
     end: date,
     today: date,
 ) -> str:
-    """Daily running hours stacked by zone group with 182/42-day EWMAs."""
+    """Daily running hours stacked by easy/hard/unzoned with grouped EWMAs."""
     figure = go.Figure()
 
     groups = (
-        ("Z1+2", 1, "#9ecae1", "rgba(158, 202, 225, 0.45)", "#6baed6"),
-        ("Z3+4", 2, "#e6550d", "rgba(230, 85, 13, 0.45)", "#a63603"),
-        ("Unzoned", 3, "#d9d9d9", "rgba(217, 217, 217, 0.6)", "#969696"),
+        ("hard", 2, HARD_COLOR, HARD_PLANNED_COLOR, HARD_EDGE),
+        ("easy", 1, EASY_COLOR, EASY_PLANNED_COLOR, EASY_EDGE),
+        ("unzoned", 3, UNZONED_COLOR, UNZONED_PLANNED_COLOR, UNZONED_EDGE),
     )
 
     for label, value_key, color, _planned_color, _edge in groups:
         values = [row[value_key] / 3600 for row in actual_bars]
 
-        if label == "Unzoned" and not any(values):
+        if label == "unzoned" and not any(values):
             continue
 
         figure.add_bar(
             x=[row[0].isoformat() for row in actual_bars],
             y=values,
-            name=label,
+            name=label.title(),
             marker_color=color,
         )
 
@@ -71,7 +89,7 @@ def running_volume_chart(
         for label, value_key, _color, planned_color, edge in groups:
             planned_values = [row[value_key] / 3600 for row in planned_bars]
 
-            if label == "Unzoned" and not any(planned_values):
+            if label == "unzoned" and not any(planned_values):
                 continue
 
             figure.add_bar(
@@ -81,51 +99,58 @@ def running_volume_chart(
                 marker={
                     "color": planned_color,
                     "line": {"color": edge, "width": 1},
-                    "pattern": {"shape": "/", "fgcolor": edge},
+                    "pattern": {
+                        "shape": PLANNED_PATTERN,
+                        "fgcolor": edge,
+                    },
                 },
             )
 
-    actual = [point for point in points if not point.projected]
-    projected = [point for point in points if point.projected]
+    actual = [point for point in zone_series.points if not point.projected]
+    projected = [point for point in zone_series.points if point.projected]
 
-    for attribute, label, color in (
-        ("base", "182-day EWMA", "#08519c"),
-        ("fitness", "42-day EWMA", "#a63603"),
+    for family, colors in (
+        ("hard", HARD_LINE_COLORS),
+        ("easy", EASY_LINE_COLORS),
     ):
-        if actual:
-            figure.add_trace(
-                go.Scatter(
-                    x=[point.date.isoformat() for point in actual],
-                    y=[getattr(point, attribute) / 3600 for point in actual],
-                    mode="lines",
-                    name=label,
-                    line={"color": color, "width": 2},
-                )
-            )
+        for window in (7, 42, 182):
+            attribute = f"{family}_{window}"
+            style = {
+                "color": colors[window],
+                "width": LINE_WIDTHS[window],
+                "dash": LINE_STYLES[window],
+            }
 
-        if projected:
-            bridge = actual[-1:] + projected
-            figure.add_trace(
-                go.Scatter(
-                    x=[point.date.isoformat() for point in bridge],
-                    y=[getattr(point, attribute) / 3600 for point in bridge],
-                    mode="lines",
-                    name=label,
-                    line={"color": color, "width": 2, "dash": "dash"},
-                    showlegend=False,
+            if actual:
+                figure.add_trace(
+                    go.Scatter(
+                        x=[point.date.isoformat() for point in actual],
+                        y=[
+                            getattr(point, attribute) / 3600
+                            for point in actual
+                        ],
+                        mode="lines",
+                        name=f"{family.title()} {window}d",
+                        line=style,
+                    )
                 )
-            )
 
-    if projected:
-        figure.add_trace(
-            go.Scatter(
-                x=[],
-                y=[],
-                mode="lines",
-                name="projected",
-                line={"color": "#7f7f7f", "width": 1, "dash": "dash"},
-            )
-        )
+            if projected:
+                bridge = actual[-1:] + projected
+                figure.add_trace(
+                    go.Scatter(
+                        x=[point.date.isoformat() for point in bridge],
+                        y=[
+                            getattr(point, attribute) / 3600
+                            for point in bridge
+                        ],
+                        mode="lines",
+                        name=f"{family.title()} {window}d",
+                        line=style,
+                        opacity=PROJECTED_OPACITY,
+                        showlegend=False,
+                    )
+                )
 
     figure.add_vline(
         x=today.isoformat(),
@@ -138,14 +163,19 @@ def running_volume_chart(
 
     figure.update_layout(
         template="plotly_white",
-        height=450,
-        margin={"l": 50, "r": 20, "t": 40, "b": 40},
+        height=520,
+        margin={"l": 50, "r": 20, "t": 95, "b": 40},
         barmode="stack",
         bargap=0.1,
         hovermode="x unified",
         yaxis_title="hours",
         xaxis={"range": [start.isoformat(), end.isoformat()]},
-        legend={"orientation": "h", "y": 1.12, "x": 0},
+        legend={
+            "orientation": "h",
+            "y": 1.18,
+            "x": 0,
+            "font": {"size": 9},
+        },
     )
 
     return _to_html(figure)

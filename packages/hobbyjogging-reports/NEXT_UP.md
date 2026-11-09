@@ -8,11 +8,11 @@ comparison.
 ## Done
 
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
-  overview (7/42/182-day EWMAs, running volume by pace zone, load, plan vs
-  actual), recovery and health charts, activity list and detail pages, and a
-  canonical data-health banner; it opens the browser. `sync.sh` regenerates
-  the same site after a successful sync without opening a browser. Charts use
-  bundled plotly; generation is atomic.
+  overview (7/42/182-day easy/hard EWMAs, running volume by intensity group,
+  load, plan vs actual), recovery and health charts, activity list and detail
+  pages, and a canonical data-health banner; it opens the browser. `sync.sh`
+  regenerates the same site after a successful sync without opening a browser.
+  Charts use bundled plotly; generation is atomic.
 - **Time chart uses pace zones.** The weekly stack and zone EWMA panel use
   activity pace zones. Planned pace zones appear as hatched weekly bars and
   continue through the EWMA panel as dashed projections. Planned zones of

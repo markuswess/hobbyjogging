@@ -26,10 +26,16 @@ from ..format import (
     sport_label,
 )
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import RecoveryPoint, TimePoint
+from ..model import RecoveryPoint
 from .charts import load_chart, recovery_chart, running_volume_chart
 from .health import DataHealth, banner
-from .views import EwmaRow, PlannedOverview, PlannedSummary, WindowSummary
+from .views import (
+    EwmaRow,
+    PlannedOverview,
+    PlannedSummary,
+    WindowSummary,
+    ZoneGroupSeries,
+)
 
 
 def activity_filename(activity_id: str) -> str:
@@ -174,7 +180,7 @@ def overview_page(
     planned_overview: PlannedOverview,
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
-    volume_points: list[TimePoint],
+    volume_series: ZoneGroupSeries,
     chart_start: date,
     chart_end: date,
     load_series: list[tuple[date, float]],
@@ -222,7 +228,7 @@ def overview_page(
         running_volume_chart(
             volume_bars,
             planned_bars,
-            volume_points,
+            volume_series,
             chart_start,
             chart_end,
             end,
@@ -236,9 +242,9 @@ def overview_page(
     )
     volume_html += (
         f'<p class="muted">Daily running hours over {range_text}, stacked '
-        "by pace zone; lines are 182/42-day EWMAs. Planned workouts appear "
-        "as hatched bars on days without a recorded run; dashed lines show "
-        "the projected averages.</p>"
+        "hard → easy → unzoned; lines are 7/42/182-day EWMAs for each "
+        "intensity group. Planned workouts appear as hatched bars on days "
+        "without a recorded run; lighter line segments are projected.</p>"
     )
 
     if any(value > 0 for _, value in load_series):

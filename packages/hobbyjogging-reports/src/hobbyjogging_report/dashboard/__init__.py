@@ -15,7 +15,6 @@ from ..analysis import (
     average_warmup_days,
     daily_training_load,
     recovery_trends,
-    time_averages,
 )
 from ..classify import classify
 from ..model import AverageWindows
@@ -38,6 +37,7 @@ from .views import (
     planned_overview,
     planned_summary,
     summarize_window,
+    zone_group_series,
 )
 
 MARKER = ".hobbyjogging-dashboard"
@@ -144,15 +144,14 @@ def build_dashboard(
         today + timedelta(days=1),
         chart_end,
     )
-    volume_points = time_averages(
+    volume_series = zone_group_series(
         chart_activities,
-        chart_start,
+        chart_events,
+        chart_start - timedelta(days=warmup_days),
         chart_end,
-        windows=windows,
-        warmup_days=warmup_days,
-        events=chart_events,
-        projected_end=chart_end,
+        chart_start=chart_start,
         projection_start=today,
+        windows=windows,
     )
 
     load_series = daily_training_load(activities, start, today)
@@ -212,7 +211,7 @@ def build_dashboard(
             planned_overview=planned_next,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
-            volume_points=volume_points,
+            volume_series=volume_series,
             chart_start=chart_start,
             chart_end=chart_end,
             load_series=load_series,
