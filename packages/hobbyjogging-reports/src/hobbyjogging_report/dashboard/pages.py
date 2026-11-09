@@ -29,7 +29,7 @@ from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, TimePoint
 from .charts import load_chart, recovery_chart, running_volume_chart
 from .health import DataHealth, banner
-from .views import EwmaRow, PlannedSummary, WindowSummary
+from .views import EwmaRow, PlannedOverview, PlannedSummary, WindowSummary
 
 
 def activity_filename(activity_id: str) -> str:
@@ -136,6 +136,28 @@ def _ewma_cell(row: EwmaRow, tau: int) -> str:
     return f"{value:g}"
 
 
+def _planned_cell(
+    row: EwmaRow,
+    planned: PlannedOverview,
+    weeks: float,
+) -> str:
+    if weeks <= 0:
+        return "-"
+
+    value = getattr(planned, row.key) / weeks
+
+    if row.kind == "count":
+        return f"{value:.1f}"
+    if row.kind == "time":
+        return _duration(value)
+    if row.kind == "distance":
+        return f"{value / 1000:,.1f}"
+    if row.kind == "load":
+        return f"{value:.0f}"
+
+    return f"{value:g}"
+
+
 def overview_page(
     *,
     generated_at: str,
@@ -149,6 +171,7 @@ def overview_page(
     last7: WindowSummary,
     events: list[Event],
     planned: PlannedSummary,
+    planned_overview: PlannedOverview,
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_points: list[TimePoint],
@@ -157,23 +180,42 @@ def overview_page(
     load_series: list[tuple[date, float]],
     detail_ids: set[str],
 ) -> str:
+    future_days = (chart_end - end).days
+    weeks = future_days / 7 if future_days else 0
+    planned_header = (
+        f"Next {future_days} days (avg/week)"
+        if future_days
+        else "Next period (avg/week)"
+    )
+    planned_note = (
+        f"the planned weekly average for the next {future_days} days"
+        if future_days
+        else "no future planning range"
+    )
     ewma_table = table(
-        ["Metric", "7-day EWMA", "42-day EWMA", "182-day EWMA"],
+        [
+            "Metric",
+            "7-day EWMA",
+            "42-day EWMA",
+            "182-day EWMA",
+            planned_header,
+        ],
         [
             [
                 esc(row.label),
                 esc(_ewma_cell(row, 7)),
                 esc(_ewma_cell(row, 42)),
                 esc(_ewma_cell(row, 182)),
+                esc(_planned_cell(row, planned_overview, weeks)),
             ]
             for row in ewma_rows
         ],
-        numeric=(1, 2, 3),
+        numeric=(1, 2, 3, 4),
     )
     ewma_html = (
         ewma_table
         + '<p class="muted">Weekly equivalents of the daily EWMA ending '
-        "today.</p>"
+        f"today; the last column is {planned_note}.</p>"
     )
 
     volume_html = chart(
@@ -187,7 +229,6 @@ def overview_page(
         )
     )
     volume_days = (end - chart_start).days + 1
-    future_days = (chart_end - end).days
     range_text = (
         f"the last {volume_days} days and next {future_days} days"
         if future_days

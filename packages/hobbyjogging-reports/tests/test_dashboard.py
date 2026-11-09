@@ -7,7 +7,10 @@ from unittest.mock import patch
 
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
-from hobbyjogging_report.dashboard.views import overview_ewma
+from hobbyjogging_report.dashboard.views import (
+    overview_ewma,
+    planned_overview,
+)
 from support import FakeSource, activity_factory, make_interval
 
 TODAY = date(2026, 11, 9)
@@ -151,6 +154,10 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("7-day EWMA", index)
             self.assertIn("42-day EWMA", index)
             self.assertIn("182-day EWMA", index)
+            self.assertIn("Next 14 days (avg/week)", index)
+            self.assertIn("1h15", index)
+            self.assertIn("16.0", index)
+            self.assertIn("15min", index)
             self.assertIn("5x5 subT", index)
             self.assertIn("Running volume by pace zone", index)
             self.assertIn("Z1+2", index)
@@ -291,6 +298,21 @@ class DashboardOutputTests(unittest.TestCase):
 
 
 class DashboardEwmaTests(unittest.TestCase):
+
+    def test_planned_overview_totals_next_period(self):
+        source = _source()
+        planned = planned_overview(
+            source._events,
+            TODAY + timedelta(days=1),
+            TODAY + timedelta(days=14),
+        )
+
+        self.assertEqual(2, planned.runs)
+        self.assertEqual(0, planned.cross)
+        self.assertEqual(9000, planned.run_time_s)
+        self.assertEqual(32000, planned.run_distance_m)
+        self.assertEqual(140, planned.load)
+        self.assertEqual(1800, planned.z3_z4_s)
 
     def test_ewma_rows_are_weekly_equivalents(self):
         activities = [

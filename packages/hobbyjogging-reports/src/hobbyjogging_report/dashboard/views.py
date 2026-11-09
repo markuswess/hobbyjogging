@@ -16,6 +16,7 @@ from ..analysis import (
     daily_run_time,
     daily_training_load,
     daily_zone_time,
+    event_zone_time,
 )
 from ..model import AverageWindows
 from ..series import (
@@ -49,9 +50,47 @@ class PlannedSummary:
 
 @dataclass(frozen=True)
 class EwmaRow:
+    key: str
     label: str
     kind: str
     values: dict[int, float]
+
+
+@dataclass(frozen=True)
+class PlannedOverview:
+    runs: int = 0
+    cross: int = 0
+    run_time_s: float = 0
+    run_distance_m: float = 0
+    load: float = 0
+    z3_z4_s: float = 0
+
+
+def planned_overview(
+    events: list[Event],
+    start: date,
+    end: date,
+) -> PlannedOverview:
+    """Planned totals for the next overview period."""
+    selected = [
+        event
+        for event in events
+        if event.type and start <= event.date <= end
+    ]
+    runs = [event for event in selected if event.type in RUN_TYPES]
+    cross = [event for event in selected if event.type not in RUN_TYPES]
+
+    return PlannedOverview(
+        runs=len(runs),
+        cross=len(cross),
+        run_time_s=sum(event.duration_s or 0 for event in runs),
+        run_distance_m=sum(event.distance_m or 0 for event in runs),
+        load=sum(event.training_load or 0 for event in selected),
+        z3_z4_s=sum(
+            event_zone_time(event, (3, 4)) or 0
+            for event in runs
+        ),
+    )
 
 
 def overview_ewma(
@@ -107,12 +146,17 @@ def overview_ewma(
         }
 
     return [
-        EwmaRow("Runs / week", "count", weekly(runs)),
-        EwmaRow("Cross / week", "count", weekly(cross)),
-        EwmaRow("Run time / week", "time", weekly(run_time)),
-        EwmaRow("Run km / week", "distance", weekly(run_distance)),
-        EwmaRow("Load / week", "load", weekly(load)),
-        EwmaRow("Z3+4 / week", "time", weekly(z3_z4)),
+        EwmaRow("runs", "Runs / week", "count", weekly(runs)),
+        EwmaRow("cross", "Cross / week", "count", weekly(cross)),
+        EwmaRow("run_time_s", "Run time / week", "time", weekly(run_time)),
+        EwmaRow(
+            "run_distance_m",
+            "Run km / week",
+            "distance",
+            weekly(run_distance),
+        ),
+        EwmaRow("load", "Load / week", "load", weekly(load)),
+        EwmaRow("z3_z4_s", "Z3+4 / week", "time", weekly(z3_z4)),
     ]
 
 

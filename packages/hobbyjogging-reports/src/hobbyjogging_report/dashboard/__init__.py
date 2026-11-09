@@ -35,6 +35,7 @@ from .views import (
     in_window,
     overview_ewma,
     planned_daily_zone_groups,
+    planned_overview,
     planned_summary,
     summarize_window,
 )
@@ -137,6 +138,11 @@ def build_dashboard(
         today + timedelta(days=1),
         chart_end,
     )
+    planned_next = planned_overview(
+        chart_events,
+        today + timedelta(days=1),
+        chart_end,
+    )
     volume_points = time_averages(
         chart_activities,
         chart_start,
@@ -202,6 +208,7 @@ def build_dashboard(
             last7=last7,
             events=events,
             planned=planned,
+            planned_overview=planned_next,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_points=volume_points,

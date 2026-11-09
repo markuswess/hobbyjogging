@@ -497,10 +497,10 @@ separately. The scale is reversed compared with some watches:
 Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
-  cross sessions, time, km, load, and Z3+4), the main running-volume chart,
-  a training-load chart, plan vs actual, the next 7 planned days, and quality
-  sessions. The overview cards use the last 14 days by default; the EWMA
-  values always end today.
+  cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
+  the next 14 days; the main running-volume chart, a training-load chart,
+  plan vs actual, the next 7 planned days, and quality sessions. The overview
+  cards use the last 14 days by default; the EWMA values always end today.
 - `activities.html` — the recent activity table (default 50), linked to
   per-activity pages.
 - `activity/<id>.html` — one activity's metrics, zone times, description,
