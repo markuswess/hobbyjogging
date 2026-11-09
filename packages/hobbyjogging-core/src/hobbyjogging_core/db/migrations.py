@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -116,6 +116,57 @@ CREATE TABLE event_zone_times (
 CREATE INDEX idx_event_zone_times_event ON event_zone_times(event_id);
 """
 
+MIGRATION_9_SQL = """
+CREATE TABLE activity_workout_methods (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    method TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, method)
+);
+
+CREATE TABLE activity_workout_targets (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    target TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, target)
+);
+
+CREATE TABLE event_workout_methods (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    method TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, method)
+);
+
+CREATE TABLE event_workout_targets (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    target TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, target)
+);
+
+CREATE INDEX idx_activity_workout_methods_method
+ON activity_workout_methods(method);
+CREATE INDEX idx_activity_workout_targets_target
+ON activity_workout_targets(target);
+CREATE INDEX idx_event_workout_methods_method
+ON event_workout_methods(method);
+CREATE INDEX idx_event_workout_targets_target
+ON event_workout_targets(target);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -125,6 +176,7 @@ MIGRATIONS: dict[int, str] = {
     6: MIGRATION_6_SQL,
     7: MIGRATION_7_SQL,
     8: MIGRATION_8_SQL,
+    9: MIGRATION_9_SQL,
 }
 
 

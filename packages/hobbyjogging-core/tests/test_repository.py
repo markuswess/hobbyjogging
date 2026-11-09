@@ -239,6 +239,47 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual([1, 3, None], [zone.zone_index for zone in event.zone_times])
         self.assertEqual(1650, event.zone_times[0].seconds)
 
+    def test_workout_sets_are_mapped(self):
+        self.conn.executemany(
+            "INSERT INTO activity_workout_methods "
+            "(activity_id, method, source) VALUES (?, ?, 'manual')",
+            [
+                ("a1", "intervals"),
+                ("a1", "strides"),
+            ],
+        )
+        self.conn.executemany(
+            "INSERT INTO activity_workout_targets "
+            "(activity_id, target, source) VALUES (?, ?, 'manual')",
+            [("a1", "vo2max")],
+        )
+        self.conn.executemany(
+            "INSERT INTO event_workout_methods "
+            "(event_id, method, source) VALUES (?, ?, 'manual')",
+            [("e1", "race")],
+        )
+        self.conn.executemany(
+            "INSERT INTO event_workout_targets "
+            "(event_id, target, source) VALUES (?, ?, 'manual')",
+            [("e1", "marathon")],
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+        events = self.repository.events(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )
+
+        self.assertEqual(["intervals", "strides"], activities[0].workout_methods)
+        self.assertEqual(["vo2max"], activities[0].workout_targets)
+        self.assertTrue(activities[0].quality)
+        self.assertEqual(["race"], events[0].workout_methods)
+        self.assertEqual(["marathon"], events[0].workout_targets)
+        self.assertTrue(events[0].quality)
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

@@ -33,7 +33,7 @@ conn = open_database()  # data/hobbyjogging.db
 Set `HOBBYJOGGING_DB` to use a different path.
 
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
-`SCHEMA_VERSION` is the current target version (8).
+`SCHEMA_VERSION` is the current target version (9).
 
 Read canonical data through the repository:
 
@@ -128,6 +128,9 @@ an event's planned zone distribution.
 - `activity_sources` — links between canonical activities and raw records.
 - `activity_field_sources` — per-field provenance; manual values are marked.
 - `activity_tags` — per-source activity labels (`is_manual = 1` for manual).
+- `activity_workout_methods`, `activity_workout_targets`,
+  `event_workout_methods`, `event_workout_targets` — set-based workout
+  classification (`hobbyjogging_core.workouts`).
 - `review_items` — import conflicts and questionable activities, with a
   fingerprint for idempotent detection and an open/ignored/resolved status.
 - `activity_laps`, `activity_intervals` — FIT laps and structured intervals.

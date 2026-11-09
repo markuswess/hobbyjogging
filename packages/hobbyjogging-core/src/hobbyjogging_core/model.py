@@ -7,6 +7,8 @@ these types. Analysis, charts, and reports depend only on this model.
 from dataclasses import dataclass, field
 from datetime import date
 
+from .workouts import is_quality
+
 
 @dataclass
 class Equipment:
@@ -53,6 +55,8 @@ class Activity:
     intensity: float | None = None  # fraction of threshold (ICU intensity)
     vo2max_garmin: float | None = None
     vo2max_runalyze: float | None = None
+    workout_methods: list[str] = field(default_factory=list)
+    workout_targets: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
@@ -67,6 +71,11 @@ class Activity:
             if self.vo2max_garmin is not None
             else self.vo2max_runalyze
         )
+
+    @property
+    def quality(self) -> bool | None:
+        """Whether the session is quality, non-quality, or unknown."""
+        return is_quality(self.workout_methods, self.workout_targets)
 
 
 @dataclass
@@ -97,6 +106,13 @@ class Event:
     training_load: float | None = None
     zone_kind: str = ""
     zone_times: list[EventZoneTime] = field(default_factory=list)
+    workout_methods: list[str] = field(default_factory=list)
+    workout_targets: list[str] = field(default_factory=list)
+
+    @property
+    def quality(self) -> bool | None:
+        """Whether the planned session is quality, non-quality, or unknown."""
+        return is_quality(self.workout_methods, self.workout_targets)
 
 
 @dataclass

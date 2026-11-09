@@ -146,7 +146,7 @@ implementation.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 8.
+SQLite, forward-only migrations. Schema version 9.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
@@ -163,6 +163,11 @@ SQLite, forward-only migrations. Schema version 8.
   attached to activities, tagged by source record.
 - `activity_tags` (v5) — activity labels with their source; used for dashboard
   filters and later analysis.
+- `activity_workout_methods`, `activity_workout_targets` (v9) — set-based
+  workout classification for completed activities (a session may carry
+  several methods and targets).
+- `event_workout_methods`, `event_workout_targets` (v9) — the same sets for
+  planned events.
 - `wellness_days`, `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `events` — planned workouts and races: local date, type, description,
@@ -175,6 +180,18 @@ SQLite, forward-only migrations. Schema version 8.
 - `import_runs` — one row per import with parameters and outcome.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
+
+Workout classification is set-based and orthogonal:
+
+- **Methods** — `continuous`, `intervals`, `tempo`, `long_run`, `progression`,
+  `race`, `strides`, `other`.
+- **Targets** — `base`, `lt1`, `subthreshold`, `threshold`, `vo2max`, `speed`,
+  `marathon`, `recovery`, `other`.
+- **Quality** is derived: any quality method (`intervals`, `long_run`,
+  `tempo`, `progression`, `race`) or target (`lt1`, `subthreshold`,
+  `threshold`, `vo2max`, `speed`, `marathon`) makes a session quality;
+  base/recovery only is non-quality; no values is unknown. Strides never make
+  a session quality by themselves.
 
 Two invariants are enforced by the writer:
 
@@ -384,7 +401,7 @@ dashboard: the view models make it cheap to add later.
 
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
 - Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
-  implemented; schema v5 adds the two VO2max owners and activity tags.
+  implemented; schema v9 adds set-based workout methods/targets.
 - Reports: Markdown reports, charts, the activities table, the year/month
   comparison, and the static dashboard; report code is split per report.
 - The review queue still contains warnings the user chose to leave. Reports

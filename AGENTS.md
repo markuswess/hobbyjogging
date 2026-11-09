@@ -61,4 +61,8 @@ Cross-package changes must leave all three suites green.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →
   `vo2max_runalyze`. Tags are per-source and manual tags are never replaced.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
+- Workout methods/targets are set-based (`activity_workout_*`,
+  `event_workout_*`). Quality is derived: base/recovery only is non-quality;
+  intervals, long_run, tempo, progression, race, and the quality targets are
+  quality; strides never make a session quality by itself.
 - Reports use matplotlib only, never pandas.

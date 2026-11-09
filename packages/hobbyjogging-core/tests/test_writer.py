@@ -1005,6 +1005,124 @@ class Vo2maxAndTagTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.writer.set_event_zone_times("nope", "pace", [])
 
+    def test_activity_workout_sets_replace_per_source_and_manual_wins(self):
+        self.assertEqual(
+            2,
+            self.writer.replace_activity_workout_methods(
+                "a1",
+                ["intervals", "strides"],
+                source="sheet",
+                source_record_id=self.intervals_id,
+            ),
+        )
+        self.writer.replace_activity_workout_methods(
+            "a1",
+            ["continuous"],
+            source="classifier",
+        )
+        self.writer.replace_activity_workout_targets(
+            "a1",
+            ["vo2max"],
+            source="sheet",
+            source_record_id=self.intervals_id,
+        )
+
+        def methods():
+            return [
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT method FROM activity_workout_methods "
+                    "WHERE activity_id = 'a1' ORDER BY method"
+                )
+            ]
+
+        def targets():
+            return [
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT target FROM activity_workout_targets "
+                    "WHERE activity_id = 'a1' ORDER BY target"
+                )
+            ]
+
+        self.assertEqual(["continuous", "intervals", "strides"], methods())
+        self.assertEqual(["vo2max"], targets())
+
+        # A manual value is added and never replaced by a source.
+        self.writer.replace_activity_workout_methods(
+            "a1",
+            ["tempo"],
+            source="manual",
+            is_manual=True,
+        )
+        self.writer.replace_activity_workout_methods(
+            "a1",
+            ["intervals", "tempo"],
+            source="sheet",
+            source_record_id=self.intervals_id,
+        )
+        # The sheet's old values are replaced, the classifier's continuous
+        # value and the manual tempo value remain.
+        self.assertEqual(["continuous", "intervals", "tempo"], methods())
+
+        row = self.conn.execute(
+            "SELECT is_manual FROM activity_workout_methods "
+            "WHERE activity_id = 'a1' AND method = 'tempo'"
+        ).fetchone()
+        self.assertEqual(1, row["is_manual"])
+
+    def test_event_workout_sets(self):
+        self.writer.upsert_event(
+            event_id="e1",
+            local_date="2026-04-01",
+            name="5x6 LT1",
+            type="run",
+            source_record_id=self.intervals_id,
+        )
+        self.writer.replace_event_workout_methods(
+            "e1",
+            ["intervals", "strides"],
+            source="manual",
+            is_manual=True,
+        )
+        self.writer.replace_event_workout_targets(
+            "e1",
+            ["vo2max"],
+            source="manual",
+            is_manual=True,
+        )
+        self.assertEqual(
+            ["intervals", "strides"],
+            [
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT method FROM event_workout_methods "
+                    "WHERE event_id = 'e1' ORDER BY method"
+                )
+            ],
+        )
+        self.assertEqual(
+            ["vo2max"],
+            [
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT target FROM event_workout_targets "
+                    "WHERE event_id = 'e1' ORDER BY target"
+                )
+            ],
+        )
+
+    def test_workout_sets_reject_unknown_or_excluded_entity(self):
+        with self.assertRaises(ValueError):
+            self.writer.replace_activity_workout_methods(
+                "nope", ["intervals"], source="manual"
+            )
+        self.writer.exclude_activity("a1")
+        with self.assertRaises(ValueError):
+            self.writer.replace_activity_workout_methods(
+                "a1", ["intervals"], source="manual"
+            )
+
     def test_event_exclusion_and_revival(self):
         self.writer.upsert_event(
             event_id="e1",

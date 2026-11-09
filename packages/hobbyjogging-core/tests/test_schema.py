@@ -15,9 +15,13 @@ EXPECTED_TABLES = {
     "activity_laps",
     "activity_sources",
     "activity_tags",
+    "activity_workout_methods",
+    "activity_workout_targets",
     "activity_zone_times",
     "equipment",
     "equipment_source_links",
+    "event_workout_methods",
+    "event_workout_targets",
     "event_zone_times",
     "events",
     "import_runs",
@@ -241,6 +245,49 @@ class SchemaMigrationTests(unittest.TestCase):
             1,
             self.conn.execute(
                 "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
+
+    def test_migrates_v8_database_to_v9(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4, 5, 6, 7, 8):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 8")
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.conn.execute(
+            "INSERT INTO events (id, local_date, name, type) "
+            "VALUES ('e1', '2026-10-02', 'Town race', 'race')"
+        )
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        self.conn.execute(
+            "INSERT INTO activity_workout_methods "
+            "(activity_id, method, source) VALUES ('a1', 'intervals', 'manual')"
+        )
+        self.conn.execute(
+            "INSERT INTO activity_workout_targets "
+            "(activity_id, target, source) VALUES ('a1', 'vo2max', 'manual')"
+        )
+        self.conn.execute(
+            "INSERT INTO event_workout_methods "
+            "(event_id, method, source) VALUES ('e1', 'race', 'manual')"
+        )
+        self.conn.execute(
+            "INSERT INTO event_workout_targets "
+            "(event_id, target, source) VALUES ('e1', 'other', 'manual')"
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM activity_workout_methods"
             ).fetchone()[0],
         )
 

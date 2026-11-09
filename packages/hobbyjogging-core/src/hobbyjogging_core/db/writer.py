@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from hobbyjogging_core.model import EventZoneTime, Interval, Lap
+from hobbyjogging_core.workouts import (
+    WORKOUT_METHODS,
+    WORKOUT_TARGETS,
+    canonical_method,
+    canonical_target,
+)
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
 
 ACTIVITY_COLUMNS = {
@@ -1571,6 +1577,182 @@ class TrainingWriter:
             ],
         )
         return len(zone_times)
+
+    def replace_activity_workout_methods(
+        self,
+        activity_id: str,
+        methods: list[str],
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's workout-method set for an activity."""
+        return self._replace_workout_set(
+            "activity_workout_methods",
+            "activity_id",
+            "method",
+            activity_id,
+            methods,
+            source=source,
+            source_record_id=source_record_id,
+            is_manual=is_manual,
+            allowed=WORKOUT_METHODS,
+            canonical=canonical_method,
+        )
+
+    def replace_activity_workout_targets(
+        self,
+        activity_id: str,
+        targets: list[str],
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's workout-target set for an activity."""
+        return self._replace_workout_set(
+            "activity_workout_targets",
+            "activity_id",
+            "target",
+            activity_id,
+            targets,
+            source=source,
+            source_record_id=source_record_id,
+            is_manual=is_manual,
+            allowed=WORKOUT_TARGETS,
+            canonical=canonical_target,
+        )
+
+    def replace_event_workout_methods(
+        self,
+        event_id: str,
+        methods: list[str],
+        *,
+        source: str = "manual",
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's workout-method set for a planned event."""
+        return self._replace_workout_set(
+            "event_workout_methods",
+            "event_id",
+            "method",
+            event_id,
+            methods,
+            source=source,
+            source_record_id=source_record_id,
+            is_manual=is_manual,
+            allowed=WORKOUT_METHODS,
+            canonical=canonical_method,
+        )
+
+    def replace_event_workout_targets(
+        self,
+        event_id: str,
+        targets: list[str],
+        *,
+        source: str = "manual",
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's workout-target set for a planned event."""
+        return self._replace_workout_set(
+            "event_workout_targets",
+            "event_id",
+            "target",
+            event_id,
+            targets,
+            source=source,
+            source_record_id=source_record_id,
+            is_manual=is_manual,
+            allowed=WORKOUT_TARGETS,
+            canonical=canonical_target,
+        )
+
+    def _replace_workout_set(
+        self,
+        table: str,
+        id_column: str,
+        value_column: str,
+        entity_id: str,
+        values: list[str],
+        *,
+        source: str,
+        source_record_id: int | None,
+        is_manual: bool,
+        allowed: dict[str, str],
+        canonical,
+    ) -> int:
+        entity_table = "activities" if id_column == "activity_id" else "events"
+        entity_name = "activity" if entity_table == "activities" else "event"
+        row = self.connection.execute(
+            f"SELECT excluded_at FROM {entity_table} WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown {entity_name}: {entity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"{entity_name} {entity_id} is excluded")
+
+        cleaned: list[str] = []
+        for value in values:
+            token = canonical(value)
+            if token not in allowed:
+                raise ValueError(f"unknown workout value: {value!r}")
+            if token not in cleaned:
+                cleaned.append(token)
+
+        existing_manual = {
+            item[value_column]
+            for item in self.connection.execute(
+                f"""
+                SELECT {value_column} FROM {table}
+                WHERE {id_column} = ? AND is_manual = 1
+                """,
+                (entity_id,),
+            )
+        }
+
+        if is_manual:
+            self.connection.execute(
+                f"DELETE FROM {table} WHERE {id_column} = ? AND is_manual = 1",
+                (entity_id,),
+            )
+        else:
+            cleaned = [
+                value for value in cleaned if value not in existing_manual
+            ]
+            self.connection.execute(
+                f"""
+                DELETE FROM {table}
+                WHERE {id_column} = ? AND source = ? AND is_manual = 0
+                """,
+                (entity_id, source),
+            )
+
+        if cleaned:
+            self.connection.executemany(
+                f"""
+                INSERT OR IGNORE INTO {table} (
+                    {id_column}, {value_column}, source,
+                    source_record_id, is_manual
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        entity_id,
+                        value,
+                        source,
+                        source_record_id,
+                        1 if is_manual else 0,
+                    )
+                    for value in cleaned
+                ],
+            )
+
+        return len(cleaned)
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(

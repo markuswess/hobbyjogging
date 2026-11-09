@@ -44,6 +44,7 @@ class TrainingRepository:
         zone_times = self._zone_times(activity_ids)
         equipment = self._equipment_by_activity(activity_ids)
         tags = self._tags_by_activity(activity_ids)
+        methods, targets = self._activity_workout_sets(activity_ids)
         flagged = self._open_review_activity_ids(activity_ids)
 
         return [
@@ -65,6 +66,8 @@ class TrainingRepository:
                 intensity=row["intensity"],
                 vo2max_garmin=row["vo2max_garmin"],
                 vo2max_runalyze=row["vo2max_runalyze"],
+                workout_methods=methods[row["id"]],
+                workout_targets=targets[row["id"]],
                 tags=tags[row["id"]],
                 pace_zone_times=zone_times[row["id"]]["pace"],
                 hr_zone_times=zone_times[row["id"]]["hr"],
@@ -111,7 +114,9 @@ class TrainingRepository:
         if not rows:
             return []
 
-        zone_times = self._event_zone_times([row["id"] for row in rows])
+        event_ids = [row["id"] for row in rows]
+        zone_times = self._event_zone_times(event_ids)
+        methods, targets = self._event_workout_sets(event_ids)
 
         return [
             Event(
@@ -124,6 +129,8 @@ class TrainingRepository:
                 training_load=row["training_load"],
                 zone_kind=row["zone_kind"],
                 zone_times=zone_times[row["id"]],
+                workout_methods=methods[row["id"]],
+                workout_targets=targets[row["id"]],
             )
             for row in rows
         ]
@@ -288,6 +295,69 @@ class TrainingRepository:
             )
 
         return result
+
+    def _activity_workout_sets(
+        self,
+        activity_ids: list[str],
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+        return self._workout_sets(
+            "activity_workout_methods",
+            "activity_workout_targets",
+            "activity_id",
+            "method",
+            "target",
+            activity_ids,
+        )
+
+    def _event_workout_sets(
+        self,
+        event_ids: list[str],
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+        return self._workout_sets(
+            "event_workout_methods",
+            "event_workout_targets",
+            "event_id",
+            "method",
+            "target",
+            event_ids,
+        )
+
+    def _workout_sets(
+        self,
+        methods_table: str,
+        targets_table: str,
+        id_column: str,
+        method_column: str,
+        target_column: str,
+        entity_ids: list[str],
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+        placeholders = ", ".join("?" for _ in entity_ids)
+        methods: dict[str, list[str]] = defaultdict(list)
+        targets: dict[str, list[str]] = defaultdict(list)
+
+        for row in self.connection.execute(
+            f"""
+            SELECT {id_column}, {method_column} AS value
+            FROM {methods_table}
+            WHERE {id_column} IN ({placeholders})
+            ORDER BY {id_column}, value
+            """,
+            entity_ids,
+        ):
+            methods[row[id_column]].append(row["value"])
+
+        for row in self.connection.execute(
+            f"""
+            SELECT {id_column}, {target_column} AS value
+            FROM {targets_table}
+            WHERE {id_column} IN ({placeholders})
+            ORDER BY {id_column}, value
+            """,
+            entity_ids,
+        ):
+            targets[row[id_column]].append(row["value"])
+
+        return methods, targets
 
     def _equipment_by_activity(
         self,
