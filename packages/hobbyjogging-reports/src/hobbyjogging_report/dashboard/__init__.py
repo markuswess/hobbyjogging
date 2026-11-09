@@ -11,8 +11,14 @@ from pathlib import Path
 from hobbyjogging_core.datasource import DataSource
 
 from ..activity_list import select_activities
-from ..analysis import daily_training_load, recovery_trends
+from ..analysis import (
+    average_warmup_days,
+    daily_training_load,
+    recovery_trends,
+    time_averages,
+)
 from ..classify import classify
+from ..model import AverageWindows
 from ..review import exclude_review
 from .charts import plotly_js
 from .health import collect_health
@@ -25,10 +31,10 @@ from .pages import (
     recovery_page,
 )
 from .views import (
-    actual_zone_totals,
+    daily_zone_groups,
     in_window,
+    planned_daily_zone_groups,
     planned_summary,
-    planned_zone_totals,
     summarize_window,
 )
 
@@ -59,6 +65,8 @@ def build_dashboard(
     *,
     days: int = 14,
     activity_limit: int = 50,
+    chart_days: int = 70,
+    future_days: int = 14,
     include_review: bool = False,
     today: date | None = None,
 ) -> Path:
@@ -67,6 +75,10 @@ def build_dashboard(
         raise ValueError("days must be positive")
     if activity_limit <= 0:
         raise ValueError("activity limit must be positive")
+    if chart_days <= 0:
+        raise ValueError("chart days must be positive")
+    if future_days < 0:
+        raise ValueError("future days must be zero or greater")
 
     today = today or date.today()
     start = today - timedelta(days=days - 1)
@@ -99,12 +111,44 @@ def build_dashboard(
         if event.type
     ]
     planned = planned_summary(events)
-    planned_zones = planned_zone_totals(events, event_start, event_end)
-    actual_zones, actual_unzoned_s = actual_zone_totals(
-        activities,
-        start,
+
+    chart_start = today - timedelta(days=chart_days - 1)
+    chart_end = today + timedelta(days=future_days)
+    windows = AverageWindows(base=182, fitness=42, fatigue=7)
+    warmup_days = average_warmup_days(windows)
+    chart_activities, _ = exclude_review(
+        source.activities(
+            chart_start - timedelta(days=warmup_days),
+            today,
+        ),
+        include_review=include_review,
+    )
+    chart_events = [
+        event
+        for event in source.events(today, chart_end)
+        if event.type
+    ]
+    volume_bars = daily_zone_groups(
+        chart_activities,
+        chart_start,
         today,
     )
+    planned_bars = planned_daily_zone_groups(
+        chart_events,
+        today + timedelta(days=1),
+        chart_end,
+    )
+    volume_points = time_averages(
+        chart_activities,
+        chart_start,
+        chart_end,
+        windows=windows,
+        warmup_days=warmup_days,
+        events=chart_events,
+        projected_end=chart_end,
+        projection_start=today,
+    )
+
     load_series = daily_training_load(activities, start, today)
 
     wellness = source.wellness(
@@ -159,9 +203,11 @@ def build_dashboard(
             last7=last7,
             events=events,
             planned=planned,
-            actual_zones=actual_zones,
-            actual_unzoned_s=actual_unzoned_s,
-            planned_zones=planned_zones,
+            volume_bars=volume_bars,
+            planned_bars=planned_bars,
+            volume_points=volume_points,
+            chart_start=chart_start,
+            chart_end=chart_end,
             load_series=load_series,
             detail_ids=detail_ids,
         ),

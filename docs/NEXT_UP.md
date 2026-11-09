@@ -61,10 +61,10 @@ Updated 2026-11-08.
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
-  (overview, recovery and health, activities list, activity detail, data
-  health) with embedded plotly charts, bundled `plotly.min.js`, and atomic
-  directory swaps. It opens the browser; `sync.sh` regenerates the same site
-  without opening one.
+  (overview with running volume by zone, recovery and health, activities
+  list, activity detail, data health) with embedded plotly charts, bundled
+  `plotly.min.js`, and atomic directory swaps. It opens the browser; `sync.sh`
+  regenerates the same site without opening one.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run

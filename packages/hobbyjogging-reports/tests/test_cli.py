@@ -531,15 +531,21 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50),
+            (None, 14, 50, 70, 14),
             parse_dashboard_args([]),
         )
 
     def test_custom_output_and_limits(self):
         self.assertEqual(
-            ("/tmp/site", 30, 100),
+            ("/tmp/site", 30, 100, 90, 21),
             parse_dashboard_args(
-                ["--output", "/tmp/site", "--days", "30", "--activities", "100"]
+                [
+                    "--output", "/tmp/site",
+                    "--days", "30",
+                    "--activities", "100",
+                    "--chart-days", "90",
+                    "--future-days", "21",
+                ]
             ),
         )
 
@@ -550,6 +556,14 @@ class DashboardArgsTests(unittest.TestCase):
     def test_rejects_non_positive_activities(self):
         with self.assertRaises(ValueError):
             parse_dashboard_args(["--activities", "0"])
+
+    def test_rejects_non_positive_chart_days(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--chart-days", "0"])
+
+    def test_rejects_negative_future_days(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--future-days", "-1"])
 
 
 class SourceArgTests(unittest.TestCase):

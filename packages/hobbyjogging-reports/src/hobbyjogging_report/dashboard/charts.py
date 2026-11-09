@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs
 from plotly.subplots import make_subplots
 
-from ..model import RecoveryPoint
+from ..model import RecoveryPoint, TimePoint
 from ..series import alpha_from_time_constant, ewma
 
 PLOTLY_CONFIG = {
@@ -37,40 +37,115 @@ def _to_html(figure: go.Figure) -> str:
     )
 
 
-def zone_mix_chart(
-    actual_zones: list[float],
-    planned_zones: list[float],
-    *,
-    unzoned_s: float = 0.0,
-    planned_unzoned_s: float = 0.0,
+def running_volume_chart(
+    actual_bars: list[tuple[date, float, float, float]],
+    planned_bars: list[tuple[date, float, float, float]],
+    points: list[TimePoint],
+    start: date,
+    end: date,
+    today: date,
 ) -> str:
-    """Actual and planned weekly hours per pace zone."""
-    categories = [f"Z{index + 1}" for index in range(len(actual_zones))]
-    categories.append("Unzoned")
-
-    actual = [seconds / 3600 for seconds in actual_zones]
-    actual.append(unzoned_s / 3600)
-    planned = [seconds / 3600 for seconds in planned_zones]
-    planned.append(planned_unzoned_s / 3600)
-    planned += [0.0] * (len(categories) - len(planned))
-
+    """Daily running hours stacked by zone group with 182/42-day EWMAs."""
     figure = go.Figure()
-    figure.add_bar(
-        x=categories,
-        y=actual,
-        name="actual",
-        marker_color="#4c78a8",
+
+    groups = (
+        ("Z1+2", 1, "#9ecae1", "rgba(158, 202, 225, 0.45)", "#6baed6"),
+        ("Z3+4", 2, "#e6550d", "rgba(230, 85, 13, 0.45)", "#a63603"),
+        ("Unzoned", 3, "#d9d9d9", "rgba(217, 217, 217, 0.6)", "#969696"),
     )
-    figure.add_bar(
-        x=categories,
-        y=planned,
-        name="planned (next 7 days)",
-        marker_color="#f58518",
+
+    for label, value_key, color, _planned_color, _edge in groups:
+        values = [row[value_key] / 3600 for row in actual_bars]
+
+        if label == "Unzoned" and not any(values):
+            continue
+
+        figure.add_bar(
+            x=[row[0].isoformat() for row in actual_bars],
+            y=values,
+            name=label,
+            marker_color=color,
+        )
+
+    if planned_bars:
+        for label, value_key, _color, planned_color, edge in groups:
+            planned_values = [row[value_key] / 3600 for row in planned_bars]
+
+            if label == "Unzoned" and not any(planned_values):
+                continue
+
+            figure.add_bar(
+                x=[row[0].isoformat() for row in planned_bars],
+                y=planned_values,
+                name=f"planned {label}",
+                marker={
+                    "color": planned_color,
+                    "line": {"color": edge, "width": 1},
+                    "pattern": {"shape": "/", "fgcolor": edge},
+                },
+            )
+
+    actual = [point for point in points if not point.projected]
+    projected = [point for point in points if point.projected]
+
+    for attribute, label, color in (
+        ("base", "182-day EWMA", "#08519c"),
+        ("fitness", "42-day EWMA", "#a63603"),
+    ):
+        if actual:
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date.isoformat() for point in actual],
+                    y=[getattr(point, attribute) / 3600 for point in actual],
+                    mode="lines",
+                    name=label,
+                    line={"color": color, "width": 2},
+                )
+            )
+
+        if projected:
+            bridge = actual[-1:] + projected
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date.isoformat() for point in bridge],
+                    y=[getattr(point, attribute) / 3600 for point in bridge],
+                    mode="lines",
+                    name=label,
+                    line={"color": color, "width": 2, "dash": "dash"},
+                    showlegend=False,
+                )
+            )
+
+    if projected:
+        figure.add_trace(
+            go.Scatter(
+                x=[],
+                y=[],
+                mode="lines",
+                name="projected",
+                line={"color": "#7f7f7f", "width": 1, "dash": "dash"},
+            )
+        )
+
+    figure.add_vline(
+        x=today.isoformat(),
+        line_width=1,
+        line_dash="dot",
+        line_color="#7f7f7f",
+        annotation_text="today",
+        annotation_position="top",
     )
+
     figure.update_layout(
-        **PLOTLY_LAYOUT,
-        barmode="group",
+        template="plotly_white",
+        height=450,
+        margin={"l": 50, "r": 20, "t": 40, "b": 40},
+        barmode="stack",
+        bargap=0.1,
+        hovermode="x unified",
         yaxis_title="hours",
+        xaxis={"range": [start.isoformat(), end.isoformat()]},
+        legend={"orientation": "h", "y": 1.12, "x": 0},
     )
 
     return _to_html(figure)

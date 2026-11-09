@@ -69,12 +69,20 @@ def run_compare_command(parsed, source, include_review):
 
 
 def run_dashboard_command(parsed, source, include_review):
-    output, days, activity_limit = parsed
+    (
+        output,
+        days,
+        activity_limit,
+        chart_days,
+        future_days,
+    ) = parsed
     path = build_dashboard(
         source,
         output,
         days=days,
         activity_limit=activity_limit,
+        chart_days=chart_days,
+        future_days=future_days,
         include_review=include_review,
     )
     print(path)

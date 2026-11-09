@@ -491,13 +491,14 @@ separately. The scale is reversed compared with some watches:
 
     ./dashboard.sh
     ./dashboard.sh --days 30 --activities 100
+    ./dashboard.sh --chart-days 90 --future-days 21
     ./dashboard.sh --output /tmp/dashboard
 
 Pages:
 
 - `index.html` — the overview window (default 14 days): run/cross counts,
-  time, distance, load, Z3+4, deltas, a load chart, actual vs planned
-  pace-zone mix, plan vs actual, the next 7 planned days, and quality
+  time, distance, load, Z3+4, deltas, the main running-volume chart, a
+  training-load chart, plan vs actual, the next 7 planned days, and quality
   sessions.
 - `activities.html` — the recent activity table (default 50), linked to
   per-activity pages.
@@ -507,6 +508,12 @@ Pages:
   with 7-day averages and a data-completeness note.
 - `health.html` (Data Health) — review-hidden activities and missing-data
   counts.
+
+The main chart shows daily running hours stacked into **Z1+2** and **Z3+4**
+with **182-day** and **42-day** EWMAs of total daily running time. It defaults
+to **70 days back and 14 days forward**; `--chart-days` and `--future-days`
+change those. Planned workouts appear as hatched future bars and the EWMA
+projection is dashed. Events without pace zones count as unzoned.
 
 Charts are plotly figures embedded in the page, so the overview can be
 zoomed and panned. The pages remain static snapshots: there is no

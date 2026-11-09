@@ -205,20 +205,32 @@ def parse_compare_args(
 
 def parse_dashboard_args(
     argv: list[str],
-) -> tuple[str | None, int, int]:
-    """Parse dashboard output, overview window, and activity limit."""
+) -> tuple[str | None, int, int, int, int]:
+    """Parse dashboard output, overview window, and chart ranges."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--activities", type=int, default=50)
+    parser.add_argument("--chart-days", type=int, default=70)
+    parser.add_argument("--future-days", type=int, default=14)
     args = parser.parse_args(argv)
 
     if args.days <= 0:
         raise ValueError("--days must be positive")
     if args.activities <= 0:
         raise ValueError("--activities must be positive")
+    if args.chart_days <= 0:
+        raise ValueError("--chart-days must be positive")
+    if args.future_days < 0:
+        raise ValueError("--future-days must be zero or greater")
 
-    return args.output, args.days, args.activities
+    return (
+        args.output,
+        args.days,
+        args.activities,
+        args.chart_days,
+        args.future_days,
+    )
 
 
 def parse_chart_args(

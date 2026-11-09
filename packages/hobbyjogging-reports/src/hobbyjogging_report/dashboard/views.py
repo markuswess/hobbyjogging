@@ -9,9 +9,12 @@ from hobbyjogging_core.model import Activity, Event
 
 from ..analysis import (
     RUN_TYPES,
+    daily_planned_time,
     daily_planned_zone_time,
-    weekly_time_by_zone,
+    daily_run_time,
+    daily_zone_time,
 )
+from ..series import date_range
 from ..summary import summarize_training
 
 
@@ -78,42 +81,71 @@ def planned_summary(events: list[Event]) -> PlannedSummary:
     )
 
 
-def actual_zone_totals(
+def daily_zone_groups(
     activities: list[Activity],
     start: date,
     end: date,
     *,
     zone_count: int = 4,
-) -> tuple[list[float], float]:
-    weeks = weekly_time_by_zone(
-        activities,
-        start,
-        end,
-        zone_count=zone_count,
+) -> list[tuple[date, float, float, float]]:
+    """Daily running seconds as ``(low, high, unzoned)``.
+
+    ``low`` is Z1+Z2, ``high`` is Z3+Z4, and ``unzoned`` is running time not
+    covered by the recorded pace zones.
+    """
+    zones_by_day = dict(
+        daily_zone_time(
+            activities,
+            start,
+            end,
+            zone_count=zone_count,
+        )
     )
-    zones = [
-        sum(week.zones[index] for week in weeks)
-        for index in range(zone_count)
-    ]
-    unzoned = sum(week.unzoned for week in weeks)
-    return zones, unzoned
+    totals = dict(daily_run_time(activities, start, end))
+    rows = []
+
+    for day in date_range(start, end):
+        zones = zones_by_day.get(day, [0.0] * zone_count)
+        low = sum(zones[:2])
+        high = sum(zones[2:4])
+        unzoned = max(totals.get(day, 0.0) - low - high, 0.0)
+        rows.append((day, low, high, unzoned))
+
+    return rows
 
 
-def planned_zone_totals(
+def planned_daily_zone_groups(
     events: list[Event],
     start: date,
     end: date,
     *,
     zone_count: int = 4,
-) -> list[float]:
-    series = daily_planned_zone_time(
-        events,
-        start,
-        end,
-        kind="pace",
-        zone_count=zone_count,
+) -> list[tuple[date, float, float, float]]:
+    """Planned running seconds as ``(low, high, unzoned)`` per day.
+
+    ``low``/``high`` come from planned pace zones; planned running events
+    without pace zones become ``unzoned``.
+    """
+    if start > end:
+        return []
+
+    zones_by_day = dict(
+        daily_planned_zone_time(
+            events,
+            start,
+            end,
+            kind="pace",
+            zone_count=zone_count,
+        )
     )
-    return [
-        sum(zones[index] for _, zones in series)
-        for index in range(zone_count)
-    ]
+    totals = dict(daily_planned_time(events, start, end))
+    rows = []
+
+    for day in date_range(start, end):
+        zones = zones_by_day.get(day, [0.0] * zone_count)
+        low = sum(zones[:2])
+        high = sum(zones[2:4])
+        unzoned = max(totals.get(day, 0.0) - low - high, 0.0)
+        rows.append((day, low, high, unzoned))
+
+    return rows

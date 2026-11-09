@@ -26,8 +26,8 @@ from ..format import (
     sport_label,
 )
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import RecoveryPoint
-from .charts import load_chart, recovery_chart, zone_mix_chart
+from ..model import RecoveryPoint, TimePoint
+from .charts import load_chart, recovery_chart, running_volume_chart
 from .health import DataHealth, banner
 from .views import PlannedSummary, WindowSummary
 
@@ -149,9 +149,11 @@ def overview_page(
     last7: WindowSummary,
     events: list[Event],
     planned: PlannedSummary,
-    actual_zones: list[float],
-    actual_unzoned_s: float,
-    planned_zones: list[float],
+    volume_bars: list[tuple[date, float, float, float]],
+    planned_bars: list[tuple[date, float, float, float]],
+    volume_points: list[TimePoint],
+    chart_start: date,
+    chart_end: date,
     load_series: list[tuple[date, float]],
     detail_ids: set[str],
 ) -> str:
@@ -192,21 +194,34 @@ def overview_page(
         ),
     ]
 
+    volume_html = chart(
+        running_volume_chart(
+            volume_bars,
+            planned_bars,
+            volume_points,
+            chart_start,
+            chart_end,
+            end,
+        )
+    )
+    volume_days = (end - chart_start).days + 1
+    future_days = (chart_end - end).days
+    range_text = (
+        f"the last {volume_days} days and next {future_days} days"
+        if future_days
+        else f"the last {volume_days} days"
+    )
+    volume_html += (
+        f'<p class="muted">Daily running hours over {range_text}, stacked '
+        "by pace zone; lines are 182/42-day EWMAs. Planned workouts appear "
+        "as hatched future bars and dashed lines are projected through "
+        "them.</p>"
+    )
+
     if any(value > 0 for _, value in load_series):
         load_html = chart(load_chart(load_series))
     else:
         load_html = '<p class="muted">No training load in this window.</p>'
-
-    if any(actual_zones) or actual_unzoned_s or any(planned_zones):
-        zone_html = chart(
-            zone_mix_chart(
-                actual_zones,
-                planned_zones,
-                unzoned_s=actual_unzoned_s,
-            )
-        )
-    else:
-        zone_html = '<p class="muted">No pace-zone data in this window.</p>'
 
     plan_actual = table(
         ["Metric", "Last 7 days", "Next 7 days"],
@@ -284,11 +299,11 @@ def overview_page(
 
     body = (
         stat_grid(stats)
+        + card("Running volume by pace zone", volume_html)
         + card(
             f"Training load — last {days} days",
             load_html,
         )
-        + card("Pace-zone mix", zone_html)
         + card("Plan vs actual", plan_actual)
         + card("Next 7 days", planned_html)
         + card("Quality sessions", quality_html)
