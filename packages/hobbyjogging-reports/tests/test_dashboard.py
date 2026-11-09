@@ -166,11 +166,12 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Hard 7d", index)
             self.assertIn("Hard 42d", index)
             self.assertIn("Hard 182d", index)
-            self.assertIn("Easy 7d", index)
-            self.assertIn("Easy 42d", index)
-            self.assertIn("Easy 182d", index)
+            self.assertIn("Total 7d", index)
+            self.assertIn("Total 42d", index)
+            self.assertIn("Total 182d", index)
             self.assertIn("planned hard", index)
             self.assertIn("planned easy", index)
+            self.assertIn("minutes", index)
             self.assertIn("2026-09-01", index)
             self.assertIn("2026-11-23", index)
             self.assertIn("Plan vs actual", index)
@@ -409,6 +410,7 @@ class DashboardEwmaTests(unittest.TestCase):
         self.assertEqual(300, point.hard_s)
         self.assertGreater(point.easy_7, 0)
         self.assertGreater(point.hard_7, 0)
+        self.assertGreater(point.total_7, 0)
 
     def test_zone_group_series_prefers_actual_over_planned(self):
         events = [
@@ -442,6 +444,7 @@ class DashboardEwmaTests(unittest.TestCase):
         self.assertFalse(point.projected)
         self.assertEqual(1200, point.easy_s)
         self.assertEqual(2400, point.hard_s)
+        self.assertGreater(point.total_7, 0)
 
     def test_planned_overview_totals_next_period(self):
         source = _source()

@@ -241,9 +241,9 @@ def overview_page(
         else f"the last {volume_days} days"
     )
     volume_html += (
-        f'<p class="muted">Daily running hours over {range_text}, stacked '
-        "hard → easy → unzoned; lines are 7/42/182-day EWMAs for each "
-        "intensity group. Planned workouts appear as hatched bars on days "
+        f'<p class="muted">Daily running minutes over {range_text}, stacked '
+        "hard → easy → unzoned; lines are 7/42/182-day EWMAs for hard and "
+        "total running. Planned workouts appear as hatched bars on days "
         "without a recorded run; lighter line segments are projected.</p>"
     )
 

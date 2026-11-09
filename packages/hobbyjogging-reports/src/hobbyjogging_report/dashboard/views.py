@@ -313,6 +313,9 @@ class ZoneGroupPoint:
     hard_7: float
     hard_42: float
     hard_182: float
+    total_7: float
+    total_42: float
+    total_182: float
     projected: bool = False
 
 
@@ -389,6 +392,10 @@ def zone_group_series(
 
     easy = [row[1] for row in rows]
     hard = [row[2] for row in rows]
+    total = [
+        row[1] + row[2] + row[3]
+        for row in rows
+    ]
     taus = (windows.fatigue, windows.fitness, windows.base)
 
     def columns(series):
@@ -399,6 +406,7 @@ def zone_group_series(
 
     easy_columns = columns(easy)
     hard_columns = columns(hard)
+    total_columns = columns(total)
     points = []
 
     for index, (day, easy_s, hard_s, unzoned_s, _used_planned) in enumerate(
@@ -419,6 +427,9 @@ def zone_group_series(
                 hard_7=hard_columns[windows.fatigue][index],
                 hard_42=hard_columns[windows.fitness][index],
                 hard_182=hard_columns[windows.base][index],
+                total_7=total_columns[windows.fatigue][index],
+                total_42=total_columns[windows.fitness][index],
+                total_182=total_columns[windows.base][index],
                 projected=(
                     _used_planned
                     and day >= projection_start

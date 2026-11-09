@@ -61,7 +61,7 @@ Updated 2026-11-08.
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
-  (overview with 7/42/182-day easy/hard EWMAs and running volume by intensity
+  (overview with 7/42/182-day hard/total EWMAs and running volume by intensity
   group, recovery and health, activities list, activity detail, data health)
   with embedded plotly charts, bundled `plotly.min.js`, and atomic directory
   swaps. It opens the browser; `sync.sh` regenerates the same site without

@@ -13,7 +13,6 @@ from ..series import alpha_from_time_constant, ewma
 from ..style import (
     EASY_COLOR,
     EASY_EDGE,
-    EASY_LINE_COLORS,
     EASY_PLANNED_COLOR,
     HARD_COLOR,
     HARD_EDGE,
@@ -23,6 +22,7 @@ from ..style import (
     LINE_WIDTHS,
     PLANNED_PATTERN,
     PROJECTED_OPACITY,
+    TOTAL_LINE_COLORS,
     UNZONED_COLOR,
     UNZONED_EDGE,
     UNZONED_PLANNED_COLOR,
@@ -73,7 +73,7 @@ def running_volume_chart(
     )
 
     for label, value_key, color, _planned_color, _edge in groups:
-        values = [row[value_key] / 3600 for row in actual_bars]
+        values = [row[value_key] / 60 for row in actual_bars]
 
         if label == "unzoned" and not any(values):
             continue
@@ -87,7 +87,7 @@ def running_volume_chart(
 
     if planned_bars:
         for label, value_key, _color, planned_color, edge in groups:
-            planned_values = [row[value_key] / 3600 for row in planned_bars]
+            planned_values = [row[value_key] / 60 for row in planned_bars]
 
             if label == "unzoned" and not any(planned_values):
                 continue
@@ -111,7 +111,7 @@ def running_volume_chart(
 
     for family, colors in (
         ("hard", HARD_LINE_COLORS),
-        ("easy", EASY_LINE_COLORS),
+        ("total", TOTAL_LINE_COLORS),
     ):
         for window in (7, 42, 182):
             attribute = f"{family}_{window}"
@@ -126,7 +126,7 @@ def running_volume_chart(
                     go.Scatter(
                         x=[point.date.isoformat() for point in actual],
                         y=[
-                            getattr(point, attribute) / 3600
+                            getattr(point, attribute) / 60
                             for point in actual
                         ],
                         mode="lines",
@@ -141,7 +141,7 @@ def running_volume_chart(
                     go.Scatter(
                         x=[point.date.isoformat() for point in bridge],
                         y=[
-                            getattr(point, attribute) / 3600
+                            getattr(point, attribute) / 60
                             for point in bridge
                         ],
                         mode="lines",
@@ -168,7 +168,11 @@ def running_volume_chart(
         barmode="stack",
         bargap=0.1,
         hovermode="x unified",
-        yaxis_title="hours",
+        yaxis={
+            "title": "minutes",
+            "range": [0, 90],
+            "dtick": 15,
+        },
         xaxis={"range": [start.isoformat(), end.isoformat()]},
         legend={
             "orientation": "h",

@@ -510,15 +510,15 @@ Pages:
 - `health.html` (Data Health) — review-hidden activities and missing-data
   counts.
 
-The main chart shows daily running hours stacked as **hard (Z3+Z4)** at the
-base, **easy (Z1+Z2)** above it, and **unzoned** on top. It draws 7/42/182-day
-EWMAs for both hard and easy running, with the hard lines in reds at the base
-and the easy lines in blues above them. It defaults to **70 days back and 14
-days forward**; `--chart-days` and `--future-days` change those. Planned
-workouts appear as hatched bars on days without a recorded run, including
-today, so an uncompleted planned session is visible; once a run is recorded,
-the actual bar replaces the plan bar. Events without pace zones count as
-unzoned.
+The main chart shows daily running **minutes** on a **0–90 minute** axis,
+stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
+**unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
+running, with the hard lines in reds at the base and the total lines in blues
+above them. It defaults to **70 days back and 14 days forward**;
+`--chart-days` and `--future-days` change those. Planned workouts appear as
+hatched bars on days without a recorded run, including today, so an
+uncompleted planned session is visible; once a run is recorded, the actual bar
+replaces the plan bar. Events without pace zones count as unzoned.
 
 Charts are plotly figures embedded in the page, so the overview can be
 zoomed and panned. The pages remain static snapshots: there is no

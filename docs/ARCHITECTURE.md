@@ -369,7 +369,7 @@ Static-first, generated on the homelab:
 
 - Self-contained HTML with embedded plotly charts and plain tables; no SPA,
   no client-side data fetching. `plotly.min.js` is bundled into the site.
-- Views: weekly overview (7/42/182-day easy/hard EWMA weekly equivalents,
+- Views: weekly overview (7/42/182-day hard/total EWMA weekly equivalents,
   running volume by intensity group, load, plan vs actual, quality sessions),
   recovery and health (HRV, resting HR, sleep with 7-day averages), activity
   list, activity detail, data-health summary.

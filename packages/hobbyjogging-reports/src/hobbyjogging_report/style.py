@@ -19,6 +19,7 @@ EASY_LINE_COLORS = {
     42: "#0077b6",
     182: "#023e8a",
 }
+TOTAL_LINE_COLORS = EASY_LINE_COLORS
 HARD_LINE_COLORS = {
     7: "#e63946",
     42: "#d00000",
