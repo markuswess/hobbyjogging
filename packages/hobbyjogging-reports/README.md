@@ -48,7 +48,9 @@ HTML dashboard:
 - **overview-chart** — the main training chart (`./charts.sh overview`):
   daily running minutes on a 0–90 minute axis, stacked hard (Z3+Z4) /
   easy (Z1+Z2) / unzoned, with hard and total 7/42/182-day EWMAs and
-  hatched planned days. Bars above 90 minutes are marked and clipped.
+  hatched planned days, plus the Garmin VO2max standing value as a black
+  line on a second axis on the right. Bars above 90 minutes are marked
+  and clipped.
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
   default.

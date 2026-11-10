@@ -230,6 +230,10 @@ class OverviewChartTests(unittest.TestCase):
                 ),
             ]
         )
+        vo2max = [
+            Vo2maxPoint(D, 65.0, 65.0, 65.0),
+            Vo2maxPoint(date(2026, 1, 2), 65.5, 65.2, 65.2),
+        ]
 
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "overview.png"
@@ -242,6 +246,7 @@ class OverviewChartTests(unittest.TestCase):
                 start=D,
                 end=date(2026, 1, 3),
                 today=date(2026, 1, 2),
+                vo2max_points=vo2max,
             )
 
             self.assertEqual(str(output), result)

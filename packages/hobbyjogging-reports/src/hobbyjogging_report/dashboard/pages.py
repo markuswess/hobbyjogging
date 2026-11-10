@@ -27,7 +27,7 @@ from ..format import (
 )
 from ..charts import plot_load, plot_overview, plot_recovery
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import LoadPoint, RecoveryPoint
+from ..model import LoadPoint, RecoveryPoint, Vo2maxPoint
 from .health import DataHealth, banner
 from .views import PlannedSummary, WindowSummary
 from ..zone_groups import ZoneGroupSeries
@@ -142,6 +142,7 @@ def overview_page(
     chart_end: date,
     load_points: list[LoadPoint],
     planned_load: list[tuple[date, float]],
+    vo2max_points: list[Vo2maxPoint],
     detail_ids: set[str],
 ) -> str:
     future_days = (chart_end - end).days
@@ -155,6 +156,7 @@ def overview_page(
             start=chart_start,
             end=chart_end,
             today=end,
+            vo2max_points=vo2max_points,
             title="",
             as_html=True,
         )
@@ -168,7 +170,8 @@ def overview_page(
     volume_html += (
         f'<p class="muted">Daily running minutes over {range_text}, stacked '
         "hard → easy → unzoned; lines are 7/42/182-day EWMAs for hard and "
-        "total running. Planned workouts appear as hatched bars on days "
+        "total running, plus the black Garmin VO2max line on the right "
+        "axis. Planned workouts appear as hatched bars on days "
         "without a recorded run; lighter line segments are projected.</p>"
     )
 

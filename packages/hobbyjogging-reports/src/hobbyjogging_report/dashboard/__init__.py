@@ -16,6 +16,7 @@ from ..analysis import (
     daily_planned_load,
     load_metrics,
     recovery_trends,
+    vo2max_points,
 )
 from ..classify import classify
 from ..html import markdown_to_html
@@ -169,6 +170,11 @@ def build_dashboard(
         today,
         chart_end,
     )
+    vo2max = vo2max_points(
+        chart_activities,
+        chart_start - timedelta(days=warmup_days),
+        chart_end,
+    )
 
     wellness = source.wellness(
         start - timedelta(days=6),
@@ -255,6 +261,7 @@ def build_dashboard(
             chart_end=chart_end,
             load_points=load_points,
             planned_load=planned_load,
+            vo2max_points=vo2max,
             detail_ids=detail_ids,
         ),
         "activities.html": activities_page(

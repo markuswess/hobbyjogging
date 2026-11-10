@@ -394,7 +394,7 @@ def run_overview_chart(
     include_review: bool = False,
 ) -> None:
     """Render the main overview chart as a PNG."""
-    from .analysis import average_warmup_days
+    from .analysis import average_warmup_days, vo2max_points
     from .charts import plot_overview
     from .zone_groups import (
         daily_zone_groups,
@@ -434,6 +434,11 @@ def run_overview_chart(
         projection_start=today,
         windows=windows,
     )
+    vo2max = vo2max_points(
+        activities,
+        chart_start - timedelta(days=warmup_days),
+        chart_end,
+    )
 
     path = plot_overview(
         volume_bars,
@@ -443,6 +448,7 @@ def run_overview_chart(
         start=chart_start,
         end=chart_end,
         today=today,
+        vo2max_points=vo2max,
     )
     print(path)
 

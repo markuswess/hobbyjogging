@@ -972,6 +972,7 @@ def plot_overview(
     start: date,
     end: date,
     today: date,
+    vo2max_points: list[Vo2maxPoint] | None = None,
     title: str = "Training overview",
     as_html: bool = False,
 ) -> str:
@@ -1090,6 +1091,24 @@ def plot_overview(
             )
         )
 
+    vo2max = [
+        point
+        for point in vo2max_points or []
+        if start <= point.date <= end and point.value is not None
+    ]
+
+    if vo2max:
+        figure.add_trace(
+            go.Scatter(
+                x=[point.date.isoformat() for point in vo2max],
+                y=[point.value for point in vo2max],
+                mode="lines",
+                name="VO2max",
+                yaxis="y2",
+                line={"color": "black", "width": 2},
+            )
+        )
+
     figure.add_vline(
         x=today.isoformat(),
         line_width=1,
@@ -1098,27 +1117,44 @@ def plot_overview(
         annotation_text="today",
         annotation_position="top",
     )
-    figure.update_layout(
-        template="plotly_white",
-        title=title,
-        height=520,
-        margin={"l": 50, "r": 20, "t": 95, "b": 40},
-        barmode="stack",
-        bargap=0.1,
-        hovermode="x unified",
-        yaxis={
+    layout = {
+        "template": "plotly_white",
+        "title": title,
+        "height": 520,
+        "margin": {"l": 50, "r": 20, "t": 95, "b": 40},
+        "barmode": "stack",
+        "bargap": 0.1,
+        "hovermode": "x unified",
+        "yaxis": {
             "title": "minutes",
             "range": [0, y_max],
             "dtick": 15,
         },
-        xaxis={"range": [start.isoformat(), end.isoformat()]},
-        legend={
+        "xaxis": {"range": [start.isoformat(), end.isoformat()]},
+        "legend": {
             "orientation": "h",
             "y": 1.18,
             "x": 0,
             "font": {"size": 9},
         },
-    )
+    }
+
+    if vo2max:
+        values = [point.value for point in vo2max]
+        low = min(values)
+        high = max(values)
+        pad = max(0.25, (high - low) * 0.15)
+        span = high - low + 2 * pad
+        layout["yaxis2"] = {
+            "title": "VO2max",
+            "overlaying": "y",
+            "side": "right",
+            "showgrid": False,
+            "range": [low - pad, high + pad],
+            "dtick": 0.5 if span <= 4 else 1,
+        }
+
+    figure.update_layout(**layout)
     return _render(
         figure,
         output,
