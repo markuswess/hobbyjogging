@@ -65,4 +65,4 @@ Cross-package changes must leave all three suites green.
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;
   intervals, long_run, tempo, progression, race, and the quality targets are
   quality; strides never make a session quality by itself.
-- Reports use matplotlib only, never pandas.
+- Reports use plotly for charts and never pandas.

@@ -13,6 +13,7 @@ from hobbyjogging_report.cli import (
     parse_dashboard_args,
     parse_load_args,
     parse_overview_args,
+    parse_overview_chart_args,
     parse_planned_args,
     parse_recovery_args,
     parse_report_args,
@@ -570,6 +571,40 @@ class DashboardArgsTests(unittest.TestCase):
     def test_rejects_unknown_reports(self):
         with self.assertRaises(ValueError):
             parse_dashboard_args(["--reports", "overview,nope"])
+
+
+class OverviewChartArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        self.assertEqual(
+            ("overview.png", 70, 14, TODAY),
+            parse_overview_chart_args([], today=TODAY),
+        )
+
+    def test_custom_output_and_ranges(self):
+        self.assertEqual(
+            ("/tmp/overview.png", 90, 21, TODAY),
+            parse_overview_chart_args(
+                [
+                    "--output", "/tmp/overview.png",
+                    "--chart-days", "90",
+                    "--future-days", "21",
+                ],
+                today=TODAY,
+            ),
+        )
+
+    def test_rejects_invalid_ranges(self):
+        with self.assertRaises(ValueError):
+            parse_overview_chart_args(
+                ["--chart-days", "0"],
+                today=TODAY,
+            )
+        with self.assertRaises(ValueError):
+            parse_overview_chart_args(
+                ["--future-days", "-1"],
+                today=TODAY,
+            )
 
 
 class OverviewArgsTests(unittest.TestCase):

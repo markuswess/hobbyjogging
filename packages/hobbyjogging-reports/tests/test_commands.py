@@ -21,6 +21,7 @@ EXPECTED = {
     "session",
     "classify",
     "volume",
+    "overview-chart",
     "load",
     "time",
     "recovery",

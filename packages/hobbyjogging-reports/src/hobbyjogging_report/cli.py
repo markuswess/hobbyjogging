@@ -265,6 +265,28 @@ def parse_overview_args(
     return args.future_days, today or date.today()
 
 
+def parse_overview_chart_args(
+    argv: list[str],
+    default_output: str = "overview.png",
+    today: date | None = None,
+) -> tuple[str, int, int, date]:
+    """Parse output and ranges for the main overview chart."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    parser.add_argument("--chart-days", type=int, default=70)
+    parser.add_argument("--future-days", type=int, default=14)
+    args = parser.parse_args(argv)
+
+    if args.chart_days <= 0:
+        raise ValueError("--chart-days must be positive")
+    if args.future_days < 0:
+        raise ValueError("--future-days must be zero or greater")
+
+    output = args.output_option or args.output or default_output
+    return output, args.chart_days, args.future_days, today or date.today()
+
+
 def parse_chart_args(
     argv: list[str],
     default_output: str,

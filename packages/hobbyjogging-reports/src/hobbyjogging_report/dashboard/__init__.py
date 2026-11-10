@@ -13,7 +13,8 @@ from hobbyjogging_core.datasource import DataSource
 from ..activity_list import select_activities
 from ..analysis import (
     average_warmup_days,
-    daily_training_load,
+    daily_planned_load,
+    load_metrics,
     recovery_trends,
 )
 from ..classify import classify
@@ -33,12 +34,10 @@ from .pages import (
     reports_page,
 )
 from .reports import REPORT_NAMES, build_report
-from .views import (
+from .views import in_window, planned_summary, summarize_window
+from ..zone_groups import (
     daily_zone_groups,
-    in_window,
     planned_bars_without_actual,
-    planned_summary,
-    summarize_window,
     zone_group_series,
 )
 
@@ -155,7 +154,21 @@ def build_dashboard(
         windows=windows,
     )
 
-    load_series = daily_training_load(activities, start, today)
+    load_points = load_metrics(
+        chart_activities,
+        start,
+        today,
+        windows=AverageWindows(),
+        warmup_days=warmup_days,
+        events=chart_events,
+        projected_end=chart_end,
+        projection_start=today,
+    )
+    planned_load = daily_planned_load(
+        chart_events,
+        today,
+        chart_end,
+    )
 
     wellness = source.wellness(
         start - timedelta(days=6),
@@ -240,7 +253,8 @@ def build_dashboard(
             volume_series=volume_series,
             chart_start=chart_start,
             chart_end=chart_end,
-            load_series=load_series,
+            load_points=load_points,
+            planned_load=planned_load,
             detail_ids=detail_ids,
         ),
         "activities.html": activities_page(

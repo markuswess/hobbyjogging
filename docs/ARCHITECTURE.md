@@ -136,7 +136,7 @@ Analysis, views, and rendering.
   search, and raw payload dump.
 - `activity_list.py` — the activities table (selection, columns, rendering).
 - `summary.py` — period totals, quality-session lists, recovery averages.
-- `charts.py`, `chart_commands.py` — matplotlib figures over prepared series.
+- `charts.py`, `chart_commands.py` — plotly figures over prepared series.
 - `format.py`, `mdpretty.py` — human formatting for the terminal.
 - `commands.py`, `cli.py`, `command_support.py`, `__main__.py` — command
   registry, shared CLI helpers, and entry point.
@@ -355,7 +355,8 @@ The rule is **compute → render**:
 3. Renderers turn those results into output:
    - Markdown reports for the terminal (`daily.py`, `overview.py`,
      `period_report.py`, `subt_report.py`, `activity_list.py`, `mdpretty.py`);
-   - matplotlib figures (`charts.py`, saved as files);
+   - plotly figures (`charts.py`): the CLI exports PNGs via kaleido and the
+     dashboard embeds the same figures as HTML;
    - static HTML dashboard pages (`html.py`, `dashboard/`);
    - JSON for LLM bundles or future clients (planned).
 
@@ -431,7 +432,8 @@ dashboard: the view models make it cheap to add later.
 
 ## Non-goals and deferred work
 
-- No pandas. Matplotlib for CLI charts; plotly for the interactive dashboard.
+- No pandas. Plotly builds every chart; kaleido exports CLI PNGs and the
+  dashboard embeds the same figures as HTML.
 - No SPA or client-side analytics framework.
 - No phone interactivity for now.
 - No direct remote database access; clients read rendered pages.

@@ -7,12 +7,12 @@ from unittest.mock import patch
 
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
-from hobbyjogging_report.dashboard.views import (
+from hobbyjogging_report.overview import overview_ewma, planned_overview
+from hobbyjogging_report.zone_groups import (
     planned_bars_without_actual,
     zone_group_series,
 )
 from hobbyjogging_report.model import AverageWindows
-from hobbyjogging_report.overview import overview_ewma, planned_overview
 from support import FakeSource, activity_factory, make_interval
 
 TODAY = date(2026, 11, 9)

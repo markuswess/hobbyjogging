@@ -1,27 +1,25 @@
-"""Plotting helpers (matplotlib).
+"""Plotly chart builders shared by the CLI and the dashboard."""
 
-Charts consume plain analysis output only. They know nothing about the data
-source, so they keep working when the source is swapped.
-"""
+from __future__ import annotations
 
-from collections import defaultdict
+import warnings
 from datetime import date, timedelta
 
-import matplotlib
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-matplotlib.use("Agg")
-
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-from matplotlib.ticker import FuncFormatter
+warnings.filterwarnings(
+    "ignore",
+    message=r"(?s).*Kaleido versions less than 1\.0\.0.*",
+    category=DeprecationWarning,
+)
 
 from .analysis import SUBT_CATEGORIES
 from .format import format_pace
 from .model import (
+    AverageWindows,
     DistancePoint,
     LoadPoint,
-    AverageWindows,
     RecoveryPoint,
     SubtPoint,
     TimePoint,
@@ -30,11 +28,34 @@ from .model import (
     ZoneAveragePoint,
 )
 from .series import sma
+from .style import (
+    EASY_COLOR,
+    EASY_EDGE,
+    EASY_PLANNED_COLOR,
+    HARD_COLOR,
+    HARD_EDGE,
+    HARD_LINE_COLORS,
+    HARD_PLANNED_COLOR,
+    LINE_STYLES,
+    LINE_WIDTHS,
+    PLANNED_PATTERN,
+    PROJECTED_OPACITY,
+    TOTAL_LINE_COLORS,
+    UNZONED_COLOR,
+    UNZONED_EDGE,
+    UNZONED_PLANNED_COLOR,
+)
+from .zone_groups import ZoneGroupSeries
+
+PLOTLY_CONFIG = {
+    "displaylogo": False,
+    "responsive": True,
+}
 
 AVERAGE_COLORS = {
-    "base": "tab:blue",
-    "fitness": "tab:orange",
-    "fatigue": "tab:red",
+    "base": "#1f77b4",
+    "fitness": "#ff7f0e",
+    "fatigue": "#d62728",
 }
 
 ZONE_COLORS = (
@@ -51,25 +72,14 @@ ZONE_LINE_COLORS = (
     "#006d2c",
     "#00441b",
 )
-UNZONED_COLOR = "#d9d9d9"
-
-
-def _style_week_axis(ax, weeks: list[date]) -> None:
-    """Align weekly bars to Monday–Sunday and label Mondays."""
-    if not weeks:
-        return
-
-    ax.set_xlim(
-        min(weeks),
-        max(weeks) + timedelta(days=7),
-    )
-    interval = max(1, len(weeks) // 12)
-    ax.xaxis.set_major_locator(
-        mdates.WeekdayLocator(
-            byweekday=mdates.MO,
-            interval=interval,
-        )
-    )
+SUBT_COLORS = {
+    "short": "#1f77b4",
+    "medium": "#ff7f0e",
+    "long": "#2ca02c",
+    "lt1": "#9467bd",
+}
+CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
+WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 
 def _require_data(*series) -> None:
@@ -77,154 +87,127 @@ def _require_data(*series) -> None:
         raise ValueError("no data to plot")
 
 
-def _save(fig, output: str) -> str:
-    fig.tight_layout()
-    fig.savefig(output, dpi=150)
-    plt.close(fig)
+def _render(
+    figure: go.Figure,
+    output: str,
+    *,
+    as_html: bool,
+    width: int,
+    height: int,
+) -> str:
+    figure.update_xaxes(automargin=True)
+    figure.update_yaxes(automargin=True)
+
+    if as_html:
+        return figure.to_html(
+            full_html=False,
+            include_plotlyjs=False,
+            config=PLOTLY_CONFIG,
+        )
+
+    figure.write_image(output, width=width, height=height)
     return output
 
 
-def _weekly_bars(
-    ax,
-    weeks: list[date],
-    values: list[float],
+def _add(figure, trace, *, row: int | None = None, col: int | None = None):
+    if row is None:
+        figure.add_trace(trace)
+    else:
+        figure.add_trace(trace, row=row, col=col)
+
+
+def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        height=800,
+        margin={"l": 60, "r": 30, "t": 60, "b": 60},
+        legend={"orientation": "h", "y": 1.12, "x": 0},
+        hovermode="x unified",
+    )
+
+
+def _plot_average_lines(
+    figure,
+    points,
+    windows: AverageWindows,
     *,
-    color,
-    label: str,
-    bottom: list[float] | None = None,
-    edge_width: float = 0.5,
-) -> None:
-    ax.bar(
-        weeks,
-        values,
-        width=7,
-        align="edge",
-        bottom=bottom if bottom is not None else 0,
-        color=color,
-        edgecolor="white",
-        linewidth=edge_width,
-        label=label,
-        zorder=1,
-    )
-
-
-def _planned_week_lines(ax, weeks, *, label: str) -> None:
-    """Draw one dashed target line per planned week."""
-    for index, (week, value) in enumerate(weeks):
-        ax.plot(
-            [week, week + timedelta(days=7)],
-            [value, value],
-            color="black",
-            linestyle="--",
-            linewidth=1.5,
-            alpha=0.75,
-            label=label if index == 0 else None,
-            zorder=3,
-        )
-
-
-def _planned_bars(ax, values, *, label: str) -> None:
-    """Draw outlined bars for planned totals on top of the actual bars."""
-    ax.bar(
-        [day for day, _ in values],
-        [value for _, value in values],
-        width=7,
-        align="edge",
-        facecolor="none",
-        edgecolor="black",
-        linestyle="--",
-        linewidth=1.4,
-        alpha=0.8,
-        label=label,
-        zorder=4,
-    )
-
-
-def _planned_rug(ax, dates: list[date], *, label: str = "planned") -> None:
-    """Mark planned sessions along the bottom of an axis."""
-    if not dates:
-        return
-
-    levels: dict[date, int] = defaultdict(int)
-
-    for day in sorted(dates):
-        level = levels[day]
-        levels[day] += 1
-        ax.vlines(
-            day,
-            0.01 + level * 0.03,
-            0.05 + level * 0.03,
-            transform=ax.get_xaxis_transform(),
-            color="black",
-            linewidth=2,
-            alpha=0.7,
-            zorder=4,
-        )
-
-    # Add a legend handle without inventing a visible data point.
-    ax.plot([], [], color="black", linewidth=2, alpha=0.7, label=label)
-
-
-def _plot_average_lines(ax, points, windows, *, scale: float = 1.0, label):
+    scale: float = 1.0,
+    label,
+    row: int | None = None,
+    col: int | None = None,
+):
     actual = [point for point in points if not point.projected]
     projected = [point for point in points if point.projected]
 
     for attribute in ("base", "fitness", "fatigue"):
         if actual:
-            ax.plot(
-                [point.date for point in actual],
-                [getattr(point, attribute) * scale for point in actual],
-                color=AVERAGE_COLORS[attribute],
-                linewidth=2,
-                label=label(attribute, getattr(windows, attribute)),
-                zorder=2,
+            _add(
+                figure,
+                go.Scatter(
+                    x=[point.date for point in actual],
+                    y=[getattr(point, attribute) * scale for point in actual],
+                    mode="lines",
+                    name=label(attribute, getattr(windows, attribute)),
+                    line={"color": AVERAGE_COLORS[attribute], "width": 2},
+                ),
+                row=row,
+                col=col,
             )
 
         if projected:
-            # Bridge from the last actual day so the dashed projection
-            # starts exactly where the solid history ends.
             bridge = actual[-1:] + projected
-            ax.plot(
-                [point.date for point in bridge],
-                [getattr(point, attribute) * scale for point in bridge],
-                color=AVERAGE_COLORS[attribute],
-                linewidth=2,
-                linestyle="--",
-                zorder=2,
+            _add(
+                figure,
+                go.Scatter(
+                    x=[point.date for point in bridge],
+                    y=[
+                        getattr(point, attribute) * scale
+                        for point in bridge
+                    ],
+                    mode="lines",
+                    line={
+                        "color": AVERAGE_COLORS[attribute],
+                        "width": 2,
+                        "dash": "dash",
+                    },
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
             )
 
     if projected:
-        ax.plot(
-            [],
-            [],
-            color=AVERAGE_COLORS["base"],
-            linewidth=2,
-            linestyle="--",
-            label="avg projection",
+        _add(
+            figure,
+            go.Scatter(
+                x=[],
+                y=[],
+                mode="lines",
+                name="avg projection",
+                line={
+                    "color": AVERAGE_COLORS["base"],
+                    "width": 2,
+                    "dash": "dash",
+                },
+            ),
+            row=row,
+            col=col,
         )
 
 
-def _finish_week_axis(
-    fig,
-    ax,
-    *,
-    title: str,
-    ylabel: str,
-    legend_fontsize: int = 9,
-    extra_handles=None,
-) -> None:
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.3)
-    handles, labels = ax.get_legend_handles_labels()
-
-    for handle, label in extra_handles or ():
-        handles.append(handle)
-        labels.append(label)
-
-    ax.legend(handles, labels, loc="best", fontsize=legend_fontsize)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    fig.autofmt_xdate()
+def _planned_total_bars(figure, values, *, label: str = "planned"):
+    figure.add_bar(
+        x=[day for day, _ in values],
+        y=[value for _, value in values],
+        name=label,
+        marker={
+            "color": "rgba(0, 0, 0, 0)",
+            "line": {"color": "black", "width": 1.2},
+        },
+    )
 
 
 def plot_volume(
@@ -237,36 +220,44 @@ def plot_volume(
     distance_scale: float = 7.0,
     ylabel: str = "km / week",
     title: str = "Weekly running volume",
+    as_html: bool = False,
 ) -> str:
-    """Weekly running volume bars with distance-average lines.
-
-    Daily distance averages are multiplied by ``distance_scale`` (default 7)
-    so they are directly comparable to the weekly bars. Planned weekly
-    distance is drawn as a dashed target line.
-    """
+    """Weekly running volume bars with distance-average lines."""
     _require_data(data, distance_points)
-
     windows = windows or AverageWindows()
-    fig, ax = plt.subplots(figsize=(12, 10))
+    figure = go.Figure()
     weeks = [week for week, _ in data]
 
     if data:
-        values = [value for _, value in data]
-        _weekly_bars(
-            ax,
-            weeks,
-            values,
-            color="lightgrey",
-            label="weekly km",
-            edge_width=0.8,
+        figure.add_bar(
+            x=weeks,
+            y=[value for _, value in data],
+            name="weekly km",
+            width=WEEK_MS,
+            marker_color="lightgrey",
         )
 
     if planned_distance:
-        _planned_week_lines(ax, planned_distance, label="planned km")
+        xs = []
+        ys = []
+
+        for week, value in planned_distance:
+            xs.extend([week, week + timedelta(days=7), None])
+            ys.extend([value, value, None])
+
+        figure.add_trace(
+            go.Scatter(
+                x=xs,
+                y=ys,
+                mode="lines",
+                name="planned km",
+                line={"color": "black", "width": 1.5, "dash": "dash"},
+            )
+        )
 
     if distance_points:
         _plot_average_lines(
-            ax,
+            figure,
             distance_points,
             windows,
             scale=distance_scale,
@@ -278,11 +269,26 @@ def plot_volume(
     )
 
     if axis_weeks:
-        _style_week_axis(ax, axis_weeks)
+        figure.update_xaxes(
+            range=[
+                axis_weeks[0],
+                axis_weeks[-1] + timedelta(days=7),
+            ]
+        )
 
-    ax.set_xlabel("week starting (Monday)")
-    _finish_week_axis(fig, ax, title=title, ylabel=ylabel)
-    return _save(fig, output)
+    _base_layout(
+        figure,
+        title=title,
+        xlabel="week starting (Monday)",
+        ylabel=ylabel,
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1500,
+    )
 
 
 def plot_time(
@@ -300,20 +306,12 @@ def plot_time(
     zone_scale: float = 7.0,
     ylabel: str = "hours / week",
     title: str = "Weekly running time by pace zone",
+    as_html: bool = False,
 ) -> str:
-    """Weekly running time stacked by pace zone with zone EWMA lines.
-
-    Planned weekly time is drawn as an outlined bar over the actual stack.
-    When a planned workout carries a pace zone distribution, the week also
-    gets a hatched stacked bar. ``planned_zone_label`` names that stack.
-    """
+    """Weekly running time stacked by pace zone with zone EWMA lines."""
     _require_data(weeks, time_points)
-
     windows = windows or AverageWindows()
-
-    if planned_zone_weeks is None:
-        planned_zone_weeks = []
-
+    planned_zone_weeks = planned_zone_weeks or []
     zone_count = (
         len(weeks[0].zones)
         if weeks
@@ -323,33 +321,43 @@ def plot_time(
     )
 
     if zone_points:
-        fig, (ax, zone_ax) = plt.subplots(
-            2,
-            1,
-            sharex=True,
-            figsize=(12, 16),
-            gridspec_kw={"height_ratios": [3, 2]},
+        figure = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            row_heights=[3, 2],
+            vertical_spacing=0.08,
+            subplot_titles=(
+                "",
+                (
+                    f"{zone_window_days}-day EWMA stacked by pace zone"
+                    if zone_window_days
+                    else "EWMA stacked by pace zone"
+                ),
+            ),
         )
     else:
-        fig, ax = plt.subplots(figsize=(12, 10))
-        zone_ax = None
+        figure = go.Figure()
+
+    week_dates = [week.week for week in weeks]
 
     if weeks:
-        week_dates = [week.week for week in weeks]
         bottoms = [0.0] * len(weeks)
 
         for index in range(zone_count):
-            values = [
-                week.zones[index] / 3600
-                for week in weeks
-            ]
-            _weekly_bars(
-                ax,
-                week_dates,
-                values,
-                color=ZONE_COLORS[index % len(ZONE_COLORS)],
-                label=f"Z{index + 1}",
-                bottom=bottoms,
+            values = [week.zones[index] / 3600 for week in weeks]
+            _add(
+                figure,
+                go.Bar(
+                    x=week_dates,
+                    y=values,
+                    base=bottoms,
+                    name=f"Z{index + 1}",
+                    width=WEEK_MS,
+                    marker_color=ZONE_COLORS[index % len(ZONE_COLORS)],
+                ),
+                row=1 if zone_points else None,
+                col=1 if zone_points else None,
             )
             bottoms = [
                 bottom + value
@@ -359,63 +367,99 @@ def plot_time(
         unzoned = [week.unzoned / 3600 for week in weeks]
 
         if any(unzoned):
-            _weekly_bars(
-                ax,
-                week_dates,
-                unzoned,
-                color=UNZONED_COLOR,
-                label="Unzoned",
-                bottom=bottoms,
+            _add(
+                figure,
+                go.Bar(
+                    x=week_dates,
+                    y=unzoned,
+                    base=bottoms,
+                    name="Unzoned",
+                    width=WEEK_MS,
+                    marker_color=UNZONED_COLOR,
+                ),
+                row=1 if zone_points else None,
+                col=1 if zone_points else None,
             )
 
     planned_zone_dates = {week.week for week in planned_zone_weeks}
 
     if planned_zone_weeks:
-        bottoms = [0.0] * len(planned_zone_weeks)
+        planned_bottoms = [0.0] * len(planned_zone_weeks)
 
         for index in range(zone_count):
             values = [
                 week.zones[index] / 3600
                 for week in planned_zone_weeks
             ]
-            ax.bar(
-                [week.week for week in planned_zone_weeks],
-                values,
-                width=7,
-                align="edge",
-                bottom=bottoms,
-                facecolor="none",
-                edgecolor=ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)],
-                hatch="//",
-                linewidth=0.8,
-                alpha=0.5,
-                zorder=4,
+            _add(
+                figure,
+                go.Bar(
+                    x=[week.week for week in planned_zone_weeks],
+                    y=values,
+                    base=planned_bottoms,
+                    name=(
+                        planned_zone_label if index == 0 else None
+                    ),
+                    width=WEEK_MS,
+                    showlegend=index == 0,
+                    marker={
+                        "color": "rgba(0, 0, 0, 0)",
+                        "line": {
+                            "color": ZONE_LINE_COLORS[
+                                index % len(ZONE_LINE_COLORS)
+                            ],
+                            "width": 1,
+                        },
+                        "pattern": {
+                            "shape": PLANNED_PATTERN,
+                            "fgcolor": ZONE_LINE_COLORS[
+                                index % len(ZONE_LINE_COLORS)
+                            ],
+                            "solidity": 0.35,
+                        },
+                    },
+                ),
+                row=1 if zone_points else None,
+                col=1 if zone_points else None,
             )
-            bottoms = [
+            planned_bottoms = [
                 bottom + value
-                for bottom, value in zip(bottoms, values)
+                for bottom, value in zip(planned_bottoms, values)
             ]
-
-        ax.bar(
-            [week.week for week in planned_zone_weeks],
-            bottoms,
-            width=7,
-            align="edge",
-            facecolor="none",
-            edgecolor="black",
-            linestyle="--",
-            linewidth=1.4,
-            alpha=0.8,
-            zorder=5,
-        )
 
     planned_totals = [
         (week, seconds / 3600)
         for week, seconds in planned_time or []
+        if week not in planned_zone_dates
     ]
 
     if planned_totals:
-        _planned_bars(ax, planned_totals, label="planned")
+        _add(
+            figure,
+            go.Bar(
+                x=[week for week, _ in planned_totals],
+                y=[value for _, value in planned_totals],
+                name="planned",
+                width=WEEK_MS,
+                marker={
+                    "color": "rgba(0, 0, 0, 0)",
+                    "line": {"color": "black", "width": 1.4},
+                },
+            ),
+            row=1 if zone_points else None,
+            col=1 if zone_points else None,
+        )
+
+    if time_points:
+        _plot_average_lines(
+            figure,
+            time_points,
+            windows,
+            scale=time_scale / 3600,
+            label=lambda attribute, days: f"{days}d avg (weekly)",
+            row=1 if zone_points else None,
+            col=1 if zone_points else None,
+        )
 
     axis_weeks = sorted(
         set(week_dates if weeks else [])
@@ -424,144 +468,80 @@ def plot_time(
     )
 
     if axis_weeks:
-        _style_week_axis(ax, axis_weeks)
-
-    if time_points:
-        _plot_average_lines(
-            ax,
-            time_points,
-            windows,
-            scale=time_scale / 3600,
-            label=lambda attribute, days: f"{days}d avg (weekly)",
+        figure.update_xaxes(
+            range=[
+                axis_weeks[0],
+                axis_weeks[-1] + timedelta(days=7),
+            ]
         )
 
-    _finish_week_axis(
-        fig,
-        ax,
-        title=title,
-        ylabel=ylabel,
-        legend_fontsize=8,
-        extra_handles=(
-            [(
-                Patch(
-                    facecolor="white",
-                    edgecolor="black",
-                    hatch="//",
-                ),
-                planned_zone_label,
-            )]
-            if planned_zone_weeks
-            else None
-        ),
-    )
-
-    if zone_ax is not None and zone_points:
-        zone_dates = [point.date for point in zone_points]
+    if zone_points:
         actual_count = sum(
             1 for point in zone_points if not point.projected
         )
-        has_projected = actual_count < len(zone_points)
-        lower = [0.0] * len(zone_points)
+        projected = [point for point in zone_points if point.projected]
 
-        for index in range(zone_count - 1, -1, -1):
-            values = [
-                point.zones[index] * zone_scale / 3600
-                for point in zone_points
-            ]
-            upper = [
-                low + value
-                for low, value in zip(lower, values)
-            ]
-            label = "+".join(
-                f"Z{zone + 1}"
-                for zone in range(index, zone_count)
-            )
-            color = ZONE_COLORS[index % len(ZONE_COLORS)]
-            line_color = ZONE_LINE_COLORS[index % len(ZONE_LINE_COLORS)]
-
-            if actual_count:
-                zone_ax.fill_between(
-                    zone_dates[:actual_count],
-                    lower[:actual_count],
-                    upper[:actual_count],
-                    color=color,
-                    alpha=0.65,
-                    linewidth=0,
-                )
-                zone_ax.plot(
-                    zone_dates[:actual_count],
-                    upper[:actual_count],
-                    color=line_color,
-                    linewidth=1.8,
-                    label=label,
-                )
-
-            if has_projected:
-                start = max(actual_count - 1, 0)
-                zone_ax.fill_between(
-                    zone_dates[start:],
-                    lower[start:],
-                    upper[start:],
-                    color=color,
-                    alpha=0.3,
-                    linewidth=0,
-                )
-                zone_ax.plot(
-                    zone_dates[start:],
-                    upper[start:],
-                    color=line_color,
-                    linewidth=1.8,
-                    linestyle="--",
-                    label=label if not actual_count else None,
-                )
-
-            lower = upper
-
-        if has_projected:
-            zone_ax.plot(
-                [],
-                [],
-                color="black",
-                linestyle="--",
-                linewidth=1.2,
-                label="projected",
+        for index in range(zone_count):
+            _add(
+                figure,
+                go.Scatter(
+                    x=[point.date for point in zone_points],
+                    y=[
+                        point.zones[index] * zone_scale / 3600
+                        for point in zone_points
+                    ],
+                    mode="lines",
+                    name=f"Z{index + 1}",
+                    stackgroup="one",
+                    showlegend=False,
+                    line={
+                        "color": ZONE_LINE_COLORS[
+                            index % len(ZONE_LINE_COLORS)
+                        ],
+                        "width": 1.2,
+                    },
+                ),
+                row=2,
+                col=1,
             )
 
-        if zone_window_days:
-            zone_ax.set_title(
-                f"{zone_window_days}-day EWMA stacked by pace zone",
-                fontsize=10,
+        if projected and actual_count:
+            figure.add_vline(
+                x=projected[0].date,
+                line_width=1,
+                line_dash="dash",
+                line_color="#7f7f7f",
+                row=2,
+                col=1,
             )
 
-        zone_ax.set_ylabel(ylabel)
-        zone_ax.set_xlabel("week starting (Monday)")
-        zone_ax.grid(True, alpha=0.3)
-        zone_ax.legend(
-            loc="best",
-            fontsize=8,
-            ncol=min(zone_count + (1 if has_projected else 0), 5),
+        figure.update_yaxes(title_text=ylabel, row=2, col=1)
+        figure.update_xaxes(
+            title_text="week starting (Monday)",
+            row=2,
+            col=1,
         )
-    elif zone_ax is not None:
-        zone_ax.set_visible(False)
+        figure.update_yaxes(title_text=ylabel, row=1, col=1)
+    else:
+        figure.update_xaxes(title_text="week starting (Monday)")
 
-    if zone_ax is None:
-        ax.set_xlabel("week starting (Monday)")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        barmode="overlay",
+        height=800,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.12, "x": 0},
+        hovermode="x unified",
+    )
 
-    return _save(fig, output)
-
-
-def _pace_tick(seconds, _position):
-    return format_pace(seconds)
-
-
-SUBT_COLORS = {
-    "short": "tab:blue",
-    "medium": "tab:orange",
-    "long": "tab:green",
-    "lt1": "tab:purple",
-}
-
-CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=2400 if zone_points else 1500,
+    )
 
 
 def _subt_points_for(points: list[SubtPoint], category: str, value):
@@ -579,26 +559,27 @@ def plot_subt(
     output: str,
     window: int = 5,
     title: str = "subT and LT1 work intervals",
+    as_html: bool = False,
 ) -> str:
-    """Pace and HR in one figure, as two stacked panels sharing a date axis.
-
-    The top panel shows pace (inverted so faster paces point up); the
-    bottom panel shows average heart rate. Category colours are shared.
-    """
+    """Pace and heart rate in two stacked panels sharing a date axis."""
     _require_data(points)
-
-    fig, (pace_ax, hr_ax) = plt.subplots(
-        2,
-        1,
-        sharex=True,
-        figsize=(11, 16),
-        gridspec_kw={"height_ratios": [3, 2]},
+    figure = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        row_heights=[3, 2],
+        vertical_spacing=0.08,
+        subplot_titles=("Pace", "Average heart rate"),
     )
     plotted = False
+    pace_values = [
+        point.pace_s_per_km
+        for point in points
+        if point.pace_s_per_km is not None
+    ]
 
     for category in CHART_CATEGORIES:
         color = SUBT_COLORS[category]
-
         pace = _subt_points_for(
             points,
             category,
@@ -609,56 +590,54 @@ def plot_subt(
             plotted = True
             dates = [point.date for point in pace]
             values = [point.pace_s_per_km for point in pace]
-            bands = [
-                (
-                    point.date,
-                    point.fastest_pace_s_per_km,
-                    point.slowest_pace_s_per_km,
-                )
-                for point in pace
-                if point.fastest_pace_s_per_km is not None
-                and point.slowest_pace_s_per_km is not None
-            ]
 
-            if bands:
-                pace_ax.vlines(
-                    [day for day, _, _ in bands],
-                    [low for _, low, _ in bands],
-                    [high for _, _, high in bands],
-                    color=color,
-                    alpha=0.35,
-                    linewidth=1.2,
-                    zorder=1,
-                )
+            for point in pace:
+                if (
+                    point.fastest_pace_s_per_km is None
+                    or point.slowest_pace_s_per_km is None
+                ):
+                    continue
 
-                for cap_index in (1, 2):
-                    pace_ax.scatter(
-                        [band[0] for band in bands],
-                        [band[cap_index] for band in bands],
-                        marker="_",
-                        s=55,
-                        color=color,
-                        linewidths=1.5,
-                        zorder=2,
-                    )
+                figure.add_trace(
+                    go.Scatter(
+                        x=[point.date, point.date],
+                        y=[
+                            point.fastest_pace_s_per_km,
+                            point.slowest_pace_s_per_km,
+                        ],
+                        mode="lines",
+                        line={"color": color, "width": 1.1},
+                        opacity=0.35,
+                        showlegend=False,
+                    ),
+                    row=1,
+                    col=1,
+                )
 
             if len(pace) >= 2:
-                pace_ax.plot(
-                    dates,
-                    sma(values, window),
-                    color=color,
-                    alpha=0.55,
-                    linewidth=1.8,
-                    zorder=2,
+                figure.add_trace(
+                    go.Scatter(
+                        x=dates,
+                        y=sma(values, window),
+                        mode="lines",
+                        line={"color": color, "width": 1.8},
+                        opacity=0.55,
+                        showlegend=False,
+                    ),
+                    row=1,
+                    col=1,
                 )
 
-            pace_ax.scatter(
-                dates,
-                values,
-                s=30,
-                color=color,
-                label=f"{category} ({len(pace)})",
-                zorder=3,
+            figure.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=values,
+                    mode="markers",
+                    marker={"color": color, "size": 7},
+                    name=f"{category} ({len(pace)})",
+                ),
+                row=1,
+                col=1,
             )
 
         hr = _subt_points_for(
@@ -673,75 +652,101 @@ def plot_subt(
         plotted = True
         dates = [point.date for point in hr]
         values = [point.avg_hr for point in hr]
-        bands = [
-            (point.date, point.avg_hr, point.max_hr)
-            for point in hr
-            if point.max_hr is not None
-        ]
 
-        if bands:
-            hr_ax.vlines(
-                [day for day, _, _ in bands],
-                [low for _, low, _ in bands],
-                [high for _, _, high in bands],
-                color=color,
-                alpha=0.3,
-                linewidth=1.1,
-                zorder=1,
+        for point in hr:
+            if point.max_hr is None:
+                continue
+
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date, point.date],
+                    y=[point.avg_hr, point.max_hr],
+                    mode="lines",
+                    line={"color": color, "width": 1.1},
+                    opacity=0.3,
+                    showlegend=False,
+                ),
+                row=2,
+                col=1,
             )
-            hr_ax.scatter(
-                [day for day, _, _ in bands],
-                [high for _, _, high in bands],
-                marker="_",
-                s=55,
-                color=color,
-                linewidths=1.5,
-                zorder=2,
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date],
+                    y=[point.max_hr],
+                    mode="markers",
+                    marker={
+                        "color": color,
+                        "size": 10,
+                        "symbol": "line-ns",
+                    },
+                    showlegend=False,
+                ),
+                row=2,
+                col=1,
             )
 
         if len(hr) >= 2:
-            hr_ax.plot(
-                dates,
-                sma(values, window),
-                color=color,
-                alpha=0.55,
-                linewidth=1.8,
-                zorder=2,
+            figure.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=sma(values, window),
+                    mode="lines",
+                    line={"color": color, "width": 1.8},
+                    opacity=0.55,
+                    showlegend=False,
+                ),
+                row=2,
+                col=1,
             )
 
-        hr_ax.scatter(
-            dates,
-            values,
-            s=30,
-            color=color,
-            zorder=3,
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=values,
+                mode="markers",
+                marker={"color": color, "size": 7},
+                showlegend=False,
+            ),
+            row=2,
+            col=1,
         )
 
     if not plotted:
         raise ValueError("no data to plot")
 
-    pace_ax.set_title(title)
-    pace_ax.set_ylabel("pace (min/km)")
-    pace_ax.invert_yaxis()
-    pace_ax.yaxis.set_major_formatter(FuncFormatter(_pace_tick))
-    pace_ax.grid(True, alpha=0.3)
-    pace_ax.legend(
-        loc="best",
-        fontsize=9,
-        framealpha=0.95,
-        title=(
-            f"dots = sessions; lines = {window}-session mean\n"
-            "ranges = fastest–slowest pace / avg–max HR"
-        ),
-        title_fontsize=8,
+    if pace_values:
+        low = min(pace_values)
+        high = max(pace_values)
+        ticks = [
+            low + (high - low) * index / 4
+            for index in range(5)
+        ]
+        figure.update_yaxes(
+            autorange="reversed",
+            tickvals=ticks,
+            ticktext=[format_pace(value) for value in ticks],
+            row=1,
+            col=1,
+        )
+
+    figure.update_yaxes(title_text="pace (min/km)", row=1, col=1)
+    figure.update_yaxes(title_text="heart rate (bpm)", row=2, col=1)
+    figure.update_xaxes(title_text="date", row=2, col=1)
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.12, "x": 0},
+        hovermode="x unified",
     )
-
-    hr_ax.set_ylabel("heart rate (bpm)")
-    hr_ax.set_xlabel("date")
-    hr_ax.grid(True, alpha=0.3)
-
-    fig.autofmt_xdate()
-    return _save(fig, output)
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=2400,
+    )
 
 
 def plot_load(
@@ -750,100 +755,104 @@ def plot_load(
     planned_load: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
     title: str = "Training load",
+    as_html: bool = False,
 ) -> str:
-    """Daily load bars with base, fitness, and fatigue EWMA lines.
-
-    Planned daily load is drawn as an outlined bar over the actual bar.
-    """
+    """Daily load bars with base, fitness, and fatigue EWMA lines."""
     _require_data(points)
-
     windows = windows or AverageWindows()
     actual = [point for point in points if not point.projected]
-
-    fig, ax = plt.subplots(figsize=(12, 10))
-    ax.bar(
-        [point.date for point in actual],
-        [point.load for point in actual],
-        color="lightgrey",
-        alpha=0.6,
-        label="daily load",
-        zorder=1,
+    figure = go.Figure()
+    figure.add_bar(
+        x=[point.date for point in actual],
+        y=[point.load for point in actual],
+        name="daily load",
+        marker_color="lightgrey",
     )
 
     if planned_load:
-        ax.bar(
-            [day for day, _ in planned_load],
-            [load for _, load in planned_load],
-            facecolor="none",
-            edgecolor="black",
-            linestyle="--",
-            linewidth=1.2,
-            alpha=0.8,
-            label="planned",
-            zorder=4,
-        )
+        actual_days = {
+            point.date for point in actual if point.load > 0
+        }
+        planned = [
+            (day, value)
+            for day, value in planned_load
+            if day not in actual_days
+        ]
+
+        if planned:
+            _planned_total_bars(figure, planned)
 
     _plot_average_lines(
-        ax,
+        figure,
         points,
         windows,
         label=lambda attribute, days: f"{attribute.title()} ({days}d)",
     )
-
-    ax.set_xlabel("date")
-    ax.set_ylabel("training load")
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=9)
-    fig.autofmt_xdate()
-    return _save(fig, output)
+    _base_layout(
+        figure,
+        title=title,
+        xlabel="date",
+        ylabel="training load",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1500,
+    )
 
 
 def plot_vo2max(
     points: list[Vo2maxPoint],
     output: str,
     title: str = "Garmin running VO2max",
+    as_html: bool = False,
 ) -> str:
     """Daily Garmin VO2max dots with 7- and 42-day EWMA lines."""
     _require_data(points)
-
     measured = [point for point in points if point.value is not None]
-
-    fig, ax = plt.subplots(figsize=(12, 10))
-    ax.scatter(
-        [point.date for point in measured],
-        [point.value for point in measured],
-        s=18,
-        color="tab:blue",
-        alpha=0.55,
-        edgecolors="none",
-        label="Garmin VO2max",
-        zorder=3,
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=[point.date for point in measured],
+            y=[point.value for point in measured],
+            mode="markers",
+            marker={"color": "#1f77b4", "size": 6, "opacity": 0.55},
+            name="Garmin VO2max",
+        )
     )
-    ax.plot(
-        [point.date for point in points],
-        [point.avg_7 for point in points],
-        color="tab:orange",
-        linewidth=2,
-        label="7-day avg",
-        zorder=2,
+    figure.add_trace(
+        go.Scatter(
+            x=[point.date for point in points],
+            y=[point.avg_7 for point in points],
+            mode="lines",
+            line={"color": "#ff7f0e", "width": 2},
+            name="7-day avg",
+        )
     )
-    ax.plot(
-        [point.date for point in points],
-        [point.avg_42 for point in points],
-        color="tab:red",
-        linewidth=2,
-        label="42-day avg",
-        zorder=2,
+    figure.add_trace(
+        go.Scatter(
+            x=[point.date for point in points],
+            y=[point.avg_42 for point in points],
+            mode="lines",
+            line={"color": "#d62728", "width": 2},
+            name="42-day avg",
+        )
     )
-
-    ax.set_xlabel("date")
-    ax.set_ylabel("VO2max (mL/kg/min)")
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=9)
-    fig.autofmt_xdate()
-    return _save(fig, output)
+    _base_layout(
+        figure,
+        title=title,
+        xlabel="date",
+        ylabel="VO2max (mL/kg/min)",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1500,
+    )
 
 
 def plot_recovery(
@@ -852,43 +861,27 @@ def plot_recovery(
     planned_dates: list[date] | None = None,
     window_days: int = 7,
     title: str = "Recovery trends",
+    as_html: bool = False,
 ) -> str:
-    """Plot HRV, resting HR, and sleep with rolling averages.
-
-    Planned workouts are marked along the bottom of the sleep panel.
-    """
+    """HRV, resting HR, and sleep with rolling averages."""
     _require_data(points)
-
+    figure = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=("HRV", "Resting HR", "Sleep"),
+    )
     metrics = (
-        ("hrv", "hrv_avg", "HRV", "ms", 1.0, "tab:blue"),
-        (
-            "resting_hr",
-            "resting_hr_avg",
-            "Resting HR",
-            "bpm",
-            1.0,
-            "tab:red",
-        ),
-        (
-            "sleep_s",
-            "sleep_avg",
-            "Sleep",
-            "hours",
-            1 / 3600,
-            "tab:purple",
-        ),
+        ("hrv", "hrv_avg", 1.0, "ms", "#1f77b4"),
+        ("resting_hr", "resting_hr_avg", 1.0, "bpm", "#d62728"),
+        ("sleep_s", "sleep_avg", 1 / 3600, "hours", "#9467bd"),
     )
 
-    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(12, 18))
-
-    for ax, (
-        raw_attr,
-        average_attr,
-        label,
-        unit,
-        scale,
-        color,
-    ) in zip(axes, metrics):
+    for row, (raw_attr, average_attr, scale, unit, color) in enumerate(
+        metrics,
+        start=1,
+    ):
         raw = [
             (point.date, getattr(point, raw_attr) * scale)
             for point in points
@@ -901,46 +894,235 @@ def plot_recovery(
         ]
 
         if raw:
-            ax.scatter(
-                [day for day, _ in raw],
-                [value for _, value in raw],
-                s=14,
-                color=color,
-                alpha=0.45,
-                label="daily",
-                zorder=2,
+            figure.add_trace(
+                go.Scatter(
+                    x=[day for day, _ in raw],
+                    y=[value for _, value in raw],
+                    mode="markers",
+                    marker={"color": color, "size": 4, "opacity": 0.45},
+                    name="daily",
+                    showlegend=False,
+                ),
+                row=row,
+                col=1,
             )
 
         if average:
-            ax.plot(
-                [day for day, _ in average],
-                [value for _, value in average],
-                color=color,
-                linewidth=2,
-                label=f"{window_days}-day avg",
-                zorder=3,
+            figure.add_trace(
+                go.Scatter(
+                    x=[day for day, _ in average],
+                    y=[value for _, value in average],
+                    mode="lines",
+                    line={"color": color, "width": 2},
+                    name=f"{window_days}-day avg",
+                    showlegend=False,
+                ),
+                row=row,
+                col=1,
             )
 
-        if raw or average:
-            ax.legend(loc="best", fontsize=8)
-        else:
-            ax.text(
-                0.5,
-                0.5,
-                "No data",
-                transform=ax.transAxes,
-                ha="center",
-                va="center",
-            )
+        label = {
+            "hrv": "HRV (ms)",
+            "resting_hr": "Resting HR (bpm)",
+            "sleep_s": "Sleep (hours)",
+        }.get(raw_attr, raw_attr)
 
-        ax.set_ylabel(f"{label} ({unit})")
-        ax.grid(True, alpha=0.3)
+        figure.update_yaxes(
+            title_text=label,
+            row=row,
+            col=1,
+        )
 
     if planned_dates:
-        _planned_rug(axes[-1], planned_dates)
-        axes[-1].legend(loc="best", fontsize=8)
+        for day in planned_dates:
+            figure.add_shape(
+                type="line",
+                xref="x3",
+                yref="y3 domain",
+                x0=day,
+                x1=day,
+                y0=0.01,
+                y1=0.05,
+                line={"color": "black", "width": 2},
+            )
 
-    axes[0].set_title(title)
-    axes[-1].set_xlabel("date")
-    fig.autofmt_xdate()
-    return _save(fig, output)
+    figure.update_xaxes(title_text="date", row=3, col=1)
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.08, "x": 0},
+        hovermode="x unified",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=2700,
+    )
+
+
+def plot_overview(
+    actual_bars: list[tuple[date, float, float, float]],
+    planned_bars: list[tuple[date, float, float, float]],
+    zone_series: ZoneGroupSeries,
+    output: str,
+    start: date,
+    end: date,
+    today: date,
+    title: str = "Training overview",
+    as_html: bool = False,
+) -> str:
+    """Daily running minutes by intensity group with grouped EWMAs."""
+    figure = go.Figure()
+    groups = (
+        ("hard", 2, HARD_COLOR, HARD_PLANNED_COLOR, HARD_EDGE),
+        ("easy", 1, EASY_COLOR, EASY_PLANNED_COLOR, EASY_EDGE),
+        ("unzoned", 3, UNZONED_COLOR, UNZONED_PLANNED_COLOR, UNZONED_EDGE),
+    )
+
+    for label, value_key, color, _planned_color, _edge in groups:
+        values = [row[value_key] / 60 for row in actual_bars]
+
+        if label == "unzoned" and not any(values):
+            continue
+
+        figure.add_bar(
+            x=[row[0].isoformat() for row in actual_bars],
+            y=values,
+            name=label.title(),
+            marker_color=color,
+        )
+
+    if planned_bars:
+        for label, value_key, _color, planned_color, edge in groups:
+            planned_values = [row[value_key] / 60 for row in planned_bars]
+
+            if label == "unzoned" and not any(planned_values):
+                continue
+
+            figure.add_bar(
+                x=[row[0].isoformat() for row in planned_bars],
+                y=planned_values,
+                name=f"planned {label}",
+                marker={
+                    "color": planned_color,
+                    "line": {"color": edge, "width": 1},
+                    "pattern": {
+                        "shape": PLANNED_PATTERN,
+                        "fgcolor": edge,
+                    },
+                },
+            )
+
+    actual = [point for point in zone_series.points if not point.projected]
+    projected = [point for point in zone_series.points if point.projected]
+
+    for family, colors in (
+        ("hard", HARD_LINE_COLORS),
+        ("total", TOTAL_LINE_COLORS),
+    ):
+        for window in (7, 42, 182):
+            attribute = f"{family}_{window}"
+            style = {
+                "color": colors[window],
+                "width": LINE_WIDTHS[window],
+                "dash": LINE_STYLES[window],
+            }
+
+            if actual:
+                figure.add_trace(
+                    go.Scatter(
+                        x=[point.date.isoformat() for point in actual],
+                        y=[
+                            getattr(point, attribute) / 60
+                            for point in actual
+                        ],
+                        mode="lines",
+                        name=f"{family.title()} {window}d",
+                        line=style,
+                    )
+                )
+
+            if projected:
+                bridge = actual[-1:] + projected
+                figure.add_trace(
+                    go.Scatter(
+                        x=[point.date.isoformat() for point in bridge],
+                        y=[
+                            getattr(point, attribute) / 60
+                            for point in bridge
+                        ],
+                        mode="lines",
+                        name=f"{family.title()} {window}d",
+                        line=style,
+                        opacity=PROJECTED_OPACITY,
+                        showlegend=False,
+                    )
+                )
+
+    y_max = 90.0
+    clipped = [
+        (row[0], sum(row[1:]) / 60)
+        for row in (*actual_bars, *planned_bars)
+        if sum(row[1:]) / 60 > y_max
+    ]
+
+    if clipped:
+        figure.add_trace(
+            go.Scatter(
+                x=[day.isoformat() for day, _ in clipped],
+                y=[y_max - 2] * len(clipped),
+                mode="markers",
+                marker={
+                    "symbol": "triangle-up",
+                    "size": 9,
+                    "color": "#7f7f7f",
+                },
+                name=f"clipped above {y_max:.0f} min",
+                hovertext=[
+                    f"{minutes:.0f} min (bar clipped)"
+                    for _, minutes in clipped
+                ],
+                hoverinfo="text",
+            )
+        )
+
+    figure.add_vline(
+        x=today.isoformat(),
+        line_width=1,
+        line_dash="dot",
+        line_color="#7f7f7f",
+        annotation_text="today",
+        annotation_position="top",
+    )
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=520,
+        margin={"l": 50, "r": 20, "t": 95, "b": 40},
+        barmode="stack",
+        bargap=0.1,
+        hovermode="x unified",
+        yaxis={
+            "title": "minutes",
+            "range": [0, y_max],
+            "dtick": 15,
+        },
+        xaxis={"range": [start.isoformat(), end.isoformat()]},
+        legend={
+            "orientation": "h",
+            "y": 1.18,
+            "x": 0,
+            "font": {"size": 9},
+        },
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=900,
+    )

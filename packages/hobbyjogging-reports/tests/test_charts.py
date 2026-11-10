@@ -5,6 +5,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     plot_load,
+    plot_overview,
     plot_recovery,
     plot_subt,
     plot_time,
@@ -22,6 +23,7 @@ from hobbyjogging_report.model import (
     Vo2maxPoint,
     ZoneAveragePoint,
 )
+from hobbyjogging_report.zone_groups import ZoneGroupPoint, ZoneGroupSeries
 
 D = date(2026, 1, 1)
 
@@ -182,6 +184,77 @@ class TimeChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_time([], str(Path(tmp) / "time.png"))
+
+
+class OverviewChartTests(unittest.TestCase):
+
+    def test_overview_chart_writes_file(self):
+        actual_bars = [
+            (D, 500.0, 300.0, 0.0),
+            (date(2026, 1, 2), 600.0, 0.0, 0.0),
+        ]
+        planned_bars = [
+            (date(2026, 1, 3), 400.0, 200.0, 0.0),
+        ]
+        series = ZoneGroupSeries(
+            points=[
+                ZoneGroupPoint(
+                    D,
+                    500.0,
+                    300.0,
+                    0.0,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.05,
+                    0.05,
+                    0.05,
+                    0.15,
+                    0.15,
+                    0.15,
+                ),
+                ZoneGroupPoint(
+                    date(2026, 1, 2),
+                    600.0,
+                    0.0,
+                    0.0,
+                    0.2,
+                    0.2,
+                    0.2,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.2,
+                    0.2,
+                    0.2,
+                ),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "overview.png"
+
+            result = plot_overview(
+                actual_bars,
+                planned_bars,
+                series,
+                str(output),
+                start=D,
+                end=date(2026, 1, 3),
+                today=date(2026, 1, 2),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_chart_can_render_html(self):
+        result = plot_load(
+            [LoadPoint(D, 50, 40, 45, 48)],
+            "",
+            as_html=True,
+        )
+
+        self.assertIn("Plotly.newPlot", result)
 
 
 class LoadChartTests(unittest.TestCase):

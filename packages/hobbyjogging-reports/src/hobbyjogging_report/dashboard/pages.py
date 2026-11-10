@@ -25,11 +25,12 @@ from ..format import (
     pace,
     sport_label,
 )
+from ..charts import plot_load, plot_overview, plot_recovery
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import RecoveryPoint
-from .charts import load_chart, recovery_chart, running_volume_chart
+from ..model import LoadPoint, RecoveryPoint
 from .health import DataHealth, banner
-from .views import PlannedSummary, WindowSummary, ZoneGroupSeries
+from .views import PlannedSummary, WindowSummary
+from ..zone_groups import ZoneGroupSeries
 
 
 def activity_filename(activity_id: str) -> str:
@@ -139,19 +140,23 @@ def overview_page(
     volume_series: ZoneGroupSeries,
     chart_start: date,
     chart_end: date,
-    load_series: list[tuple[date, float]],
+    load_points: list[LoadPoint],
+    planned_load: list[tuple[date, float]],
     detail_ids: set[str],
 ) -> str:
     future_days = (chart_end - end).days
 
     volume_html = chart(
-        running_volume_chart(
+        plot_overview(
             volume_bars,
             planned_bars,
             volume_series,
-            chart_start,
-            chart_end,
-            end,
+            output="",
+            start=chart_start,
+            end=chart_end,
+            today=end,
+            title="",
+            as_html=True,
         )
     )
     volume_days = (end - chart_start).days + 1
@@ -167,8 +172,16 @@ def overview_page(
         "without a recorded run; lighter line segments are projected.</p>"
     )
 
-    if any(value > 0 for _, value in load_series):
-        load_html = chart(load_chart(load_series))
+    if any(point.load > 0 for point in load_points):
+        load_html = chart(
+            plot_load(
+                load_points,
+                output="",
+                planned_load=planned_load,
+                title="",
+                as_html=True,
+            )
+        )
     else:
         load_html = '<p class="muted">No training load in this window.</p>'
 
@@ -488,7 +501,13 @@ def recovery_page(
     ]
 
     if points:
-        chart_html = chart(recovery_chart(points))
+        chart_html = chart(
+            plot_recovery(
+                points,
+                output="",
+                as_html=True,
+            )
+        )
     else:
         chart_html = '<p class="muted">No wellness data in this window.</p>'
 

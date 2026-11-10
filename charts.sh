@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [volume|subt|vo2max|load|time|recovery] [args...]
+  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -15,6 +15,8 @@ printed. The database source is the default.
 
 Examples:
   ./charts.sh
+  ./charts.sh overview
+  ./charts.sh overview --chart-days 90 --future-days 21
   ./charts.sh volume
   ./charts.sh volume --days 90
   ./charts.sh volume --output volume.png
@@ -31,13 +33,14 @@ Examples:
   ./charts.sh subt --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
-direct CLI. The volume, load, time, and recovery charts include planned
-workouts and accept --planned-days N (default 28, ignored with --to; 0
-disables the future extension). Their average lines continue through the
-planned days as dashed projections. The load, volume, and time charts also
-accept --base-days / --fitness-days / --fatigue-days. The time chart also
-accepts --zones and --zone-window base|fitness|fatigue. The recovery chart
-accepts --window.
+direct CLI. The overview chart uses --chart-days (default 70) and
+--future-days (default 14), and writes overview.png by default. The volume,
+load, time, and recovery charts include planned workouts and accept
+--planned-days N (default 28, ignored with --to; 0 disables the future
+extension). Their average lines continue through the planned days as dashed
+projections. The load, volume, and time charts also accept --base-days /
+--fitness-days / --fatigue-days. The time chart also accepts --zones and
+--zone-window base|fitness|fatigue. The recovery chart accepts --window.
 EOF
 }
 
@@ -56,6 +59,7 @@ while (( index < ${#args[@]} )); do
             ;;
         *)
             mode="${args[$index]}"
+            mode_index=$index
             explicit_mode=1
             break
             ;;
@@ -67,7 +71,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|subt|vo2max|load|time|recovery)
+    volume|overview|subt|vo2max|load|time|recovery)
         ;;
     *)
         usage >&2
@@ -75,8 +79,15 @@ case "$mode" in
         ;;
 esac
 
+chart_mode="$mode"
+if [[ "$mode" == "overview" ]]; then
+    chart_mode="overview-chart"
+fi
+
 if (( explicit_mode == 0 )); then
-    args=("$mode" "${args[@]}")
+    args=("$chart_mode" "${args[@]}")
+else
+    args[$mode_index]="$chart_mode"
 fi
 
 uv run --env-file .env python -m hobbyjogging_report "${args[@]}"

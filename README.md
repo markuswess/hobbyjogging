@@ -153,6 +153,7 @@ Charts use `charts.sh` and print the generated file path:
 
 ```bash
 ./charts.sh
+./charts.sh overview
 ./charts.sh volume --days 90
 ./charts.sh load --days 180
 ./charts.sh time --days 90

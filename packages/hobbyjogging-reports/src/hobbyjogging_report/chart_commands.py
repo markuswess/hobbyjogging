@@ -224,12 +224,12 @@ def run_recovery_chart(
         window_days=window_days,
     )
 
-    events = source.events(start, planned_end)
+    events = source.events(end, planned_end)
 
     path = plot_recovery(
         points,
         output=output,
-        planned_dates=planned_workout_dates(events, start, planned_end),
+        planned_dates=planned_workout_dates(events, end, planned_end),
         window_days=window_days,
     )
 
@@ -384,6 +384,69 @@ def run_vo2max_chart(
     print(path)
 
 
+def run_overview_chart(
+    output: str,
+    today: date,
+    source: DataSource,
+    chart_days: int = 70,
+    future_days: int = 14,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the main overview chart as a PNG."""
+    from .analysis import average_warmup_days
+    from .charts import plot_overview
+    from .zone_groups import (
+        daily_zone_groups,
+        planned_bars_without_actual,
+        zone_group_series,
+    )
+
+    chart_start = today - timedelta(days=chart_days - 1)
+    chart_end = today + timedelta(days=future_days)
+    windows = AverageWindows()
+    warmup_days = average_warmup_days(windows)
+    _, activities = warmup_reviewed(
+        source,
+        chart_start,
+        chart_end,
+        warmup_days,
+        include_review,
+    )
+    events = [
+        event
+        for event in source.events(today, chart_end)
+        if event.type
+    ]
+    volume_bars = daily_zone_groups(activities, chart_start, today)
+    planned_bars = planned_bars_without_actual(
+        events,
+        volume_bars,
+        today,
+        chart_end,
+    )
+    zone_series = zone_group_series(
+        activities,
+        events,
+        chart_start - timedelta(days=warmup_days),
+        chart_end,
+        chart_start=chart_start,
+        projection_start=today,
+        windows=windows,
+    )
+
+    path = plot_overview(
+        volume_bars,
+        planned_bars,
+        zone_series,
+        output=output,
+        start=chart_start,
+        end=chart_end,
+        today=today,
+    )
+    print(path)
+
+
 def run_volume_command(parsed, source, include_review):
     output, start, end, planned_end, windows = parsed
     run_volume_chart(
@@ -407,6 +470,19 @@ def run_load_command(parsed, source, include_review):
         source,
         windows,
         planned_end=planned_end,
+        include_review=include_review,
+    )
+    return None
+
+
+def run_overview_chart_command(parsed, source, include_review):
+    output, chart_days, future_days, today = parsed
+    run_overview_chart(
+        output,
+        today,
+        source,
+        chart_days,
+        future_days,
         include_review=include_review,
     )
     return None

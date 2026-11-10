@@ -8,6 +8,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from .chart_commands import (
     run_load_command,
+    run_overview_chart_command,
     run_recovery_command,
     run_subt_command,
     run_time_command,
@@ -21,6 +22,7 @@ from .cli import (
     parse_dashboard_args,
     parse_load_args,
     parse_overview_args,
+    parse_overview_chart_args,
     parse_planned_args,
     parse_recovery_args,
     parse_report_args,
@@ -217,6 +219,17 @@ COMMANDS = {
             default_days=90,
         ),
         run=run_volume_command,
+    ),
+    "overview-chart": Command(
+        "overview-chart",
+        "Main training overview chart",
+        "overview-chart [output.png] [--chart-days N] [--future-days N]",
+        (
+            "charts.sh overview",
+            "charts.sh overview --chart-days 90 --future-days 21",
+        ),
+        parse=parse_overview_chart_args,
+        run=run_overview_chart_command,
     ),
     "load": Command(
         "load",

@@ -95,5 +95,5 @@ Turn planned races into a first-class part of the record:
 - **Doubtful data is surfaced, never silently mixed in.** Anything the rules
   flag waits in the review queue; reports exclude open items but never churn
   because of them.
-- **Terminal-first, no pandas; matplotlib for CLI charts, plotly for the
+- **Terminal-first, no pandas; one plotly chart layer for CLI PNGs and the
   dashboard.**

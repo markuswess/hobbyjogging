@@ -51,6 +51,10 @@ reports plus a static HTML dashboard:
   description, the full interval table, and subT/LT1 work reps.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
+- **overview-chart** — the main training chart (`./charts.sh overview`):
+  daily running minutes on a 0–90 minute axis, stacked hard (Z3+Z4) /
+  easy (Z1+Z2) / unzoned, with hard and total 7/42/182-day EWMAs and
+  hatched planned days. Bars above 90 minutes are marked and clipped.
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
   default.
@@ -109,6 +113,7 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
     uv run --env-file .env python -m hobbyjogging_report debug
     uv run --env-file .env python -m hobbyjogging_report volume [output.png]
+    uv run --env-file .env python -m hobbyjogging_report overview-chart [output.png]
     uv run --env-file .env python -m hobbyjogging_report load [output.png]
     uv run --env-file .env python -m hobbyjogging_report time [output.png]
     uv run --env-file .env python -m hobbyjogging_report recovery [output.png]
@@ -165,6 +170,8 @@ the same formatting. Redirected or piped output remains raw Markdown.
 `charts.sh` wraps the chart commands and prints the generated file path:
 
     ./charts.sh                          # weekly volume, last 90 days
+    ./charts.sh overview
+    ./charts.sh overview --chart-days 90 --future-days 21
     ./charts.sh volume --days 90
     ./charts.sh volume --output dist.png
     ./charts.sh volume --planned-days 0
@@ -536,10 +543,11 @@ hatched bars on days without a recorded run, including today, so an
 uncompleted planned session is visible; once a run is recorded, the actual bar
 replaces the plan bar. Events without pace zones count as unzoned.
 
-Charts are plotly figures embedded in the page, so the overview can be
-zoomed and panned. The pages remain static snapshots: there is no
-client-side data fetching and no server-side report process. `plotly.min.js`
-is bundled into the generated site so it works offline.
+Charts are plotly figures built by one shared layer: the CLI writes PNGs via
+kaleido, and the dashboard embeds the exact same figures as HTML, so the
+overview can be zoomed and panned. The pages remain static snapshots: there
+is no client-side data fetching and no server-side report process.
+`plotly.min.js` is bundled into the generated site so it works offline.
 
 Generation builds a temporary directory and atomically swaps it into place.
 It refuses to replace a non-empty directory unless it is a previous
@@ -579,7 +587,7 @@ analysis or chart code:
 - `summary.py` — period totals, quality-session lists, and recovery averages.
 - `classify.py` — workout categorization (quality / non-quality /
   cross-training / unknown).
-- `charts.py` — matplotlib rendering of analysis output.
+- `charts.py` — plotly chart builders shared by the CLI and dashboard.
 - `format.py` — model-based report formatting helpers.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
 - `daily.py`, `period_report.py`, `subt_report.py` — the Markdown reports;
