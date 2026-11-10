@@ -37,7 +37,8 @@ HTML dashboard:
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
-  moving averages ending today. Missing days are skipped.
+  moving averages ending today, plus the last four nights' values in the
+  same layout as the daily report. Missing days are skipped.
 - **planned** — Upcoming planned workouts starting tomorrow, as a compact
   key-facts table (date, weekday, workout, sport, distance, time, planned
   Z3+4 time, load); ends with weekly-average total time and Z3+4 time.

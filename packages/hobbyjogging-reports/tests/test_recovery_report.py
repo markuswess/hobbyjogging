@@ -84,6 +84,27 @@ class RecoveryReportTests(unittest.TestCase):
         )
         self.assertIn("missing days are skipped", report)
 
+    def test_report_lists_the_last_four_nights(self):
+        source = FakeSource(wellness=_wellness(10))
+
+        report = recovery_report(source, today=TODAY)
+
+        self.assertIn("\n## Night\n", report)
+        self.assertIn(
+            f"- {TODAY}: HRV 50 ms, RHR 46 bpm, Sleep 7h00",
+            report,
+        )
+        self.assertIn(
+            f"- {TODAY - timedelta(days=3)}: HRV 56 ms, RHR 52 bpm, Sleep 7h30",
+            report,
+        )
+        night_lines = [
+            line
+            for line in report.splitlines()
+            if line.startswith("- 20")
+        ]
+        self.assertEqual(4, len(night_lines))
+
     def test_report_without_wellness(self):
         report = recovery_report(FakeSource(), today=TODAY)
 

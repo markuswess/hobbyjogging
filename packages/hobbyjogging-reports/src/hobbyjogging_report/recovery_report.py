@@ -7,6 +7,8 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import WellnessDay
 
+from .format import format_nights
+
 WINDOWS = (7, 42, 182)
 
 
@@ -107,5 +109,6 @@ def recovery_report(
         "Simple calendar-day averages over the last 7, 42, and 182 days; "
         "missing days are skipped, not treated as zero.",
     ])
+    lines.extend(format_nights(wellness))
 
     return "\n".join(lines)

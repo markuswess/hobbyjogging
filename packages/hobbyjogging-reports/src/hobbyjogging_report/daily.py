@@ -9,7 +9,7 @@ from .format import (
     fmt_time,
     format_activity,
     format_fenced_block,
-    last_four_nights,
+    format_nights,
     sport_label,
 )
 from .review import exclude_review, review_note
@@ -48,32 +48,6 @@ def _activity_lines(source, activities, prefix: str = ""):
     for activity in sorted(activities, key=activity_sort_key):
         heading = f"{prefix}{sport_label(activity)} {activity.name}"
         lines.extend(format_activity(source, activity, heading))
-
-    return lines
-
-
-def _night_lines(wellness):
-    lines = ["\n## Night"]
-
-    for day in reversed(last_four_nights(wellness)):
-        hrv = day.hrv
-        rhr = day.resting_hr
-        sleep = day.sleep_s
-
-        lines.append(
-            f"- {day.date}: "
-            + (f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
-            + (
-                f"RHR {rhr:.0f} bpm"
-                if rhr is not None
-                else "RHR N/A"
-            )
-            + (
-                f", Sleep {fmt_time(sleep)}"
-                if sleep
-                else ", Sleep N/A"
-            )
-        )
 
     return lines
 
@@ -147,7 +121,7 @@ def daily(
     else:
         lines.append("- No activity")
 
-    lines.extend(_night_lines(wellness))
+    lines.extend(format_nights(wellness))
 
     if activities_today:
         lines.extend(

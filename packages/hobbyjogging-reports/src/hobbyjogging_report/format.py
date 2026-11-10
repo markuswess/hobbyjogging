@@ -238,6 +238,37 @@ def last_four_nights(wellness):
     return wellness[:4]
 
 
+def format_nights(wellness) -> list[str]:
+    """Format the last four nights as bullets under a Night heading.
+
+    Shared by the daily and recovery reports so both read the same way:
+    ``- 2026-11-07: HRV 55 ms, RHR 46 bpm, Sleep 7h30``.
+    """
+    lines = ["\n## Night"]
+
+    for day in reversed(last_four_nights(wellness)):
+        hrv = day.hrv
+        rhr = day.resting_hr
+        sleep = day.sleep_s
+
+        lines.append(
+            f"- {day.date}: "
+            + (f"HRV {hrv:.0f} ms, " if hrv is not None else "HRV N/A, ")
+            + (
+                f"RHR {rhr:.0f} bpm"
+                if rhr is not None
+                else "RHR N/A"
+            )
+            + (
+                f", Sleep {fmt_time(sleep)}"
+                if sleep
+                else ", Sleep N/A"
+            )
+        )
+
+    return lines
+
+
 def format_pace(seconds):
     """Format seconds/km as M:SS."""
     if seconds is None:
