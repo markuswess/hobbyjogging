@@ -207,6 +207,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Intervals", detail)
             self.assertIn("Work", detail)
             self.assertIn("../index.html", detail)
+            self.assertIn('href="../activities.html"', detail)
 
             health = (target / "health.html").read_text()
             self.assertIn("Flagged", health)

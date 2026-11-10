@@ -353,7 +353,7 @@ def activity_page(
             work_html = card("Work reps", f"<ul>{items}</ul>")
 
     body = (
-        f'<p>{link("activities.html", "← All activities")}</p>'
+        f'<p>{link("../activities.html", "← All activities")}</p>'
         + card("Metrics", metrics_html + "".join(zones))
     )
 
