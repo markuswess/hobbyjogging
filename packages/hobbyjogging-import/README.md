@@ -378,7 +378,11 @@ uv run --env-file .env hobbyjogging-import review show 3
 ```
 
 Resolving an ambiguous match links the source record to the chosen activity;
-then re-run the importer over that record so its field values are applied:
+then re-run the importer over that record so its field values are applied.
+Triage `(i)` shows the incoming source row (date, start in local time and
+UTC, sport, duration, distance, ascent, heart rate, description) and each
+candidate in full (start, duration, distance, pace, name, description,
+sources), which is usually enough to pick the right one.
 
 ```bash
 uv run --env-file .env hobbyjogging-import review resolve 3 --activity <id>

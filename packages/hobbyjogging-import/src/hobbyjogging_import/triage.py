@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import re
 import webbrowser
+from datetime import time
 from typing import Callable
 
 from hobbyjogging_core import TrainingWriter
@@ -42,6 +43,7 @@ from .links import (
 )
 from .quality import CONFLICT, WORKOUT_CLASSIFICATION, refresh_activity_quality
 from .review_cli import _format_summary_line
+from .sheet import DEFAULT_TIMEZONE, as_date, as_seconds, local_start
 from .values import (
     format_distance_m,
     format_duration_s,
@@ -57,7 +59,7 @@ KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
   (v) pick value   field conflict: choose which source value stands
-  (k) classify     workout classification: pick, merge, edit manually, or leave unclassified
+  (k) classify     workout classification: pick, merge, edit, or none
   (t)rust Intervals  force re-import and take ownership of changed fields
   (o)pen           open all available activity links
   (ci)             copy the Intervals activity URL
@@ -151,6 +153,128 @@ def _one_line(text: object, limit: int = 120) -> str:
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 1].rstrip() + "…"
+
+
+def _payload_summary_lines(payload: object) -> list[str]:
+    """Summarize a source-record payload for the ambiguous-match inspection."""
+    if not isinstance(payload, dict):
+        return []
+    if payload.get("sheet"):
+        return _sheet_payload_lines(payload)
+    if payload.get("session"):
+        return _fit_payload_lines(payload["session"])
+    if payload.get("start_date") or payload.get("moving_time"):
+        return _intervals_payload_lines(payload)
+    return []
+
+
+def _sheet_payload_lines(payload: dict) -> list[str]:
+    values = payload.get("values") or {}
+    if not isinstance(values, dict):
+        return []
+
+    day = as_date(values.get("Datum"))
+    clock = _sheet_clock(values.get("Uhrzeit") or values.get("Startzeit"))
+    header: list[str] = []
+    if day is not None:
+        header.append(day.isoformat())
+    if clock is not None:
+        header.append(clock.strftime("%H:%M") + " local")
+        if day is not None:
+            started_at, _ = local_start(day, clock, DEFAULT_TIMEZONE)
+            header.append(started_at[11:16] + "Z")
+
+    row = payload.get("row")
+    sheet = payload.get("sheet")
+    location = f"  row {row} ({sheet})" if row else f"  {sheet}"
+    lines = [location + (": " + " ".join(header) if header else "")]
+
+    parts = []
+    label = values.get("Was") or values.get("Strecke")
+    if label:
+        parts.append(str(label))
+    if values.get("Zeit"):
+        parts.append(f"duration {values['Zeit']}")
+    if values.get("Distanz") is not None:
+        parts.append(f"distance {_number_text(values['Distanz'])} km")
+    elif values.get("Distanz in m") is not None:
+        parts.append(f"distance {_number_text(values['Distanz in m'])} m")
+    ascent = values.get("Höhenmeter") or values.get("m bergauf")
+    if ascent is not None:
+        parts.append(f"ascent {_number_text(ascent)} m")
+    hr = values.get("Puls Durchschnitt") or values.get("d. Hf")
+    if hr is not None:
+        parts.append(f"avg HR {_number_text(hr)} bpm")
+    if parts:
+        lines.append("  " + " · ".join(parts))
+
+    description = values.get("Beschreibung")
+    if description:
+        lines.append("  description: " + _one_line(description))
+    return lines
+
+
+def _fit_payload_lines(session: object) -> list[str]:
+    if not isinstance(session, dict):
+        return []
+
+    parts = []
+    start = session.get("start_time_utc")
+    if start:
+        parts.append(str(start))
+    sport = session.get("canonical_sport") or session.get("sport")
+    if sport:
+        parts.append(str(sport))
+    if session.get("duration_s"):
+        parts.append(format_duration_s(session["duration_s"]))
+    if session.get("distance_m"):
+        parts.append(format_distance_m(session["distance_m"]))
+    lines = ["  session " + " · ".join(parts)] if parts else []
+    name = session.get("name")
+    if name:
+        lines.append(f"  name: {_one_line(name)}")
+    return lines
+
+
+def _intervals_payload_lines(payload: dict) -> list[str]:
+    parts = []
+    start = payload.get("start_date")
+    if start:
+        parts.append(str(start))
+    if payload.get("type"):
+        parts.append(str(payload["type"]))
+    if payload.get("moving_time"):
+        parts.append(format_duration_s(payload["moving_time"]))
+    if payload.get("distance"):
+        parts.append(format_distance_m(payload["distance"]))
+    lines = ["  activity " + " · ".join(parts)] if parts else []
+    name = payload.get("name")
+    if name:
+        lines.append(f"  name: {_one_line(name)}")
+    description = payload.get("description")
+    if description:
+        lines.append(f"  description: {_one_line(description)}")
+    return lines
+
+
+def _sheet_clock(value: object) -> time | None:
+    if isinstance(value, time):
+        return value
+    seconds = as_seconds(value)
+    if seconds is None:
+        return None
+    total = int(seconds) % (24 * 3600)
+    return time(total // 3600, (total % 3600) // 60, total % 60)
+
+
+def _number_text(value: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number.is_integer():
+        return f"{number:.0f}"
+    return f"{number:.1f}"
 
 
 DEFAULT_FIELD = {
@@ -695,15 +819,27 @@ class TriageRunner:
             for line in self._activity_lines(activity_id):
                 if line:
                     self.print(line)
-            for source in self._activity_sources(activity_id):
-                self.print(
-                    f"  source {source['source']}: "
-                    f"{(source['external_id'] or '')[:40]}"
-                    + (f"  ({source['raw_path']})" if source["raw_path"] else "")
-                )
+            self._print_activity_sources(activity_id, prefix="  ")
         else:
-            for line in self._candidate_lines(item):
+            for line in self._source_detail_lines(item):
                 self.print(line)
+
+            for index, (candidate_id, candidate) in enumerate(
+                self._candidates(item),
+                start=1,
+            ):
+                self.print(
+                    f"  candidate {index}) {candidate_id}  "
+                    f"({candidate.get('match_method', '-')}, "
+                    f"{candidate.get('confidence', '-')})"
+                )
+                for line in self._activity_lines(
+                    candidate_id,
+                    prefix="    ",
+                ):
+                    if line:
+                        self.print(line)
+                self._print_activity_sources(candidate_id, prefix="    ")
 
         self.print(f"  detail: {item['detail']}")
         try:
@@ -714,6 +850,61 @@ class TriageRunner:
             self.print("  context:")
             self.print(
                 json.dumps(context, indent=2, ensure_ascii=False)
+            )
+
+    def _source_detail_lines(self, item) -> list[str]:
+        """Describe the incoming source record of an unmatched item."""
+        source = item["record_source"]
+        external = item["external_id"] or ""
+        if not source:
+            return []
+
+        lines = [f"  source {source}: {external}"]
+        row = self._source_record(item)
+        if row is None:
+            return lines
+        if row["raw_path"]:
+            lines.append(f"  raw path: {row['raw_path']}")
+
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except ValueError:
+            return lines
+        lines.extend(_payload_summary_lines(payload))
+        return lines
+
+    def _source_record(self, item):
+        if item["source_record_id"] is not None:
+            return self.writer.connection.execute(
+                """
+                SELECT source, external_id, payload_json, raw_path
+                FROM source_records WHERE id = ?
+                """,
+                (item["source_record_id"],),
+            ).fetchone()
+
+        return self.writer.connection.execute(
+            """
+            SELECT source, external_id, payload_json, raw_path
+            FROM source_records
+            WHERE source = ? AND external_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (item["record_source"], item["external_id"]),
+        ).fetchone()
+
+    def _print_activity_sources(
+        self,
+        activity_id: str,
+        *,
+        prefix: str = "  ",
+    ) -> None:
+        for source in self._activity_sources(activity_id):
+            self.print(
+                f"{prefix}source {source['source']}: "
+                f"{(source['external_id'] or '')[:40]}"
+                + (f"  ({source['raw_path']})" if source["raw_path"] else "")
             )
 
     def _activity_header_lines(self, activity_id: str) -> list[str]:
@@ -742,7 +933,12 @@ class TriageRunner:
 
         return lines
 
-    def _activity_lines(self, activity_id: str) -> list[str]:
+    def _activity_lines(
+        self,
+        activity_id: str,
+        *,
+        prefix: str = "  ",
+    ) -> list[str]:
         row = self.writer.connection.execute(
             """
             SELECT local_date, sport, name, description,
@@ -752,7 +948,7 @@ class TriageRunner:
             (activity_id,),
         ).fetchone()
         if row is None:
-            return [f"  activity {activity_id} (missing from database)"]
+            return [f"{prefix}activity {activity_id} (missing from database)"]
 
         pace = _pace_label(
             row["sport"],
@@ -764,23 +960,23 @@ class TriageRunner:
             distance = f"{distance}   {pace}"
 
         lines = [
-            f"  sport: {row['sport'] or '-'}   "
+            f"{prefix}sport: {row['sport'] or '-'}   "
             f"date: {row['local_date'] or '-'}",
         ]
         if row["name"]:
-            lines.append(f"  name: {row['name']}")
+            lines.append(f"{prefix}name: {row['name']}")
         lines.append(
-            f"  duration: {format_duration_s(row['duration_s'])}   "
+            f"{prefix}duration: {format_duration_s(row['duration_s'])}   "
             f"elapsed: {format_duration_s(row['elapsed_s'])}"
         )
-        lines.append(f"  distance: {distance}")
+        lines.append(f"{prefix}distance: {distance}")
 
         description = _one_line(row["description"], limit=200)
         if description:
-            lines.append(f"  description: {description}")
+            lines.append(f"{prefix}description: {description}")
 
         if row["excluded_at"]:
-            lines.append("  [excluded]")
+            lines.append(f"{prefix}[excluded]")
         return lines
 
     def _activity_sources(self, activity_id: str) -> list:
@@ -1151,25 +1347,6 @@ class TriageRunner:
             if activity_id:
                 result.append((activity_id, candidate))
         return result
-
-    def _candidate_lines(self, item) -> list[str]:
-        lines = []
-        for index, (activity_id, candidate) in enumerate(
-            self._candidates(item), start=1
-        ):
-            row = self.writer.connection.execute(
-                "SELECT local_date, sport FROM activities WHERE id = ?",
-                (activity_id,),
-            ).fetchone()
-            summary = (
-                f"{row['local_date']} {row['sport']}" if row else "(missing)"
-            )
-            lines.append(
-                f"  {index}) {activity_id[:12]}  {summary}  "
-                f"({candidate.get('match_method', '-')}, "
-                f"{candidate.get('confidence', '-')})"
-            )
-        return lines
 
     def _count(self, label: str) -> None:
         self.counters[label] = self.counters.get(label, 0) + 1

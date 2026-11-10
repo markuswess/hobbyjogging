@@ -755,6 +755,143 @@ class TriageTests(unittest.TestCase):
         )
 
 
+class AmbiguousMatchInspectTests(unittest.TestCase):
+    """Inspect an unmatched item: source row plus full candidate details."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2020-08-25",
+                "started_at_utc": "2020-08-25T06:09:59Z",
+                "sport": "hike",
+                "name": "Morning Hike",
+                "duration_s": 13162,
+                "elapsed_s": 13836,
+                "distance_m": 9870.62,
+                "description": "auslaufen nach 9h Wandern",
+            },
+            source="intervals",
+            source_record_id=None,
+        )
+        self.writer.upsert_activity(
+            "a2",
+            {
+                "local_date": "2020-08-25",
+                "started_at_utc": "2020-08-25T10:12:22Z",
+                "sport": "hike",
+                "name": "Lunch Hike",
+                "duration_s": 11259,
+                "distance_m": 5286.44,
+            },
+            source="intervals",
+            source_record_id=None,
+        )
+
+        payload = {
+            "sheet": "Alternativtraining",
+            "row": 123,
+            "values": {
+                "Datum": "2020-08-25",
+                "Uhrzeit": "8:00:00",
+                "Was": "Wandern",
+                "Zeit": "9:00:00",
+                "Distanz": 24.0,
+                "Höhenmeter": 1600.0,
+                "Puls Durchschnitt": 120.0,
+                "Beschreibung": "Wandern am Grundlsee (Elm)",
+            },
+        }
+        record_id = self.writer.upsert_source_record(
+            source="sheet",
+            record_type="activity",
+            external_id="2020-08-25T08:00:00",
+            checksum="c",
+            payload_json=json.dumps(payload),
+            import_run_id=self.run_id,
+        )
+        self.item_id, _ = self.writer.record_review_item(
+            category="ambiguous_match",
+            detail="ambiguous match: 2 candidate activities",
+            context={
+                "external_id": "2020-08-25T08:00:00",
+                "candidates": [
+                    {
+                        "activity_id": "a1",
+                        "match_method": "temporal_overlap",
+                        "confidence": 1.0,
+                    },
+                    {
+                        "activity_id": "a2",
+                        "match_method": "temporal_overlap",
+                        "confidence": 0.75,
+                    },
+                ],
+            },
+            fingerprint="fp-ambiguous-inspect",
+            source_record_id=record_id,
+            import_run_id=self.run_id,
+        )
+        self.conn.commit()
+
+    def _inspect(self) -> str:
+        queue = ["i", "q"]
+
+        def read(prompt):
+            if not queue:
+                raise EOFError
+            return queue.pop(0)
+
+        lines = []
+        runner = TriageRunner(
+            self.writer,
+            read=read,
+            print=lines.append,
+            open_url=lambda url: True,
+            copy=lambda text: None,
+        )
+        runner.run(category="ambiguous_match")
+        return "\n".join(lines)
+
+    def test_inspect_shows_the_source_row(self):
+        output = self._inspect()
+
+        self.assertIn("source sheet: 2020-08-25T08:00:00", output)
+        self.assertIn(
+            "row 123 (Alternativtraining): 2020-08-25 08:00 local 06:00Z",
+            output,
+        )
+        self.assertIn(
+            "Wandern · duration 9:00:00 · distance 24 km",
+            output,
+        )
+        self.assertIn("ascent 1600 m", output)
+        self.assertIn("avg HR 120 bpm", output)
+        self.assertIn(
+            "description: Wandern am Grundlsee (Elm)",
+            output,
+        )
+
+    def test_inspect_shows_each_candidate_in_full(self):
+        output = self._inspect()
+
+        self.assertIn("candidate 1) a1", output)
+        self.assertIn("candidate 2) a2", output)
+        self.assertIn("sport: hike   date: 2020-08-25", output)
+        self.assertIn("name: Morning Hike", output)
+        self.assertIn("duration: 3:39:22", output)
+        self.assertIn("distance: 9.87 km   22:13 /km", output)
+        self.assertIn("description: auslaufen nach 9h Wandern", output)
+        self.assertIn("name: Lunch Hike", output)
+        self.assertIn("duration: 3:07:39", output)
+
+
 if __name__ == "__main__":
     unittest.main()
 
