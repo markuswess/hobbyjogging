@@ -14,6 +14,10 @@ from hobbyjogging_core.model import (
     WellnessDay,
 )
 
+# Review categories that do not make an activity's data untrusted. They stay
+# in the queue but never hide the activity from reports.
+NON_HIDING_REVIEW_CATEGORIES = ("workout_classification",)
+
 
 class TrainingRepository:
     """Read canonical training data from a migrated SQLite database."""
@@ -203,14 +207,18 @@ class TrainingRepository:
         activity_ids: list[str],
     ) -> set[str]:
         placeholders = ", ".join("?" for _ in activity_ids)
+        # A workout-classification item means "not labelled yet", not
+        # "untrusted data", so it must not hide the activity from reports.
+        hidden = ", ".join("?" for _ in NON_HIDING_REVIEW_CATEGORIES)
         rows = self.connection.execute(
             f"""
             SELECT DISTINCT activity_id
             FROM review_items
             WHERE status = 'open'
+              AND category NOT IN ({hidden})
               AND activity_id IN ({placeholders})
             """,
-            activity_ids,
+            [*NON_HIDING_REVIEW_CATEGORIES, *activity_ids],
         ).fetchall()
         return {row["activity_id"] for row in rows}
 

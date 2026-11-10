@@ -27,7 +27,7 @@ from .links import (
     intervals_activity_id,
     intervals_url,
 )
-from .quality import CONFLICT, refresh_activity_quality
+from .quality import CONFLICT, WORKOUT_CLASSIFICATION, refresh_activity_quality
 from .review_cli import _format_summary_line
 from .values import (
     format_field,
@@ -40,6 +40,7 @@ KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
   (v) pick value   field conflict: choose which source value stands
+  (k) classify     workout classification: pick, merge, or leave unclassified
   (t)rust Intervals  force re-import and take ownership of changed fields
   (o)pen           open all available activity links
   (ci)             copy the Intervals activity URL
@@ -53,6 +54,13 @@ keys:
   (s)kip / Enter   next item, leave it open
   (h)elp           this text
   (q)uit           stop and print a summary"""
+
+def _format_sets(methods, targets) -> str:
+    return (
+        f"methods={', '.join(methods) or '-'} "
+        f"targets={', '.join(targets) or '-'}"
+    )
+
 
 DEFAULT_FIELD = {
     "zero_duration": "duration_s",
@@ -216,6 +224,8 @@ class TriageRunner:
         keys = []
         if item["category"] == CONFLICT:
             keys.append("(v) pick value")
+        if item["category"] == WORKOUT_CLASSIFICATION:
+            keys.append("(k) classify")
         if self._candidates(item):
             keys.append(f"(1-{len(self._candidates(item))}) choose")
         keys.extend(["(i)nspect", "(o)pen"])
@@ -271,6 +281,9 @@ class TriageRunner:
 
         if answer == "v":
             return self._pick_value(item)
+
+        if answer == "k":
+            return self._classify_workout(item)
 
         if answer == "t":
             return self._force_intervals(item)
@@ -415,6 +428,80 @@ class TriageRunner:
             self.print(
                 f"  quality: still flagged — {application.describe_findings()}"
             )
+
+    def _classify_workout(self, item) -> bool:
+        """Workout classification: pick a side, merge, or leave unclassified.
+
+        The decision is written as manual methods/targets, so no reimport or
+        backfill can overwrite it.
+        """
+        if item["category"] != WORKOUT_CLASSIFICATION:
+            self.print("  this item is not a workout classification")
+            return False
+
+        context = item_context(item)
+        classifier_methods = list(context.get("classifier_methods") or [])
+        classifier_targets = list(context.get("classifier_targets") or [])
+        sheet_methods = list(context.get("sheet_methods") or [])
+        sheet_targets = list(context.get("sheet_targets") or [])
+        code = context.get("sheet_code") or "-"
+
+        self.print(
+            "  classifier: "
+            + _format_sets(classifier_methods, classifier_targets)
+        )
+        self.print(
+            f"  sheet ({code}): "
+            + _format_sets(sheet_methods, sheet_targets)
+        )
+        self.print("  1) classifier  2) sheet  (m)erge  (n)one  (blank=cancel)")
+
+        try:
+            answer = self.read("  pick: ").strip().lower()
+        except EOFError:
+            return False
+
+        if answer == "1":
+            methods, targets, label = (
+                classifier_methods,
+                classifier_targets,
+                "classifier",
+            )
+        elif answer == "2":
+            methods, targets, label = sheet_methods, sheet_targets, "sheet"
+        elif answer == "m":
+            methods = sorted(set(classifier_methods) | set(sheet_methods))
+            targets = sorted(set(classifier_targets) | set(sheet_targets))
+            label = "merged"
+        elif answer == "n":
+            methods, targets, label = [], [], "left unclassified"
+        else:
+            self.print("  cancelled")
+            return False
+
+        self.writer.replace_activity_workout_methods(
+            item["activity_id"],
+            methods,
+            source="manual",
+            is_manual=True,
+        )
+        self.writer.replace_activity_workout_targets(
+            item["activity_id"],
+            targets,
+            source="manual",
+            is_manual=True,
+        )
+        self.writer.set_review_status(
+            item["id"],
+            "resolved",
+            note=self.pending_note or f"triage: classification {label}",
+        )
+        self.writer.connection.commit()
+        self.pending_note = ""
+        self._count("classified")
+        self.print(f"  {label}: " + _format_sets(methods, targets))
+        self.print(f"  resolved #{item['id']}")
+        return True
 
     def _delete(self, item) -> bool:
         activity_id = item["activity_id"]

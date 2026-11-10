@@ -35,7 +35,8 @@ class MaintenanceCliTests(unittest.TestCase):
         code, output = self._main("list", "--kind", "recompute")
 
         self.assertEqual(0, code)
-        self.assertIn("No tasks registered.", output)
+        self.assertIn("workout_classification_queue", output)
+        self.assertNotIn("event_zones_v1", output)
 
     def test_status_reports_the_schema_version(self):
         code, output = self._main("status")

@@ -60,6 +60,10 @@ Updated 2026-11-08.
   classifier + sheet backfill classified 2,687 activities (including 107
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
+- **Workout classification in the review queue.** Disagreements between the
+  classifier and the sheet are now `workout_classification` review items
+  (`info`), synced by a `recompute` task, resolved in triage with `(k)`, and
+  never hidden from reports.
 - **Reports read the stored classification.** `classify()` prefers
   `activity_workout_methods/targets` and falls back to the heuristic when an
   activity is unclassified, so manual resolutions now change reports and the
@@ -92,11 +96,12 @@ Updated 2026-11-08.
 
 ## Next
 
-1. **Review the 216 workout-classification conflicts.** The list is saved at
-   `data/workout-classification-conflicts.txt`; the affected activities were
-   left unclassified. Regenerate it with
-   `hobbyjogging-maintenance run workout_classification_v1 --force --dry-run
-   --output data/workout-classification-conflicts.txt`.
+1. **Review the workout-classification conflicts** in the normal queue:
+   `hobbyjogging-import review list --category workout_classification`, then
+   `review triage --category workout_classification` and press `k` on each
+   item (1 classifier, 2 sheet, m merge, n leave unclassified). The queue is
+   kept in sync by
+   `hobbyjogging-maintenance run workout_classification_queue`.
 2. **Dashboard follow-ups.** The first static dashboard is done (overview,
    recovery and health, activity list and detail, canonical data-health
    banner) and `sync.sh` regenerates it after a successful sync. Next: expose

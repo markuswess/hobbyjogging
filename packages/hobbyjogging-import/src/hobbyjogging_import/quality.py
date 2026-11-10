@@ -46,6 +46,18 @@ AMBIGUOUS_MATCH = "ambiguous_match"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
 CONFLICT = "field_conflict"
+DUPLICATE = "duplicate"
+WORKOUT_CLASSIFICATION = "workout_classification"
+
+# Every category the CLI accepts, in menu order.
+REVIEW_CATEGORIES = (
+    AMBIGUOUS_MATCH,
+    CONFLICT,
+    QUALITY,
+    DUPLICATE,
+    MANUAL_FLAG,
+    WORKOUT_CLASSIFICATION,
+)
 
 
 @dataclass

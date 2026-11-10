@@ -12,7 +12,7 @@ from hobbyjogging_maintenance.registry import get_task
 from hobbyjogging_maintenance.runner import run_task
 
 TASK = "workout_classification_v1"
-CLASSIFY = "hobbyjogging_maintenance.backfills.workout_classification.classify"
+CLASSIFY = "hobbyjogging_maintenance.workouts.classify"
 
 UNKNOWN = Category("unknown")
 

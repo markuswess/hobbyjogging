@@ -280,6 +280,31 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual(["marathon"], events[0].workout_targets)
         self.assertTrue(events[0].quality)
 
+    def test_workout_classification_items_do_not_hide_activities(self):
+        self.conn.executemany(
+            """
+            INSERT INTO review_items (
+                activity_id, category, detail, fingerprint, severity
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                ("a1", "workout_classification", "conflict", "fp-w", "info"),
+                ("a3", "quality", "zero duration", "fp-q", "warn"),
+            ],
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 5),
+        )
+        flagged = {
+            activity.id: activity.needs_review for activity in activities
+        }
+
+        self.assertFalse(flagged["a1"])
+        self.assertTrue(flagged["a3"])
+        self.assertFalse(flagged["a2"])
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "

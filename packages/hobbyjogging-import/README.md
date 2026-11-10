@@ -355,7 +355,8 @@ range, so it cannot leave stale plans behind.
 
 Import conflicts and questionable activities are recorded as *review items*
 in the canonical `review_items` table. Categories are `ambiguous_match`,
-`field_conflict`, `quality`, `duplicate`, and `manual_flag`. Every importer
+`field_conflict`, `quality`, `duplicate`, `manual_flag`, and
+`workout_classification`. Every importer
 runs a small canonical quality rule set (zero duration, missing distance for
 run/ride sports, implied pace outside a plausible per-sport window, and
 moving time differing from recording time by more than
@@ -398,6 +399,10 @@ Other commands:
 - `review causes [--status open|all]` — count field conflicts by classified
   cause, severity, and field. Causes are stored on new items and can be
   backfilled with `review classify [--activity <id>] [--dry-run]`.
+- `workout_classification` items come from the maintenance queue sync
+  (`hobbyjogging-maintenance run workout_classification_queue`). Triage `(k)`
+  resolves one: `1` classifier, `2` sheet, `m` merge, `n` leave unclassified.
+  They are `info`-level and never hide an activity from reports.
 - `review resolve --cause <cause> [--dry-run]` — bulk-resolve every open
   conflict with one advisory cause (`elapsed_definition`, `small_difference`,
   `start_offset`, `moving_estimate`). Causes that need a per-activity decision

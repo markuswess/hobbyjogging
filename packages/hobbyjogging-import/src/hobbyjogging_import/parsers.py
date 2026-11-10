@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .causes import CAUSE_NAMES
 from .config import default_fit_dir, default_garmin_dir
+from .quality import REVIEW_CATEGORIES
 
 
 def date_arg(value: str) -> date:
@@ -392,13 +393,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     review_triage.add_argument(
         "--category",
-        choices=(
-            "ambiguous_match",
-            "field_conflict",
-            "quality",
-            "duplicate",
-            "manual_flag",
-        ),
+        choices=REVIEW_CATEGORIES,
     )
     review_triage.add_argument(
         "--severity",
@@ -427,13 +422,7 @@ def _add_review_status_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--category",
-        choices=(
-            "ambiguous_match",
-            "field_conflict",
-            "quality",
-            "duplicate",
-            "manual_flag",
-        ),
+        choices=REVIEW_CATEGORIES,
     )
     parser.add_argument(
         "--cause",

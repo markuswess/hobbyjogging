@@ -703,3 +703,142 @@ class TriageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class WorkoutClassificationTriageTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "name": "Long run",
+                "duration_s": 3600,
+                "distance_m": 12000,
+            },
+            source="test",
+            source_record_id=self.writer.upsert_source_record(
+                source="test",
+                record_type="activity",
+                external_id="a1",
+                checksum="c1",
+                import_run_id=self.run_id,
+            ),
+        )
+        self.item_id, _ = self.writer.record_review_item(
+            category="workout_classification",
+            detail="classifier vs sheet (i) disagree",
+            context={
+                "classifier_methods": ["long_run"],
+                "classifier_targets": ["base"],
+                "sheet_code": "i",
+                "sheet_methods": ["intervals"],
+                "sheet_targets": ["vo2max"],
+            },
+            severity="info",
+            fingerprint="fp-classification",
+            activity_id="a1",
+        )
+        self.conn.commit()
+
+    def _runner(self, answers):
+        queue = list(answers)
+
+        def read(prompt):
+            if not queue:
+                raise EOFError
+            return queue.pop(0)
+
+        lines = []
+        runner = TriageRunner(
+            self.writer,
+            read=read,
+            print=lines.append,
+            open_url=lambda url: True,
+            copy=lambda text: "wl-copy",
+        )
+        counters = runner.run()
+        self.writer.connection.commit()
+        return lines, counters
+
+    def _item(self):
+        return self.writer.review_item(self.item_id)
+
+    def _sets(self):
+        methods = [
+            row["method"]
+            for row in self.conn.execute(
+                "SELECT method FROM activity_workout_methods "
+                "WHERE activity_id = 'a1' ORDER BY method"
+            )
+        ]
+        targets = [
+            row["target"]
+            for row in self.conn.execute(
+                "SELECT target FROM activity_workout_targets "
+                "WHERE activity_id = 'a1' ORDER BY target"
+            )
+        ]
+        manual = self.conn.execute(
+            "SELECT is_manual FROM activity_workout_methods "
+            "WHERE activity_id = 'a1' LIMIT 1"
+        ).fetchone()
+        return methods, targets, manual["is_manual"] if manual else None
+
+    def test_key_line_offers_classify(self):
+        lines, _ = self._runner(["s"])
+
+        self.assertIn("(k) classify", "\n".join(lines))
+
+    def test_pick_sheet_writes_manual_sets_and_resolves(self):
+        lines, counters = self._runner(["k", "2"])
+
+        joined = "\n".join(lines)
+        self.assertIn("classifier: methods=long_run targets=base", joined)
+        self.assertIn("sheet (i): methods=intervals targets=vo2max", joined)
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(
+            (["intervals"], ["vo2max"], 1),
+            self._sets(),
+        )
+        self.assertEqual("resolved", self._item()["status"])
+        self.assertEqual(
+            "triage: classification sheet",
+            self._item()["resolved_note"],
+        )
+
+    def test_pick_classifier(self):
+        _, counters = self._runner(["k", "1"])
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual((["long_run"], ["base"], 1), self._sets())
+
+    def test_merge_unions_both_proposals(self):
+        _, counters = self._runner(["k", "m"])
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(
+            (["intervals", "long_run"], ["base", "vo2max"], 1),
+            self._sets(),
+        )
+        self.assertIn("merged", self._item()["resolved_note"])
+
+    def test_none_leaves_it_unclassified_but_resolves(self):
+        _, counters = self._runner(["k", "n"])
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(([], [], None), self._sets())
+        self.assertEqual("resolved", self._item()["status"])
+        self.assertIn("left unclassified", self._item()["resolved_note"])
+
+    def test_cancel_keeps_the_item_open(self):
+        _, counters = self._runner(["k", ""])
+
+        self.assertEqual(0, counters.get("classified", 0))
+        self.assertEqual("open", self._item()["status"])
+        self.assertEqual(([], [], None), self._sets())
