@@ -20,6 +20,7 @@ from ..classify import classify
 from ..html import markdown_to_html
 from ..model import AverageWindows
 from ..overview import overview_report
+from ..planned import planned_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .health import collect_health
@@ -100,14 +101,6 @@ def build_dashboard(
         include_review=include_review,
     )
 
-    event_start = today
-    event_end = today + timedelta(days=13)
-    events = [
-        event
-        for event in source.events(event_start, event_end)
-        if event.type
-    ]
-
     chart_start = today - timedelta(days=chart_days - 1)
     chart_end = today + timedelta(days=future_days)
     windows = AverageWindows(base=182, fitness=42, fatigue=7)
@@ -180,6 +173,15 @@ def build_dashboard(
         ),
         demote=1,
     )
+    planned_html = markdown_to_html(
+        planned_report(
+            today + timedelta(days=1),
+            today + timedelta(days=14),
+            source,
+            today=today,
+        ),
+        demote=1,
+    )
     report_sections = [
         (
             name,
@@ -233,7 +235,7 @@ def build_dashboard(
             end=today,
             overview_html=overview_html,
             daily_html=daily_html,
-            events=events,
+            planned_html=planned_html,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,

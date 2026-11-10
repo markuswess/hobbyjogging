@@ -5,11 +5,10 @@ from __future__ import annotations
 from datetime import date
 from urllib.parse import quote
 
-from hobbyjogging_core.model import Activity, Event, Interval
+from hobbyjogging_core.model import Activity, Interval
 
 from ..analysis import (
     RUN_TYPES,
-    event_zone_time,
     is_lt1_activity,
     is_subt_activity,
     pace_s_per_km,
@@ -91,20 +90,6 @@ def _recovery_stat(
     return current_value, average_text
 
 
-def _zone_seconds(event: Event) -> str:
-    seconds = event_zone_time(event, (3, 4))
-
-    if seconds is None:
-        return "-"
-    if not seconds:
-        return "0min"
-    return fmt_time(seconds)
-
-
-def _event_distance(event: Event) -> str:
-    return f"{event.distance_m / 1000:.1f} km" if event.distance_m else "-"
-
-
 def _event_load(event) -> str:
     return "-" if event.training_load is None else f"{event.training_load:.0f}"
 
@@ -117,7 +102,7 @@ def overview_page(
     end: date,
     overview_html: str,
     daily_html: str,
-    events: list[Event],
+    planned_html: str,
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_series: ZoneGroupSeries,
@@ -155,38 +140,11 @@ def overview_page(
         "without a recorded run; lighter line segments are projected.</p>"
     )
 
-    planned_rows = []
-
-    for event in sorted(events, key=lambda item: (item.date, item.name)):
-        planned_rows.append([
-            esc(event.date),
-            esc(event.date.strftime("%a")),
-            esc(event.name or "-"),
-            esc(sport_label(event)),
-            esc(_event_distance(event)),
-            esc(fmt_time(event.duration_s)),
-            esc(_zone_seconds(event)),
-            esc(_event_load(event)),
-        ])
-
-    planned_html = table(
-        ["Date", "Day", "Workout", "Sport", "Distance", "Time", "Z3+4", "Load"],
-        planned_rows,
-        numeric=(4, 5, 6, 7),
-        empty="No planned sessions in the next 14 days.",
-    )
-
-    if any(event.zone_times for event in events):
-        planned_html += (
-            '<p class="muted">Z3+4 uses each event\'s planned zone '
-            "kind.</p>"
-        )
-
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
-        + card("Daily report",f'<div class="report">{daily_html}</div>')
-        + card("Next 14 days", planned_html)
+        + card("Daily report", f'<div class="report">{daily_html}</div>')
+        + card("Next 14 days", f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
 

@@ -177,6 +177,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Daily report", index)
             self.assertIn("Daily Training Report", index)
             self.assertIn("Next 14 days", index)
+            self.assertIn("Planned Workouts", index)
+            self.assertIn("Z3+4 uses each event's planned zone kind", index)
             self.assertNotIn("Plan vs actual", index)
             self.assertNotIn("Training load", index)
             self.assertNotIn("Quality sessions", index)
