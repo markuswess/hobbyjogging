@@ -1,7 +1,10 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
+from hobbyjogging_core.model import Event
+
+from hobbyjogging_report.html import markdown_to_html
 from hobbyjogging_report.mdpretty import render_markdown
 from hobbyjogging_report.daily import daily
 from hobbyjogging_report.period_report import period_report
@@ -23,6 +26,8 @@ class FixedDate(date):
     def today(cls):
         return cls(2026, 10, 2)
 
+
+FIXED_TODAY = date(2026, 10, 2)
 
 MULTILINE = "# Warm up\n- 10 min easy\n\n## Main\n3 x 10 min"
 
@@ -50,6 +55,30 @@ class DailyDescriptionTests(unittest.TestCase):
         self.assertIn("Warm up", pretty)
         self.assertIn("10 min easy", pretty)
         self.assertNotIn("```", pretty)
+
+    def test_planned_list_after_paragraph_stays_a_list(self):
+        source = FakeSource(
+            [activity(name="Easy", date=FIXED_TODAY)],
+            events=[
+                Event(
+                    date=FIXED_TODAY + timedelta(days=1),
+                    name="Easy",
+                    type="run",
+                    description="1x\n- 45m 60-68% Pace",
+                    duration_s=2700,
+                ),
+            ],
+        )
+
+        with patch("hobbyjogging_report.daily.date", FixedDate):
+            report = daily(source)
+
+        self.assertIn("1x\n\n- 45m 60-68% Pace", report)
+
+        html = markdown_to_html(report, demote=1)
+
+        self.assertIn("<p>1x</p>", html)
+        self.assertIn("<li>45m 60-68% Pace</li>", html)
 
 
 class PeriodDescriptionTests(unittest.TestCase):

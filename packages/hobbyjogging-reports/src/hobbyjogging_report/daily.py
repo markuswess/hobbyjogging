@@ -9,6 +9,7 @@ from .format import (
     fmt_time,
     format_activity,
     last_four_nights,
+    markdown_block,
     sport_label,
 )
 from .review import exclude_review, review_note
@@ -35,7 +36,7 @@ def format_event(event) -> list[str]:
         # top-level block so their headings, lists, and blank lines render
         # in the terminal and in the dashboard's HTML conversion alike.
         lines.append("")
-        lines.extend(description.splitlines())
+        lines.extend(markdown_block(description))
 
     return lines
 

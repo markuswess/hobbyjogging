@@ -4,6 +4,8 @@ All helpers take canonical model objects (see ``hobbyjogging_core.model``), so
 reports work with any ``DataSource`` implementation.
 """
 
+import re
+
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Activity, Interval
 
@@ -105,6 +107,40 @@ def format_fenced_block(text, indent=""):
         ],
         f"{indent}{fence}",
     ]
+
+
+_BLOCK_START = re.compile(r"(?:#{1,6} |[-*+] |\d+[.)] |```|> )")
+
+
+def markdown_block(text):
+    """Return description text as one normalized Markdown block.
+
+    Workout descriptions often mix plain lines with list items
+    (``Warmup\\n- 10 min easy``). A blank line before each block start keeps
+    renderers from folding the list into the preceding line's paragraph.
+    """
+    lines = (text or "").strip("\n").splitlines()
+    result = []
+    fenced = False
+
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            result.append(line)
+            continue
+
+        if (
+            not fenced
+            and result
+            and result[-1].strip()
+            and not _BLOCK_START.match(result[-1])
+            and _BLOCK_START.match(line)
+        ):
+            result.append("")
+
+        result.append(line)
+
+    return result
 
 
 def fmt_zones(zone_times):
@@ -343,8 +379,7 @@ def _activity_description_lines(
             *format_fenced_block(activity.description),
         ]
 
-    description = activity.description.strip("\n")
-    return ["", *description.splitlines()]
+    return ["", *markdown_block(activity.description)]
 
 
 def format_activity(

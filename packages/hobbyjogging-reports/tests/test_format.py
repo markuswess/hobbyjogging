@@ -207,6 +207,15 @@ class FormattingTests(unittest.TestCase):
         self.assertNotIn("- Description:", lines)
         self.assertNotIn("```", "\n".join(lines))
 
+    def test_description_list_after_paragraph_stays_a_list(self):
+        a = activity(description="1x\n- 45m 60-68% Pace")
+
+        lines = format_activity(FakeSource(), a, "Run Easy")
+
+        self.assertIn("1x", lines)
+        self.assertIn("- 45m 60-68% Pace", lines)
+        self.assertIn("\n\n- 45m 60-68% Pace", "\n".join(lines))
+
     def test_format_category_table(self):
         stats = category_breakdown([
             activity(id="a", rpe=5, duration_s=3000, training_load=50),
