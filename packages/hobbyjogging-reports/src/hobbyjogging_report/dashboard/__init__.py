@@ -43,6 +43,7 @@ from ..zone_groups import (
 
 MARKER = ".hobbyjogging-dashboard"
 RACE_DAYS = 180
+RECOVERY_DAYS = 186
 
 
 def resolve_output_dir(output: str | Path | None = None) -> Path:
@@ -71,6 +72,7 @@ def build_dashboard(
     activity_limit: int = 50,
     chart_days: int = 70,
     future_days: int = 14,
+    recovery_days: int = RECOVERY_DAYS,
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
@@ -84,6 +86,8 @@ def build_dashboard(
         raise ValueError("chart days must be positive")
     if future_days < 0:
         raise ValueError("future days must be zero or greater")
+    if recovery_days <= 0:
+        raise ValueError("recovery days must be positive")
 
     unknown_reports = [
         name for name in reports if name not in REPORT_NAMES
@@ -96,6 +100,7 @@ def build_dashboard(
 
     today = today or date.today()
     start = today - timedelta(days=days - 1)
+    recovery_start = today - timedelta(days=recovery_days - 1)
 
     raw_activities = source.activities(start, today)
     activities, _ = exclude_review(
@@ -147,12 +152,12 @@ def build_dashboard(
     )
 
     wellness = source.wellness(
-        start - timedelta(days=6),
+        recovery_start - timedelta(days=6),
         today,
     )
     recovery = recovery_trends(
         wellness,
-        start,
+        recovery_start,
         today,
         window_days=7,
     )
@@ -265,7 +270,7 @@ def build_dashboard(
             include_review=include_review,
             points=recovery,
             report_html=recovery_html,
-            start=start,
+            start=recovery_start,
             end=today,
         ),
         "reports.html": reports_page(

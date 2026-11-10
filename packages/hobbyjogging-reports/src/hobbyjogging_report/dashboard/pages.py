@@ -53,45 +53,6 @@ def _hr(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f}"
 
 
-def _latest(points: list[RecoveryPoint], attribute: str):
-    for point in reversed(points):
-        value = getattr(point, attribute)
-        if value is not None:
-            return value
-    return None
-
-
-def _recovery_stat(
-    points: list[RecoveryPoint],
-    attribute: str,
-    average_attribute: str,
-    *,
-    scale: float = 1.0,
-    unit: str,
-    decimals: int = 0,
-) -> tuple[str, str]:
-    value = _latest(points, attribute)
-    average = (
-        getattr(points[-1], average_attribute)
-        if points
-        else None
-    )
-
-    if value is None:
-        current_value = "-"
-    else:
-        current_value = f"{value * scale:.{decimals}f} {unit}"
-
-    if average is None:
-        average_text = "7-day avg -"
-    else:
-        average_text = (
-            f"7-day avg {average * scale:.{decimals}f} {unit}"
-        )
-
-    return current_value, average_text
-
-
 def _event_load(event) -> str:
     return "-" if event.training_load is None else f"{event.training_load:.0f}"
 
@@ -389,33 +350,6 @@ def recovery_page(
     start: date,
     end: date,
 ) -> str:
-    hrv_value, hrv_average = _recovery_stat(
-        points,
-        "hrv",
-        "hrv_avg",
-        unit="ms",
-    )
-    rhr_value, rhr_average = _recovery_stat(
-        points,
-        "resting_hr",
-        "resting_hr_avg",
-        unit="bpm",
-    )
-    sleep_value, sleep_average = _recovery_stat(
-        points,
-        "sleep_s",
-        "sleep_avg",
-        scale=1 / 3600,
-        unit="h",
-        decimals=1,
-    )
-
-    stats = [
-        ("HRV", hrv_value, hrv_average),
-        ("Resting HR", rhr_value, rhr_average),
-        ("Sleep", sleep_value, sleep_average),
-    ]
-
     if points:
         chart_html = chart(
             plot_recovery(
@@ -434,7 +368,6 @@ def recovery_page(
 
     body = (
         card(None, f'<div class="report">{report_html}</div>')
-        + stat_grid(stats)
         + card("Recovery trends", chart_html)
         + card(
             "Data completeness",

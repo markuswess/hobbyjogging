@@ -87,6 +87,7 @@ def run_dashboard_command(parsed, source, include_review):
         activity_limit,
         chart_days,
         future_days,
+        recovery_days,
         reports,
     ) = parsed
     path = build_dashboard(
@@ -96,6 +97,7 @@ def run_dashboard_command(parsed, source, include_review):
         activity_limit=activity_limit,
         chart_days=chart_days,
         future_days=future_days,
+        recovery_days=recovery_days,
         reports=reports,
         include_review=include_review,
     )

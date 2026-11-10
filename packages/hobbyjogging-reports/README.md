@@ -503,9 +503,10 @@ Pages:
   methods and targets, linked to per-activity pages.
 - `activity/<id>.html` — one activity's metrics (including workout methods and
   targets), zone times, description, interval table, and subT/LT1 work reps.
-- `recovery.html` — the `recovery-report` (7/42/182-day moving averages), a
-  stat grid, then HRV, resting HR, and sleep as interactive plotly panels
-  with 7-day averages and a data-completeness note.
+- `recovery.html` — the `recovery-report` (7/42/182-day moving averages and
+  the last four nights), then HRV, resting HR, and sleep as interactive
+  plotly panels over the last 186 days (`--recovery-days`) with 7-day
+  averages, and a data-completeness note.
 - `reports.html` — the Markdown reports selected with `--reports`, rendered
   as HTML with the same content as `reports.sh`.
 - `health.html` (Data Health) — review-hidden activities and missing-data
