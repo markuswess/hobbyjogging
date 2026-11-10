@@ -8,8 +8,8 @@ from .analysis import activity_sort_key
 from .format import (
     fmt_time,
     format_activity,
+    format_fenced_block,
     last_four_nights,
-    markdown_block,
     sport_label,
 )
 from .review import exclude_review, review_note
@@ -32,11 +32,12 @@ def format_event(event) -> list[str]:
     description = event.description.strip("\n") if event.description else ""
 
     if description.strip():
-        # Planned descriptions are Markdown themselves. Embed them as a
-        # top-level block so their headings, lists, and blank lines render
-        # in the terminal and in the dashboard's HTML conversion alike.
+        # Render the description as a fenced block so its structure stands
+        # apart from the report's own Markdown. Keep it top-level (not
+        # nested under a bullet): nested fences are not parsed by the HTML
+        # conversion and show up as literal backticks.
         lines.append("")
-        lines.extend(markdown_block(description))
+        lines.extend(format_fenced_block(description))
 
     return lines
 

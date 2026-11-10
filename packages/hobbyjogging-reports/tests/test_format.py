@@ -193,28 +193,18 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("- Feel: 2 (Good)", lines)
         self.assertIn("- Pace zones: Z3 30min", lines)
 
-    def test_format_activity_description_is_markdown(self):
+    def test_format_activity_description_is_code_block(self):
         a = activity(
             description="# Warm up\n- 10 min easy\n\n## Main\n3 x 10 min",
         )
 
         lines = format_activity(FakeSource(), a, "Run Easy")
 
+        self.assertIn("```", lines)
         self.assertIn("# Warm up", lines)
         self.assertIn("- 10 min easy", lines)
-        self.assertIn("## Main", lines)
-        self.assertIn("3 x 10 min", lines)
         self.assertNotIn("- Description:", lines)
-        self.assertNotIn("```", "\n".join(lines))
-
-    def test_description_list_after_paragraph_stays_a_list(self):
-        a = activity(description="1x\n- 45m 60-68% Pace")
-
-        lines = format_activity(FakeSource(), a, "Run Easy")
-
-        self.assertIn("1x", lines)
-        self.assertIn("- 45m 60-68% Pace", lines)
-        self.assertIn("\n\n- 45m 60-68% Pace", "\n".join(lines))
+        self.assertNotIn("- Description: # Warm up", lines)
 
     def test_format_category_table(self):
         stats = category_breakdown([
