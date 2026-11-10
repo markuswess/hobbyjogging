@@ -77,6 +77,34 @@ on.
 - Full FIT archive import, VO2max backfill, and the historical spreadsheet
   import have been run against the real DB.
 
+## Next
+
+Handed over from the root session:
+
+- **`review scan --prune`.** Resolve open `quality` items whose rule no longer
+  triggers for the activity's current canonical values. Field conflicts
+  already prune (`review prune`); quality items do not, so a finding stays
+  open after the value behind it is fixed outside triage (an importer
+  re-fetch, a manual edit that bypassed `refresh_activity_quality`, or a rule
+  change).
+  - Reuse the identity `record_quality_findings` already uses:
+    `review_fingerprint([rule, activity_id, context])`. Compute
+    `quality_findings` for each activity, collect the current fingerprints,
+    and resolve open `quality` items whose fingerprint is not in that set.
+    `refresh_activity_quality` does exactly this for one activity; this is the
+    batch version over all (or `--activity` one).
+  - Resolve items for excluded activities too (the activity is gone from
+    reports), with note `prune: activity excluded`.
+  - Resolve note otherwise: `prune: no longer triggered`.
+  - Leave `manual_flag`, `ambiguous_match`, `field_conflict`, and
+    `workout_classification` untouched.
+  - `--dry-run` reports `checked / resolved / kept` without writing; the run
+    is idempotent and resolves nothing on a second pass.
+  - Tests: a zero-duration item whose duration was filled resolves; a still
+    valid item stays open; an excluded activity's item resolves; dry-run
+    writes nothing; a rerun is a no-op.
+- **Runalyze enrichment** is still waiting on the API details (below).
+
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments

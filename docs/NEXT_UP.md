@@ -103,16 +103,16 @@ Updated 2026-11-08.
 
 ## Next
 
-1. **Dashboard follow-ups** — handed to the reports session; the list lives in
-   `packages/hobbyjogging-reports/NEXT_UP.md` (workout methods/targets on the
-   session detail, review queue through `DataSource`, race cards,
-   session-level planned-vs-actual).
+1. **Dashboard follow-ups** — handed to the reports session; the list lives
+   in `packages/hobbyjogging-reports/NEXT_UP.md`. Workout sets, race cards, and
+   the review-queue `DataSource` API are done; the open piece is rendering the
+   queue on the health page.
 2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-3. **`review scan` prune mode**: resolve stale quality items whose current
-   values no longer trigger them (field conflicts already prune).
+3. **`review scan` prune mode** — handed to the import session; the spec
+   lives in `packages/hobbyjogging-import/NEXT_UP.md`.
 4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 5. **Classifier into core** (hygiene): move the heuristic out of
