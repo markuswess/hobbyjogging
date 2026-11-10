@@ -533,7 +533,7 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 98, 14, ()),
+            (None, 14, 50, 182, 14, ()),
             parse_dashboard_args([]),
         )
 
@@ -577,7 +577,7 @@ class OverviewChartArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            ("overview.png", 98, 14, TODAY),
+            ("overview.png", 182, 14, TODAY),
             parse_overview_chart_args([], today=TODAY),
         )
 

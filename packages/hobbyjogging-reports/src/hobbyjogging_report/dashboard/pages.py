@@ -114,7 +114,6 @@ def overview_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
-    start: date,
     end: date,
     overview_html: str,
     daily_html: str,
@@ -174,7 +173,7 @@ def overview_page(
         ["Date", "Day", "Workout", "Sport", "Distance", "Time", "Z3+4", "Load"],
         planned_rows,
         numeric=(4, 5, 6, 7),
-        empty="No planned sessions in the next 7 days.",
+        empty="No planned sessions in the next 14 days.",
     )
 
     if any(event.zone_times for event in events):
@@ -186,13 +185,13 @@ def overview_page(
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
-        + card("Daily report", f'<div class="report">{daily_html}</div>')
-        + card("Next 7 days", planned_html)
+        + card("Daily report",f'<div class="report">{daily_html}</div>')
+        + card("Next 14 days", planned_html)
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
 
     return page(
-        title=f"Training overview · {start} → {end}",
+        title="Training overview",
         body=body,
         generated_at=generated_at,
         health_html=banner(

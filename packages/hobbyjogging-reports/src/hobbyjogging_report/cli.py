@@ -210,7 +210,7 @@ def parse_dashboard_args(
     parser.add_argument("--output")
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--activities", type=int, default=50)
-    parser.add_argument("--chart-days", type=int, default=98)
+    parser.add_argument("--chart-days", type=int, default=182)
     parser.add_argument("--future-days", type=int, default=14)
     parser.add_argument("--reports")
     args = parser.parse_args(argv)
@@ -273,7 +273,7 @@ def parse_overview_chart_args(
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("output", nargs="?")
     parser.add_argument("--output", dest="output_option")
-    parser.add_argument("--chart-days", type=int, default=98)
+    parser.add_argument("--chart-days", type=int, default=182)
     parser.add_argument("--future-days", type=int, default=14)
     args = parser.parse_args(argv)
 

@@ -491,7 +491,7 @@ Pages:
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
   the next 14 days; the main overview chart; the daily report; and the next
   7 planned days. The EWMA overview and the daily report are the rendered
-  `overview` and `daily` Markdown reports; the chart uses the last 98 days
+  `overview` and `daily` Markdown reports; the chart uses the last 182 days
   plus the next 14 by default.
 - `activities.html` — the recent activity table (default 50), linked to
   per-activity pages.
@@ -515,7 +515,7 @@ stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
 **unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
 running, with the hard lines in reds at the base and the total lines in blues
 above them, and the Garmin VO2max standing value as a black line on a second
-axis on the right. It defaults to **98 days back and 14 days forward**;
+axis on the right. It defaults to **182 days back and 14 days forward**;
 `--chart-days` and `--future-days` change those. Planned workouts appear as
 hatched bars on days without a recorded run, including today, so an
 uncompleted planned session is visible; once a run is recorded, the actual bar

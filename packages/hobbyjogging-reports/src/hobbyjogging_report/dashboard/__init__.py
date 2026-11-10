@@ -101,7 +101,7 @@ def build_dashboard(
     )
 
     event_start = today
-    event_end = today + timedelta(days=6)
+    event_end = today + timedelta(days=13)
     events = [
         event
         for event in source.events(event_start, event_end)
@@ -230,7 +230,6 @@ def build_dashboard(
             generated_at=generated_at,
             health=health,
             include_review=include_review,
-            start=start,
             end=today,
             overview_html=overview_html,
             daily_html=daily_html,

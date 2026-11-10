@@ -333,7 +333,7 @@ def _activity_description_lines(
     *,
     detailed: bool = False,
 ):
-    """Render a description without letting its Markdown escape the report."""
+    """Render a description; non-detailed output is plain Markdown."""
     if not (activity.description and activity.description.strip()):
         return []
 
@@ -343,10 +343,8 @@ def _activity_description_lines(
             *format_fenced_block(activity.description),
         ]
 
-    return [
-        "- Description:",
-        *format_fenced_block(activity.description, "  "),
-    ]
+    description = activity.description.strip("\n")
+    return ["", *description.splitlines()]
 
 
 def format_activity(

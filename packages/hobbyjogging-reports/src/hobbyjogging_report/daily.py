@@ -8,7 +8,6 @@ from .analysis import activity_sort_key
 from .format import (
     fmt_time,
     format_activity,
-    format_fenced_block,
     last_four_nights,
     sport_label,
 )
@@ -23,20 +22,20 @@ def format_event(event) -> list[str]:
     if event.type:
         lines.append(f"- Type: {sport_label(event)}")
 
-    description = event.description.strip("\n") if event.description else ""
-
-    if description.strip():
-        # Planned descriptions are Markdown themselves. Render them as a
-        # fenced block nested under the bullet so their headings, lists and
-        # blank lines cannot disturb the report layout.
-        lines.append("- Description:")
-        lines.extend(format_fenced_block(description, "  "))
-
     if event.duration_s:
         lines.append(f"- Duration: {fmt_time(event.duration_s)}")
 
     if event.distance_m:
         lines.append(f"- Distance: {event.distance_m/1000:.1f} km")
+
+    description = event.description.strip("\n") if event.description else ""
+
+    if description.strip():
+        # Planned descriptions are Markdown themselves. Embed them as a
+        # top-level block so their headings, lists, and blank lines render
+        # in the terminal and in the dashboard's HTML conversion alike.
+        lines.append("")
+        lines.extend(description.splitlines())
 
     return lines
 

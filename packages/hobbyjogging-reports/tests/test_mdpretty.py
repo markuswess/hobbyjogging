@@ -78,7 +78,7 @@ class MarkdownRendererTests(unittest.TestCase):
         self.assertIn("after", output)
         self.assertNotIn("```", output)
 
-    def test_planned_description_renders_as_nested_code(self):
+    def test_planned_description_renders_as_markdown(self):
         event = Event(
             date=date(2026, 11, 5),
             name="SubT",
@@ -89,15 +89,17 @@ class MarkdownRendererTests(unittest.TestCase):
 
         markdown = "\n".join(format_event(event))
 
-        self.assertIn("- Description:", markdown)
-        self.assertIn("  ```", markdown)
+        self.assertIn("# Warm up", markdown)
+        self.assertIn("- 15 min easy", markdown)
+        self.assertIn("## Main", markdown)
+        self.assertNotIn("```", markdown)
 
         output = render_markdown(markdown, color=False)
 
+        self.assertIn("Warm up", output)
         self.assertIn("15 min easy", output)
         self.assertIn("3 x 10 min", output)
         self.assertNotIn("```", output)
-        self.assertNotIn("▌ Main", output)
 
 
 if __name__ == "__main__":

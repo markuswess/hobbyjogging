@@ -176,7 +176,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("2026-11-23", index)
             self.assertIn("Daily report", index)
             self.assertIn("Daily Training Report", index)
-            self.assertIn("Next 7 days", index)
+            self.assertIn("Next 14 days", index)
             self.assertNotIn("Plan vs actual", index)
             self.assertNotIn("Training load", index)
             self.assertNotIn("Quality sessions", index)

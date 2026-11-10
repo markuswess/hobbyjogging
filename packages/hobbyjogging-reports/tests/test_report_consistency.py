@@ -29,7 +29,7 @@ MULTILINE = "# Warm up\n- 10 min easy\n\n## Main\n3 x 10 min"
 
 class DailyDescriptionTests(unittest.TestCase):
 
-    def test_activity_description_is_fenced(self):
+    def test_activity_description_is_markdown(self):
         source = FakeSource(
             [activity(name="Easy", description=MULTILINE)]
         )
@@ -38,29 +38,18 @@ class DailyDescriptionTests(unittest.TestCase):
             report = daily(source)
 
         self.assertIn("## Yesterday", report)
-        self.assertIn("- Description:", report)
-        self.assertIn("  ```", report)
-        self.assertIn("  # Warm up", report)
-        self.assertIn("  - 10 min easy", report)
-        self.assertIn("  ## Main", report)
-        self.assertNotIn("- Description: # Warm up", report)
-        self.assertIn(
-            "- Description:\n"
-            "  ```\n"
-            "  # Warm up\n"
-            "  - 10 min easy\n"
-            "\n"
-            "  ## Main\n"
-            "  3 x 10 min\n"
-            "  ```",
-            report,
-        )
+        self.assertIn("# Warm up", report)
+        self.assertIn("- 10 min easy", report)
+        self.assertIn("## Main", report)
+        self.assertIn("3 x 10 min", report)
+        self.assertNotIn("- Description:", report)
+        self.assertNotIn("```", report)
 
         pretty = render_markdown(report, color=False)
 
-        self.assertNotIn("▌ Warm up", pretty)
-        self.assertNotIn("▌ Main", pretty)
-        self.assertIn("│ # Warm up", pretty)
+        self.assertIn("Warm up", pretty)
+        self.assertIn("10 min easy", pretty)
+        self.assertNotIn("```", pretty)
 
 
 class PeriodDescriptionTests(unittest.TestCase):
