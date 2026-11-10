@@ -45,8 +45,8 @@ HTML dashboard:
   Next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, workout methods and
-  targets, totals, zones, description, the full interval table, and
-  subT/LT1 work reps.
+  targets, totals, zones, description, the full interval table, subT/LT1 work
+  reps, and Intervals/Garmin Connect links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
@@ -578,6 +578,7 @@ analysis or chart code:
   unclassified activities.
 - `charts.py` — plotly chart builders shared by the CLI and dashboard.
 - `format.py` — model-based report formatting helpers.
+- `links.py` — Intervals and Garmin Connect URLs for canonical activities.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
 - `daily.py`, `period_report.py`, `subt_report.py` — the Markdown reports;
   one file per report, obtaining model objects through a `DataSource`.

@@ -52,11 +52,13 @@ class FakeSource:
         intervals=None,
         wellness=None,
         events=None,
+        links=None,
     ):
         self._activities = list(activities or [])
         self._intervals = dict(intervals or {})
         self._wellness = list(wellness or [])
         self._events = list(events or [])
+        self._links = dict(links or {})
 
     @staticmethod
     def _in_range(items, start, end):
@@ -83,3 +85,6 @@ class FakeSource:
 
     def activity_intervals(self, activity_id):
         return self._intervals.get(activity_id, [])
+
+    def activity_links(self, activity_id):
+        return self._links.get(activity_id)

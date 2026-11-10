@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core.model import Interval
+from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.sessions import select_session, session_report
 from support import FakeSource, activity_factory
 
@@ -169,6 +170,39 @@ class SessionReportTests(unittest.TestCase):
             "5x5:00 subT-medium: 5:00/km, 160 avg / 170 max bpm",
             report,
         )
+
+    def test_report_includes_source_links(self):
+        source = FakeSource(
+            [activity(id="a", date=D1)],
+            links={
+                "a": ActivityLinks(
+                    intervals="https://intervals.icu/activities/i42",
+                    garmin=(
+                        "https://connect.garmin.com/app/activity/99"
+                    ),
+                ),
+            },
+        )
+
+        report = session_report("a", source, today=self.today)
+
+        self.assertIn(
+            "- Intervals: [i42](https://intervals.icu/activities/i42)",
+            report,
+        )
+        self.assertIn(
+            "- Garmin Connect: "
+            "[99](https://connect.garmin.com/app/activity/99)",
+            report,
+        )
+
+    def test_report_omits_links_when_unknown(self):
+        source = FakeSource([activity(id="a", date=D1)])
+
+        report = session_report("a", source, today=self.today)
+
+        self.assertNotIn("Intervals: [", report)
+        self.assertNotIn("Garmin Connect:", report)
 
     def test_unknown_id_suggests_include_review(self):
         report = session_report("missing", self.source)

@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
+from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
 from hobbyjogging_report.zone_groups import (
     planned_bars_without_actual,
@@ -127,6 +128,12 @@ def _source():
                 sleep_s=7.5 * 3600,
             ),
         ],
+        links={
+            "run1": ActivityLinks(
+                intervals="https://intervals.icu/activities/i1",
+                garmin="https://connect.garmin.com/app/activity/2",
+            ),
+        },
     )
 
 
@@ -232,6 +239,11 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Continuous", detail)
             self.assertIn("Targets", detail)
             self.assertIn("Base", detail)
+            self.assertIn("https://intervals.icu/activities/i1", detail)
+            self.assertIn(
+                "https://connect.garmin.com/app/activity/2",
+                detail,
+            )
             self.assertIn("../index.html", detail)
             self.assertIn('href="../activities.html"', detail)
 

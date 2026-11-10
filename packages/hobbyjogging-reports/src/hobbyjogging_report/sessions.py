@@ -7,6 +7,7 @@ from hobbyjogging_core.datasource import DataSource
 from .analysis import activity_sort_key
 from .classify import classify
 from .format import format_session_activity
+from .links import resolve_activity_links
 from .recent import search_recent
 from .review import exclude_review, review_note
 from .sources import create_source
@@ -142,6 +143,7 @@ def session_report(
                 activity,
                 intervals,
                 category=category.path,
+                links=resolve_activity_links(source, activity.id),
             )
         )
 

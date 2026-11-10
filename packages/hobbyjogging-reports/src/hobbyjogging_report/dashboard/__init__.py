@@ -19,6 +19,7 @@ from ..analysis import (
 from ..classify import classify
 from ..format import format_session_activity
 from ..html import markdown_to_html
+from ..links import resolve_activity_links
 from ..model import AverageWindows
 from ..overview import overview_report
 from ..planned import planned_report
@@ -301,6 +302,7 @@ def build_dashboard(
                 activity,
                 intervals,
                 category=classify(activity, intervals).path,
+                links=resolve_activity_links(source, activity.id),
             )
         )
         detail_pages[

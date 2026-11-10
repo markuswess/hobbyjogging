@@ -32,7 +32,9 @@ comparison.
   `--reports recovery-report`.
 - **Activity detail uses the session report.** `activity/<id>.html` renders
   `format_session_activity()` — the same Markdown body as
-  `reports.sh session` — instead of a parallel hand-built page.
+  `reports.sh session` — instead of a parallel hand-built page. The session
+  report links to the Intervals and Garmin Connect activity pages when the
+  database source can resolve their external ids.
 - **Dashboard data health is canonical-only.** The actual review-item queue
   needs a core `DataSource` addition; see the follow-up below.
 

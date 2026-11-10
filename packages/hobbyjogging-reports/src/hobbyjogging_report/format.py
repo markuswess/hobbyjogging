@@ -469,10 +469,18 @@ def format_interval_table(intervals: list[Interval]):
     return lines
 
 
+def _link(url: str) -> str:
+    """Markdown link whose text is the external activity id."""
+    label = url.rsplit("/", 1)[-1] or url
+    return f"[{label}]({url})"
+
+
 def format_session_activity(
     activity: Activity,
     intervals: list[Interval],
     category: str | None = None,
+    *,
+    links=None,
 ):
     """Render one activity as a detailed, standalone session report."""
     title = sport_label(activity)
@@ -488,6 +496,12 @@ def format_session_activity(
 
     if activity.started_at_utc:
         lines.append(f"- Started: {activity.started_at_utc} (UTC)")
+
+    if links is not None:
+        if links.intervals:
+            lines.append(f"- Intervals: {_link(links.intervals)}")
+        if links.garmin:
+            lines.append(f"- Garmin Connect: {_link(links.garmin)}")
 
     if category:
         lines.append(f"- Category: {category}")
