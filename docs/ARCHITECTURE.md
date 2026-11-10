@@ -317,6 +317,8 @@ deliberately does not run maintenance tasks.
    - first owner keeps every other field while other sources agree within
      tolerance (about 1%, with 2 s / 10 m floors; average HR has a wider
      5 bpm floor; 15 s for start times);
+   - a blank `name`/`description` is a gap, so a later source may fill it
+     (an empty incoming value never clears text);
    - a meaningful cross-source disagreement on any other field changes nothing
      and is recorded as a `field_conflict` review item;
    - an explicit trusted re-import (`force=True`, triage `(t)`) takes

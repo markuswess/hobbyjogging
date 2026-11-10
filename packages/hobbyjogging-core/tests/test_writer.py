@@ -95,6 +95,73 @@ class TrainingWriterTests(unittest.TestCase):
             [row["field_name"] for row in sources],
         )
 
+    def test_blank_text_is_a_gap_a_later_source_can_fill(self):
+        intervals_source = self.writer.upsert_source_record(
+            source="intervals",
+            record_type="activity",
+            external_id="i1",
+            checksum="c-i",
+            import_run_id=self.run_id,
+        )
+        fit_source = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="f1",
+            checksum="c-f",
+            import_run_id=self.run_id,
+        )
+
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "name": "",
+                "description": "   ",
+            },
+            source="intervals",
+            source_record_id=intervals_source,
+        )
+
+        conflicts = self.writer.upsert_activity(
+            "a1",
+            {"name": "Liesingbachrunde", "description": "Locker"},
+            source="fit",
+            source_record_id=fit_source,
+        )
+
+        self.assertEqual([], conflicts)
+        row = self.conn.execute(
+            "SELECT name, description FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual(("Liesingbachrunde", "Locker"), tuple(row))
+
+        owners = self.conn.execute(
+            """
+            SELECT field_name, source FROM activity_field_sources
+            WHERE activity_id = 'a1'
+              AND field_name IN ('name', 'description')
+            """
+        ).fetchall()
+        self.assertEqual(
+            {"name": "fit", "description": "fit"},
+            {row["field_name"]: row["source"] for row in owners},
+        )
+
+        # An empty incoming text never clears a filled value.
+        self.writer.upsert_activity(
+            "a1",
+            {"description": ""},
+            source="intervals",
+            source_record_id=intervals_source,
+        )
+        self.assertEqual(
+            "Locker",
+            self.conn.execute(
+                "SELECT description FROM activities WHERE id = 'a1'"
+            ).fetchone()[0],
+        )
+
     def test_manual_field_is_not_overwritten(self):
         self.writer.upsert_activity(
             "a1",

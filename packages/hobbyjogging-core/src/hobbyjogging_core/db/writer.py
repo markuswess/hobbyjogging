@@ -508,7 +508,7 @@ class TrainingWriter:
 
         current_source = row["source"]
 
-        if current_value is None:
+        if _is_unfilled(current_value):
             return "write", current_source  # fill a gap the owner left
 
         if value is None:
@@ -1852,6 +1852,18 @@ def _parse_timestamp(value: object) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return datetime.fromisoformat(value)
+
+
+def _is_unfilled(value: object) -> bool:
+    """True when a field holds no actual value yet.
+
+    A blank string is a gap, not an owner decision: Intervals writes empty
+    names/descriptions for activities it has no text for, and a later source
+    may fill them.
+    """
+    if value is None:
+        return True
+    return isinstance(value, str) and not value.strip()
 
 
 def _iso_date(value: date | str | None) -> str | None:

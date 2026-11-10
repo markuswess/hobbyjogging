@@ -71,6 +71,8 @@ Cross-package changes must leave all four suites green.
   `elapsed_s` authority above. The first owner keeps every other field;
   meaningful cross-source disagreement becomes a `field_conflict` review item.
   For average HR, a disagreement is only meaningful beyond 5 bpm.
+- A blank text field counts as unfilled: a later source may fill an empty
+  `name`/`description`, while an empty incoming value never clears text.
 - A trusted source may force ownership only on an explicit human action
   (triage `(t)`); manual fields still win. Normal imports never force.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →

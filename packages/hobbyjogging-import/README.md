@@ -215,13 +215,15 @@ item. Manual edits still win.
 
 For every other field there is no automatic per-source priority. The source
 that wrote it keeps ownership; a later source may refresh its own fields, and
-a field nobody has written yet is simply filled. When two sources report a
-measurably different value for the same field, nothing is overwritten: the
-disagreement is recorded as a `field_conflict` review item and the human
-decides (see below). Values that agree within tolerance (about 1%, with small
-absolute floors) are not conflicts; average HR uses a wider 5 bpm floor, since
-a watch's session average and a stream average legitimately drift by a few
-bpm. Manual edits always outrank every source and survive reimports.
+a field nobody has written yet is simply filled (a blank `name`/`description`
+counts as unwritten, but an empty incoming value never clears text). When two
+sources report a measurably different value for the same field, nothing is
+overwritten: the disagreement is recorded as a `field_conflict` review item
+and the human decides (see below). Values that agree within tolerance (about
+1%, with small absolute floors) are not conflicts; average HR uses a wider
+5 bpm floor, since a watch's session average and a stream average
+legitimately drift by a few bpm. Manual edits always outrank every source
+and survive reimports.
 
 Conflict-tracked fields are `duration_s`, `distance_m`, `avg_hr`,
 `started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and

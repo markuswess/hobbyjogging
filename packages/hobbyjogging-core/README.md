@@ -100,6 +100,8 @@ writer.replace_activity_tags(
   other field becomes a `field_conflict` review item and changes nothing.
   Average HR uses a wider 5 bpm floor because device and stream averages
   legitimately drift by a few bpm.
+- A blank `name`/`description` counts as unfilled: a later source may supply
+  the text, while an empty incoming value never clears it.
 - `force=True` overrides ownership for one explicit re-import, except for
   manual fields.
 - `duration_s` (recording/timer) is owner-tracked; `moving_s` (moving time)
