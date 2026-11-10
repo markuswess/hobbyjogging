@@ -890,6 +890,40 @@ class WorkoutClassificationTriageTests(unittest.TestCase):
         self.assertEqual("resolved", self._item()["status"])
         self.assertIn("left unclassified", self._item()["resolved_note"])
 
+    def test_manual_input_canonicalizes_and_resolves(self):
+        lines, counters = self._runner(
+            ["k", "3", "interval, tempo", "threshold vo2max"]
+        )
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(
+            (["intervals", "tempo"], ["threshold", "vo2max"], 1),
+            self._sets(),
+        )
+        joined = "\n".join(lines)
+        self.assertIn("methods: continuous, intervals", joined)
+        self.assertIn(
+            "manual: methods=intervals, tempo targets=threshold, vo2max",
+            joined,
+        )
+        self.assertIn("classification manual", self._item()["resolved_note"])
+
+    def test_manual_input_allows_blank_sides(self):
+        _, counters = self._runner(["k", "3", "", "recovery"])
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(([], ["recovery"], None), self._sets())
+        self.assertEqual("resolved", self._item()["status"])
+
+    def test_manual_input_rejects_unknown_tokens(self):
+        lines, counters = self._runner(["k", "3", "fartlek", "q"])
+
+        joined = "\n".join(lines)
+        self.assertIn("unknown method 'fartlek'", joined)
+        self.assertEqual(0, counters.get("classified", 0))
+        self.assertEqual("open", self._item()["status"])
+        self.assertEqual(([], [], None), self._sets())
+
     def test_cancel_keeps_the_item_open(self):
         _, counters = self._runner(["k", ""])
 

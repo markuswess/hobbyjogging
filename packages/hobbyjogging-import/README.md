@@ -403,7 +403,9 @@ Other commands:
   backfilled with `review classify [--activity <id>] [--dry-run]`.
 - `workout_classification` items come from the maintenance queue sync
   (`hobbyjogging-maintenance run workout_classification_queue`). Triage `(k)`
-  resolves one: `1` classifier, `2` sheet, `m` merge, `n` leave unclassified.
+  resolves one: `1` classifier, `2` sheet, `m` merge, `n` leave unclassified,
+  or `3` to type method/target tokens by hand (aliases accepted, unknown
+  tokens rejected).
   They are `info`-level and never hide an activity from reports.
 - `review resolve --cause <cause> [--dry-run]` — bulk-resolve every open
   conflict with one advisory cause (`elapsed_definition`, `small_difference`,
