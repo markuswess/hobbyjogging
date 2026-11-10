@@ -35,8 +35,12 @@ comparison.
   `reports.sh session` — instead of a parallel hand-built page. The session
   report links to the Intervals and Garmin Connect activity pages when the
   database source can resolve their external ids.
-- **Dashboard data health is canonical-only.** The actual review-item queue
-  needs a core `DataSource` addition; see the follow-up below.
+- **Dashboard data health is canonical-only.** The review queue is exposed
+  through `DataSource.review_items()` and rendered on the health page.
+- **Review queue on the health page.** The health page shows the open
+  `ReviewItem` rows (severity, category, detail, linked activity, reported
+  date), counts them in the stat grid, and keeps the separate list of
+  activities hidden by review.
 
 ## Handoff from the root session
 
@@ -52,10 +56,10 @@ Dashboard follow-ups, handed over together with the triage work:
   the API's `RACE_A`/`RACE_B`/`RACE_C` event categories onto the `race`
   method during event sync, so an existing database needs a fresh event
   sync before its races show up.
-- **Review queue rendering** — the core part is done:
-  `DataSource.review_items(status="open", category=...)` returns `ReviewItem`
-  objects (id, category, severity, status, detail, activity date/name/sport,
-  source, context). Use it for the health page and category links.
+- **Review queue rendering.** Done. `DataSource.review_items(status="open",
+  category=...)` feeds the health page: one row per open item with severity,
+  category, detail, linked activity, and reported date; the count is in the
+  stat grid. Category filters exist in the API for a later per-category view.
 
 ## Next
 

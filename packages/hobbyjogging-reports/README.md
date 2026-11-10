@@ -510,8 +510,9 @@ Pages:
   averages, and a data-completeness note.
 - `reports.html` — the Markdown reports selected with `--reports`, rendered
   as HTML with the same content as `reports.sh`.
-- `health.html` (Data Health) — review-hidden activities and missing-data
-  counts.
+- `health.html` (Data Health) — the open review queue (severity, category,
+  detail, linked activity, reported date), the activities hidden by review,
+  and missing-data counts.
 
 `--reports` accepts a comma-separated list of Markdown reports:
 `overview`, `recovery-report`, `daily`, `weekly`, `monthly`, `yearly`,

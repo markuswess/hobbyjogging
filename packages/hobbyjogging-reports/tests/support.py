@@ -53,12 +53,14 @@ class FakeSource:
         wellness=None,
         events=None,
         links=None,
+        review_items=None,
     ):
         self._activities = list(activities or [])
         self._intervals = dict(intervals or {})
         self._wellness = list(wellness or [])
         self._events = list(events or [])
         self._links = dict(links or {})
+        self._review_items = list(review_items or [])
 
     @staticmethod
     def _in_range(items, start, end):
@@ -88,3 +90,15 @@ class FakeSource:
 
     def activity_links(self, activity_id):
         return self._links.get(activity_id)
+
+    def review_items(self, *, status="open", category=None):
+        items = [
+            item
+            for item in self._review_items
+            if status in ("all", "", item.status)
+        ]
+
+        if category is not None:
+            items = [item for item in items if item.category == category]
+
+        return items

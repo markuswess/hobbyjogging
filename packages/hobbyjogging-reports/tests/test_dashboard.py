@@ -5,7 +5,12 @@ from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
+from hobbyjogging_core.model import (
+    Event,
+    EventZoneTime,
+    ReviewItem,
+    WellnessDay,
+)
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
@@ -134,6 +139,21 @@ def _source():
                 garmin="https://connect.garmin.com/app/activity/2",
             ),
         },
+        review_items=[
+            ReviewItem(
+                id=7,
+                category="field_conflict",
+                severity="warn",
+                detail="avg_hr differs by 6 bpm",
+                reported_at="2026-11-09T10:00:00Z",
+                activity_id="run2",
+                activity_date=TODAY - timedelta(days=4),
+                activity_name="Tempo",
+                sport="run",
+                source="intervals",
+                external_id="i2",
+            ),
+        ],
     )
 
 
@@ -248,6 +268,11 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn('href="../activities.html"', detail)
 
             health = (target / "health.html").read_text()
+            self.assertIn("Review queue", health)
+            self.assertIn("field conflict", health)
+            self.assertIn("avg_hr differs by 6 bpm", health)
+            self.assertIn('href="activity/run2.html"', health)
+            self.assertIn("2026-11-09", health)
             self.assertIn("Flagged", health)
             self.assertIn("hidden", health)
             self.assertIn("Missing data", health)

@@ -286,6 +286,7 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             detail_ids=detail_ids,
+            review_items=source.review_items(status="open"),
         ),
     }
 

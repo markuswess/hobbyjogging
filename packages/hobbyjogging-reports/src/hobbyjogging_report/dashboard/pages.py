@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from urllib.parse import quote
 
-from hobbyjogging_core.model import Activity, Event
+from hobbyjogging_core.model import Activity, Event, ReviewItem
 
 from ..analysis import RUN_TYPES
 from ..format import (
@@ -286,15 +286,47 @@ def health_page(
     health: DataHealth,
     include_review: bool,
     detail_ids: set[str],
+    review_items: list[ReviewItem],
 ) -> str:
     stats = [
         ("Activities in window", str(health.activities), ""),
+        ("Open review items", str(len(review_items)), ""),
         ("Hidden by review", str(health.review_hidden), ""),
         ("Missing load", str(health.activities_without_load), ""),
         ("Runs without pace zones", str(health.runs_without_pace_zones), ""),
         ("Runs without HR", str(health.runs_without_hr), ""),
         ("Runs without distance", str(health.runs_without_distance), ""),
     ]
+
+    queue_rows = []
+
+    for item in review_items:
+        label = " ".join(
+            part
+            for part in (
+                str(item.activity_date) if item.activity_date else "",
+                item.activity_name or item.sport,
+            )
+            if part
+        ) or "-"
+        activity_html = (
+            link(activity_href(item.activity_id), label)
+            if item.activity_id and item.activity_id in detail_ids
+            else esc(label)
+        )
+        queue_rows.append([
+            esc(item.severity),
+            esc(item.category.replace("_", " ")),
+            esc(item.detail or "-"),
+            activity_html,
+            esc(item.reported_at[:10] if item.reported_at else "-"),
+        ])
+
+    queue_html = table(
+        ["Severity", "Category", "Detail", "Activity", "Reported"],
+        queue_rows,
+        empty="The review queue is empty.",
+    )
 
     review_rows = []
 
@@ -333,10 +365,9 @@ def health_page(
 
     body = (
         stat_grid(stats)
-        + card("Open review items", review_html)
+        + card("Review queue", queue_html)
+        + card("Activities with open review items", review_html)
         + card("Missing data", missing_html)
-        + '<p class="muted">The dashboard reads canonical data only; '
-        "individual review-item categories are not exposed yet.</p>"
     )
 
     return page(
