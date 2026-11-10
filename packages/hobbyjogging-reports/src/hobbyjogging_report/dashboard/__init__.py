@@ -183,18 +183,15 @@ def build_dashboard(
         demote=1,
     )
     report_sections = [
-        (
-            name,
-            markdown_to_html(
-                build_report(
-                    name,
-                    source,
-                    today=today,
-                    future_days=future_days,
-                    include_review=include_review,
-                ),
-                demote=1,
+        markdown_to_html(
+            build_report(
+                name,
+                source,
+                today=today,
+                future_days=future_days,
+                include_review=include_review,
             ),
+            demote=1,
         )
         for name in reports
     ]

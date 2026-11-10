@@ -143,8 +143,8 @@ def overview_page(
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
-        + card("Daily report", f'<div class="report">{daily_html}</div>')
-        + card("Next 14 days", f'<div class="report">{planned_html}</div>')
+        + card(None, f'<div class="report">{daily_html}</div>')
+        + card(None, f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
 
@@ -492,7 +492,7 @@ def reports_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
-    sections: list[tuple[str, str]],
+    sections: list[str],
 ) -> str:
     """Render the selected Markdown reports as HTML sections."""
     if not sections:
@@ -503,11 +503,8 @@ def reports_page(
         )
     else:
         body = "".join(
-            card(
-                name.replace("-", " ").title(),
-                f'<div class="report">{html}</div>',
-            )
-            for name, html in sections
+            card(None, f'<div class="report">{html}</div>')
+            for html in sections
         )
 
     return page(
