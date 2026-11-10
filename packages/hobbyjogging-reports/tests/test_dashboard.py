@@ -32,6 +32,8 @@ def _source():
                 training_load=50,
                 pace_zone_times=[1800, 1200, 600, 0],
                 feel=2,
+                workout_methods=["continuous"],
+                workout_targets=["base"],
             ),
             activity(
                 id="run2",
@@ -96,6 +98,15 @@ def _source():
                 distance_m=20000,
                 duration_s=6000,
                 training_load=80,
+            ),
+            Event(
+                date=TODAY + timedelta(days=40),
+                name="Autumn Marathon",
+                type="run",
+                distance_m=42195,
+                training_load=150,
+                zone_kind="pace",
+                workout_methods=["race"],
             ),
             Event(
                 date=TODAY + timedelta(days=2),
@@ -177,6 +188,9 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Daily Training Report", index)
             self.assertIn("Planned Workouts", index)
             self.assertIn("Z3+4 uses each event's planned zone kind", index)
+            self.assertIn("Upcoming races", index)
+            self.assertIn("Autumn Marathon", index)
+            self.assertIn("42.2 km", index)
             self.assertNotIn("Plan vs actual", index)
             self.assertNotIn("Training load", index)
             self.assertNotIn("Quality sessions", index)
@@ -200,12 +214,19 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("activity/run1.html", activities)
             self.assertIn("Bike", activities)
             self.assertIn("Old run", activities)
+            self.assertIn("Methods", activities)
+            self.assertIn("Continuous", activities)
+            self.assertIn("Base", activities)
             self.assertIn("activities are hidden by import review", activities)
 
             detail = (target / "activity" / "run1.html").read_text()
             self.assertIn("Easy", detail)
             self.assertIn("Intervals", detail)
             self.assertIn("Work", detail)
+            self.assertIn("Methods", detail)
+            self.assertIn("Continuous", detail)
+            self.assertIn("Targets", detail)
+            self.assertIn("Base", detail)
             self.assertIn("../index.html", detail)
             self.assertIn('href="../activities.html"', detail)
 

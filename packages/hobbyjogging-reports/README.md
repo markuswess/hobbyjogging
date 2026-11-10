@@ -41,8 +41,9 @@ HTML dashboard:
   Z3+4 time, load); ends with weekly-average total time and Z3+4 time.
   Next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
-  date, activity id, or `last` (the default): category, totals, zones,
-  description, the full interval table, and subT/LT1 work reps.
+  date, activity id, or `last` (the default): category, workout methods and
+  targets, totals, zones, description, the full interval table, and
+  subT/LT1 work reps.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
@@ -353,11 +354,12 @@ Without a date range, the table covers the most recent activities up to
 capped by `--limit` if given. Rows are newest first.
 
 Default columns: date, sport, name, duration, distance, pace, avg HR,
-load, RPE, feel. `--columns` replaces them (in the order given); `--add`
-appends. Available columns: id, date, started (UTC), sport, name, duration,
-elapsed, distance, pace, avg_hr, load, rpe, feel, intensity, category.
-The category is only computed when requested, and uses intervals for
-subT/LT1-named sessions.
+load, RPE, feel, methods, targets. `--columns` replaces them (in the order
+given); `--add` appends. Available columns: id, date, started (UTC), sport,
+name, duration, elapsed, distance, pace, avg_hr, load, rpe, feel, intensity,
+category, methods, targets. The category is only computed when requested,
+and uses intervals for subT/LT1-named sessions. Methods and targets are the
+canonical set tokens with their display labels.
 
 ## Date ranges
 
@@ -489,15 +491,15 @@ Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
-  the next 14 days; the main overview chart; the daily report; and the
-  planned workouts for the next 14 days. The EWMA overview, the daily
-  report, and the planned section are the rendered `overview`, `daily`, and
-  `planned` Markdown reports; the chart uses the last 182 days plus the next
-  14 by default.
-- `activities.html` — the recent activity table (default 50), linked to
-  per-activity pages.
-- `activity/<id>.html` — one activity's metrics, zone times, description,
-  interval table, and subT/LT1 work reps.
+  the next 14 days; the main overview chart; the daily report; upcoming
+  races in the next 180 days; and the planned workouts for the next 14 days.
+  The EWMA overview, the daily report, and the planned section are the
+  rendered `overview`, `daily`, and `planned` Markdown reports; the chart
+  uses the last 182 days plus the next 14 by default.
+- `activities.html` — the recent activity table (default 50) with workout
+  methods and targets, linked to per-activity pages.
+- `activity/<id>.html` — one activity's metrics (including workout methods and
+  targets), zone times, description, interval table, and subT/LT1 work reps.
 - `recovery.html` — HRV, resting HR, and sleep as interactive plotly panels
   with 7-day averages and a data-completeness note.
 - `reports.html` — the Markdown reports selected with `--reports`, rendered

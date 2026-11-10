@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from urllib.parse import quote
 
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import Activity, Event, Interval
 
 from ..analysis import (
     RUN_TYPES,
@@ -19,7 +19,9 @@ from ..format import (
     fmt_time,
     fmt_zones,
     format_feel,
+    format_methods,
     format_pace,
+    format_targets,
     format_work_result,
     pace,
     sport_label,
@@ -94,6 +96,37 @@ def _event_load(event) -> str:
     return "-" if event.training_load is None else f"{event.training_load:.0f}"
 
 
+def _races_card(races: list[Event]) -> str:
+    rows = [
+        [
+            esc(event.date),
+            esc(event.name or "-"),
+            esc(
+                f"{event.distance_m / 1000:.1f} km"
+                if event.distance_m
+                else "-"
+            ),
+            esc(
+                "-"
+                if event.training_load is None
+                else f"{event.training_load:.0f}"
+            ),
+            esc(event.zone_kind.title() if event.zone_kind else "-"),
+        ]
+        for event in races
+    ]
+
+    return card(
+        "Upcoming races",
+        table(
+            ["Date", "Race", "Distance", "Load", "Zone kind"],
+            rows,
+            numeric=(2, 3),
+            empty="No upcoming races.",
+        ),
+    )
+
+
 def overview_page(
     *,
     generated_at: str,
@@ -103,6 +136,7 @@ def overview_page(
     overview_html: str,
     daily_html: str,
     planned_html: str,
+    races: list[Event],
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_series: ZoneGroupSeries,
@@ -144,6 +178,7 @@ def overview_page(
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
         + card(None, f'<div class="report">{daily_html}</div>')
+        + (_races_card(races) if races else "")
         + card(None, f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
@@ -178,6 +213,8 @@ def activities_page(
             link(href, str(activity.date)),
             esc(sport_label(activity)),
             link(href, name),
+            esc(format_methods(activity)),
+            esc(format_targets(activity)),
             esc(fmt_time(activity.duration_s)),
             esc(_km_cell(activity.distance_m)),
             esc(_pace_cell(activity)),
@@ -187,10 +224,10 @@ def activities_page(
         ])
 
     body = table(
-        ["Date", "Sport", "Name", "Time", "Distance", "Pace", "Avg HR",
-         "Load", "Feel"],
+        ["Date", "Sport", "Name", "Methods", "Targets", "Time", "Distance",
+         "Pace", "Avg HR", "Load", "Feel"],
         rows,
-        numeric=(3, 4, 5, 6, 7),
+        numeric=(5, 6, 7, 8, 9),
         empty="No activities found.",
     )
 
@@ -231,6 +268,8 @@ def activity_page(
     metrics = [
         ["Date", esc(activity.date)],
         ["Category", esc(category)],
+        ["Methods", esc(format_methods(activity))],
+        ["Targets", esc(format_targets(activity))],
         ["Duration", esc(fmt_time(activity.duration_s))],
     ]
 

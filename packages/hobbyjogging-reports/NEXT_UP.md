@@ -31,12 +31,16 @@ comparison.
 
 Dashboard follow-ups, handed over together with the triage work:
 
-- **Workout methods/targets on the session detail.** Activities and events
-  now carry `workout_methods` / `workout_targets` (set-based, with
-  `activity.quality` derived). Reports currently use only the quality flag.
-  Show the sets on the session page and in the activity list.
-- **Race cards.** Surface upcoming races from `Event` (date, distance,
-  planned load, zone kind) on the overview.
+- **Workout methods/targets on the session detail.** Done. The dashboard
+  session page and the Markdown `session` report list methods and targets;
+  the activities table and the `activities` CLI report gained `methods` and
+  `targets` columns (in the default set).
+- **Race cards.** Done. The overview lists races in the next 180 days from
+  `Event` (date, name, distance, planned load, zone kind), selecting events
+  whose methods or targets contain `race`. The Intervals importer now maps
+  the API's `RACE_A`/`RACE_B`/`RACE_C` event categories onto the `race`
+  method during event sync, so an existing database needs a fresh event
+  sync before its races show up.
 - **Review queue** — item 4 below; needs a core `DataSource` addition.
 
 ## Next

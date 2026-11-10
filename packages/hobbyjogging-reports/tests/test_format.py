@@ -6,6 +6,8 @@ from hobbyjogging_report.format import (
     format_activity,
     format_category_table,
     format_feel,
+    format_methods,
+    format_targets,
     last_four_nights,
     pace,
     sport_label,
@@ -192,6 +194,21 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("- RPE: 1", lines)
         self.assertIn("- Feel: 2 (Good)", lines)
         self.assertIn("- Pace zones: Z3 30min", lines)
+
+    def test_format_methods_and_targets(self):
+        a = activity(
+            workout_methods=["intervals", "continuous"],
+            workout_targets=["lt1", "base"],
+        )
+
+        self.assertEqual("Continuous, Intervals", format_methods(a))
+        self.assertEqual("Base, LT1", format_targets(a))
+
+    def test_format_methods_and_targets_default_to_dash(self):
+        a = activity()
+
+        self.assertEqual("-", format_methods(a))
+        self.assertEqual("-", format_targets(a))
 
     def test_format_activity_description_is_code_block(self):
         a = activity(

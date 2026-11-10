@@ -6,6 +6,7 @@ reports work with any ``DataSource`` implementation.
 
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 
 from .analysis import (
     RUN_TYPES,
@@ -49,6 +50,24 @@ def sport_label(item):
         item.type,
         item.type.replace("_", " ").title(),
     )
+
+
+def _workout_labels(values, labels) -> str:
+    present = set(values or [])
+
+    return ", ".join(
+        label for token, label in labels.items() if token in present
+    )
+
+
+def format_methods(item) -> str:
+    """Format an activity's or event's workout methods, in vocabulary order."""
+    return _workout_labels(item.workout_methods, WORKOUT_METHODS) or "-"
+
+
+def format_targets(item) -> str:
+    """Format an activity's or event's workout targets, in vocabulary order."""
+    return _workout_labels(item.workout_targets, WORKOUT_TARGETS) or "-"
 
 
 def fmt_time(seconds):
@@ -441,6 +460,9 @@ def format_session_activity(
 
     if category:
         lines.append(f"- Category: {category}")
+
+    lines.append(f"- Methods: {format_methods(activity)}")
+    lines.append(f"- Targets: {format_targets(activity)}")
 
     lines.extend(_activity_metric_lines(activity, detailed=True))
     lines.extend(_activity_description_lines(activity, detailed=True))

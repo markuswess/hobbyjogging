@@ -41,6 +41,7 @@ from ..zone_groups import (
 )
 
 MARKER = ".hobbyjogging-dashboard"
+RACE_DAYS = 180
 
 
 def resolve_output_dir(output: str | Path | None = None) -> Path:
@@ -182,6 +183,11 @@ def build_dashboard(
         ),
         demote=1,
     )
+    races = [
+        event
+        for event in source.events(today, today + timedelta(days=RACE_DAYS))
+        if "race" in set(event.workout_methods) | set(event.workout_targets)
+    ]
     report_sections = [
         markdown_to_html(
             build_report(
@@ -233,6 +239,7 @@ def build_dashboard(
             overview_html=overview_html,
             daily_html=daily_html,
             planned_html=planned_html,
+            races=races,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,

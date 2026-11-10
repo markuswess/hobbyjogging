@@ -10,7 +10,15 @@ from hobbyjogging_core.model import Activity
 from .analysis import activity_sort_key, is_lt1_activity, is_subt_activity
 from .classify import classify
 from .cli import range_parser, resolve_range
-from .format import fmt_time, format_feel, pace, sport_label, table_text
+from .format import (
+    fmt_time,
+    format_feel,
+    format_methods,
+    format_targets,
+    pace,
+    sport_label,
+    table_text,
+)
 from .review import exclude_review, review_note
 from .recent import search_recent
 
@@ -79,6 +87,8 @@ COLUMNS = {
         "category",
         lambda _activity, category: category or "-",
     ),
+    "methods": _plain("methods", format_methods),
+    "targets": _plain("targets", format_targets),
 }
 
 DEFAULT_COLUMNS = (
@@ -92,6 +102,8 @@ DEFAULT_COLUMNS = (
     "load",
     "rpe",
     "feel",
+    "methods",
+    "targets",
 )
 
 
