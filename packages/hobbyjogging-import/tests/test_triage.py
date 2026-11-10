@@ -892,18 +892,18 @@ class WorkoutClassificationTriageTests(unittest.TestCase):
 
     def test_manual_input_canonicalizes_and_resolves(self):
         lines, counters = self._runner(
-            ["k", "3", "interval, tempo", "threshold vo2max"]
+            ["k", "3", "interval, progression", "threshold vo2max"]
         )
 
         self.assertEqual(1, counters["classified"])
         self.assertEqual(
-            (["intervals", "tempo"], ["threshold", "vo2max"], 1),
+            (["intervals", "progression"], ["threshold", "vo2max"], 1),
             self._sets(),
         )
         joined = "\n".join(lines)
         self.assertIn("methods: continuous, intervals", joined)
         self.assertIn(
-            "manual: methods=intervals, tempo targets=threshold, vo2max",
+            "manual: methods=intervals, progression targets=threshold, vo2max",
             joined,
         )
         self.assertIn("classification manual", self._item()["resolved_note"])

@@ -36,6 +36,10 @@ class WorkoutVocabularyTests(unittest.TestCase):
         self.assertEqual("marathon", canonical_target("marathon_specific"))
         self.assertEqual("recovery", canonical_target("regeneration"))
 
+    def test_retired_tempo_normalizes_to_continuous(self):
+        self.assertEqual("continuous", canonical_method("tempo"))
+        self.assertEqual("continuous", canonical_method("tempo_run"))
+
     def test_unknown_values_become_other(self):
         self.assertEqual("other", canonical_method("fartlek"))
         self.assertEqual("other", canonical_target("nonsense"))
@@ -47,7 +51,6 @@ class WorkoutVocabularyTests(unittest.TestCase):
     def test_quality_from_methods(self):
         self.assertTrue(is_quality(["intervals"], []))
         self.assertTrue(is_quality(["long_run"], []))
-        self.assertTrue(is_quality(["tempo"], []))
         self.assertTrue(is_quality(["progression"], []))
         self.assertTrue(is_quality(["race"], []))
         self.assertFalse(is_quality(["continuous"], []))
@@ -113,8 +116,12 @@ class WorkoutVocabularyTests(unittest.TestCase):
             classification_for_sheet_code("k"),
         )
         self.assertEqual(
-            ({"tempo"}, set(), set()),
+            ({"continuous"}, set(), set()),
             classification_for_sheet_code("idl"),
+        )
+        self.assertEqual(
+            ({"continuous"}, {"threshold"}, set()),
+            classification_for_sheet_code("tdl"),
         )
         self.assertEqual(
             (set(), set(), {"bad data"}),

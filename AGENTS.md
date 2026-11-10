@@ -80,6 +80,7 @@ Cross-package changes must leave all four suites green.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
 - Workout methods/targets are set-based (`activity_workout_*`,
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;
-  intervals, long_run, tempo, progression, race, and the quality targets are
-  quality; strides never make a session quality by itself.
+  intervals, long_run, progression, race, and the quality targets are
+  quality; strides never make a session quality by itself. A tempo run is
+  `continuous` with a `threshold` target (there is no `tempo` method).
 - Reports use plotly for charts and never pandas.

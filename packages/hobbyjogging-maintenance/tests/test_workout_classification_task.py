@@ -143,7 +143,10 @@ class WorkoutClassificationTests(unittest.TestCase):
             run = self._run()
 
         self.assertEqual(1, run.counts["sheet_only"])
-        self.assertEqual((["tempo"], ["threshold"]), self._sets(activity_id))
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
+        )
 
     def test_agreeing_proposals_are_merged(self):
         activity_id = self._activity("Tempo", code="tdl")
@@ -152,7 +155,10 @@ class WorkoutClassificationTests(unittest.TestCase):
             run = self._run()
 
         self.assertEqual(1, run.counts["both"])
-        self.assertEqual((["tempo"], ["threshold"]), self._sets(activity_id))
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
+        )
 
     def test_conflict_is_left_unclassified_and_reported(self):
         activity_id = self._activity("Long run", code="i")
@@ -220,7 +226,7 @@ class WorkoutClassificationTests(unittest.TestCase):
         activity_id = self._activity("Easy", intensity=0.7, sheet=False)
         self.writer.replace_activity_workout_methods(
             activity_id,
-            ["tempo"],
+            ["progression"],
             source="manual",
             is_manual=True,
         )
@@ -235,7 +241,7 @@ class WorkoutClassificationTests(unittest.TestCase):
         self._run()
 
         self.assertEqual(
-            (["continuous", "tempo"], ["base", "threshold"]),
+            (["continuous", "progression"], ["base", "threshold"]),
             self._sets(activity_id),
         )
 
@@ -279,7 +285,10 @@ class WorkoutClassificationTests(unittest.TestCase):
         self._run(scope=Scope(entity_id=second))
 
         self.assertEqual(([], []), self._sets(first))
-        self.assertEqual((["tempo"], ["threshold"]), self._sets(second))
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(second),
+        )
 
     def test_report_file_lists_conflicts(self):
         activity_id = self._activity("Long run", code="i")

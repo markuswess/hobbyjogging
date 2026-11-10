@@ -1118,25 +1118,68 @@ class Vo2maxAndTagTests(unittest.TestCase):
         # A manual value is added and never replaced by a source.
         self.writer.replace_activity_workout_methods(
             "a1",
-            ["tempo"],
+            ["progression"],
             source="manual",
             is_manual=True,
         )
         self.writer.replace_activity_workout_methods(
             "a1",
-            ["intervals", "tempo"],
+            ["intervals", "progression"],
             source="sheet",
             source_record_id=self.intervals_id,
         )
         # The sheet's old values are replaced, the classifier's continuous
-        # value and the manual tempo value remain.
-        self.assertEqual(["continuous", "intervals", "tempo"], methods())
+        # value and the manual progression value remain.
+        self.assertEqual(
+            ["continuous", "intervals", "progression"],
+            methods(),
+        )
 
         row = self.conn.execute(
             "SELECT is_manual FROM activity_workout_methods "
-            "WHERE activity_id = 'a1' AND method = 'tempo'"
+            "WHERE activity_id = 'a1' AND method = 'progression'"
         ).fetchone()
         self.assertEqual(1, row["is_manual"])
+
+    def test_set_manual_activity_workout_methods_clears_every_source(self):
+        self.writer.replace_activity_workout_methods(
+            "a1",
+            ["intervals", "strides"],
+            source="backfill",
+        )
+
+        written = self.writer.set_manual_activity_workout_methods(
+            "a1",
+            ["continuous"],
+        )
+
+        self.assertEqual(1, written)
+        rows = self.conn.execute(
+            "SELECT method, source, is_manual FROM activity_workout_methods "
+            "WHERE activity_id = 'a1'"
+        ).fetchall()
+        self.assertEqual(
+            [("continuous", "manual", 1)],
+            [(row["method"], row["source"], row["is_manual"]) for row in rows],
+        )
+
+    def test_set_manual_activity_workout_methods_normalizes_retired_tempo(self):
+        self.writer.set_manual_activity_workout_methods("a1", ["tempo"])
+
+        methods = [
+            row[0]
+            for row in self.conn.execute(
+                "SELECT method FROM activity_workout_methods "
+                "WHERE activity_id = 'a1'"
+            )
+        ]
+        self.assertEqual(["continuous"], methods)
+
+    def test_set_manual_activity_workout_methods_rejects_unknown_entity(self):
+        with self.assertRaises(ValueError):
+            self.writer.set_manual_activity_workout_methods(
+                "missing", ["continuous"]
+            )
 
     def test_event_workout_sets(self):
         self.writer.upsert_event(

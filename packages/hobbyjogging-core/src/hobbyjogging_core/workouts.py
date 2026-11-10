@@ -1,9 +1,9 @@
 """Canonical workout method/target vocabulary and quality rules.
 
 A session can carry several methods and several targets (e.g. a long run with
-a marathon-pace finish is ``long_run`` + ``tempo``, targets ``base`` +
-``marathon``). The database stores them as sets; this module defines the
-tokens, labels, aliases, and the quality rule shared by importers and reports.
+a marathon-pace finish is ``long_run`` with targets ``base`` + ``marathon``).
+The database stores them as sets; this module defines the tokens, labels,
+aliases, and the quality rule shared by importers and reports.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 WORKOUT_METHODS = {
     "continuous": "Continuous",
     "intervals": "Intervals",
-    "tempo": "Tempo",
     "long_run": "Long Run",
     "progression": "Progression",
     "race": "Race",
@@ -34,7 +33,7 @@ WORKOUT_TARGETS = {
 # A session is quality if any method or target below is present. Strides alone
 # never make a session quality; base/recovery targets do not either.
 QUALITY_METHODS = frozenset(
-    {"intervals", "long_run", "tempo", "progression", "race"}
+    {"intervals", "long_run", "progression", "race"}
 )
 QUALITY_TARGETS = frozenset(
     {"lt1", "subthreshold", "threshold", "vo2max", "speed", "marathon"}
@@ -47,7 +46,9 @@ METHOD_ALIASES = {
     "reps": "intervals",
     "repetitions": "intervals",
     "interval": "intervals",
-    "tempo_run": "tempo",
+    # "tempo" is retired: a tempo run is continuous with a threshold target.
+    "tempo": "continuous",
+    "tempo_run": "continuous",
     "long": "long_run",
     "longrun": "long_run",
     "progressive": "progression",
@@ -82,9 +83,9 @@ SHEET_TYPE_CODES = {
     "k": (set(), set(), {"strength"}),
     "ll": ({"long_run"}, {"base"}, set()),
     "lt": ({"race"}, {"other"}, set()),
-    "tdl": ({"tempo"}, {"threshold"}, set()),
+    "tdl": ({"continuous"}, {"threshold"}, set()),
     "u": (set(), set(), {"bad data"}),
-    "idl": ({"tempo"}, set(), set()),
+    "idl": ({"continuous"}, set(), set()),
 }
 
 
@@ -159,7 +160,7 @@ def classification_for_category(
         if kind == "race-support":
             return {"continuous"}, {"base"}
         if kind == "tempo":
-            return {"tempo"}, {"threshold"}
+            return {"continuous"}, {"threshold"}
         return set(), set()
 
     if group == "non-quality":

@@ -1684,25 +1684,12 @@ class TrainingWriter:
         allowed: dict[str, str],
         canonical,
     ) -> int:
-        entity_table = "activities" if id_column == "activity_id" else "events"
-        entity_name = "activity" if entity_table == "activities" else "event"
-        row = self.connection.execute(
-            f"SELECT excluded_at FROM {entity_table} WHERE id = ?",
-            (entity_id,),
-        ).fetchone()
-
-        if row is None:
-            raise ValueError(f"unknown {entity_name}: {entity_id}")
-        if row["excluded_at"]:
-            raise ValueError(f"{entity_name} {entity_id} is excluded")
-
-        cleaned: list[str] = []
-        for value in values:
-            token = canonical(value)
-            if token not in allowed:
-                raise ValueError(f"unknown workout value: {value!r}")
-            if token not in cleaned:
-                cleaned.append(token)
+        self._require_workout_entity(id_column, entity_id)
+        cleaned = self._clean_workout_values(
+            values,
+            allowed=allowed,
+            canonical=canonical,
+        )
 
         existing_manual = {
             item[value_column]
@@ -1752,6 +1739,72 @@ class TrainingWriter:
                 ],
             )
 
+        return len(cleaned)
+
+    def _require_workout_entity(
+        self,
+        id_column: str,
+        entity_id: str,
+    ) -> None:
+        entity_table = "activities" if id_column == "activity_id" else "events"
+        entity_name = "activity" if entity_table == "activities" else "event"
+        row = self.connection.execute(
+            f"SELECT excluded_at FROM {entity_table} WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown {entity_name}: {entity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"{entity_name} {entity_id} is excluded")
+
+    def _clean_workout_values(
+        self,
+        values: list[str],
+        *,
+        allowed: dict[str, str],
+        canonical,
+    ) -> list[str]:
+        cleaned: list[str] = []
+        for value in values:
+            token = canonical(value)
+            if token not in allowed:
+                raise ValueError(f"unknown workout value: {value!r}")
+            if token not in cleaned:
+                cleaned.append(token)
+        return cleaned
+
+    def set_manual_activity_workout_methods(
+        self,
+        activity_id: str,
+        methods: list[str],
+    ) -> int:
+        """Replace an activity's whole method set as manual values.
+
+        Unlike :meth:`replace_activity_workout_methods`, rows from every source
+        are cleared: a deliberate reclassification defines the set instead of
+        contributing one source's view of it.
+        """
+        self._require_workout_entity("activity_id", activity_id)
+        cleaned = self._clean_workout_values(
+            methods,
+            allowed=WORKOUT_METHODS,
+            canonical=canonical_method,
+        )
+
+        self.connection.execute(
+            "DELETE FROM activity_workout_methods WHERE activity_id = ?",
+            (activity_id,),
+        )
+        if cleaned:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_workout_methods (
+                    activity_id, method, source, source_record_id, is_manual
+                ) VALUES (?, ?, 'manual', NULL, 1)
+                """,
+                [(activity_id, value) for value in cleaned],
+            )
         return len(cleaned)
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:

@@ -340,20 +340,17 @@ class ClassifyTests(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 class StoredClassificationTests(unittest.TestCase):
     """Reports prefer the stored classification, with a heuristic fallback."""
 
     def test_stored_quality_wins_over_a_plain_name(self):
         self.assertEqual(
-            "quality/tempo",
+            "quality/longrun",
             classify(
                 activity(
                     name="Easy",
-                    workout_methods=["tempo"],
-                    workout_targets=["threshold"],
+                    workout_methods=["long_run"],
+                    workout_targets=["base"],
                 )
             ).path,
         )
@@ -429,9 +426,12 @@ class StoredClassificationTests(unittest.TestCase):
             classify(
                 activity(
                     name="",
-                    workout_methods=["tempo"],
-                    workout_targets=["threshold"],
+                    workout_methods=["long_run"],
+                    workout_targets=["base"],
                 ),
                 use_stored=False,
             ).path,
         )
+
+if __name__ == "__main__":
+    unittest.main()

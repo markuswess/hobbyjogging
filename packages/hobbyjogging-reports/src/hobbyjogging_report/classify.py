@@ -271,8 +271,6 @@ def _stored_quality_category(activity: Activity) -> Category | None:
         return Category("quality", "longrun")
     if "race" in methods:
         return Category("quality", "race")
-    if "tempo" in methods:
-        return Category("quality", "tempo")
     if "intervals" in methods or "progression" in methods:
         return Category("quality", "intervals", "other")
 

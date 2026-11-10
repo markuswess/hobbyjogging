@@ -60,6 +60,9 @@ Updated 2026-11-08.
   classifier + sheet backfill classified 2,687 activities (including 107
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
+- **`tempo` retired.** A tempo run is `continuous` with a `threshold`
+  target, so the method duplicated the target. `remove_tempo_method_v1`
+  converted 185 activities; the token now normalizes to `continuous`.
 - **Workout classification in the review queue.** Disagreements between the
   classifier and the sheet are now `workout_classification` review items
   (`info`), synced by a `recompute` task, resolved in triage with `(k)`, and
