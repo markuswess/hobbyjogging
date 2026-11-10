@@ -17,6 +17,7 @@ from ..analysis import (
     vo2max_points,
 )
 from ..classify import classify
+from ..format import format_session_activity
 from ..html import markdown_to_html
 from ..model import AverageWindows
 from ..overview import overview_report
@@ -295,6 +296,13 @@ def build_dashboard(
         except Exception:
             intervals = []
 
+        report = "\n".join(
+            format_session_activity(
+                activity,
+                intervals,
+                category=classify(activity, intervals).path,
+            )
+        )
         detail_pages[
             f"activity/{activity_filename(activity.id)}"
         ] = activity_page(
@@ -302,8 +310,7 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             activity=activity,
-            intervals=intervals,
-            category=classify(activity, intervals).path,
+            report_html=markdown_to_html(report, demote=1),
         )
 
     target = resolve_output_dir(output)

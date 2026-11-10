@@ -224,6 +224,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("activities are hidden by import review", activities)
 
             detail = (target / "activity" / "run1.html").read_text()
+            self.assertIn("Session 2026-11-08", detail)
             self.assertIn("Easy", detail)
             self.assertIn("Intervals", detail)
             self.assertIn("Work", detail)

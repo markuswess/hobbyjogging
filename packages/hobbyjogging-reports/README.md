@@ -501,8 +501,9 @@ Pages:
   uses the last 182 days plus the next 14 by default.
 - `activities.html` — the recent activity table (default 50) with workout
   methods and targets, linked to per-activity pages.
-- `activity/<id>.html` — one activity's metrics (including workout methods and
-  targets), zone times, description, interval table, and subT/LT1 work reps.
+- `activity/<id>.html` — the session report body (metrics, workout methods and
+  targets, zone times, description, interval table, and subT/LT1 work reps),
+  exactly as `reports.sh session` renders it.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages and
   the last four nights), then HRV, resting HR, and sleep as interactive
   plotly panels over the last 186 days (`--recovery-days`) with 7-day

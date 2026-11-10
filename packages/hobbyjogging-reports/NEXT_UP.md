@@ -30,6 +30,9 @@ comparison.
   dashboard recovery page shows it first, then the chart (last 186 days by
   default, `--recovery-days`) and completeness note. Also selectable with
   `--reports recovery-report`.
+- **Activity detail uses the session report.** `activity/<id>.html` renders
+  `format_session_activity()` — the same Markdown body as
+  `reports.sh session` — instead of a parallel hand-built page.
 - **Dashboard data health is canonical-only.** The actual review-item queue
   needs a core `DataSource` addition; see the follow-up below.
 

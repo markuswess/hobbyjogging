@@ -5,24 +5,14 @@ from __future__ import annotations
 from datetime import date
 from urllib.parse import quote
 
-from hobbyjogging_core.model import Activity, Event, Interval
+from hobbyjogging_core.model import Activity, Event
 
-from ..analysis import (
-    RUN_TYPES,
-    is_lt1_activity,
-    is_subt_activity,
-    pace_s_per_km,
-    subt_work_points,
-)
+from ..analysis import RUN_TYPES
 from ..format import (
-    fmt_clock,
     fmt_time,
-    fmt_zones,
     format_feel,
     format_methods,
-    format_pace,
     format_targets,
-    format_work_result,
     pace,
     sport_label,
 )
@@ -218,116 +208,16 @@ def activity_page(
     health: DataHealth,
     include_review: bool,
     activity: Activity,
-    intervals: list[Interval],
-    category: str,
+    report_html: str,
 ) -> str:
-    title = (
-        f"{sport_label(activity)} — {activity.name}"
-        if activity.name
-        else sport_label(activity)
-    )
-    metrics = [
-        ["Date", esc(activity.date)],
-        ["Category", esc(category)],
-        ["Methods", esc(format_methods(activity))],
-        ["Targets", esc(format_targets(activity))],
-        ["Duration", esc(fmt_time(activity.duration_s))],
-    ]
-
-    if activity.elapsed_s and activity.elapsed_s != activity.duration_s:
-        metrics.append(["Elapsed", esc(fmt_time(activity.elapsed_s))])
-
-    if activity.distance_m:
-        metrics.append(
-            ["Distance", esc(f"{activity.distance_m / 1000:.2f} km")]
-        )
-
-    metrics.extend([
-        ["Pace", esc(_pace_cell(activity))],
-        ["Avg HR", esc(_hr(activity.avg_hr))],
-        ["Load", esc(_event_load(activity))],
-        ["RPE", esc("-" if activity.rpe is None else f"{activity.rpe:g}")],
-        ["Feel", esc(format_feel(activity.feel))],
-    ])
-
-    if activity.intensity is not None:
-        metrics.append(["Intensity", esc(f"{activity.intensity:.0%}")])
-
-    metrics_html = table(["Field", "Value"], metrics)
-
-    zones = []
-
-    if activity.pace_zone_times:
-        zones.append(
-            f"<p><strong>Pace zones:</strong> "
-            f"{esc(fmt_zones(activity.pace_zone_times))}</p>"
-        )
-
-    if activity.hr_zone_times:
-        zones.append(
-            f"<p><strong>HR zones:</strong> "
-            f"{esc(fmt_zones(activity.hr_zone_times))}</p>"
-        )
-
-    interval_rows = []
-
-    for index, interval in enumerate(intervals, start=1):
-        interval_pace = pace_s_per_km(
-            interval.duration_s,
-            interval.distance_m,
-        )
-        interval_rows.append([
-            str(index),
-            esc(interval.type.title() or "-"),
-            esc(fmt_clock(interval.duration_s)),
-            esc(_km_cell(interval.distance_m)),
-            esc(
-                f"{format_pace(interval_pace)}/km"
-                if interval_pace is not None
-                else "-"
-            ),
-            esc(_hr(interval.avg_hr)),
-            esc(_hr(interval.max_hr)),
-        ])
-
-    intervals_html = table(
-        ["#", "Type", "Time", "Distance", "Pace", "Avg HR", "Max HR"],
-        interval_rows,
-        numeric=(0, 2, 3, 4, 5, 6),
-        empty="No recorded intervals.",
-    )
-
-    work_html = ""
-
-    if is_subt_activity(activity) or is_lt1_activity(activity):
-        points = subt_work_points(activity, intervals)
-
-        if points:
-            label = "LT1" if is_lt1_activity(activity) else None
-            items = "".join(
-                f"<li>{esc(format_work_result(point, label))}</li>"
-                for point in points
-            )
-            work_html = card("Work reps", f"<ul>{items}</ul>")
-
+    """Render one activity as the same session report the CLI prints."""
     body = (
         f'<p>{link("../activities.html", "← All activities")}</p>'
-        + card("Metrics", metrics_html + "".join(zones))
+        + card(None, f'<div class="report">{report_html}</div>')
     )
 
-    if activity.description and activity.description.strip():
-        body += card(
-            "Description",
-            f'<pre class="description">{esc(activity.description)}</pre>',
-        )
-
-    body += card("Intervals", intervals_html)
-
-    if work_html:
-        body += work_html
-
     return page(
-        title=title,
+        title=f"Session {activity.date}",
         body=body,
         generated_at=generated_at,
         health_html=banner(
