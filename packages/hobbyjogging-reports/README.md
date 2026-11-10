@@ -489,10 +489,10 @@ Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
-  the next 14 days; the main running-volume chart, a training-load chart,
-  plan vs actual, the next 7 planned days, and quality sessions. The overview
-  section is the rendered `overview` Markdown report; the other cards use the
-  last 14 days by default.
+  the next 14 days; the main overview chart; the daily report; and the next
+  7 planned days. The EWMA overview and the daily report are the rendered
+  `overview` and `daily` Markdown reports; the chart uses the last 98 days
+  plus the next 14 by default.
 - `activities.html` — the recent activity table (default 50), linked to
   per-activity pages.
 - `activity/<id>.html` — one activity's metrics, zone times, description,

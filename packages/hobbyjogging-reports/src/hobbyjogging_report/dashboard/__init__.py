@@ -13,8 +13,6 @@ from hobbyjogging_core.datasource import DataSource
 from ..activity_list import select_activities
 from ..analysis import (
     average_warmup_days,
-    daily_planned_load,
-    load_metrics,
     recovery_trends,
     vo2max_points,
 )
@@ -35,7 +33,6 @@ from .pages import (
     reports_page,
 )
 from .reports import REPORT_NAMES, build_report
-from .views import in_window, planned_summary, summarize_window
 from ..zone_groups import (
     daily_zone_groups,
     planned_bars_without_actual,
@@ -103,12 +100,6 @@ def build_dashboard(
         include_review=include_review,
     )
 
-    summary = summarize_window(activities)
-    last7_start = max(start, today - timedelta(days=6))
-    last7 = summarize_window(
-        in_window(activities, last7_start, today)
-    )
-
     event_start = today
     event_end = today + timedelta(days=6)
     events = [
@@ -116,7 +107,6 @@ def build_dashboard(
         for event in source.events(event_start, event_end)
         if event.type
     ]
-    planned = planned_summary(events)
 
     chart_start = today - timedelta(days=chart_days - 1)
     chart_end = today + timedelta(days=future_days)
@@ -155,21 +145,6 @@ def build_dashboard(
         windows=windows,
     )
 
-    load_points = load_metrics(
-        chart_activities,
-        start,
-        today,
-        windows=AverageWindows(),
-        warmup_days=warmup_days,
-        events=chart_events,
-        projected_end=chart_end,
-        projection_start=today,
-    )
-    planned_load = daily_planned_load(
-        chart_events,
-        today,
-        chart_end,
-    )
     vo2max = vo2max_points(
         chart_activities,
         chart_start - timedelta(days=warmup_days),
@@ -257,22 +232,15 @@ def build_dashboard(
             include_review=include_review,
             start=start,
             end=today,
-            days=days,
-            summary=summary,
             overview_html=overview_html,
             daily_html=daily_html,
-            last7=last7,
             events=events,
-            planned=planned,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,
             chart_start=chart_start,
             chart_end=chart_end,
-            load_points=load_points,
-            planned_load=planned_load,
             vo2max_points=vo2max,
-            detail_ids=detail_ids,
         ),
         "activities.html": activities_page(
             generated_at=generated_at,

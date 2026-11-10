@@ -25,11 +25,10 @@ from ..format import (
     pace,
     sport_label,
 )
-from ..charts import plot_load, plot_overview, plot_recovery
+from ..charts import plot_overview, plot_recovery
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import LoadPoint, RecoveryPoint, Vo2maxPoint
+from ..model import RecoveryPoint, Vo2maxPoint
 from .health import DataHealth, banner
-from .views import PlannedSummary, WindowSummary
 from ..zone_groups import ZoneGroupSeries
 
 
@@ -41,24 +40,12 @@ def activity_href(activity_id: str) -> str:
     return f"activity/{activity_filename(activity_id)}"
 
 
-def _duration(seconds: float) -> str:
-    return fmt_time(seconds) if seconds else "0min"
-
-
-def _km(distance_m: float) -> str:
-    return f"{distance_m / 1000:,.1f}" if distance_m else "0.0"
-
-
 def _km_cell(distance_m: float) -> str:
     return f"{distance_m / 1000:,.1f}" if distance_m else "-"
 
 
 def _pace_cell(activity: Activity) -> str:
     return pace(activity) if activity.type in RUN_TYPES else "-"
-
-
-def _load(value: float) -> str:
-    return f"{value:.0f}"
 
 
 def _hr(value: float | None) -> str:
@@ -129,22 +116,15 @@ def overview_page(
     include_review: bool,
     start: date,
     end: date,
-    days: int,
-    summary: WindowSummary,
     overview_html: str,
     daily_html: str,
-    last7: WindowSummary,
     events: list[Event],
-    planned: PlannedSummary,
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_series: ZoneGroupSeries,
     chart_start: date,
     chart_end: date,
-    load_points: list[LoadPoint],
-    planned_load: list[tuple[date, float]],
     vo2max_points: list[Vo2maxPoint],
-    detail_ids: set[str],
 ) -> str:
     future_days = (chart_end - end).days
 
@@ -176,41 +156,6 @@ def overview_page(
         "without a recorded run; lighter line segments are projected.</p>"
     )
 
-    if any(point.load > 0 for point in load_points):
-        load_html = chart(
-            plot_load(
-                load_points,
-                output="",
-                planned_load=planned_load,
-                title="",
-                as_html=True,
-            )
-        )
-    else:
-        load_html = '<p class="muted">No training load in this window.</p>'
-
-    plan_actual = table(
-        ["Metric", "Last 7 days", "Next 7 days"],
-        [
-            [
-                "Run time",
-                esc(_duration(last7.run_time_s)),
-                esc(_duration(planned.run_time_s)),
-            ],
-            [
-                "Run km",
-                esc(_km(last7.run_distance_m)),
-                esc(_km(planned.run_distance_m)),
-            ],
-            [
-                "Run load",
-                esc(_load(last7.run_load)),
-                esc(_load(planned.load)),
-            ],
-        ],
-        numeric=(1, 2),
-    )
-
     planned_rows = []
 
     for event in sorted(events, key=lambda item: (item.date, item.name)):
@@ -238,42 +183,11 @@ def overview_page(
             "kind.</p>"
         )
 
-    quality_rows = []
-
-    for activity in summary.quality[:5]:
-        name = activity.name or sport_label(activity)
-        name_html = (
-            link(activity_href(activity.id), name)
-            if activity.id in detail_ids
-            else esc(name)
-        )
-        quality_rows.append([
-            esc(activity.date),
-            name_html,
-            esc(sport_label(activity)),
-            esc(fmt_time(activity.duration_s)),
-            esc(_pace_cell(activity)),
-            esc(_hr(activity.avg_hr)),
-        ])
-
-    quality_html = table(
-        ["Date", "Session", "Sport", "Time", "Pace", "Avg HR"],
-        quality_rows,
-        numeric=(3, 4, 5),
-        empty="No quality sessions in this window.",
-    )
-
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
         + card("Daily report", f'<div class="report">{daily_html}</div>')
-        + card(
-            f"Training load — last {days} days",
-            load_html,
-        )
-        + card("Plan vs actual", plan_actual)
         + card("Next 7 days", planned_html)
-        + card("Quality sessions", quality_html)
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
 
