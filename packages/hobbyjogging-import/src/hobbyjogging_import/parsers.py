@@ -286,9 +286,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="scan a single activity instead of the whole database",
     )
     review_scan.add_argument(
+        "--prune",
+        action="store_true",
+        help=(
+            "resolve open quality items whose rule no longer triggers "
+            "(or whose activity is excluded)"
+        ),
+    )
+    review_scan.add_argument(
         "--dry-run",
         action="store_true",
-        help="report findings without recording them",
+        help="report findings without recording or resolving them",
     )
 
     review_resolve = review_sub.add_parser(

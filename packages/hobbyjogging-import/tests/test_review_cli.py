@@ -491,6 +491,44 @@ class ReviewCliTests(unittest.TestCase):
             "2 finding(s), 0 new review item(s)", output
         )
 
+    def test_scan_prune_resolves_stale_quality_items(self):
+        code, output = self._run(
+            ["review", "--database", str(self.database), "scan", "--prune"]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("prune: 1 pruned", output)
+
+        writer = TrainingWriter(open_database(self.database))
+        self.addCleanup(writer.connection.close)
+        open_items = writer.review_items(status="open")
+        self.assertEqual(
+            ["ambiguous_match"],
+            [item["category"] for item in open_items],
+        )
+
+        code, output = self._run(
+            ["review", "--database", str(self.database), "scan", "--prune"]
+        )
+        self.assertEqual(0, code)
+        self.assertIn("prune: 0 pruned", output)
+
+    def test_scan_prune_dry_run_writes_nothing(self):
+        code, output = self._run(
+            [
+                "review", "--database", str(self.database),
+                "scan", "--prune", "--dry-run",
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("prune: 1 would resolve", output)
+
+        writer = TrainingWriter(open_database(self.database))
+        self.addCleanup(writer.connection.close)
+        item = writer.review_item(self.quality_id)
+        self.assertEqual("open", item["status"])
+
     def test_scan_dry_run_records_nothing(self):
         seed = open_database(self.database)
         seed.execute(

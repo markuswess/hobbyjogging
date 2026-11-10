@@ -392,9 +392,11 @@ Other commands:
 - `review ignore <id> [--note]` — keep the item but stop surfacing it.
 - `review flag <activity-id> [--category quality|duplicate|manual_flag]
   [--severity] [--note]` — manually flag an activity.
-- `review scan [--activity <id>] [--dry-run]` — run the quality rule set
-  over existing activities and record findings; useful for backfilling after
-  the rules change.
+- `review scan [--activity <id>] [--dry-run] [--prune]` — run the quality rule
+  set over existing activities and record findings; useful for backfilling
+  after the rules change. `--prune` also resolves open quality items whose
+  rule no longer triggers for the current values (or whose activity is
+  excluded); `--dry-run` reports checked/resolved/kept without writing.
 - `review prune [--dry-run]` — resolve open field conflicts whose recorded
   values now agree under the current core tolerances. Reimports also resolve
   a field's old conflict automatically when that field agrees again.

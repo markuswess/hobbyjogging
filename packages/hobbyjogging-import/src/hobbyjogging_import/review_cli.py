@@ -74,19 +74,28 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
             writer,
             activity_id=args.activity,
             dry_run=args.dry_run,
+            prune=args.prune,
             on_finding=on_finding,
         )
     except ValueError as exc:
         parser.error(str(exc))
 
     if args.dry_run:
-        print(f"Scan dry run: {summary.findings} finding(s)")
+        text = f"Scan dry run: {summary.findings} finding(s)"
     else:
-        print(
+        text = (
             f"Scan: {summary.findings} finding(s), "
             f"{summary.recorded} new review item(s)"
         )
 
+    if args.prune:
+        resolved = "would resolve" if args.dry_run else "pruned"
+        text += (
+            f"; prune: {summary.pruned} {resolved}, "
+            f"{summary.kept} kept, {summary.checked} checked"
+        )
+
+    print(text)
     return 0
 
 

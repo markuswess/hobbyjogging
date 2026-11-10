@@ -61,6 +61,11 @@ on.
   conflicts whose recorded values now agree under the current core
   tolerances. FIT/Intervals reimports also resolve a field's old conflict
   automatically when that field agrees again.
+- **Quality prune.** `review scan --prune` resolves open `quality` items whose
+  rule no longer triggers for the activity's current values (or whose activity
+  is excluded). It reuses the fingerprint identity of
+  `record_quality_findings`, reports `checked/resolved/kept` with
+  `--dry-run`, leaves the other review categories alone, and is idempotent.
 - **Conflict causes and bulk triage.** New `field_conflict` items carry a
   `cause`/`cause_note` computed from the stored source summaries (`causes.py`).
   Advisory causes (`elapsed_definition`, `moving_estimate`, `small_difference`,
@@ -79,40 +84,14 @@ on.
 
 ## Next
 
-Handed over from the root session:
-
-- **`review scan --prune`.** Resolve open `quality` items whose rule no longer
-  triggers for the activity's current canonical values. Field conflicts
-  already prune (`review prune`); quality items do not, so a finding stays
-  open after the value behind it is fixed outside triage (an importer
-  re-fetch, a manual edit that bypassed `refresh_activity_quality`, or a rule
-  change).
-  - Reuse the identity `record_quality_findings` already uses:
-    `review_fingerprint([rule, activity_id, context])`. Compute
-    `quality_findings` for each activity, collect the current fingerprints,
-    and resolve open `quality` items whose fingerprint is not in that set.
-    `refresh_activity_quality` does exactly this for one activity; this is the
-    batch version over all (or `--activity` one).
-  - Resolve items for excluded activities too (the activity is gone from
-    reports), with note `prune: activity excluded`.
-  - Resolve note otherwise: `prune: no longer triggered`.
-  - Leave `manual_flag`, `ambiguous_match`, `field_conflict`, and
-    `workout_classification` untouched.
-  - `--dry-run` reports `checked / resolved / kept` without writing; the run
-    is idempotent and resolves nothing on a second pass.
-  - Tests: a zero-duration item whose duration was filled resolves; a still
-    valid item stays open; an excluded activity's item resolves; dry-run
-    writes nothing; a rerun is a no-op.
-- **Runalyze enrichment** is still waiting on the API details (below).
+Nothing package-local is queued; **Runalyze enrichment** is still waiting on
+the API details (below).
 
 ## Waiting on
 
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
   merged into `description`, tags in `activity_tags`, gear via the
   equipment-categories endpoint, and `vo2max_runalyze`.
-- **`review scan` quality prune**: resolving stale quality items whose
-  current values no longer trigger them (field conflicts are pruned; quality
-  items are not yet).
 - The dashboard is reports-package work.
 - The planned-event zone display is reports-package work.
 

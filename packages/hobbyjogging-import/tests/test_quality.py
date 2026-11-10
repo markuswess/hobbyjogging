@@ -15,6 +15,7 @@ from hobbyjogging_import.quality import (
     resolve_agreed_field_conflicts,
     review_fingerprint,
 )
+from hobbyjogging_import.scan import scan_quality
 
 
 def _findings(
@@ -514,6 +515,130 @@ class RefreshActivityQualityTests(unittest.TestCase):
     def test_unknown_activity_raises(self):
         with self.assertRaises(ValueError):
             refresh_activity_quality(self.writer, activity_id="nope")
+
+
+class ScanPruneTests(unittest.TestCase):
+    """`review scan --prune` resolves quality items that no longer trigger."""
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+
+        self._activity("a1")
+
+    def _activity(self, activity_id, **values):
+        payload = {
+            "local_date": "2026-10-01",
+            "sport": "run",
+            "duration_s": 0,
+            "elapsed_s": 0,
+            "distance_m": 8200,
+        }
+        payload.update(values)
+        self.writer.upsert_activity(
+            activity_id,
+            payload,
+            source="test",
+            source_record_id=None,
+        )
+        self.conn.commit()
+
+    def _seed(self, activity_id="a1"):
+        return record_quality_findings(
+            self.writer,
+            activity_id=activity_id,
+            source_record_id=None,
+            import_run_id=None,
+            sport="run",
+            duration_s=0,
+            elapsed_s=0,
+            distance_m=8200,
+        )
+
+    def _open(self, category=QUALITY):
+        return self.writer.review_items(category=category, status="open")
+
+    def test_resolves_stale_item_and_rerun_is_a_no_op(self):
+        self._seed()
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+
+        summary = scan_quality(self.writer, prune=True)
+
+        self.assertEqual(1, summary.checked)
+        self.assertEqual(1, summary.pruned)
+        self.assertEqual(0, summary.kept)
+        self.assertEqual([], self._open())
+        item = self.writer.review_items(category=QUALITY, status="resolved")[0]
+        self.assertEqual("prune: no longer triggered", item["resolved_note"])
+
+        again = scan_quality(self.writer, prune=True)
+        self.assertEqual(0, again.checked)
+        self.assertEqual(0, again.pruned)
+
+    def test_still_valid_item_stays_open(self):
+        self._seed()
+
+        summary = scan_quality(self.writer, prune=True)
+
+        self.assertEqual(1, summary.checked)
+        self.assertEqual(0, summary.pruned)
+        self.assertEqual(1, summary.kept)
+        self.assertEqual(1, len(self._open()))
+
+    def test_excluded_activity_items_resolve(self):
+        self.writer.exclude_activity("a1")
+        self.conn.commit()
+        self._seed()
+
+        summary = scan_quality(self.writer, prune=True)
+
+        self.assertEqual(1, summary.pruned)
+        item = self.writer.review_items(category=QUALITY, status="resolved")[0]
+        self.assertEqual("prune: activity excluded", item["resolved_note"])
+
+    def test_dry_run_does_not_write(self):
+        self._seed()
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+
+        summary = scan_quality(self.writer, prune=True, dry_run=True)
+
+        self.assertEqual(1, summary.pruned)
+        self.assertEqual(1, len(self._open()))
+        item = self._open()[0]
+        self.assertEqual("open", item["status"])
+
+    def test_activity_scope_leaves_others_alone(self):
+        self._activity("a2")
+        self._seed("a1")
+        self._seed("a2")
+        self.writer.set_manual_field("a1", "duration_s", 2780)
+        self.writer.set_manual_field("a2", "duration_s", 2780)
+
+        summary = scan_quality(self.writer, activity_id="a1", prune=True)
+
+        self.assertEqual(1, summary.pruned)
+        self.assertEqual(
+            ["a2"],
+            [item["activity_id"] for item in self._open()],
+        )
+
+    def test_other_categories_are_untouched(self):
+        manual_id = record_manual_flag(
+            self.writer,
+            activity_id="a1",
+            category=MANUAL_FLAG,
+            detail="look at this",
+            severity="warn",
+        )
+
+        scan_quality(self.writer, prune=True)
+
+        self.assertEqual(
+            "open",
+            self.writer.review_item(manual_id)["status"],
+        )
 
 
 class RecordFieldConflictsTests(unittest.TestCase):
