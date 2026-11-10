@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from hobbyjogging_report.cli import (
     date_arg,
-    extract_source,
+    extract_globals,
     parse_chart_args,
     parse_classify_args,
     parse_compare_args,
@@ -632,38 +632,28 @@ class OverviewArgsTests(unittest.TestCase):
             )
 
 
-class SourceArgTests(unittest.TestCase):
+class GlobalArgTests(unittest.TestCase):
 
-    def test_default_source_is_database(self):
-        self.assertEqual(
-            ("database", False, ["weekly"]),
-            extract_source(["weekly"]),
-        )
-
-    def test_explicit_source_is_removed_from_remaining_args(self):
-        self.assertEqual(
-            ("intervals", False, ["report", "--days", "7"]),
-            extract_source(
-                ["--source", "intervals", "report", "--days", "7"]
-            ),
-        )
-
-    def test_source_can_follow_the_mode(self):
-        self.assertEqual(
-            ("intervals", False, ["weekly"]),
-            extract_source(["weekly", "--source", "intervals"]),
-        )
+    def test_defaults_to_no_review(self):
+        self.assertEqual((False, ["weekly"]), extract_globals(["weekly"]))
 
     def test_include_review_flag_is_extracted(self):
         self.assertEqual(
-            ("database", True, ["weekly"]),
-            extract_source(["--include-review", "weekly"]),
+            (True, ["weekly"]),
+            extract_globals(["--include-review", "weekly"]),
         )
 
-    def test_rejects_unknown_source(self):
-        with self.assertRaises(SystemExit):
-            with redirect_stderr(io.StringIO()):
-                extract_source(["--source", "runalyze"])
+    def test_source_option_is_rejected_with_a_pointer(self):
+        with self.assertRaises(SystemExit) as raised:
+            extract_globals(["--source", "intervals", "weekly"])
+
+        self.assertIn("--source was removed", str(raised.exception))
+
+    def test_include_review_can_follow_the_mode(self):
+        self.assertEqual(
+            (True, ["weekly"]),
+            extract_globals(["weekly", "--include-review"]),
+        )
 
 
 class DateArgTests(unittest.TestCase):

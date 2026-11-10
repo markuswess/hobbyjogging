@@ -10,7 +10,6 @@ dependencies = [
     "kaleido==0.2.1",
     "markdown>=3.7",
     "plotly>=6.0,<7",
-    "requests>=2.34.2",
 ]
 
 [build-system]

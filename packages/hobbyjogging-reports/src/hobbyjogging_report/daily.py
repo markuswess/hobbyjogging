@@ -13,7 +13,7 @@ from .format import (
     sport_label,
 )
 from .review import exclude_review, review_note
-from .sources import DEFAULT_SOURCE, create_source
+from .sources import create_source
 
 
 def format_event(event) -> list[str]:
@@ -97,7 +97,7 @@ def daily(
     today: date | None = None,
 ):
     if source is None:
-        with create_source(DEFAULT_SOURCE) as source:
+        with create_source() as source:
             return daily(
                 source,
                 include_review=include_review,

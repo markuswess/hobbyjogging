@@ -4,26 +4,20 @@ This package is part of the `hobbyjogging` workspace. Run the commands below
 from the repository root.
 
 Generate daily, weekly and monthly summaries from the canonical hobbyjogging
-database (default) or directly from Intervals.icu.
+database.
 
 ## Data sources
 
-Reports depend on the `DataSource` protocol from `hobbyjogging-core`. Two
-adapters are currently available:
-
-- `IntervalsSource` — direct Intervals.icu API access.
-- `DatabaseSource` — reads the canonical SQLite database.
-
-The command-line wrapper uses `DatabaseSource` by default. Select the API
-explicitly with `--source intervals` when you want to compare against
-Intervals.icu. `debug` still dumps raw API payloads and ignores `--source`.
+Reports depend on the `DataSource` protocol from `hobbyjogging-core`. The
+only adapter is `DatabaseSource`, which reads the canonical SQLite database;
+raw payloads stay in `source_records`, so there is no live API path to keep
+in sync with the importers.
 
 ## What it does
 
-Reads activity, wellness and planned-session data through a `DataSource`
-(canonical database by default, or the
-[Intervals.icu](https://intervals.icu) API) and produces Markdown training
-reports plus a static HTML dashboard:
+Reads activity, wellness and planned-session data through the canonical
+database `DataSource` and produces Markdown training reports plus a static
+HTML dashboard:
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
@@ -87,11 +81,8 @@ Create environment (`.env`):
 
     export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
     export HOBBYJOGGING_DASHBOARD_DIR=~/projects/laufen_private/reports
-    export INTERVALS_ATHLETE_ID=<your-athlete-id>
-    export INTERVALS_API_KEY=<your-api-key>
 
-The Intervals.icu variables are only needed for `--source intervals` and
-`debug`. The dashboard is written to
+The dashboard is written to
 `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, and to
 `data/dashboard` otherwise.
 
@@ -145,7 +136,6 @@ and tables for the terminal:
     ./reports.sh session 2026-10-22
     ./reports.sh session 7a2bf884-2b25-585f-8430-530749f80afa
     ./reports.sh session last
-    ./reports.sh weekly --source intervals
 
 The static dashboard has its own wrapper:
 
@@ -184,7 +174,6 @@ the same formatting. Redirected or piped output remains raw Markdown.
     ./charts.sh subt --output subt.png
     ./charts.sh subt --from 2026-01-01 --to 2026-06-30 --output subt.png
     ./charts.sh vo2max --days 365
-    ./charts.sh subt --source intervals
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
 as the direct CLI.
@@ -298,20 +287,6 @@ segments, using planned daily distance, time, or load and treating
 unplanned days as rest. The time chart's weekly pace-zone stack and its
 pace-zone EWMA panel include planned pace zones; the recovery averages
 stay actual-only.
-
-### Data source selection
-
-All report and chart commands accept:
-
-    --source database     read the canonical SQLite database (default)
-    --source intervals    read directly from the Intervals.icu API
-
-Examples:
-
-    ./reports.sh report --days 90 --source database
-    ./reports.sh report --days 90 --source intervals
-    ./reports.sh --source intervals weekly
-    ./charts.sh subt --days 365 --source intervals
 
 ## Session detail
 
@@ -575,18 +550,18 @@ analysis or chart code:
 - `recent.py` — widening-lookback search shared by session and activity
   selection.
 - `sessions.py` — session selection and the detailed session report.
-- `debug.py` — raw Intervals.icu payload dump.
-- `sources/__init__.py` — source selection.
+- `debug.py` — raw stored payload dump (reads `source_records`).
+- `sources/__init__.py` — the data-source factory.
 - `sources/database.py` — canonical SQLite database adapter.
-- `sources/intervals_api.py` — the only module that knows raw
-  Intervals.icu field names.
 - `analysis/` — pure metrics over model objects (no API, no plotting),
   split into `common`, `averages`, `load`, `zones`, `subt`, `planned`, and
   `recovery` modules.
 - `series.py` — pure daily-series, moving-average, and EWMA helpers.
 - `summary.py` — period totals, quality-session lists, and recovery averages.
 - `classify.py` — workout categorization (quality / non-quality /
-  cross-training / unknown).
+  cross-training / unknown). It prefers the stored workout classification
+  (`activity_workout_methods/targets`) and falls back to the heuristic for
+  unclassified activities.
 - `charts.py` — plotly chart builders shared by the CLI and dashboard.
 - `format.py` — model-based report formatting helpers.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
@@ -595,10 +570,7 @@ analysis or chart code:
 - `activity_list.py` — the recent-activities table (selection, columns,
   rendering).
 
-Only `sources/intervals_api.py` knows Intervals.icu field names; the
-`debug` command is the one place that still dumps raw payloads.
+The `debug` command dumps the payloads already stored in the database.
 
 To add a visualization: compute the metric in `analysis/` from model
-objects, then plot it in `charts.py`. To add another data source, implement
-the `DataSource` protocol and register it in `sources/__init__.py`; everything
-downstream stays unchanged.
+objects, then plot it in `charts.py`.

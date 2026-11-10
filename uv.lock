@@ -131,7 +131,6 @@ dependencies = [
     { name = "kaleido" },
     { name = "markdown" },
     { name = "plotly" },
-    { name = "requests" },
 ]
 
 [package.metadata]
@@ -140,7 +139,6 @@ requires-dist = [
     { name = "kaleido", specifier = "==0.2.1" },
     { name = "markdown", specifier = ">=3.7" },
     { name = "plotly", specifier = ">=6.0,<7" },
-    { name = "requests", specifier = ">=2.34.2" },
 ]
 
 [[package]]

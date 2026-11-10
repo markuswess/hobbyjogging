@@ -1,7 +1,7 @@
 import os
 import sys
 
-from .cli import extract_source
+from .cli import extract_globals
 from .commands import COMMANDS, command_help, usage
 from .mdpretty import render_markdown
 from .sources import create_source
@@ -9,7 +9,7 @@ from .sources import create_source
 
 def main(argv: list[str] | None = None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    source_name, include_review, argv = extract_source(argv)
+    include_review, argv = extract_globals(argv)
 
     if argv and argv[0] in ("-h", "--help"):
         print(usage())
@@ -39,11 +39,9 @@ def main(argv: list[str] | None = None):
 
     if command.needs_source:
         try:
-            source = create_source(source_name)
+            source = create_source()
         except Exception as exc:
-            raise SystemExit(
-                f"could not open {source_name} source: {exc}"
-            ) from exc
+            raise SystemExit(f"could not open the database: {exc}") from exc
 
         with source:
             report = command.run(parsed, source, include_review)

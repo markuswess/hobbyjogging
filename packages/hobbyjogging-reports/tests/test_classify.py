@@ -342,3 +342,96 @@ class ClassifyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class StoredClassificationTests(unittest.TestCase):
+    """Reports prefer the stored classification, with a heuristic fallback."""
+
+    def test_stored_quality_wins_over_a_plain_name(self):
+        self.assertEqual(
+            "quality/tempo",
+            classify(
+                activity(
+                    name="Easy",
+                    workout_methods=["tempo"],
+                    workout_targets=["threshold"],
+                )
+            ).path,
+        )
+
+    def test_stored_non_quality_wins_over_a_quality_name(self):
+        self.assertEqual(
+            "non-quality/easy",
+            classify(
+                activity(
+                    name="Tempo run",
+                    workout_methods=["continuous"],
+                    workout_targets=["base"],
+                )
+            ).path,
+        )
+
+    def test_stored_recovery_target_is_recovery(self):
+        self.assertEqual(
+            "non-quality/recovery",
+            classify(
+                activity(
+                    workout_methods=["continuous"],
+                    workout_targets=["recovery"],
+                )
+            ).path,
+        )
+
+    def test_stored_long_run_method_beats_a_short_duration(self):
+        self.assertEqual(
+            "quality/longrun",
+            classify(
+                activity(
+                    duration_s=60 * 60,
+                    workout_methods=["long_run"],
+                    workout_targets=["base"],
+                )
+            ).path,
+        )
+
+    def test_stored_quality_keeps_the_heuristic_detail(self):
+        self.assertEqual(
+            "quality/intervals/subt",
+            classify(
+                activity(
+                    name="subT",
+                    workout_methods=["intervals"],
+                    workout_targets=["subthreshold"],
+                )
+            ).path,
+        )
+
+    def test_race_support_still_wins(self):
+        self.assertEqual(
+            "quality/race-support/warmup",
+            classify(
+                activity(
+                    name="Warm up",
+                    workout_methods=["continuous"],
+                    workout_targets=["base"],
+                )
+            ).path,
+        )
+
+    def test_unclassified_activity_uses_the_heuristic(self):
+        self.assertEqual(
+            "quality/race",
+            classify(activity(name="Town race", intensity=0.95)).path,
+        )
+
+    def test_use_stored_false_is_the_pure_heuristic(self):
+        self.assertEqual(
+            "unknown",
+            classify(
+                activity(
+                    name="",
+                    workout_methods=["tempo"],
+                    workout_targets=["threshold"],
+                ),
+                use_stored=False,
+            ).path,
+        )

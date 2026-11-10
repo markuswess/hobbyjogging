@@ -324,7 +324,7 @@ COMMANDS = {
     ),
     "debug": Command(
         "debug",
-        "Dump raw Intervals.icu payloads",
+        "Dump raw payloads stored in the database",
         "debug [activities|wellness|events|intervals|all]",
         ("python -m hobbyjogging_report debug activities",),
         parse=_parse_debug,

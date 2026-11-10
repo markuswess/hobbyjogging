@@ -241,6 +241,15 @@ class WorkoutClassificationTests(unittest.TestCase):
 
     # --- runner integration ---------------------------------------------
 
+    def test_rerun_does_not_echo_the_stored_sets(self):
+        self._activity("Easy", intensity=0.7, sheet=False)
+        self._activity("Sessions", code="tdl")
+
+        first = self._run()
+        second = self._run(force=True)
+
+        self.assertEqual(first.counts, second.counts)
+
     def test_rerun_is_idempotent(self):
         activity_id = self._activity("Easy", intensity=0.7, sheet=False)
         self._run()

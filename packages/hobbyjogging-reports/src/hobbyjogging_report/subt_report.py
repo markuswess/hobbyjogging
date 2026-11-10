@@ -16,7 +16,7 @@ from .format import (
     subt_category_label,
 )
 from .review import exclude_review, review_note
-from .sources import DEFAULT_SOURCE, create_source
+from .sources import create_source
 
 
 def subt_report(
@@ -32,7 +32,7 @@ def subt_report(
         raise ValueError("start must not be after end")
 
     if source is None:
-        with create_source(DEFAULT_SOURCE) as source:
+        with create_source() as source:
             return subt_report(
                 start,
                 end,

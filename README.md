@@ -132,7 +132,7 @@ Reports read the canonical database by default.
 ./reports.sh compare months
 ./reports.sh planned
 ./reports.sh planned --days 56
-./reports.sh weekly --source intervals
+./reports.sh weekly
 ./reports.sh activities --limit 20
 ./reports.sh activities --days 30 --add id,category
 ```

@@ -4,7 +4,6 @@ import argparse
 from datetime import date, timedelta
 
 from .model import AverageWindows
-from .sources import DEFAULT_SOURCE, SOURCE_CHOICES
 
 DEFAULT_PLANNED_DAYS = 28
 
@@ -73,14 +72,14 @@ def resolve_forward_range(
     return today, today + timedelta(days=days)
 
 
-def extract_source(argv: list[str]) -> tuple[str, bool, list[str]]:
-    """Remove global options and return (source, include_review, remaining)."""
+def extract_globals(argv: list[str]) -> tuple[bool, list[str]]:
+    """Remove global options and return (include_review, remaining)."""
+    if "--source" in argv:
+        raise SystemExit(
+            "--source was removed; reports read the canonical database only"
+        )
+
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    parser.add_argument(
-        "--source",
-        choices=SOURCE_CHOICES,
-        default=DEFAULT_SOURCE,
-    )
     parser.add_argument(
         "--include-review",
         dest="include_review",
@@ -88,7 +87,7 @@ def extract_source(argv: list[str]) -> tuple[str, bool, list[str]]:
         help="show activities with open import review items",
     )
     args, remaining = parser.parse_known_args(argv)
-    return args.source, args.include_review, remaining
+    return args.include_review, remaining
 
 
 def range_parser() -> argparse.ArgumentParser:

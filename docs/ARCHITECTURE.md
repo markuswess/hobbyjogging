@@ -122,18 +122,20 @@ Source ingestion and the review queue.
 
 Analysis, views, and rendering.
 
-- `sources/` — `DataSource` implementations: canonical database (default) and
-  direct Intervals.icu API.
+- `sources/` — the `DataSource` implementation: the canonical database. Raw
+  payloads stay in `source_records`, so reports need no live API client.
 - `analysis/` (`common`, `averages`, `load`, `zones`, `subt`, `planned`,
   `recovery`), `series.py` — pure functions over canonical activities,
   intervals, and wellness; derived metrics such as load, zone distribution,
   pace/HR trends, recovery.
 - `model.py` — typed view models and analysis result types.
-- `classify.py` — workout taxonomy.
+- `classify.py` — workout taxonomy for display. It prefers the stored
+  classification and falls back to the heuristic for unclassified activities;
+  the backfill calls it with `use_stored=False`.
 - `daily.py`, `period_report.py`, `subt_report.py`, `overview.py` — one
   Markdown report per file; `report_commands.py` dispatches them.
 - `sessions.py`, `recent.py`, `debug.py` — session detail, shared lookback
-  search, and raw payload dump.
+  search, and a dump of the stored raw payloads.
 - `activity_list.py` — the activities table (selection, columns, rendering).
 - `summary.py` — period totals, quality-session lists, recovery averages.
 - `charts.py`, `chart_commands.py` — plotly figures over prepared series.

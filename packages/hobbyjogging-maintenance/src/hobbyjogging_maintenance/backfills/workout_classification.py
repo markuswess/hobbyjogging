@@ -99,7 +99,7 @@ def workout_classification(context: TaskContext) -> None:
         context.count("activities")
 
         intervals = context.repository.activity_intervals(activity.id)
-        category = classify(activity, intervals)
+        category = classify(activity, intervals, use_stored=False)
         classifier = Proposal(
             *classification_for_category(
                 category.group,

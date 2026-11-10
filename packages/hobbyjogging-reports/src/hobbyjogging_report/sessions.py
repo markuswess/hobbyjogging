@@ -9,7 +9,7 @@ from .classify import classify
 from .format import format_session_activity
 from .recent import search_recent
 from .review import exclude_review, review_note
-from .sources import DEFAULT_SOURCE, create_source
+from .sources import create_source
 
 LAST_SELECTORS = {"last", "latest"}
 
@@ -91,7 +91,7 @@ def session_report(
     most recent session.
     """
     if source is None:
-        with create_source(DEFAULT_SOURCE) as source:
+        with create_source() as source:
             return session_report(
                 selector,
                 source,

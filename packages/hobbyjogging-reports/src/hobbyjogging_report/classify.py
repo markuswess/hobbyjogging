@@ -119,8 +119,19 @@ class CategoryStat:
 def classify(
     activity: Activity,
     intervals: list[Interval] | None = None,
+    *,
+    use_stored: bool = True,
 ) -> Category:
-    """Classify one activity, optionally using its interval structure."""
+    """Classify one activity, optionally using its interval structure.
+
+    With ``use_stored`` (the default for reports) a stored workout
+    classification wins: its quality flag decides quality vs non-quality and
+    its methods refine the category when the name says nothing. Activities
+    without a stored classification fall back to the heuristic below.
+
+    ``use_stored=False`` is the pure heuristic. The workout-classification
+    backfill must use it, otherwise it would read back its own output.
+    """
     if activity.type not in RUN_TYPES:
         return CROSS_TRAINING
 
@@ -131,6 +142,17 @@ def classify(
     support = _race_support(text)
     if support is not None:
         return Category("quality", "race-support", support)
+
+    stored = activity.quality if use_stored else None
+
+    if stored is not None:
+        if stored:
+            return _quality_category(activity, text, work)
+
+        if "recovery" in activity.workout_targets or _is_recovery(activity):
+            return Category("non-quality", "recovery")
+
+        return Category("non-quality", "easy")
 
     quality = _is_quality(activity, text, work)
 
@@ -233,7 +255,28 @@ def _quality_category(
     if activity.duration_s > LONGRUN_S:
         return Category("quality", "longrun")
 
+    # A stored method is more specific than an uninformative name.
+    stored = _stored_quality_category(activity)
+    if stored is not None:
+        return stored
+
     return Category("quality", "intervals", "other")
+
+
+def _stored_quality_category(activity: Activity) -> Category | None:
+    """Category from stored workout methods, when the name says nothing."""
+    methods = set(activity.workout_methods)
+
+    if "long_run" in methods:
+        return Category("quality", "longrun")
+    if "race" in methods:
+        return Category("quality", "race")
+    if "tempo" in methods:
+        return Category("quality", "tempo")
+    if "intervals" in methods or "progression" in methods:
+        return Category("quality", "intervals", "other")
+
+    return None
 
 
 def _subt_detail(text: str, work: list[Interval]) -> str | None:

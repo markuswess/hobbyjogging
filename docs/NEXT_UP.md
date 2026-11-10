@@ -57,9 +57,17 @@ Updated 2026-11-08.
   with 7- and 42-day exponentially weighted averages.
 - **Workout classification (schema v9).** Set-based methods/targets on
   activities and events; quality is derived from methods/targets. The
-  classifier + sheet backfill classified 2,686 activities (including 107
+  classifier + sheet backfill classified 2,687 activities (including 107
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
+- **Reports read the stored classification.** `classify()` prefers
+  `activity_workout_methods/targets` and falls back to the heuristic when an
+  activity is unclassified, so manual resolutions now change reports and the
+  dashboard (589 activities changed category). The backfill calls it with
+  `use_stored=False` so it never reads back its own output.
+- **Reports: one data source.** The direct Intervals.icu API source was
+  removed; reports read the canonical database only, and `debug` dumps the
+  payloads stored in `source_records`.
 - **Schema evolution workflow (schema v10).** Two tracks: immutable SQL
   migrations in core, and registered data tasks in the new
   `hobbyjogging-maintenance` package (`backfill` = applied once and recorded;
