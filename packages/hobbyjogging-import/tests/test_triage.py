@@ -143,6 +143,60 @@ class TriageTests(unittest.TestCase):
 
         self.assertIn("No open review items to triage.", lines)
 
+    # -- header -------------------------------------------------------------
+
+    def test_header_shows_duration_distance_pace_and_description(self):
+        self.conn.execute(
+            """
+            UPDATE activities
+            SET name = 'Liesingbachrunde',
+                description = 'Locker, Steigerungslaeufe zum Schluss',
+                duration_s = 3600,
+                distance_m = 10000
+            WHERE id = 'a1'
+            """
+        )
+
+        runner, lines, counters = self._runner(["q"])
+
+        joined = "\n".join(lines)
+        self.assertIn("run · 1:00:00 · 10.00 km · 6:00 /km", joined)
+        self.assertIn(
+            "description: Locker, Steigerungslaeufe zum Schluss",
+            joined,
+        )
+
+    def test_header_shows_speed_for_rides(self):
+        self.conn.execute(
+            """
+            UPDATE activities
+            SET sport = 'ride', duration_s = 3600, distance_m = 30000
+            WHERE id = 'a1'
+            """
+        )
+
+        runner, lines, counters = self._runner(["q"])
+
+        self.assertIn(
+            "ride · 1:00:00 · 30.00 km · 30.0 km/h",
+            "\n".join(lines),
+        )
+
+    def test_header_truncates_long_descriptions(self):
+        description = "x" * 200
+        self.conn.execute(
+            "UPDATE activities SET description = ? WHERE id = 'a1'",
+            (description,),
+        )
+
+        runner, lines, counters = self._runner(["q"])
+
+        line = next(
+            line for line in lines if "description:" in line
+        )
+        self.assertTrue(line.endswith("…"))
+        self.assertLessEqual(len(line), 120 + len("  description: "))
+
     # -- inspect ------------------------------------------------------------
 
     def test_inspect_prints_values_sources_and_context(self):

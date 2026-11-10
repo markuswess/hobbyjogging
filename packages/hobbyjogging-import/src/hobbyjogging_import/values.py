@@ -102,6 +102,23 @@ def format_distance_m(meters: float | None) -> str:
     return f"{meters / 1000:.2f} km"
 
 
+def format_pace(duration_s: float | None, distance_m: float | None) -> str:
+    """Format pace as ``M:SS /km``."""
+    if not duration_s or not distance_m:
+        return "-"
+    seconds_per_km = float(duration_s) / (float(distance_m) / 1000.0)
+    minutes, seconds = divmod(int(round(seconds_per_km)), 60)
+    return f"{minutes}:{seconds:02d} /km"
+
+
+def format_speed(duration_s: float | None, distance_m: float | None) -> str:
+    """Format average speed as ``KM/H``."""
+    if not duration_s or not distance_m:
+        return "-"
+    speed_kmh = (float(distance_m) / 1000.0) / (float(duration_s) / 3600.0)
+    return f"{speed_kmh:.1f} km/h"
+
+
 def _format_hr(value) -> str:
     if value is None:
         return "-"

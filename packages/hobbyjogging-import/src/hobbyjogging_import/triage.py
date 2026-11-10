@@ -15,6 +15,7 @@ import webbrowser
 from typing import Callable
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.sports import RIDE_SPORTS, RUN_SPORTS, WALK_SPORTS
 
 from .causes import UNCLASSIFIED, item_cause, item_context
 from .clipboard import copy_text
@@ -30,7 +31,11 @@ from .links import (
 from .quality import CONFLICT, WORKOUT_CLASSIFICATION, refresh_activity_quality
 from .review_cli import _format_summary_line
 from .values import (
+    format_distance_m,
+    format_duration_s,
     format_field,
+    format_pace,
+    format_speed,
     parse_distance_m,
     parse_duration_s,
     parse_sport,
@@ -60,6 +65,48 @@ def _format_sets(methods, targets) -> str:
         f"methods={', '.join(methods) or '-'} "
         f"targets={', '.join(targets) or '-'}"
     )
+
+
+def _activity_metrics(
+    sport: object,
+    duration_s: object,
+    distance_m: object,
+) -> str:
+    """One line of sport, duration, distance, and pace/speed."""
+    parts = []
+    if sport:
+        parts.append(str(sport))
+    if duration_s is not None:
+        parts.append(format_duration_s(duration_s))
+    if distance_m:
+        parts.append(format_distance_m(distance_m))
+
+    pace = _pace_label(sport, duration_s, distance_m)
+    if pace:
+        parts.append(pace)
+    return " · ".join(parts)
+
+
+def _pace_label(
+    sport: object,
+    duration_s: object,
+    distance_m: object,
+) -> str:
+    if not duration_s or not distance_m:
+        return ""
+    if sport in RIDE_SPORTS:
+        return format_speed(duration_s, distance_m)
+    if sport in RUN_SPORTS or sport in WALK_SPORTS:
+        return format_pace(duration_s, distance_m)
+    return ""
+
+
+def _one_line(text: object, limit: int = 120) -> str:
+    """Collapse whitespace and truncate a description to one line."""
+    cleaned = " ".join(str(text or "").split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 1].rstrip() + "…"
 
 
 DEFAULT_FIELD = {
@@ -199,6 +246,8 @@ class TriageRunner:
         activity_id = item["activity_id"]
         if activity_id:
             self.print(f"  activity {activity_id}")
+            for line in self._activity_header_lines(activity_id):
+                self.print(line)
         else:
             candidates = self._candidates(item)
             if candidates:
@@ -580,13 +629,37 @@ class TriageRunner:
                 json.dumps(context, indent=2, ensure_ascii=False)
             )
 
-    def _activity_lines(self, activity_id: str) -> list[str]:
-        from .values import format_distance_m, format_duration_s
-
+    def _activity_header_lines(self, activity_id: str) -> list[str]:
         row = self.writer.connection.execute(
             """
-            SELECT local_date, sport, duration_s, elapsed_s, distance_m,
-                   excluded_at
+            SELECT sport, description, duration_s, distance_m
+            FROM activities WHERE id = ?
+            """,
+            (activity_id,),
+        ).fetchone()
+        if row is None:
+            return ["  (missing from database)"]
+
+        lines = []
+        metrics = _activity_metrics(
+            row["sport"],
+            row["duration_s"],
+            row["distance_m"],
+        )
+        if metrics:
+            lines.append(f"  {metrics}")
+
+        description = _one_line(row["description"])
+        if description:
+            lines.append(f"  description: {description}")
+
+        return lines
+
+    def _activity_lines(self, activity_id: str) -> list[str]:
+        row = self.writer.connection.execute(
+            """
+            SELECT local_date, sport, name, description,
+                   duration_s, elapsed_s, distance_m, excluded_at
             FROM activities WHERE id = ?
             """,
             (activity_id,),
@@ -594,14 +667,34 @@ class TriageRunner:
         if row is None:
             return [f"  activity {activity_id} (missing from database)"]
 
-        return [
+        pace = _pace_label(
+            row["sport"],
+            row["duration_s"],
+            row["distance_m"],
+        )
+        distance = format_distance_m(row["distance_m"])
+        if pace:
+            distance = f"{distance}   {pace}"
+
+        lines = [
             f"  sport: {row['sport'] or '-'}   "
             f"date: {row['local_date'] or '-'}",
-            f"  duration: {format_duration_s(row['duration_s'])}   "
-            f"elapsed: {format_duration_s(row['elapsed_s'])}",
-            f"  distance: {format_distance_m(row['distance_m'])}",
-            "  [excluded]" if row["excluded_at"] else "",
         ]
+        if row["name"]:
+            lines.append(f"  name: {row['name']}")
+        lines.append(
+            f"  duration: {format_duration_s(row['duration_s'])}   "
+            f"elapsed: {format_duration_s(row['elapsed_s'])}"
+        )
+        lines.append(f"  distance: {distance}")
+
+        description = _one_line(row["description"], limit=200)
+        if description:
+            lines.append(f"  description: {description}")
+
+        if row["excluded_at"]:
+            lines.append("  [excluded]")
+        return lines
 
     def _activity_sources(self, activity_id: str) -> list:
         return self.writer.connection.execute(

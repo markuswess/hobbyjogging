@@ -3,6 +3,8 @@ import unittest
 from hobbyjogging_import.values import (
     format_distance_m,
     format_duration_s,
+    format_pace,
+    format_speed,
     parse_distance_m,
     parse_duration_s,
     parse_sport,
@@ -75,6 +77,17 @@ class FormatTests(unittest.TestCase):
     def test_format_distance(self):
         self.assertEqual("8.20 km", format_distance_m(8200))
         self.assertEqual("-", format_distance_m(None))
+
+    def test_format_pace(self):
+        self.assertEqual("6:00 /km", format_pace(3600, 10000))
+        self.assertEqual("5:00 /km", format_pace(1800, 6000))
+        self.assertEqual("-", format_pace(3600, 0))
+        self.assertEqual("-", format_pace(0, 10000))
+        self.assertEqual("-", format_pace(None, None))
+
+    def test_format_speed(self):
+        self.assertEqual("30.0 km/h", format_speed(3600, 30000))
+        self.assertEqual("-", format_speed(3600, 0))
 
 
 if __name__ == "__main__":
