@@ -88,7 +88,8 @@ Canonical model, schema, and read/write access.
 - `db/repository.py` — `TrainingRepository`: read queries over the canonical
   model.
 - `datasource.py` — the `DataSource` protocol every report consumer depends
-  on.
+  on: activities, wellness, events, intervals, equipment, and the review
+  queue (`review_items`, read-only).
 - `db/connection.py` — database path resolution and connection setup.
 
 Core owns the rules that must not drift between packages: field ownership,
@@ -463,9 +464,10 @@ Static-first, generated on the homelab:
 - Generation writes to a temporary directory and atomically swaps, so a
   partially written dashboard is never served. A marker file prevents
   replacing an unrelated directory.
-- Data health is canonical-only for now: it counts review-hidden activities
-  and missing load/pace-zone/HR/distance data. The individual review-item
-  queue needs a core `DataSource` addition.
+- Data health counts review-hidden activities and missing
+  load/pace-zone/HR/distance data. The individual review-item queue is
+  available through `DataSource.review_items`; rendering it is a reports
+  follow-up.
 - Interactivity is limited to plotly zoom/pan; filters and server-rendered
   drill-down are the upgrade path.
 

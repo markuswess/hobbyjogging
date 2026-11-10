@@ -534,10 +534,11 @@ Generation builds a temporary directory and atomically swaps it into place.
 It refuses to replace a non-empty directory unless it is a previous
 dashboard (marked with `.hobbyjogging-dashboard`).
 
-The data-health banner is canonical-only for now: it counts activities with
-open review items, missing load, missing pace zones, missing HR, and missing
-distance. Individual review-item categories still require a core
-`DataSource` addition and are planned for a later pass.
+The data-health banner counts activities with open review items, missing
+load, missing pace zones, missing HR, and missing distance. The individual
+queue is available through `DataSource.review_items(status="open",
+category=...)`, which returns `ReviewItem` objects; rendering the categories
+is a follow-up.
 
 ## Architecture
 

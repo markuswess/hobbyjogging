@@ -1,5 +1,6 @@
 """Read-side access to the canonical database."""
 
+import json
 import sqlite3
 from collections import defaultdict
 from datetime import date
@@ -11,6 +12,7 @@ from hobbyjogging_core.model import (
     EventZoneTime,
     Interval,
     Lap,
+    ReviewItem,
     WellnessDay,
 )
 
@@ -201,6 +203,70 @@ class TrainingRepository:
         ).fetchall()
 
         return [self._equipment_from_row(row) for row in rows]
+
+    def review_items(
+        self,
+        *,
+        status: str = "open",
+        category: str | None = None,
+    ) -> list[ReviewItem]:
+        """Return review-queue entries, most severe and newest first.
+
+        Reports read the queue through this method; writing stays with the
+        importers, triage, and the maintenance tasks.
+        """
+        clauses = []
+        params: list[object] = []
+
+        if status and status != "all":
+            clauses.append("r.status = ?")
+            params.append(status)
+        if category is not None:
+            clauses.append("r.category = ?")
+            params.append(category)
+
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = self.connection.execute(
+            f"""
+            SELECT
+                r.id, r.category, r.severity, r.status, r.detail,
+                r.reported_at, r.context_json, r.activity_id,
+                a.local_date, a.name AS activity_name, a.sport,
+                sr.source AS record_source, sr.external_id
+            FROM review_items r
+            LEFT JOIN activities a ON a.id = r.activity_id
+            LEFT JOIN source_records sr ON sr.id = r.source_record_id
+            {where}
+            ORDER BY
+                CASE r.severity
+                    WHEN 'error' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
+                r.reported_at DESC, r.id DESC
+            """,
+            params,
+        ).fetchall()
+
+        return [
+            ReviewItem(
+                id=row["id"],
+                category=row["category"],
+                severity=row["severity"],
+                status=row["status"],
+                detail=row["detail"],
+                reported_at=row["reported_at"] or "",
+                activity_id=row["activity_id"],
+                activity_date=(
+                    date.fromisoformat(row["local_date"])
+                    if row["local_date"]
+                    else None
+                ),
+                activity_name=row["activity_name"] or "",
+                sport=row["sport"] or "",
+                source=row["record_source"] or "",
+                external_id=row["external_id"] or "",
+                context=_context(row["context_json"]),
+            )
+            for row in rows
+        ]
 
     def _open_review_activity_ids(
         self,
@@ -412,3 +478,13 @@ class TrainingRepository:
 
 def _parse_optional_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
+
+
+def _context(raw: str | None) -> dict[str, object]:
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}

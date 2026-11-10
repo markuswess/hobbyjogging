@@ -8,7 +8,14 @@ reports should depend only on this interface.
 from datetime import date
 from typing import Protocol
 
-from .model import Activity, Equipment, Event, Interval, WellnessDay
+from .model import (
+    Activity,
+    Equipment,
+    Event,
+    Interval,
+    ReviewItem,
+    WellnessDay,
+)
 
 
 class DataSource(Protocol):
@@ -26,4 +33,13 @@ class DataSource(Protocol):
         ...
 
     def equipment(self) -> list[Equipment]:
+        ...
+
+    def review_items(
+        self,
+        *,
+        status: str = "open",
+        category: str | None = None,
+    ) -> list[ReviewItem]:
+        """Return review-queue entries, newest and most severe first."""
         ...

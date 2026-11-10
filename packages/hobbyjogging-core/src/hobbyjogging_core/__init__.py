@@ -19,6 +19,7 @@ from .model import (
     EventZoneTime,
     Interval,
     Lap,
+    ReviewItem,
     WellnessDay,
 )
 from .sports import (
@@ -60,6 +61,7 @@ __all__ = [
     "QUALITY_TARGETS",
     "RIDE_SPORTS",
     "RUN_SPORTS",
+    "ReviewItem",
     "SCHEMA_VERSION",
     "SPORT_LABELS",
     "TrainingRepository",

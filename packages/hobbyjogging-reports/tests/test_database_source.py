@@ -43,6 +43,11 @@ class DatabaseSourceTests(unittest.TestCase):
             "INSERT INTO events (id, local_date, name) "
             "VALUES ('e1', '2026-10-02', 'Town race')"
         )
+        self.conn.execute(
+            "INSERT INTO review_items "
+            "(activity_id, category, detail, fingerprint, severity) "
+            "VALUES ('a1', 'quality', 'no timing data', 'fp-1', 'warn')"
+        )
 
     def test_activities_delegate_to_repository(self):
         activities = self.source.activities(
@@ -70,6 +75,14 @@ class DatabaseSourceTests(unittest.TestCase):
         self.assertEqual("Town race", events[0].name)
         self.assertEqual("WORK", intervals[0].type)
         self.assertEqual("Pegasus 40", equipment[0].name)
+
+    def test_review_items_delegate_to_repository(self):
+        items = self.source.review_items()
+
+        self.assertEqual(1, len(items))
+        self.assertEqual("quality", items[0].category)
+        self.assertEqual("a1", items[0].activity_id)
+        self.assertEqual("Morning run", items[0].activity_name)
 
     def test_earliest_activity_date(self):
         self.assertEqual(

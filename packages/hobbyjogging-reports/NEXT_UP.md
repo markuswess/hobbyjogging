@@ -41,7 +41,10 @@ Dashboard follow-ups, handed over together with the triage work:
   the API's `RACE_A`/`RACE_B`/`RACE_C` event categories onto the `race`
   method during event sync, so an existing database needs a fresh event
   sync before its races show up.
-- **Review queue** — item 4 below; needs a core `DataSource` addition.
+- **Review queue rendering** — the core part is done:
+  `DataSource.review_items(status="open", category=...)` returns `ReviewItem`
+  objects (id, category, severity, status, detail, activity date/name/sport,
+  source, context). Use it for the health page and category links.
 
 ## Next
 
@@ -54,9 +57,9 @@ Dashboard follow-ups, handed over together with the triage work:
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Review queue in the dashboard.** Expose unresolved `review_items`
-   through `DataSource` (root/core change) for a richer health page and
-   category links.
+4. **Review queue in the dashboard.** `DataSource.review_items` now
+   exposes the queue (root/core change is done); render the open items,
+   grouped by category, on the health page.
 
 ## Tests and docs
 

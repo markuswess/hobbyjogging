@@ -6,7 +6,14 @@ from pathlib import Path
 
 from hobbyjogging_core.db import open_database
 from hobbyjogging_core.db.repository import TrainingRepository
-from hobbyjogging_core.model import Activity, Equipment, Event, Interval, WellnessDay
+from hobbyjogging_core.model import (
+    Activity,
+    Equipment,
+    Event,
+    Interval,
+    ReviewItem,
+    WellnessDay,
+)
 
 
 class DatabaseSource:
@@ -44,6 +51,17 @@ class DatabaseSource:
 
     def events(self, start: date, end: date) -> list[Event]:
         return self.repository.events(start, end)
+
+    def review_items(
+        self,
+        *,
+        status: str = "open",
+        category: str | None = None,
+    ) -> list[ReviewItem]:
+        return self.repository.review_items(
+            status=status,
+            category=category,
+        )
 
     def earliest_activity_date(self) -> date | None:
         """Return the first non-excluded activity date, if any."""

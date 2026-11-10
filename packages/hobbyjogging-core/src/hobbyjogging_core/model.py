@@ -135,3 +135,26 @@ class Lap:
     avg_hr: float | None = None
     max_hr: float | None = None
     elevation_gain_m: float | None = None
+
+
+@dataclass
+class ReviewItem:
+    """One entry in the import review queue.
+
+    Read-only view: the queue is written by importers, triage, and the
+    maintenance tasks, never by report code.
+    """
+
+    id: int
+    category: str
+    severity: str = "warn"
+    status: str = "open"
+    detail: str = ""
+    reported_at: str = ""
+    activity_id: str | None = None
+    activity_date: date | None = None
+    activity_name: str = ""
+    sport: str = ""
+    source: str = ""
+    external_id: str = ""
+    context: dict[str, object] = field(default_factory=dict)

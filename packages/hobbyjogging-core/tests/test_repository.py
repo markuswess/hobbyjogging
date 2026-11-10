@@ -305,6 +305,89 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertTrue(flagged["a3"])
         self.assertFalse(flagged["a2"])
 
+    def test_review_items_are_mapped_newest_and_most_severe_first(self):
+        self.conn.executemany(
+            """
+            INSERT INTO review_items (
+                activity_id, category, detail, context_json, fingerprint,
+                severity, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    "a1", "quality", "no timing data", '{"rule": "zero_duration"}',
+                    "fp-1", "warn", "open",
+                ),
+                (
+                    "a3", "field_conflict", "duration differs",
+                    '{"field": "duration_s"}', "fp-2", "info", "open",
+                ),
+                (
+                    None, "ambiguous_match", "2 candidates", "{}",
+                    "fp-3", "error", "open",
+                ),
+                (
+                    "a2", "quality", "already handled", "{}",
+                    "fp-4", "warn", "resolved",
+                ),
+            ],
+        )
+
+        items = self.repository.review_items()
+
+        self.assertEqual(3, len(items))
+        self.assertEqual(
+            ["ambiguous_match", "quality", "field_conflict"],
+            [item.category for item in items],
+        )
+
+        quality = items[1]
+        self.assertEqual("quality", quality.category)
+        self.assertEqual("warn", quality.severity)
+        self.assertEqual("open", quality.status)
+        self.assertEqual("no timing data", quality.detail)
+        self.assertEqual("a1", quality.activity_id)
+        self.assertEqual(date(2026, 10, 1), quality.activity_date)
+        self.assertEqual("Morning run", quality.activity_name)
+        self.assertEqual("run", quality.sport)
+        self.assertEqual({"rule": "zero_duration"}, quality.context)
+
+        conflict = items[2]
+        self.assertEqual("field_conflict", conflict.category)
+        self.assertEqual({"field": "duration_s"}, conflict.context)
+
+    def test_review_items_filter_by_status_and_category(self):
+        self.conn.executemany(
+            """
+            INSERT INTO review_items (
+                activity_id, category, detail, fingerprint, status
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                ("a1", "quality", "one", "fp-1", "open"),
+                ("a1", "quality", "two", "fp-2", "ignored"),
+                ("a1", "field_conflict", "three", "fp-3", "open"),
+            ],
+        )
+
+        self.assertEqual(
+            ["one"],
+            [
+                item.detail
+                for item in self.repository.review_items(category="quality")
+            ],
+        )
+        self.assertEqual(
+            ["two", "one"],
+            [
+                item.detail
+                for item in self.repository.review_items(
+                    status="all",
+                    category="quality",
+                )
+            ],
+        )
+
     def test_activities_are_ordered_by_start_time_within_a_day(self):
         self.conn.executemany(
             "INSERT INTO activities "
