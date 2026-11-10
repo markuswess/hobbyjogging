@@ -60,6 +60,10 @@ Updated 2026-11-08.
   classifier + sheet backfill classified 2,687 activities (including 107
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
+- **Duration tolerance settled.** A FIT/Intervals recording-time difference
+  now counts as the same measurement when it fits inside either source's
+  pause gap or is within 5% (the cause classifier's "small difference" bound);
+  trims, manual Intervals edits, and sheet estimates still open a review item.
 - **`tempo` retired.** A tempo run is `continuous` with a `threshold`
   target, so the method duplicated the target. `remove_tempo_method_v1`
   converted 185 activities; the token now normalizes to `continuous`.
@@ -99,25 +103,24 @@ Updated 2026-11-08.
 
 ## Next
 
-1. **Review the workout-classification conflicts** in the normal queue:
-   `hobbyjogging-import review list --category workout_classification`, then
-   `review triage --category workout_classification` and press `k` on each
-   item (1 classifier, 2 sheet, m merge, n leave unclassified). The queue is
-   kept in sync by
-   `hobbyjogging-maintenance run workout_classification_queue`.
-2. **Dashboard follow-ups.** The first static dashboard is done (overview,
-   recovery and health, activity list and detail, canonical data-health
-   banner) and `sync.sh` regenerates it after a successful sync. Next: expose
-   the actual review-item queue through `DataSource`, then add race cards and
-   session-level planned-vs-actual views.
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+1. **Dashboard follow-ups** — handed to the reports session; the list lives in
+   `packages/hobbyjogging-reports/NEXT_UP.md` (workout methods/targets on the
+   session detail, review queue through `DataSource`, race cards,
+   session-level planned-vs-actual).
+2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-4. **`review scan` prune mode**: resolve stale quality items whose current
-   values no longer trigger them.
-5. **Homelab cutover**: DB + importer + dashboard generator + static server,
+3. **`review scan` prune mode**: resolve stale quality items whose current
+   values no longer trigger them (field conflicts already prune).
+4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
+5. **Classifier into core** (hygiene): move the heuristic out of
+   `hobbyjogging-reports` so `hobbyjogging-maintenance` stops depending on the
+   renderer. No behavior change.
+
+Triage is done: five items remain on hold (2 `ambiguous_match`, 3 zero-duration
+`quality`).
 
 ## Notes
 

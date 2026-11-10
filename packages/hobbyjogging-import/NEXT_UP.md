@@ -85,10 +85,6 @@ on.
 - **`review scan` quality prune**: resolving stale quality items whose
   current values no longer trigger them (field conflicts are pruned; quality
   items are not yet).
-- **Duration tolerance** (root session): the remaining FIT/Intervals
-  recording-time tolerance decision. The average-HR floor (5 bpm) and the
-  `standuppaddling`, `openwaterswim`, `nordicski`, and German spreadsheet
-  aliases are settled.
 - The dashboard is reports-package work.
 - The planned-event zone display is reports-package work.
 

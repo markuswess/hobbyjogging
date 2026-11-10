@@ -27,6 +27,18 @@ comparison.
 - **Dashboard data health is canonical-only.** The actual review-item queue
   needs a core `DataSource` addition; see the follow-up below.
 
+## Handoff from the root session
+
+Dashboard follow-ups, handed over together with the triage work:
+
+- **Workout methods/targets on the session detail.** Activities and events
+  now carry `workout_methods` / `workout_targets` (set-based, with
+  `activity.quality` derived). Reports currently use only the quality flag.
+  Show the sets on the session page and in the activity list.
+- **Race cards.** Surface upcoming races from `Event` (date, distance,
+  planned load, zone kind) on the overview.
+- **Review queue** — item 4 below; needs a core `DataSource` addition.
+
 ## Next
 
 1. **Daily planned session.** Show the upcoming/current workout's planned

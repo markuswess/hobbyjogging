@@ -279,7 +279,7 @@ class TrainingWriterTests(unittest.TestCase):
         # anything: the same disagreement yields no further writes.
         again = self.writer.upsert_activity(
             "a1",
-            {"duration_s": 3650},
+            {"duration_s": 3800},
             source="fit",
             source_record_id=fit_source,
         )
@@ -321,7 +321,7 @@ class TrainingWriterTests(unittest.TestCase):
             source_record_id=self.source_id,
         )
 
-        # 1% of 3600 s = 36 s, so a 30 s drift agrees; 1% of 10000 m = 100 m,
+        # 5% of 3600 s = 180 s, so a 30 s drift agrees; 1% of 10000 m = 100 m,
         # so 10100 m agrees too.
         conflicts = self.writer.upsert_activity(
             "a1",
@@ -339,6 +339,34 @@ class TrainingWriterTests(unittest.TestCase):
             (3600, 3700, 10000),
             (row["duration_s"], row["elapsed_s"], row["distance_m"]),
         )
+
+    def test_duration_tolerance_is_five_percent(self):
+        fit_source = self._source("fit-a1", "checksum-f")
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run", "duration_s": 3600},
+            source="intervals",
+            source_record_id=self.source_id,
+        )
+
+        # FIT and Intervals recording time can differ by up to ~5%; the cause
+        # classifier calls that a small difference, so it is not a conflict.
+        agree = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3780},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual([], agree)
+
+        # Beyond 5% it is a different recording, not accounting noise.
+        conflict = self.writer.upsert_activity(
+            "a1",
+            {"duration_s": 3800},
+            source="fit",
+            source_record_id=fit_source,
+        )
+        self.assertEqual(["duration_s"], [c.field_name for c in conflict])
 
     def test_avg_hr_tolerance_is_five_bpm(self):
         fit_source = self._source("fit-a1", "checksum-f")
@@ -381,17 +409,17 @@ class TrainingWriterTests(unittest.TestCase):
             {
                 "local_date": "2026-10-01",
                 "sport": "run",
-                "duration_s": 120,
+                "duration_s": 30,
                 "distance_m": 500,
             },
             source="intervals",
             source_record_id=self.source_id,
         )
 
-        # 1% of 120 s is 1.2 s — under the 2 s floor these differ.
+        # 5% of 30 s is 1.5 s — under the 2 s floor these differ.
         conflicts = self.writer.upsert_activity(
             "a1",
-            {"duration_s": 122.5, "distance_m": 505},
+            {"duration_s": 32.5, "distance_m": 505},
             source="fit",
             source_record_id=fit_source,
         )

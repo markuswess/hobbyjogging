@@ -39,6 +39,14 @@ When the device records stopped time (auto-pause off, traffic lights, manual
 stops), moving time can be much shorter than recording time. A large gap is
 worth reviewing, but it is not automatically an error.
 
+Two sources' recording times are treated as the same measurement when the
+difference fits inside either source's pause gap (`elapsed - duration`), or
+when it is within **5%** of the stored value. Observed FIT/Intervals
+differences run up to about 5% (median ~1.7%), which is what the cause
+classifier already calls a "small difference"; anything beyond that is a
+different recording (a trim, a manual Intervals edit, or a sheet estimate) and
+stays a review item. `duration_s` remains owner-tracked.
+
 ### Elapsed time
 
 Garmin elapsed (`total_elapsed_time`) is start-to-save time and includes

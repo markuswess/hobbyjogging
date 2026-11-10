@@ -73,7 +73,12 @@ CONFLICT_FIELDS = frozenset(
 # inside the tolerance are treated as the same measurement; outside it they
 # become a field_conflict review item.
 NUMERIC_TOLERANCES = {
-    "duration_s": (0.01, 2.0),
+    # FIT `total_timer_time` and Intervals `icu_recording_time` describe the
+    # same recording but handle pauses and the final partial second
+    # differently: observed differences run up to ~5% (median ~1.7%). The
+    # cause classifier calls anything up to 5% a small difference, so the
+    # conflict rule uses the same bound instead of queueing every drift.
+    "duration_s": (0.05, 2.0),
     "elapsed_s": (0.01, 2.0),
     "moving_s": (0.01, 2.0),
     "distance_m": (0.01, 10.0),
