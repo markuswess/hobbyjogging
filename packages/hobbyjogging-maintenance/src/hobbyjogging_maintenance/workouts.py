@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from hobbyjogging_core.model import Activity
+from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
     classification_for_category,
     classification_for_sheet_code,
@@ -24,6 +25,9 @@ from hobbyjogging_import.quality import (
 from hobbyjogging_report.classify import classify
 
 from .context import TaskContext
+
+# A sheet run with no training code and a low average HR is an easy run.
+EASY_MAX_HR = 140
 
 
 @dataclass
@@ -162,6 +166,16 @@ def fingerprint(conflict: Conflict) -> str:
             sorted(conflict.sheet.methods),
             sorted(conflict.sheet.targets),
         ]
+    )
+
+
+def is_easy_default(activity: Activity, sheet: Proposal | None) -> bool:
+    """Whether an unproposed sheet run is an easy run by default."""
+    return (
+        sheet is not None
+        and activity.type in RUN_SPORTS
+        and activity.avg_hr is not None
+        and activity.avg_hr < EASY_MAX_HR
     )
 
 

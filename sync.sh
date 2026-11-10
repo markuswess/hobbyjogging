@@ -11,8 +11,10 @@ Usage:
 
 Runs the incremental sync: Garmin fetch, Intervals.icu import (activities,
 wellness, planned events), FIT archive import, then the quality review scan.
-After a successful sync it regenerates the static dashboard. The sync summary
-reports what changed and exits non-zero if a source failed.
+It then derives workout methods/targets for newly imported activities and
+refreshes the classification review queue. After a successful sync it
+regenerates the static dashboard. The sync summary reports what changed and
+exits non-zero if a source failed.
 
 Options:
   --days N          activity/wellness/Garmin lookback (default 30)
@@ -22,6 +24,7 @@ Options:
   --no-intervals    skip the Intervals.icu import
   --no-fit          skip the FIT archive scan
   --no-scan         skip the quality review scan
+  --no-classify     skip deriving workout sets and the classification queue
   --no-dashboard    skip dashboard regeneration
   --full            re-import every FIT file (ignore the known-path skip)
   --database PATH   use a database other than HOBBYJOGGING_DB
@@ -48,12 +51,17 @@ args=("$@")
 sync_args=()
 database=""
 generate_dashboard=1
+generate_classification=1
 index=0
 
 while (( index < ${#args[@]} )); do
     case "${args[$index]}" in
         --no-dashboard)
             generate_dashboard=0
+            index=$((index + 1))
+            ;;
+        --no-classify)
+            generate_classification=0
             index=$((index + 1))
             ;;
         --database)
@@ -77,6 +85,21 @@ while (( index < ${#args[@]} )); do
 done
 
 uv run --env-file .env hobbyjogging-import sync "${sync_args[@]}"
+
+# Classification is a stored derived value: fill in the sets for activities
+# that were just imported, then refresh the disagreement queue. Both are
+# idempotent recomputes; backfills stay deliberate.
+if (( generate_classification )); then
+    maintenance_args=()
+    if [[ -n "$database" ]]; then
+        maintenance_args+=(--database "$database")
+    fi
+
+    uv run --env-file .env python -m hobbyjogging_maintenance \
+        run workout_sets_current "${maintenance_args[@]}"
+    uv run --env-file .env python -m hobbyjogging_maintenance \
+        run workout_classification_queue "${maintenance_args[@]}"
+fi
 
 if (( generate_dashboard )); then
     if [[ -n "$database" ]]; then

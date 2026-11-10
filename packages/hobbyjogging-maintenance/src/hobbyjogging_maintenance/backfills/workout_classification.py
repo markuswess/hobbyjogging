@@ -11,20 +11,19 @@ from __future__ import annotations
 
 from collections import Counter
 
-from hobbyjogging_core.sports import RUN_SPORTS
-
 from ..context import TaskContext
 from ..registry import task
 from ..workouts import (
+    EASY_MAX_HR,
     classifier_proposal,
     conflict_from,
     disagrees,
+    is_easy_default,
     scoped_activities,
     sheet_proposal,
 )
 
 SOURCE = "backfill"
-EASY_MAX_HR = 140
 
 _COUNT_ORDER = (
     "activities",
@@ -81,7 +80,7 @@ def workout_classification(context: TaskContext) -> None:
         if not classifier_has and not sheet_has:
             # A sheet run with no training code and a low average HR is an
             # easy run by default.
-            if _is_easy_default(activity, sheet):
+            if is_easy_default(activity, sheet):
                 context.count("easy_default")
                 methods, targets = {"continuous"}, {"base"}
             else:
@@ -156,15 +155,6 @@ def _merge_sheet_tags(
         sorted(existing | tags),
         source="sheet",
         source_record_id=source_record_id,
-    )
-
-
-def _is_easy_default(activity, sheet) -> bool:
-    return (
-        sheet is not None
-        and activity.type in RUN_SPORTS
-        and activity.avg_hr is not None
-        and activity.avg_hr < EASY_MAX_HR
     )
 
 

@@ -300,7 +300,9 @@ uv run --env-file .env hobbyjogging-maintenance run --all
 
 Scope flags are `--from`, `--to`, `--entity`, and `--limit`. `--force` re-runs
 an applied backfill; `--all` runs every pending backfill. `sync.sh`
-deliberately does not run maintenance tasks.
+runs the two idempotent classification recomputes
+(`workout_sets_current`, then `workout_classification_queue`) after a
+successful sync; `--no-classify` skips them. Backfills stay deliberate.
 
 ## Import pipeline
 

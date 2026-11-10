@@ -94,6 +94,14 @@ Updated 2026-11-10.
   browser; `sync.sh` regenerates the same site without opening one.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
+- **Recurring workout-set derivation.** `workout_sets_current` (a maintenance
+  `recompute`) derives methods/targets for activities that have none, using
+  the same classifier/sheet helpers as the one-time backfill. It fills gaps
+  only, so manual decisions and the backfill are never touched;
+  disagreements stay empty for `workout_classification_queue`. `sync.sh` runs
+  both after a successful sync (`--no-classify` skips them); a full-DB run
+  takes about half a second. The 2026-11-10 "Easy" run is now
+  `continuous`/`recovery`.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (4,140 activities, 2,802 with a Garmin VO2max;
   668 events with 2,808 planned zone rows). The historical spreadsheet import
@@ -102,26 +110,19 @@ Updated 2026-11-10.
 
 ## Next
 
-1. **Recurring workout-set derivation** — handed to the maintenance package;
-   the spec lives in `packages/hobbyjogging-maintenance/NEXT_UP.md`. The
-   classifier is a derive function: today its sets are only written by the
-   one-time `workout_classification_v1` backfill, so activities imported
-   afterwards (e.g. the 2026-11-10 "Easy" run) stay unclassified even though
-   the classifier has a proposal. The queue recompute only records
-   classifier/sheet disagreements.
-2. **Dashboard follow-ups** — handed to the reports session; the list lives
+1. **Dashboard follow-ups** — handed to the reports session; the list lives
    in `packages/hobbyjogging-reports/NEXT_UP.md`. Workout sets, race cards, and
    the review-queue `DataSource` API are done; the open piece is rendering the
    queue on the health page.
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-4. **Homelab cutover**: DB + importer + dashboard generator + static server,
+3. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-5. **Classifier into core** (hygiene): move the heuristic out of
+4. **Classifier into core** (hygiene): move the heuristic out of
    `hobbyjogging-reports` so `hobbyjogging-maintenance` stops depending on the
-   renderer. No behavior change. Not a blocker for item 1.
+   renderer. No behavior change.
 
 Triage is currently empty (0 open items).
 
