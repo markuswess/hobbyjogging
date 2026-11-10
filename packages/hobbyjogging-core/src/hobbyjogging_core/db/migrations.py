@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -167,6 +167,32 @@ CREATE INDEX idx_event_workout_targets_target
 ON event_workout_targets(target);
 """
 
+MIGRATION_10_SQL = """
+-- Bookkeeping for hobbyjogging-maintenance. ``data_migrations`` records
+-- one-time backfills that have been applied; ``maintenance_runs`` logs every
+-- run (including dry runs and repeatable recomputes).
+CREATE TABLE data_migrations (
+    id TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    details_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE maintenance_runs (
+    id INTEGER PRIMARY KEY,
+    task TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('backfill', 'recompute')),
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at TEXT,
+    dry_run INTEGER NOT NULL DEFAULT 0 CHECK (dry_run IN (0, 1)),
+    status TEXT NOT NULL DEFAULT 'running'
+        CHECK (status IN ('running', 'ok', 'failed')),
+    details_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_maintenance_runs_task
+ON maintenance_runs(task, started_at);
+"""
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -177,6 +203,7 @@ MIGRATIONS: dict[int, str] = {
     7: MIGRATION_7_SQL,
     8: MIGRATION_8_SQL,
     9: MIGRATION_9_SQL,
+    10: MIGRATION_10_SQL,
 }
 
 

@@ -49,9 +49,9 @@ on.
   `zone_kind` from the dominant step target (`pace`/`hr`/`power`) or the
   sport's natural kind, and writes via `set_event_zone_times`. An event
   without a workout document clears its kind and rows. A zone-only change
-  counts as `updated`. `events backfill-zones [--dry-run]` repairs stored
-  events from their saved Intervals payloads without network access and is
-  idempotent.
+  counts as `updated`. The `event_zones_v1` backfill in
+  `hobbyjogging-maintenance` repairs stored events from their saved Intervals
+  payloads without network access and is idempotent.
 - **Incremental `sync`.** Runs Garmin fetch, Intervals import, FIT archive
   import with `skip_known`, and the shared quality scan. `--no-*` flags skip
   sources, `--full` reimports all FIT paths, failures are reported per source

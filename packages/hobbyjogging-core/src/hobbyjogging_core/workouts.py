@@ -147,10 +147,10 @@ def classification_for_category(
     """Map the reports classifier's category to method/target sets."""
     if group == "quality":
         if kind == "intervals":
-            if detail in {"subt-short", "subt-medium", "subt-long"}:
-                return {"intervals"}, {"subthreshold"}
             if detail == "lt1":
                 return {"intervals"}, {"lt1"}
+            if detail and detail.startswith("subt"):
+                return {"intervals"}, {"subthreshold"}
             return {"intervals"}, {"other"}
         if kind == "longrun":
             return {"long_run"}, {"base"}

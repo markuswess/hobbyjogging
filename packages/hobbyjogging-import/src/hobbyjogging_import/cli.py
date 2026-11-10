@@ -12,7 +12,6 @@ from .config import (
     default_garmin_dir,
     resolve_fit_path,
 )
-from .event_zones import ZoneBackfillSummary, backfill_event_zones
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .garmin import GarminFetcher, GarminFetchSummary
@@ -313,9 +312,6 @@ def _print_garmin_summary(
 
 
 def run_events(args, parser: argparse.ArgumentParser) -> int:
-    if args.events_action == "backfill-zones":
-        return _run_events_backfill(args, parser)
-
     if args.events_action != "sync":
         parser.error(f"unknown events command: {args.events_action}")
 
@@ -353,44 +349,6 @@ def run_events(args, parser: argparse.ArgumentParser) -> int:
         dry_run=args.dry_run,
     )
     return 0
-
-
-def _run_events_backfill(args, parser: argparse.ArgumentParser) -> int:
-    try:
-        connection = open_database(args.database)
-    except Exception as exc:
-        raise SystemExit(f"could not open database: {exc}") from exc
-
-    try:
-        summary = backfill_event_zones(connection, dry_run=args.dry_run)
-    finally:
-        connection.close()
-
-    _print_zone_backfill_summary(
-        summary,
-        args.database or default_database_path(),
-    )
-    return 0
-
-
-def _print_zone_backfill_summary(
-    summary: ZoneBackfillSummary,
-    database_path,
-) -> None:
-    label = (
-        "Zone backfill dry run"
-        if summary.dry_run
-        else "Zone backfill complete"
-    )
-    print(
-        f"{label}: "
-        f"{summary.events} events, "
-        f"{summary.updated} updated "
-        f"({summary.cleared} cleared), "
-        f"{summary.unchanged} unchanged, "
-        f"{summary.skipped} skipped"
-    )
-    print(f"Database: {database_path}")
 
 
 def run_sync_command(args, parser: argparse.ArgumentParser) -> int:

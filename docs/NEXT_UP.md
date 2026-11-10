@@ -30,8 +30,8 @@ Updated 2026-11-08.
   the end.
 - **Event zone times.** `workout_doc.zoneTimes` is stored in
   `event_zone_times` with an inferred `zone_kind` (pace/HR/power); the event
-  sync replaces/clears them and `events backfill-zones` populated the existing
-  payloads (2,808 rows).
+  sync replaces/clears them and the `event_zones_v1` backfill populated the
+  existing payloads (2,808 rows).
 - **Time fields.** Intervals `moving_time` → `moving_s`; FIT
   `total_moving_time` is parsed when present; event duration comes from
   `moving_time` and `training_load` from `icu_training_load`. The
@@ -60,6 +60,13 @@ Updated 2026-11-08.
   classifier + sheet backfill classified 2,686 activities (including 107
   easy defaults for sheet runs with no code and HR < 140) and tagged 56;
   216 conflicts were left unclassified for review.
+- **Schema evolution workflow (schema v10).** Two tracks: immutable SQL
+  migrations in core, and registered data tasks in the new
+  `hobbyjogging-maintenance` package (`backfill` = applied once and recorded;
+  `recompute` = re-runnable re-derivation). The runner uses one transaction per
+  run, a dry run executes for real and rolls back, and `maintenance_runs`
+  records every run. `event_zones_v1` and `workout_classification_v1` are the
+  first registered tasks; the old ad-hoc scripts are gone.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
   (overview with 7/42/182-day hard/total EWMAs and running volume by intensity
   group, recovery and health, activities list, activity detail, data health,
@@ -77,9 +84,11 @@ Updated 2026-11-08.
 
 ## Next
 
-1. **Review the 216 workout-classification conflicts.** The dry-run list is
-   saved at `data/workout-classification-conflicts.txt`; the affected
-   activities were left unclassified.
+1. **Review the 216 workout-classification conflicts.** The list is saved at
+   `data/workout-classification-conflicts.txt`; the affected activities were
+   left unclassified. Regenerate it with
+   `hobbyjogging-maintenance run workout_classification_v1 --force --dry-run
+   --output data/workout-classification-conflicts.txt`.
 2. **Dashboard follow-ups.** The first static dashboard is done (overview,
    recovery and health, activity list and detail, canonical data-health
    banner) and `sync.sh` regenerates it after a successful sync. Next: expose

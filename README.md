@@ -8,6 +8,8 @@ Training data, imports, and reports.
   sport vocabulary, and shared helpers.
 - `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
   importers, plus the review queue and triage. Runalyze enrichment is planned.
+- `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
+  backfills/recomputes.
 - `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
   activities table.
 

@@ -70,7 +70,7 @@ never hold a copy.
 
 ## Packages
 
-The repo is a uv workspace with three packages.
+The repo is a uv workspace with four packages.
 
 ### `hobbyjogging-core`
 
@@ -81,7 +81,7 @@ Canonical model, schema, and read/write access.
 - `sports.py` — canonical sport names, labels, groups, and the shared alias
   table for FIT/Intervals/manual entry.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 5).
+  (`SCHEMA_VERSION`, currently 10).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
@@ -144,9 +144,25 @@ Analysis, views, and rendering.
 The long-term dashboard is a new renderer in this package, not a new analytics
 implementation.
 
+### `hobbyjogging-maintenance`
+
+Schema evolution and registered data work. This is the only package allowed to
+depend on all three others; it is the composition root for one-off data
+changes.
+
+- `registry.py` — task ids, kinds (`backfill` / `recompute`), registration.
+- `context.py` — `Scope` and `TaskContext` (connection, lazy repository and
+  writer, counts, notes, output file).
+- `runner.py` — one transaction per run, dry run = run then roll back,
+  bookkeeping in `maintenance_runs`.
+- `store.py` — reads and writes for `data_migrations` and `maintenance_runs`.
+- `backfills/event_zones.py` — `event_zones_v1`.
+- `backfills/workout_classification.py` — `workout_classification_v1`.
+- `cli.py` — `list`, `status`, `run`.
+
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 9.
+SQLite, forward-only migrations. Schema version 10.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
@@ -178,6 +194,8 @@ SQLite, forward-only migrations. Schema version 9.
 - `event_zone_times` — the planned zone distribution for an event
   (`zone_label`, `zone_index`, `seconds`), e.g. `Z1`–`Z7` or `SS`.
 - `import_runs` — one row per import with parameters and outcome.
+- `data_migrations` (v10) — which registered backfills have been applied.
+- `maintenance_runs` (v10) — one row per maintenance task run, dry or real.
 - `review_items` — the review queue: category, severity, detail, context,
   fingerprint, status, resolution note, activity/source links.
 
@@ -225,6 +243,55 @@ canonical names, and reports/quality rules share the same sport groups. The
 writer treats placeholder sports (`generic`, `other`, `unknown`) as unknown, not
 as competing claims: a specific sport fills a placeholder and never conflicts
 with it. Two different specific sports still become a `field_conflict`.
+
+## Schema evolution and data maintenance
+
+Two tracks, one rule: never edit something that has already run.
+
+**Schema migrations** are ordered, immutable SQL in
+`hobbyjogging_core.db.migrations`, tracked by `PRAGMA user_version` (currently
+10). A schema change adds a new version; `open_database()` applies pending
+ones, so there is no separate migrate step.
+
+**Data tasks** live in `hobbyjogging-maintenance` and are registered by id:
+
+- `backfill` — a one-time transformation after a schema or logic change. It is
+  recorded in `data_migrations` and skipped once applied. Changing the
+  transformation means a new id (`..._v2`), never an edit.
+- `recompute` — an idempotent re-derivation of stored values from their
+  authoritative inputs (raw payloads or other canonical fields). It runs every
+  time and is only logged.
+
+`maintenance_runs` records every run, dry or not, with its counts and outcome.
+A dry run executes the real code path and rolls the transaction back, so it
+cannot drift from a real run. `--output PATH` still writes the task's findings
+(the conflict review list), because that is exactly what a dry run is for.
+Tasks write through `TrainingWriter`, so manual values and ownership rules
+keep holding; a task never commits on its own.
+
+Workflow for a schema change:
+
+1. Design the target shape.
+2. **Expand** — add tables/columns in the next migration; never drop or rename
+   yet.
+3. **Backfill** — add a registered task for existing rows, dry-run it, then
+   run it on the real DB.
+4. **Switch** reads and writes (model, repository, writer, importers, reports).
+5. **Verify** — tests plus `hobbyjogging-maintenance status`.
+6. **Contract** later — a separate migration removes what nothing reads.
+
+```bash
+uv run --env-file .env hobbyjogging-maintenance list
+uv run --env-file .env hobbyjogging-maintenance status
+uv run --env-file .env hobbyjogging-maintenance run workout_classification_v1 \
+  --dry-run --output data/workout-classification-conflicts.txt
+uv run --env-file .env hobbyjogging-maintenance run workout_classification_v1
+uv run --env-file .env hobbyjogging-maintenance run --all
+```
+
+Scope flags are `--from`, `--to`, `--entity`, and `--limit`. `--force` re-runs
+an applied backfill; `--all` runs every pending backfill. `sync.sh`
+deliberately does not run maintenance tasks.
 
 ## Import pipeline
 
@@ -406,6 +473,9 @@ dashboard: the view models make it cheap to add later.
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
 - Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
   implemented; schema v9 adds set-based workout methods/targets.
+- Schema evolution is two-track: immutable SQL migrations plus registered
+  backfills/recomputes in `hobbyjogging-maintenance` (schema v10 adds the
+  bookkeeping tables).
 - Reports: Markdown reports, charts, the activities table, the year/month
   comparison, and the static dashboard; report code is split per report.
 - The review queue still contains warnings the user chose to leave. Reports

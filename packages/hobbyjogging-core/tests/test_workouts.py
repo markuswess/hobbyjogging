@@ -71,6 +71,10 @@ class WorkoutVocabularyTests(unittest.TestCase):
             classification_for_category("quality", "intervals", "subt-long"),
         )
         self.assertEqual(
+            ({"intervals"}, {"subthreshold"}),
+            classification_for_category("quality", "intervals", "subt"),
+        )
+        self.assertEqual(
             ({"intervals"}, {"lt1"}),
             classification_for_category("quality", "intervals", "lt1"),
         )

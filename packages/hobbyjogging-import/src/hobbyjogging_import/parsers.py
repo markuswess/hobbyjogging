@@ -101,17 +101,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="report changes without writing",
     )
 
-    events_backfill = events_sub.add_parser(
-        "backfill-zones",
-        help="rewrite planned-event zone times from stored Intervals payloads",
-    )
-    events_backfill.add_argument("--database", type=Path)
-    events_backfill.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="report changes without writing",
-    )
-
     fit = subparsers.add_parser(
         "fit",
         help="inspect or import FIT files",

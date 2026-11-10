@@ -18,6 +18,7 @@ EXPECTED_TABLES = {
     "activity_workout_methods",
     "activity_workout_targets",
     "activity_zone_times",
+    "data_migrations",
     "equipment",
     "equipment_source_links",
     "event_workout_methods",
@@ -25,6 +26,7 @@ EXPECTED_TABLES = {
     "event_zone_times",
     "events",
     "import_runs",
+    "maintenance_runs",
     "source_records",
     "wellness_days",
     "zone_configs",
@@ -245,6 +247,37 @@ class SchemaMigrationTests(unittest.TestCase):
             1,
             self.conn.execute(
                 "SELECT COUNT(*) FROM event_zone_times"
+            ).fetchone()[0],
+        )
+
+    def test_migrates_v9_database_to_v10(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in (2, 3, 4, 5, 6, 7, 8, 9):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 9")
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        self.conn.execute(
+            "INSERT INTO data_migrations (id, details_json) "
+            "VALUES ('workout_classification_v1', '{}')"
+        )
+        self.conn.execute(
+            "INSERT INTO maintenance_runs (task, kind, status) "
+            "VALUES ('workout_classification_v1', 'backfill', 'ok')"
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute("SELECT COUNT(*) FROM data_migrations").fetchone()[0],
+        )
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM maintenance_runs"
             ).fetchone()[0],
         )
 

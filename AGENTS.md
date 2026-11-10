@@ -24,8 +24,23 @@ source importers, and source-independent reports.
   vocabulary, `TrainingWriter`, `TrainingRepository`.
 - `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
   importers, review queue and triage. Runalyze enrichment is planned.
+- `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
+  backfills/recomputes.
 - `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
   activities table over `DataSource` and the canonical model.
+
+## Schema and data changes
+
+- Schema changes are ordered, immutable SQL migrations in
+  `hobbyjogging_core/db/migrations.py`; bump `SCHEMA_VERSION`.
+- Changes to existing rows go through a registered task in
+  `hobbyjogging-maintenance`: `backfill` for a one-time transformation
+  (recorded as applied), `recompute` for re-deriving stored values (runs every
+  time). Never add another ad-hoc script.
+- Never edit an applied migration or task; add a new version instead.
+- Dry-run first (`--dry-run`), then apply; back up the real DB first.
+- Tasks write through `TrainingWriter` and must not commit; the runner owns
+  the transaction and rolls it back for a dry run.
 
 ## Tests
 
@@ -36,7 +51,7 @@ installed):
 cd packages/<pkg>/tests && uv run python -m unittest discover -q
 ```
 
-Cross-package changes must leave all three suites green.
+Cross-package changes must leave all four suites green.
 
 ## Data model rules
 

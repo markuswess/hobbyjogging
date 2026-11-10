@@ -338,15 +338,15 @@ The default window is today through today + `--plan-days` (182). The sync:
   only the zone distribution counts as `updated`.
 
 Stored payloads can repair zone data for the whole plan without touching the
-network:
+network. That is a registered backfill in `hobbyjogging-maintenance`:
 
 ```bash
-uv run --env-file .env hobbyjogging-import events backfill-zones --dry-run
-uv run --env-file .env hobbyjogging-import events backfill-zones
+uv run --env-file .env hobbyjogging-maintenance run event_zones_v1 --dry-run
+uv run --env-file .env hobbyjogging-maintenance run event_zones_v1
 ```
 
-The backfill reads the saved Intervals event payloads, skips soft-excluded
-events, writes only rows that differ, and is idempotent.
+It reads the saved Intervals event payloads, skips soft-excluded events,
+writes only rows that differ, and is idempotent.
 
 The regular `intervals` import runs the same reconciliation over its event
 range, so it cannot leave stale plans behind.
