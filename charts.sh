@@ -33,7 +33,7 @@ Examples:
   ./charts.sh subt --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
-direct CLI. The overview chart uses --chart-days (default 70) and
+direct CLI. The overview chart uses --chart-days (default 98) and
 --future-days (default 14), and writes overview.png by default; it also
 draws the Garmin VO2max standing value on a second axis. The volume,
 load, time, and recovery charts include planned workouts and accept

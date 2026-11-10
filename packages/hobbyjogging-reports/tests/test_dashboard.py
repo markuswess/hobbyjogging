@@ -162,7 +162,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("16.0", index)
             self.assertIn("15min", index)
             self.assertIn("5x5 subT", index)
-            self.assertIn("Running volume by pace zone", index)
+            self.assertIn("Daily running minutes", index)
             self.assertIn("Hard 7d", index)
             self.assertIn("Hard 42d", index)
             self.assertIn("Hard 182d", index)

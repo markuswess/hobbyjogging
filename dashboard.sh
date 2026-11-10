@@ -15,7 +15,7 @@ All options other than --no-open are passed to the dashboard command:
   --output DIR       write the site to DIR (default: $HOBBYJOGGING_DASHBOARD_DIR/dashboard)
   --days N           overview window in days (default 14)
   --activities N     number of recent activity pages (default 50)
-  --chart-days N     main chart history in days (default 70)
+  --chart-days N     main chart history in days (default 98)
   --future-days N    main chart planned horizon in days (default 14)
   --reports LIST     comma-separated Markdown reports to embed
                      (overview,daily,weekly,monthly,yearly,report,planned,

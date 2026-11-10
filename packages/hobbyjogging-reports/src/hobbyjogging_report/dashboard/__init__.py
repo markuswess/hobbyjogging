@@ -196,6 +196,15 @@ def build_dashboard(
         ),
         demote=1,
     )
+    daily_html = markdown_to_html(
+        build_report(
+            "daily",
+            source,
+            today=today,
+            include_review=include_review,
+        ),
+        demote=1,
+    )
     report_sections = [
         (
             name,
@@ -251,6 +260,7 @@ def build_dashboard(
             days=days,
             summary=summary,
             overview_html=overview_html,
+            daily_html=daily_html,
             last7=last7,
             events=events,
             planned=planned,

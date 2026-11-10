@@ -132,6 +132,7 @@ def overview_page(
     days: int,
     summary: WindowSummary,
     overview_html: str,
+    daily_html: str,
     last7: WindowSummary,
     events: list[Event],
     planned: PlannedSummary,
@@ -264,7 +265,8 @@ def overview_page(
 
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
-        + card("Running volume by pace zone", volume_html)
+        + card("Daily running minutes", volume_html)
+        + card("Daily report", f'<div class="report">{daily_html}</div>')
         + card(
             f"Training load — last {days} days",
             load_html,
