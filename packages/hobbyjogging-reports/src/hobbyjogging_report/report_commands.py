@@ -9,6 +9,7 @@ from .debug import debug
 from .overview import overview_report
 from .period_report import period_report, summary
 from .planned import planned_report
+from .recovery_report import recovery_report
 from .subt_report import subt_report
 from .sessions import session_report
 
@@ -111,6 +112,10 @@ def run_subt_report_command(parsed, source, include_review):
         source,
         include_review=include_review,
     )
+
+
+def run_recovery_report_command(parsed, source, include_review):
+    return recovery_report(source)
 
 
 def run_planned_command(parsed, source, include_review):

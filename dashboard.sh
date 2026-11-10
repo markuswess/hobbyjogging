@@ -18,8 +18,8 @@ All options other than --no-open are passed to the dashboard command:
   --chart-days N     main chart history in days (default 182)
   --future-days N    main chart planned horizon in days (default 14)
   --reports LIST     comma-separated Markdown reports to embed
-                     (overview,daily,weekly,monthly,yearly,report,planned,
-                     subt-report,compare-years,compare-months)
+                     (overview,recovery-report,daily,weekly,monthly,yearly,
+                     report,planned,subt-report,compare-years,compare-months)
   --source database|intervals
   --include-review
 

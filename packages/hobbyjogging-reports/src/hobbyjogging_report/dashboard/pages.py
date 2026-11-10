@@ -385,6 +385,7 @@ def recovery_page(
     health: DataHealth,
     include_review: bool,
     points: list[RecoveryPoint],
+    report_html: str,
     start: date,
     end: date,
 ) -> str:
@@ -432,7 +433,8 @@ def recovery_page(
     )
 
     body = (
-        stat_grid(stats)
+        card(None, f'<div class="report">{report_html}</div>')
+        + stat_grid(stats)
         + card("Recovery trends", chart_html)
         + card(
             "Data completeness",

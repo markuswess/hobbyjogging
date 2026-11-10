@@ -17,6 +17,7 @@ EXPECTED = {
     "report",
     "compare",
     "subt-report",
+    "recovery-report",
     "planned",
     "session",
     "classify",

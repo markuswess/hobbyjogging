@@ -11,10 +11,12 @@ from ..daily import daily
 from ..overview import overview_report
 from ..period_report import period_report, summary
 from ..planned import planned_report
+from ..recovery_report import recovery_report
 from ..subt_report import subt_report
 
 REPORT_NAMES = (
     "overview",
+    "recovery-report",
     "daily",
     "weekly",
     "monthly",
@@ -54,6 +56,8 @@ def build_report(
             include_review=include_review,
             today=today,
         )
+    if name == "recovery-report":
+        return recovery_report(source, today=today)
     if name in ("weekly", "monthly", "yearly"):
         return summary(
             name,

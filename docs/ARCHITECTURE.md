@@ -133,8 +133,9 @@ Analysis, views, and rendering.
 - `classify.py` — workout taxonomy for display. It prefers the stored
   classification and falls back to the heuristic for unclassified activities;
   the backfill calls it with `use_stored=False`.
-- `daily.py`, `period_report.py`, `subt_report.py`, `overview.py` — one
-  Markdown report per file; `report_commands.py` dispatches them.
+- `daily.py`, `period_report.py`, `subt_report.py`, `overview.py`,
+  `recovery_report.py` — one Markdown report per file; `report_commands.py`
+  dispatches them.
 - `sessions.py`, `recent.py`, `debug.py` — session detail, shared lookback
   search, and a dump of the stored raw payloads.
 - `activity_list.py` — the activities table (selection, columns, rendering).
@@ -438,7 +439,8 @@ The rule is **compute → render**:
    results (`model.py`), with no formatting and no I/O.
 3. Renderers turn those results into output:
    - Markdown reports for the terminal (`daily.py`, `overview.py`,
-     `period_report.py`, `subt_report.py`, `activity_list.py`, `mdpretty.py`);
+     `recovery_report.py`, `period_report.py`, `subt_report.py`,
+     `activity_list.py`, `mdpretty.py`);
    - plotly figures (`charts.py`): the CLI exports PNGs via kaleido and the
      dashboard embeds the same figures as HTML;
    - static HTML dashboard pages (`html.py`, `dashboard/`);

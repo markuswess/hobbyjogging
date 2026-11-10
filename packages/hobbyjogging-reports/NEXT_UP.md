@@ -24,6 +24,11 @@ comparison.
 - **Zone helpers.** `event_zone_seconds()`, `event_zone_time()`,
   `daily_planned_zone_time()`, and `weekly_planned_time_by_zone()` handle
   normalization, `SS`, empty zones, and weekly aggregation.
+- **Recovery report.** `reports.sh recovery-report` renders HRV, resting HR,
+  and sleep with simple 7/42/182-day calendar-day moving averages (missing
+  days skipped). The dashboard recovery page shows it first, then the stat
+  grid, chart, and completeness note. Also selectable with
+  `--reports recovery-report`.
 - **Dashboard data health is canonical-only.** The actual review-item queue
   needs a core `DataSource` addition; see the follow-up below.
 

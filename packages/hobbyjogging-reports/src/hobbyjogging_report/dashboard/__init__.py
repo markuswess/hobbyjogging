@@ -21,6 +21,7 @@ from ..html import markdown_to_html
 from ..model import AverageWindows
 from ..overview import overview_report
 from ..planned import planned_report
+from ..recovery_report import recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .health import collect_health
@@ -155,6 +156,10 @@ def build_dashboard(
         today,
         window_days=7,
     )
+    recovery_html = markdown_to_html(
+        recovery_report(source, today=today),
+        demote=1,
+    )
 
     overview_html = markdown_to_html(
         overview_report(
@@ -259,6 +264,7 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             points=recovery,
+            report_html=recovery_html,
             start=start,
             end=today,
         ),

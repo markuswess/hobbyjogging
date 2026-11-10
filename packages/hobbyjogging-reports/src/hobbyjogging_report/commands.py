@@ -43,6 +43,7 @@ from .report_commands import (
     run_debug_command,
     run_overview_command,
     run_planned_command,
+    run_recovery_report_command,
     run_report_command,
     run_session_command,
     run_subt_report_command,
@@ -173,6 +174,13 @@ COMMANDS = {
         ("reports.sh subt-report --days 90",),
         parse=partial(parse_report_args, default_days=90),
         run=run_subt_report_command,
+    ),
+    "recovery-report": Command(
+        "recovery-report",
+        "Recovery report with 7/42/182-day moving averages",
+        "recovery-report",
+        ("reports.sh recovery-report",),
+        run=run_recovery_report_command,
     ),
     "planned": Command(
         "planned",

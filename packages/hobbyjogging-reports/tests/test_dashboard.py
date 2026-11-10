@@ -203,6 +203,9 @@ class DashboardBuildTests(unittest.TestCase):
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
+            self.assertIn("Recovery Report — Moving Averages", recovery)
+            self.assertIn("7/42/182-day averages ending 2026-11-09", recovery)
+            self.assertIn("7-day avg", recovery)
             self.assertIn("HRV", recovery)
             self.assertIn("60 ms", recovery)
             self.assertIn("7-day avg 58 ms", recovery)
