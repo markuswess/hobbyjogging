@@ -68,7 +68,7 @@ SUBT_MIN_REP_S = 60           # ignore strides when measuring subT reps
 RACE_WORDS = ("race", "wettkampf")
 WARMUP_WORDS = ("warm up", "warm-up", "warmup")
 COOLDOWN_WORDS = ("cool down", "cool-down", "cooldown")
-SUBT_WORDS = ("subt",)
+SUBT_WORDS = ("subt","subthreshold","sub-threshold")
 TEMPO_WORDS = ("tempo", "threshold", "schwelle")
 
 
