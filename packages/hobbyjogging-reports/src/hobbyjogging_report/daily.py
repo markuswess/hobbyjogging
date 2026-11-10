@@ -94,12 +94,17 @@ def daily(
     source: DataSource | None = None,
     *,
     include_review: bool = False,
+    today: date | None = None,
 ):
     if source is None:
         with create_source(DEFAULT_SOURCE) as source:
-            return daily(source, include_review=include_review)
+            return daily(
+                source,
+                include_review=include_review,
+                today=today,
+            )
 
-    today = date.today()
+    today = today or date.today()
     yesterday = today - timedelta(days=1)
     tomorrow = today + timedelta(days=1)
 

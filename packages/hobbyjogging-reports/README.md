@@ -27,6 +27,9 @@ reports plus a static HTML dashboard:
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
+- **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
+  km, load, and Z3+4, plus the planned weekly average for the next 14
+  days.
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days.
 - **monthly** — Same summary over the last 30 days.
@@ -91,6 +94,7 @@ The Intervals.icu variables are only needed for `--source intervals` and
 Run:
 
     uv run --env-file .env python -m hobbyjogging_report daily
+    uv run --env-file .env python -m hobbyjogging_report overview
     uv run --env-file .env python -m hobbyjogging_report weekly
     uv run --env-file .env python -m hobbyjogging_report monthly
     uv run --env-file .env python -m hobbyjogging_report yearly
@@ -126,6 +130,7 @@ and tables for the terminal:
 
     ./reports.sh                 # daily
     ./reports.sh daily
+    ./reports.sh overview
     ./reports.sh monthly
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
@@ -141,6 +146,7 @@ The static dashboard has its own wrapper:
 
     ./dashboard.sh
     ./dashboard.sh --days 30 --activities 100
+    ./dashboard.sh --reports overview,daily,planned
     ./dashboard.sh --no-open
 
 `dashboard.sh` also opens the generated `index.html` in the browser. Use
@@ -492,6 +498,7 @@ separately. The scale is reversed compared with some watches:
     ./dashboard.sh
     ./dashboard.sh --days 30 --activities 100
     ./dashboard.sh --chart-days 90 --future-days 21
+    ./dashboard.sh --reports overview,daily,planned
     ./dashboard.sh --output /tmp/dashboard
 
 Pages:
@@ -500,15 +507,24 @@ Pages:
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
   the next 14 days; the main running-volume chart, a training-load chart,
   plan vs actual, the next 7 planned days, and quality sessions. The overview
-  cards use the last 14 days by default; the EWMA values always end today.
+  section is the rendered `overview` Markdown report; the other cards use the
+  last 14 days by default.
 - `activities.html` — the recent activity table (default 50), linked to
   per-activity pages.
 - `activity/<id>.html` — one activity's metrics, zone times, description,
   interval table, and subT/LT1 work reps.
 - `recovery.html` — HRV, resting HR, and sleep as interactive plotly panels
   with 7-day averages and a data-completeness note.
+- `reports.html` — the Markdown reports selected with `--reports`, rendered
+  as HTML with the same content as `reports.sh`.
 - `health.html` (Data Health) — review-hidden activities and missing-data
   counts.
+
+`--reports` accepts a comma-separated list of Markdown reports:
+`overview`, `daily`, `weekly`, `monthly`, `yearly`, `report`, `planned`,
+`subt-report`, `compare-years`, and `compare-months`. The same report code
+used by `reports.sh` is converted to HTML and embedded, so changing a report
+also changes the dashboard. Select no reports to leave the Reports page empty.
 
 The main chart shows daily running **minutes** on a **0–90 minute** axis,
 stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and

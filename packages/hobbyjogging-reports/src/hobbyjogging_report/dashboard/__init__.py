@@ -17,7 +17,9 @@ from ..analysis import (
     recovery_trends,
 )
 from ..classify import classify
+from ..html import markdown_to_html
 from ..model import AverageWindows
+from ..overview import overview_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .health import collect_health
@@ -28,13 +30,13 @@ from .pages import (
     health_page,
     overview_page,
     recovery_page,
+    reports_page,
 )
+from .reports import REPORT_NAMES, build_report
 from .views import (
     daily_zone_groups,
     in_window,
-    overview_ewma,
     planned_bars_without_actual,
-    planned_overview,
     planned_summary,
     summarize_window,
     zone_group_series,
@@ -69,6 +71,7 @@ def build_dashboard(
     activity_limit: int = 50,
     chart_days: int = 70,
     future_days: int = 14,
+    reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
 ) -> Path:
@@ -81,6 +84,15 @@ def build_dashboard(
         raise ValueError("chart days must be positive")
     if future_days < 0:
         raise ValueError("future days must be zero or greater")
+
+    unknown_reports = [
+        name for name in reports if name not in REPORT_NAMES
+    ]
+    if unknown_reports:
+        raise ValueError(
+            f"unknown report(s): {', '.join(unknown_reports)} "
+            f"(available: {', '.join(REPORT_NAMES)})"
+        )
 
     today = today or date.today()
     start = today - timedelta(days=days - 1)
@@ -117,12 +129,6 @@ def build_dashboard(
         ),
         include_review=include_review,
     )
-    ewma_rows = overview_ewma(
-        chart_activities,
-        today - timedelta(days=warmup_days),
-        today,
-        windows=windows,
-    )
     chart_events = [
         event
         for event in source.events(today, chart_end)
@@ -137,11 +143,6 @@ def build_dashboard(
         chart_events,
         volume_bars,
         today,
-        chart_end,
-    )
-    planned_next = planned_overview(
-        chart_events,
-        today + timedelta(days=1),
         chart_end,
     )
     volume_series = zone_group_series(
@@ -166,6 +167,32 @@ def build_dashboard(
         today,
         window_days=7,
     )
+
+    overview_html = markdown_to_html(
+        overview_report(
+            source,
+            future_days=future_days,
+            today=today,
+            include_review=include_review,
+        ),
+        demote=1,
+    )
+    report_sections = [
+        (
+            name,
+            markdown_to_html(
+                build_report(
+                    name,
+                    source,
+                    today=today,
+                    future_days=future_days,
+                    include_review=include_review,
+                ),
+                demote=1,
+            ),
+        )
+        for name in reports
+    ]
 
     health = collect_health(
         raw_activities,
@@ -204,11 +231,10 @@ def build_dashboard(
             end=today,
             days=days,
             summary=summary,
-            ewma_rows=ewma_rows,
+            overview_html=overview_html,
             last7=last7,
             events=events,
             planned=planned,
-            planned_overview=planned_next,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,
@@ -231,6 +257,12 @@ def build_dashboard(
             points=recovery,
             start=start,
             end=today,
+        ),
+        "reports.html": reports_page(
+            generated_at=generated_at,
+            health=health,
+            include_review=include_review,
+            sections=report_sections,
         ),
         "health.html": health_page(
             generated_at=generated_at,

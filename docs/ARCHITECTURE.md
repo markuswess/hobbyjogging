@@ -130,8 +130,8 @@ Analysis, views, and rendering.
   pace/HR trends, recovery.
 - `model.py` — typed view models and analysis result types.
 - `classify.py` — workout taxonomy.
-- `daily.py`, `period_report.py`, `subt_report.py` — one Markdown report per
-  file; `report_commands.py` dispatches them.
+- `daily.py`, `period_report.py`, `subt_report.py`, `overview.py` — one
+  Markdown report per file; `report_commands.py` dispatches them.
 - `sessions.py`, `recent.py`, `debug.py` — session detail, shared lookback
   search, and raw payload dump.
 - `activity_list.py` — the activities table (selection, columns, rendering).
@@ -353,8 +353,8 @@ The rule is **compute → render**:
 2. `analysis/` / `series.py` compute derived metrics and return typed
    results (`model.py`), with no formatting and no I/O.
 3. Renderers turn those results into output:
-   - Markdown reports for the terminal (`daily.py`, `period_report.py`,
-     `subt_report.py`, `activity_list.py`, `mdpretty.py`);
+   - Markdown reports for the terminal (`daily.py`, `overview.py`,
+     `period_report.py`, `subt_report.py`, `activity_list.py`, `mdpretty.py`);
    - matplotlib figures (`charts.py`, saved as files);
    - static HTML dashboard pages (`html.py`, `dashboard/`);
    - JSON for LLM bundles or future clients (planned).
@@ -372,7 +372,8 @@ Static-first, generated on the homelab:
 - Views: weekly overview (7/42/182-day hard/total EWMA weekly equivalents,
   running volume by intensity group, load, plan vs actual, quality sessions),
   recovery and health (HRV, resting HR, sleep with 7-day averages), activity
-  list, activity detail, data-health summary.
+  list, activity detail, data-health summary, and selected Markdown reports
+  converted to HTML.
 - Every page carries a generation timestamp and a data-health banner (open
   review items, missing data).
 - Generation writes to a temporary directory and atomically swaps, so a

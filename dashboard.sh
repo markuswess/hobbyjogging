@@ -17,12 +17,16 @@ All options other than --no-open are passed to the dashboard command:
   --activities N     number of recent activity pages (default 50)
   --chart-days N     main chart history in days (default 70)
   --future-days N    main chart planned horizon in days (default 14)
+  --reports LIST     comma-separated Markdown reports to embed
+                     (overview,daily,weekly,monthly,yearly,report,planned,
+                     subt-report,compare-years,compare-months)
   --source database|intervals
   --include-review
 
 Examples:
   ./dashboard.sh
   ./dashboard.sh --days 30 --activities 100
+  ./dashboard.sh --reports overview,daily,planned
   ./dashboard.sh --no-open
 
 Environment:

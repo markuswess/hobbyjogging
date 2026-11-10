@@ -6,6 +6,7 @@ from .compare import compare_report
 from .daily import daily
 from .dashboard import build_dashboard
 from .debug import debug
+from .overview import overview_report
 from .period_report import period_report, summary
 from .planned import planned_report
 from .subt_report import subt_report
@@ -14,6 +15,16 @@ from .sessions import session_report
 
 def run_daily_command(parsed, source, include_review):
     return daily(source, include_review=include_review)
+
+
+def run_overview_command(parsed, source, include_review):
+    future_days, today = parsed
+    return overview_report(
+        source,
+        future_days=future_days,
+        today=today,
+        include_review=include_review,
+    )
 
 
 def summary_handler(period):
@@ -75,6 +86,7 @@ def run_dashboard_command(parsed, source, include_review):
         activity_limit,
         chart_days,
         future_days,
+        reports,
     ) = parsed
     path = build_dashboard(
         source,
@@ -83,6 +95,7 @@ def run_dashboard_command(parsed, source, include_review):
         activity_limit=activity_limit,
         chart_days=chart_days,
         future_days=future_days,
+        reports=reports,
         include_review=include_review,
     )
     print(path)

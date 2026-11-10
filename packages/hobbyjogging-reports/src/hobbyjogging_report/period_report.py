@@ -204,9 +204,10 @@ def summary(
     source: DataSource | None = None,
     *,
     include_review: bool = False,
+    today: date | None = None,
 ):
     """Render one of the fixed weekly, monthly or yearly reports."""
-    today = date.today()
+    today = today or date.today()
     end = today - timedelta(days=1)
 
     if period == "weekly":

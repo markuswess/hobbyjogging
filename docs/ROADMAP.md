@@ -36,7 +36,8 @@ Static-first, generated on the homelab and served read-only:
 
 - view models over the same analysis layer the Markdown reports use;
 - weekly overview (load, volume/time, zones, plan vs actual, data health),
-  recovery and health, activity list, and activity detail;
+  recovery and health, activity list, activity detail, selected Markdown
+  reports;
 - self-contained HTML with bundled plotly charts, generation timestamp, and
   atomic swap;
 - Markdown reports remain the terminal view; no SPA or phone interactivity.

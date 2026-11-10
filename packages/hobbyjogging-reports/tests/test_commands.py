@@ -8,6 +8,7 @@ from hobbyjogging_report.commands import COMMANDS, command_help, usage
 EXPECTED = {
     "activities",
     "daily",
+    "overview",
     "weekly",
     "monthly",
     "yearly",

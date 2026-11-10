@@ -46,7 +46,7 @@ Updated 2026-11-08.
   minute-precision start matching, shoe links, tags, and the normal
   owner/conflict review rules. Equipment upsert/link methods are in the
   writer.
-- **Reports.** Markdown reports (daily/weekly/monthly/yearly, period,
+- **Reports.** Markdown reports (daily/overview/weekly/monthly/yearly, period,
   year/month comparison, subT, session, activities table), charts, and the
   terminal renderer; report code is split per report.
 - **Reports: pace zones.** The time chart stacks actual and planned pace
@@ -62,10 +62,10 @@ Updated 2026-11-08.
   216 conflicts were left unclassified for review.
 - **Static dashboard.** `dashboard.sh` writes a self-contained static site
   (overview with 7/42/182-day hard/total EWMAs and running volume by intensity
-  group, recovery and health, activities list, activity detail, data health)
-  with embedded plotly charts, bundled `plotly.min.js`, and atomic directory
-  swaps. It opens the browser; `sync.sh` regenerates the same site without
-  opening one.
+  group, recovery and health, activities list, activity detail, data health,
+  and selected Markdown reports converted to HTML) with embedded plotly
+  charts, bundled `plotly.min.js`, and atomic directory swaps. It opens the
+  browser; `sync.sh` regenerates the same site without opening one.
 - **Reports: planned workouts.** The `planned` report starts tomorrow and ends
   with weekly-average total time and Z3+4 time per 7 days.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run

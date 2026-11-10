@@ -12,6 +12,7 @@ from hobbyjogging_report.cli import (
     parse_compare_args,
     parse_dashboard_args,
     parse_load_args,
+    parse_overview_args,
     parse_planned_args,
     parse_recovery_args,
     parse_report_args,
@@ -531,13 +532,13 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 70, 14),
+            (None, 14, 50, 70, 14, ()),
             parse_dashboard_args([]),
         )
 
     def test_custom_output_and_limits(self):
         self.assertEqual(
-            ("/tmp/site", 30, 100, 90, 21),
+            ("/tmp/site", 30, 100, 90, 21, ("overview", "daily")),
             parse_dashboard_args(
                 [
                     "--output", "/tmp/site",
@@ -545,6 +546,7 @@ class DashboardArgsTests(unittest.TestCase):
                     "--activities", "100",
                     "--chart-days", "90",
                     "--future-days", "21",
+                    "--reports", "overview,daily",
                 ]
             ),
         )
@@ -564,6 +566,35 @@ class DashboardArgsTests(unittest.TestCase):
     def test_rejects_negative_future_days(self):
         with self.assertRaises(ValueError):
             parse_dashboard_args(["--future-days", "-1"])
+
+    def test_rejects_unknown_reports(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--reports", "overview,nope"])
+
+
+class OverviewArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        self.assertEqual(
+            (14, TODAY),
+            parse_overview_args([], today=TODAY),
+        )
+
+    def test_custom_future_days(self):
+        self.assertEqual(
+            (21, TODAY),
+            parse_overview_args(
+                ["--future-days", "21"],
+                today=TODAY,
+            ),
+        )
+
+    def test_rejects_negative_future_days(self):
+        with self.assertRaises(ValueError):
+            parse_overview_args(
+                ["--future-days", "-1"],
+                today=TODAY,
+            )
 
 
 class SourceArgTests(unittest.TestCase):

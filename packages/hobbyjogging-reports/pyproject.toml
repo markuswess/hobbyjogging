@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "hobbyjogging-core",
+    "markdown>=3.7",
     "matplotlib>=3.10",
     "plotly>=6.0",
     "requests>=2.34.2",

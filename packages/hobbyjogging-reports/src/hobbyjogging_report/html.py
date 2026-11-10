@@ -4,10 +4,36 @@ from __future__ import annotations
 
 from html import escape
 
+import markdown
+
 
 def esc(value) -> str:
     """Escape text for use in HTML text or attribute context."""
     return escape(str(value), quote=True)
+
+
+def markdown_to_html(text: str, *, demote: int = 0) -> str:
+    """Render a Markdown report fragment for embedding in a page.
+
+    ``demote`` shifts headings down so report titles fit under the page's own
+    heading. Fenced code and tables use the same extensions as the reports.
+    """
+    rendered = markdown.markdown(
+        text,
+        extensions=["tables", "fenced_code", "sane_lists"],
+    )
+
+    if demote:
+        for level in range(6 - demote, 0, -1):
+            rendered = rendered.replace(
+                f"<h{level}>",
+                f"<h{level + demote}>",
+            ).replace(
+                f"</h{level}>",
+                f"</h{level + demote}>",
+            )
+
+    return rendered
 
 
 def link(href: str, text: str) -> str:
@@ -170,6 +196,32 @@ pre.description {
   padding: 12px;
   overflow-x: auto;
 }
+.report h1, .report h2, .report h3, .report h4 {
+  margin: 16px 0 8px;
+  line-height: 1.25;
+}
+.report h2 { font-size: 1.3rem; }
+.report h3 { font-size: 1.1rem; }
+.report h4 { font-size: 1rem; }
+.report p { margin: 8px 0; }
+.report ul, .report ol { margin: 8px 0 8px 22px; }
+.report blockquote {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 3px solid #cbd2d9;
+  background: #f8f9fa;
+  color: #616e7c;
+}
+.report pre {
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  border: 1px solid #e4e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.report code { font-size: 0.9em; }
+.report table { margin: 10px 0; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
 footer {
@@ -185,6 +237,7 @@ NAV = (
     ("overview", "index.html", "Overview"),
     ("activities", "activities.html", "Activities"),
     ("recovery", "recovery.html", "Recovery and Health"),
+    ("reports", "reports.html", "Reports"),
     ("health", "health.html", "Data Health"),
 )
 

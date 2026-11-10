@@ -205,14 +205,15 @@ def parse_compare_args(
 
 def parse_dashboard_args(
     argv: list[str],
-) -> tuple[str | None, int, int, int, int]:
-    """Parse dashboard output, overview window, and chart ranges."""
+) -> tuple[str | None, int, int, int, int, tuple[str, ...]]:
+    """Parse dashboard output, overview window, chart ranges, and reports."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--activities", type=int, default=50)
     parser.add_argument("--chart-days", type=int, default=70)
     parser.add_argument("--future-days", type=int, default=14)
+    parser.add_argument("--reports")
     args = parser.parse_args(argv)
 
     if args.days <= 0:
@@ -224,13 +225,44 @@ def parse_dashboard_args(
     if args.future_days < 0:
         raise ValueError("--future-days must be zero or greater")
 
+    reports = tuple(
+        part.strip()
+        for part in (args.reports or "").split(",")
+        if part.strip()
+    )
+    from .dashboard.reports import REPORT_NAMES
+
+    unknown = [name for name in reports if name not in REPORT_NAMES]
+
+    if unknown:
+        raise ValueError(
+            f"unknown report(s): {', '.join(unknown)} "
+            f"(available: {', '.join(REPORT_NAMES)})"
+        )
+
     return (
         args.output,
         args.days,
         args.activities,
         args.chart_days,
         args.future_days,
+        reports,
     )
+
+
+def parse_overview_args(
+    argv: list[str],
+    today: date | None = None,
+) -> tuple[int, date]:
+    """Parse the optional planned horizon for the overview report."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--future-days", type=int, default=14)
+    args = parser.parse_args(argv)
+
+    if args.future_days < 0:
+        raise ValueError("--future-days must be zero or greater")
+
+    return args.future_days, today or date.today()
 
 
 def parse_chart_args(

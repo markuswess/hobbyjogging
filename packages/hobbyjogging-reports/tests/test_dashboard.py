@@ -8,12 +8,11 @@ from unittest.mock import patch
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
 from hobbyjogging_report.dashboard.views import (
-    overview_ewma,
     planned_bars_without_actual,
-    planned_overview,
     zone_group_series,
 )
 from hobbyjogging_report.model import AverageWindows
+from hobbyjogging_report.overview import overview_ewma, planned_overview
 from support import FakeSource, activity_factory, make_interval
 
 TODAY = date(2026, 11, 9)
@@ -139,6 +138,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertTrue((target / "activities.html").exists())
             self.assertTrue((target / "recovery.html").exists())
             self.assertTrue((target / "health.html").exists())
+            self.assertTrue((target / "reports.html").exists())
             self.assertTrue((target / "activity" / "run1.html").exists())
             self.assertTrue((target / ".hobbyjogging-dashboard").exists())
             self.assertGreater(
@@ -180,6 +180,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("activities with open review items are hidden", index)
             self.assertIn("Recovery and Health", index)
             self.assertIn(">Data Health</a>", index)
+            self.assertIn(">Reports</a>", index)
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
@@ -206,6 +207,39 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Flagged", health)
             self.assertIn("hidden", health)
             self.assertIn("Missing data", health)
+
+            reports = (target / "reports.html").read_text()
+            self.assertIn(
+                "No Markdown reports selected",
+                reports,
+            )
+
+    def test_selected_markdown_reports_are_rendered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                _source(),
+                target,
+                today=TODAY,
+                reports=("overview", "planned"),
+            )
+
+            reports = (target / "reports.html").read_text()
+            self.assertIn("Training Overview — EWMA", reports)
+            self.assertIn("Planned Workouts", reports)
+            self.assertIn("5x5 subT", reports)
+            self.assertIn("<table>", reports)
+
+    def test_unknown_markdown_report_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                build_dashboard(
+                    _source(),
+                    Path(tmp) / "site",
+                    today=TODAY,
+                    reports=("nope",),
+                )
 
     def test_include_review_links_flagged_activities(self):
         with tempfile.TemporaryDirectory() as tmp:
