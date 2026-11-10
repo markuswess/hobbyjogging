@@ -123,6 +123,11 @@ Updated 2026-11-10.
 4. **Classifier into core** (hygiene): move the heuristic out of
    `hobbyjogging-reports` so `hobbyjogging-maintenance` stops depending on the
    renderer. No behavior change.
+5. **Session report completeness** (low priority). `reports.sh session` shows
+   the core metrics but not laps (needs `DataSource.activity_laps`), tags,
+   VO2max, the day's planned workout and wellness, or the review status. Laps
+   are the only structural gap (core); the rest are renderer additions in the
+   reports package.
 
 Triage is currently empty (0 open items).
 

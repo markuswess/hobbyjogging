@@ -71,6 +71,10 @@ Dashboard follow-ups, handed over together with the triage work:
 4. **Review queue in the dashboard.** `DataSource.review_items` now
    exposes the queue (root/core change is done); render the open items,
    grouped by category, on the health page.
+5. **Session report completeness** (low priority, last). The `session` report
+   omits tags, VO2max, the day's planned workout and wellness, and review
+   status; laps need a core `DataSource.activity_laps` first. See the root
+   `docs/NEXT_UP.md` for the full gap list.
 
 ## Tests and docs
 
