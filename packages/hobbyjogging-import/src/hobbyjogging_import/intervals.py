@@ -637,6 +637,12 @@ class IntervalsImporter:
                 kind,
                 zones,
             )
+            self.writer.replace_event_workout_methods(
+                values["event_id"],
+                _event_methods(raw),
+                source=SOURCE,
+                source_record_id=source_record_id,
+            )
 
         for external_id, row in existing.items():
             if external_id in fetched_ids or row["excluded_at"]:
@@ -659,6 +665,15 @@ def _event_external_id(raw: dict) -> str:
     if value is not None:
         return str(value)
     return _checksum(_payload_json(raw))
+
+
+RACE_CATEGORIES = {"RACE_A", "RACE_B", "RACE_C"}
+
+
+def _event_methods(raw: dict) -> list[str]:
+    """Map Intervals' race categories onto the canonical ``race`` method."""
+    category = str(raw.get("category") or "").upper()
+    return ["race"] if category in RACE_CATEGORIES else []
 
 
 def _event_values(raw: dict) -> dict[str, object] | None:

@@ -858,6 +858,18 @@ class EventSyncTests(unittest.TestCase):
 
         self.assertEqual("power", self._events()[0].zone_kind)
 
+    def test_sync_maps_race_categories_to_the_race_method(self):
+        self.client.event_payloads[0]["category"] = "RACE_A"
+
+        self._sync()
+
+        self.assertEqual(["race"], self._events()[0].workout_methods)
+
+        self.client.event_payloads[0]["category"] = "WORKOUT"
+        self._sync()
+
+        self.assertEqual([], self._events()[0].workout_methods)
+
     def test_sync_falls_back_to_the_sport_without_targets(self):
         self.client.event_payloads[0]["type"] = "Run"
         self.client.event_payloads[0]["workout_doc"] = {
