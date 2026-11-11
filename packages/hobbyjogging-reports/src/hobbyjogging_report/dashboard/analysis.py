@@ -12,6 +12,7 @@ from ..analysis import (
     average_warmup_days,
     distance_averages,
     load_metrics,
+    pace_hr_points,
     rpe_metrics,
     time_averages,
     week_bounds,
@@ -19,7 +20,7 @@ from ..analysis import (
     weekly_time_by_zone,
     zone_time_averages,
 )
-from ..charts import plot_load, plot_time, plot_volume
+from ..charts import plot_load, plot_pace_hr, plot_time, plot_volume
 from ..model import AverageWindows
 from ..review import exclude_review
 
@@ -27,6 +28,9 @@ ZONE_COUNT = 4
 NO_VOLUME = '<p class="muted">No running volume in this window.</p>'
 NO_TIME = '<p class="muted">No running time in this window.</p>'
 NO_LOAD = '<p class="muted">No training load in this window.</p>'
+NO_PACE_HR = (
+    '<p class="muted">No runs with pace and heart rate in this window.</p>'
+)
 
 
 @dataclass(frozen=True)
@@ -36,6 +40,7 @@ class AnalysisSection:
     volume_html: str
     time_html: str
     load_html: str
+    pace_hr_html: str
 
 
 def build_analysis_section(
@@ -140,8 +145,16 @@ def build_analysis_section(
         else NO_LOAD
     )
 
+    points = pace_hr_points(display, start, end)
+    pace_hr_html = (
+        plot_pace_hr(points, "", as_html=True)
+        if points
+        else NO_PACE_HR
+    )
+
     return AnalysisSection(
         volume_html=volume_html,
         time_html=time_html,
         load_html=load_html,
+        pace_hr_html=pace_hr_html,
     )

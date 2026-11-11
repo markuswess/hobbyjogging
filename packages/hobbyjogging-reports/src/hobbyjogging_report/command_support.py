@@ -105,3 +105,16 @@ def subt_session_points(
             points.append(point)
 
     return points
+
+
+def activity_start(source: DataSource, today: date) -> date:
+    """Return the first activity date, or a ten-year fallback."""
+    getter = getattr(source, "earliest_activity_date", None)
+
+    if getter is not None:
+        earliest = getter()
+
+        if earliest is not None:
+            return min(earliest, today)
+
+    return date(today.year - 10, 1, 1)

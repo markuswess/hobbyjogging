@@ -79,6 +79,12 @@ HTML dashboard:
   fixed at 4:20–3:15 min/km (faster up) and HR at 140–180 bpm.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
+- **pace-hr** — Scatter of average speed vs average heart rate, one point
+  per run, for aerobic-efficiency analysis. The x axis is linear speed
+  (m/s) labelled in min/km ticks.
+- **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
+  `--metric volume|time|load|runs` and `--window 7|42|182` choose the
+  metric and smoothing. The current year is partial and marks today.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with
@@ -529,10 +535,14 @@ Pages:
 - `activities.html` — the recent activity table (default 50) with workout
   methods and targets, linked to per-activity pages.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
-  charts over the last two years (`--analysis-days`, default 731).
+  charts, plus the pace-vs-heart-rate scatter, over the last two years
+  (`--analysis-days`, default 731).
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
   EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
   same window.
+- `compare.html` — one EWMA line per calendar year over a fixed Jan–Dec axis
+  (`--compare-metric`, `--compare-window`) plus the year and month
+  comparison reports.
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

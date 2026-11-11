@@ -164,3 +164,18 @@ class Vo2maxPoint:
     value: float | None = None
     avg_7: float | None = None
     avg_42: float | None = None
+
+
+@dataclass(frozen=True)
+class PaceHrPoint:
+    """One run's average speed and average heart rate."""
+
+    date: date
+    pace_s_per_km: float
+    avg_hr: float
+    name: str = ""
+
+    @property
+    def speed_m_s(self) -> float:
+        """Average speed in m/s (linear pace axis)."""
+        return 1000 / self.pace_s_per_km

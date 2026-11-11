@@ -9,7 +9,12 @@ from .averages import (
     DEFAULT_AVERAGE_WINDOWS,
     average_warmup_days,
 )
-from .compare import COMPARE_MODES, compare_periods
+from .compare import (
+    COMPARE_METRICS,
+    COMPARE_MODES,
+    compare_periods,
+    compare_year_ewma,
+)
 from .common import (
     CATEGORY_LONG,
     CATEGORY_MEDIUM,
@@ -38,6 +43,7 @@ from .load import (
     load_metrics,
     weekly_run_distance,
 )
+from .pace_hr import pace_hr_points
 from .planned import (
     daily_planned_distance,
     daily_planned_load,
@@ -77,6 +83,7 @@ __all__ = [
     "CATEGORY_LONG",
     "CATEGORY_MEDIUM",
     "CATEGORY_SHORT",
+    "COMPARE_METRICS",
     "COMPARE_MODES",
     "DEFAULT_AVERAGE_WINDOWS",
     "DEFAULT_ZONE_COUNT",
@@ -92,6 +99,7 @@ __all__ = [
     "average_warmup_days",
     "classify_interval",
     "compare_periods",
+    "compare_year_ewma",
     "daily_planned_distance",
     "daily_planned_load",
     "daily_planned_time",
@@ -107,6 +115,7 @@ __all__ = [
     "is_lt1_activity",
     "is_subt_activity",
     "load_metrics",
+    "pace_hr_points",
     "pace_s_per_km",
     "planned_workout_dates",
     "recovery_trends",

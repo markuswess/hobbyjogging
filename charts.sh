@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery] [args...]
+  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery|pace-hr|compare] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -30,6 +30,8 @@ Examples:
   ./charts.sh time --days 90
   ./charts.sh time --zones 4 --zone-window base
   ./charts.sh recovery --days 90
+  ./charts.sh pace-hr --days 365
+  ./charts.sh compare --metric load --window 7
   ./charts.sh subt --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
@@ -72,7 +74,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|overview|subt|vo2max|load|time|recovery)
+    volume|overview|subt|vo2max|load|time|recovery|pace-hr|compare)
         ;;
     *)
         usage >&2
@@ -83,6 +85,8 @@ esac
 chart_mode="$mode"
 if [[ "$mode" == "overview" ]]; then
     chart_mode="overview-chart"
+elif [[ "$mode" == "compare" ]]; then
+    chart_mode="compare-chart"
 fi
 
 if (( explicit_mode == 0 )); then

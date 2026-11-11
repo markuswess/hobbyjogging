@@ -20,6 +20,7 @@ from ..charts import plot_overview, plot_recovery
 from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, Vo2maxPoint
 from .analysis import AnalysisSection
+from .compare import CompareSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
 from ..zone_groups import ZoneGroupSeries
@@ -317,6 +318,39 @@ def nsa_page(
     )
 
 
+def compare_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    section: CompareSection,
+) -> str:
+    """Render the compare tab: year chart plus the year/month reports."""
+    body = (
+        card(None, section.chart_html)
+        + card(
+            None,
+            f'<div class="report">{section.years_report_html}</div>',
+        )
+        + card(
+            None,
+            f'<div class="report">{section.months_report_html}</div>',
+        )
+    )
+
+    return page(
+        title="Compare",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        active="compare",
+        plotly=True,
+    )
+
+
 def analysis_page(
     *,
     generated_at: str,
@@ -331,6 +365,7 @@ def analysis_page(
         card("Weekly running volume", section.volume_html)
         + card("Weekly running time by pace zone", section.time_html)
         + card("Training load and session RPE", section.load_html)
+        + card("Pace vs heart rate", section.pace_hr_html)
     )
 
     return page(

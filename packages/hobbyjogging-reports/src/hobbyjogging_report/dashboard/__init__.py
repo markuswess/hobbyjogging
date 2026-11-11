@@ -27,6 +27,7 @@ from ..recovery_report import recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .analysis import build_analysis_section
+from .compare import build_compare_section
 from .nsa import build_nsa_section
 from .health import collect_health
 from .pages import (
@@ -34,6 +35,7 @@ from .pages import (
     activity_page,
     activities_page,
     analysis_page,
+    compare_page,
     health_page,
     nsa_page,
     overview_page,
@@ -81,6 +83,8 @@ def build_dashboard(
     future_days: int = 14,
     recovery_days: int = RECOVERY_DAYS,
     analysis_days: int = ANALYSIS_DAYS,
+    compare_metric: str = "volume",
+    compare_window: int = 42,
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
@@ -98,6 +102,8 @@ def build_dashboard(
         raise ValueError("recovery days must be positive")
     if analysis_days <= 0:
         raise ValueError("analysis days must be positive")
+    if compare_window <= 0:
+        raise ValueError("compare window must be positive")
 
     unknown_reports = [
         name for name in reports if name not in REPORT_NAMES
@@ -186,6 +192,13 @@ def build_dashboard(
         source,
         start=analysis_start,
         end=today,
+        include_review=include_review,
+    )
+    compare_section = build_compare_section(
+        source,
+        today=today,
+        metric=compare_metric,
+        window=compare_window,
         include_review=include_review,
     )
 
@@ -302,6 +315,12 @@ def build_dashboard(
             section=nsa_section,
             start=analysis_start,
             end=today,
+        ),
+        "compare.html": compare_page(
+            generated_at=generated_at,
+            health=health,
+            include_review=include_review,
+            section=compare_section,
         ),
         "recovery.html": recovery_page(
             generated_at=generated_at,

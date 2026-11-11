@@ -204,7 +204,7 @@ def parse_compare_args(
 
 def parse_dashboard_args(
     argv: list[str],
-) -> tuple[str | None, int, int, int, int, int, int, tuple[str, ...]]:
+) -> tuple[str | None, int, int, int, int, int, int, str, int, tuple[str, ...]]:
     """Parse dashboard output, windows, chart ranges, and reports."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
@@ -214,6 +214,12 @@ def parse_dashboard_args(
     parser.add_argument("--future-days", type=int, default=14)
     parser.add_argument("--recovery-days", type=int, default=186)
     parser.add_argument("--analysis-days", type=int, default=731)
+    parser.add_argument(
+        "--compare-metric",
+        choices=("volume", "time", "load", "runs"),
+        default="volume",
+    )
+    parser.add_argument("--compare-window", type=int, default=42)
     parser.add_argument("--reports")
     args = parser.parse_args(argv)
 
@@ -229,6 +235,8 @@ def parse_dashboard_args(
         raise ValueError("--recovery-days must be positive")
     if args.analysis_days <= 0:
         raise ValueError("--analysis-days must be positive")
+    if args.compare_window <= 0:
+        raise ValueError("--compare-window must be positive")
 
     reports = tuple(
         part.strip()
@@ -253,6 +261,8 @@ def parse_dashboard_args(
         args.future_days,
         args.recovery_days,
         args.analysis_days,
+        args.compare_metric,
+        args.compare_window,
         reports,
     )
 
@@ -315,6 +325,32 @@ def parse_chart_args(
     output = args.output_option or args.output or default_output
 
     return output, start, end
+
+
+def parse_compare_chart_args(
+    argv: list[str],
+    default_output: str = "compare.png",
+    today: date | None = None,
+) -> tuple[str, str, int, date]:
+    """Parse output, metric, and EWMA window for the compare chart."""
+    from .analysis import COMPARE_METRICS
+
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    parser.add_argument(
+        "--metric",
+        choices=COMPARE_METRICS,
+        default="volume",
+    )
+    parser.add_argument("--window", type=int, default=42)
+    args = parser.parse_args(argv)
+
+    if args.window <= 0:
+        raise ValueError("--window must be positive")
+
+    output = args.output_option or args.output or default_output
+    return output, args.metric, args.window, today or date.today()
 
 
 def _window_parser() -> argparse.ArgumentParser:

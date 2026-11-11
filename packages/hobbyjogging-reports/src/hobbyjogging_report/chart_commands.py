@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from .command_support import (
+    activity_start,
     print_count_note,
     reviewed_range,
     warmup_reviewed,
@@ -535,6 +536,83 @@ def run_subt_command(parsed, source, include_review):
         output,
         start,
         end,
+        source,
+        include_review=include_review,
+    )
+    return None
+
+
+def run_pace_hr_chart(
+    output: str,
+    start: date,
+    end: date,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the per-run pace vs heart-rate scatter."""
+    from .analysis import pace_hr_points
+    from .charts import plot_pace_hr
+
+    activities = reviewed_range(source, start, end, include_review)
+    points = pace_hr_points(activities, start, end)
+
+    path = plot_pace_hr(points, output=output)
+    print(path)
+
+
+def run_compare_chart(
+    output: str,
+    metric: str,
+    window: int,
+    today: date,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the year-over-year EWMA comparison chart."""
+    from .analysis import compare_year_ewma
+    from .charts import plot_compare
+
+    start = activity_start(source, today)
+    activities = reviewed_range(source, start, today, include_review)
+    series = compare_year_ewma(
+        activities,
+        metric,
+        window,
+        today=today,
+    )
+
+    path = plot_compare(
+        series,
+        output=output,
+        metric=metric,
+        window=window,
+        today=today,
+        title=f"Year comparison — {metric}, {window}-day EWMA",
+    )
+    print(path)
+
+
+def run_pace_hr_command(parsed, source, include_review):
+    output, start, end = parsed
+    run_pace_hr_chart(
+        output,
+        start,
+        end,
+        source,
+        include_review=include_review,
+    )
+    return None
+
+
+def run_compare_chart_command(parsed, source, include_review):
+    output, metric, window, today = parsed
+    run_compare_chart(
+        output,
+        metric,
+        window,
+        today,
         source,
         include_review=include_review,
     )

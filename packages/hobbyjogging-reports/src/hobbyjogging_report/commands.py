@@ -7,7 +7,9 @@ from typing import Callable
 from hobbyjogging_core.datasource import DataSource
 
 from .chart_commands import (
+    run_compare_chart_command,
     run_load_command,
+    run_pace_hr_command,
     run_overview_chart_command,
     run_recovery_command,
     run_subt_command,
@@ -19,6 +21,7 @@ from .cli import (
     parse_chart_args,
     parse_classify_args,
     parse_compare_args,
+    parse_compare_chart_args,
     parse_dashboard_args,
     parse_load_args,
     parse_overview_args,
@@ -236,6 +239,18 @@ COMMANDS = {
         ),
         run=run_volume_command,
     ),
+    "compare-chart": Command(
+        "compare-chart",
+        "Year-over-year EWMA comparison chart",
+        "compare-chart [output.png] [--metric volume|time|load|runs] "
+        "[--window N]",
+        (
+            "charts.sh compare",
+            "charts.sh compare --metric load --window 7",
+        ),
+        parse=parse_compare_chart_args,
+        run=run_compare_chart_command,
+    ),
     "overview-chart": Command(
         "overview-chart",
         "Main training overview chart",
@@ -292,6 +307,21 @@ COMMANDS = {
             default_days=90,
         ),
         run=run_recovery_command,
+    ),
+    "pace-hr": Command(
+        "pace-hr",
+        "Average pace vs average heart rate for each run",
+        "pace-hr [output.png] [--days N] [--from DATE] [--to DATE]",
+        (
+            "charts.sh pace-hr",
+            "charts.sh pace-hr --days 365",
+        ),
+        parse=partial(
+            parse_chart_args,
+            default_output="pace-hr.png",
+            default_days=365,
+        ),
+        run=run_pace_hr_command,
     ),
     "subt": Command(
         "subt",

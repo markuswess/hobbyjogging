@@ -10,6 +10,7 @@ from hobbyjogging_report.cli import (
     parse_chart_args,
     parse_classify_args,
     parse_compare_args,
+    parse_compare_chart_args,
     parse_dashboard_args,
     parse_load_args,
     parse_overview_args,
@@ -533,7 +534,7 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 182, 14, 186, 731, ()),
+            (None, 14, 50, 182, 14, 186, 731, "volume", 42, ()),
             parse_dashboard_args([]),
         )
 
@@ -541,7 +542,7 @@ class DashboardArgsTests(unittest.TestCase):
         self.assertEqual(
             (
                 "/tmp/site", 30, 100, 90, 21, 60, 120,
-                ("overview", "daily"),
+                "load", 7, ("overview", "daily"),
             ),
             parse_dashboard_args(
                 [
@@ -552,6 +553,8 @@ class DashboardArgsTests(unittest.TestCase):
                     "--future-days", "21",
                     "--recovery-days", "60",
                     "--analysis-days", "120",
+                    "--compare-metric", "load",
+                    "--compare-window", "7",
                     "--reports", "overview,daily",
                 ]
             ),
@@ -584,6 +587,32 @@ class DashboardArgsTests(unittest.TestCase):
     def test_rejects_unknown_reports(self):
         with self.assertRaises(ValueError):
             parse_dashboard_args(["--reports", "overview,nope"])
+
+
+class CompareChartArgsTests(unittest.TestCase):
+
+    def test_defaults(self):
+        self.assertEqual(
+            ("compare.png", "volume", 42, TODAY),
+            parse_compare_chart_args([], today=TODAY),
+        )
+
+    def test_custom_metric_and_window(self):
+        self.assertEqual(
+            ("/tmp/compare.png", "load", 7, TODAY),
+            parse_compare_chart_args(
+                [
+                    "--output", "/tmp/compare.png",
+                    "--metric", "load",
+                    "--window", "7",
+                ],
+                today=TODAY,
+            ),
+        )
+
+    def test_rejects_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            parse_compare_chart_args(["--window", "0"], today=TODAY)
 
 
 class OverviewChartArgsTests(unittest.TestCase):

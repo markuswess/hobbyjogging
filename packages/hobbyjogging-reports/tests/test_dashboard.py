@@ -267,8 +267,10 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("RPE 7d", analysis)
             self.assertIn("RPE 42d", analysis)
             self.assertIn("RPE 182d", analysis)
+            self.assertIn("Pace vs heart rate", analysis)
+            self.assertIn("avg HR (bpm)", analysis)
             self.assertNotIn("subT and LT1 intervals", analysis)
-            self.assertEqual(3, analysis.count("Plotly.newPlot"))
+            self.assertEqual(4, analysis.count("Plotly.newPlot"))
 
             nsa = (target / "nsa.html").read_text()
             self.assertIn("NSA · 2024-11-09 → 2026-11-09", nsa)
@@ -284,6 +286,15 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("subT Report", nsa)
             self.assertIn("No subT or LT1 sessions", nsa)
             self.assertNotIn("Weekly running volume", nsa)
+
+            compare = (target / "compare.html").read_text()
+            self.assertIn('href="compare.html" class="active"', compare)
+            self.assertIn("Year comparison", compare)
+            self.assertIn("42-day EWMA", compare)
+            self.assertIn("Training Comparison by Year", compare)
+            self.assertIn("Training Comparison by Month", compare)
+            self.assertIn("<h1>Compare</h1>", compare)
+            self.assertIn("Plotly.newPlot", compare)
 
             detail = (target / "activity" / "run1.html").read_text()
             self.assertIn("Session 2026-11-08", detail)

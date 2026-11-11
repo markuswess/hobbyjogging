@@ -21,6 +21,7 @@ from .model import (
     AverageWindows,
     DistancePoint,
     LoadPoint,
+    PaceHrPoint,
     RecoveryPoint,
     RpePoint,
     SubtPoint,
@@ -90,6 +91,28 @@ SUBT_COLORS = {
 }
 CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
 WEEK_MS = 7 * 24 * 60 * 60 * 1000
+COMPARE_COLORS = (
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+    "#aec7e8",
+    "#ffbb78",
+    "#98df8a",
+    "#ff9896",
+    "#c5b0d5",
+    "#c49c94",
+    "#f7b6d2",
+    "#c7c7c7",
+    "#dbdb8d",
+    "#9edae5",
+)
 
 
 def _require_data(*series) -> None:
@@ -1059,6 +1082,147 @@ def plot_vo2max(
         title=title,
         xlabel="date",
         ylabel="VO2max (mL/kg/min)",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1500,
+    )
+
+
+def plot_pace_hr(
+    points: list[PaceHrPoint],
+    output: str,
+    title: str = "Pace vs heart rate",
+    as_html: bool = False,
+) -> str:
+    """One point per run: average speed against average heart rate."""
+    _require_data(points)
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=[point.speed_m_s for point in points],
+            y=[point.avg_hr for point in points],
+            mode="markers",
+            name="runs",
+            marker={"color": "#1f77b4", "size": 6, "opacity": 0.55},
+            text=[
+                (
+                    f"{point.date} {point.name}".strip()
+                    + f"<br>{format_pace(point.pace_s_per_km)}/km"
+                    + f", {point.avg_hr:.0f} bpm"
+                )
+                for point in points
+            ],
+            hoverinfo="text",
+        )
+    )
+
+    tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    figure.update_xaxes(
+        title_text="pace (min/km)",
+        range=[2.0, 5.2],
+        tickvals=tick_speeds,
+        ticktext=[format_pace(1000 / speed) for speed in tick_speeds],
+    )
+    figure.update_yaxes(
+        title_text="avg HR (bpm)",
+        range=[90, 190],
+        dtick=10,
+    )
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        hovermode="closest",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1500,
+    )
+
+
+def plot_compare(
+    series: list[tuple[int, list[tuple[date, float]]]],
+    output: str,
+    *,
+    metric: str,
+    window: int,
+    today: date,
+    title: str = "Year comparison",
+    as_html: bool = False,
+) -> str:
+    """One EWMA line per calendar year over a fixed Jan-Dec axis."""
+    _require_data(series)
+    reference_year = 2001
+    reference_start = date(reference_year, 1, 1)
+    ylabels = {
+        "volume": "km / day",
+        "time": "hours / day",
+        "load": "load / day",
+        "runs": "runs / day",
+    }
+    figure = go.Figure()
+
+    for index, (year, points) in enumerate(series):
+        year_start = date(year, 1, 1)
+        figure.add_trace(
+            go.Scatter(
+                x=[
+                    reference_start
+                    + timedelta(days=(day - year_start).days)
+                    for day, _ in points
+                ],
+                y=[value for _, value in points],
+                mode="lines",
+                name=str(year),
+                line={
+                    "color": COMPARE_COLORS[
+                        index % len(COMPARE_COLORS)
+                    ],
+                    "width": 2,
+                },
+            )
+        )
+
+    if any(year == today.year for year, _ in series):
+        moment = reference_start + timedelta(
+            days=(today - date(today.year, 1, 1)).days
+        )
+        figure.add_vline(
+            x=moment.isoformat(),
+            line_width=1,
+            line_dash="dot",
+            line_color="#7f7f7f",
+            annotation_text="today",
+            annotation_position="top",
+        )
+
+    figure.update_xaxes(
+        title_text="month",
+        range=[
+            reference_start,
+            date(reference_year, 12, 31),
+        ],
+        dtick="M1",
+        tickformat="%b",
+    )
+    figure.update_yaxes(
+        title_text=ylabels.get(metric, metric),
+    )
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.12, "x": 0},
+        hovermode="x unified",
     )
     return _render(
         figure,

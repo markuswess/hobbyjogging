@@ -1,10 +1,11 @@
 """Yearly and monthly training comparisons."""
 
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.model import Activity
 
 from ..model import ComparePeriod
+from ..series import alpha_from_time_constant, ewma
 from .common import RUN_TYPES
 
 COMPARE_MODES = ("years", "months")
@@ -133,3 +134,84 @@ def compare_periods(
         )
 
     return result
+
+
+COMPARE_METRICS = ("volume", "time", "load", "runs")
+
+
+def _daily_metric(
+    activities: list[Activity],
+    metric: str,
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Daily totals for one compare metric, zero-filled for rest days."""
+    by_day: dict[date, float] = {}
+
+    for activity in activities:
+        if not (start <= activity.date <= end):
+            continue
+
+        if metric == "load":
+            value = activity.training_load or 0.0
+        elif activity.type not in RUN_TYPES:
+            continue
+        elif metric == "runs":
+            value = 1.0
+        elif metric == "volume":
+            value = (activity.distance_m or 0.0) / 1000
+        elif metric == "time":
+            value = (activity.duration_s or 0.0) / 3600
+        else:
+            raise ValueError(f"unknown compare metric: {metric}")
+
+        by_day[activity.date] = by_day.get(activity.date, 0.0) + value
+
+    return [(day, by_day.get(day, 0.0)) for day in _date_range(start, end)]
+
+
+def _date_range(start: date, end: date) -> list[date]:
+    return [
+        start + timedelta(days=offset)
+        for offset in range((end - start).days + 1)
+    ]
+
+
+def compare_year_ewma(
+    activities: list[Activity],
+    metric: str,
+    window: int,
+    *,
+    today: date | None = None,
+) -> list[tuple[int, list[tuple[date, float]]]]:
+    """One EWMA series per year, each from Jan 1 to Dec 31 (or today).
+
+    The series are aligned by day of year; the caller normalizes the dates
+    onto a single reference year for plotting.
+    """
+    if metric not in COMPARE_METRICS:
+        raise ValueError(f"unknown compare metric: {metric}")
+    if window <= 0:
+        raise ValueError("window must be positive")
+
+    today = today or date.today()
+    alpha = alpha_from_time_constant(window)
+    series = []
+
+    for year in sorted({activity.date.year for activity in activities}):
+        start = date(year, 1, 1)
+        end = min(date(year, 12, 31), today)
+
+        if start > end:
+            continue
+
+        daily = _daily_metric(activities, metric, start, end)
+
+        if not daily:
+            continue
+
+        values = [value for _, value in daily]
+        smoothed = ewma(values, alpha, initial=values[0])
+        series.append((year, list(zip([day for day, _ in daily], smoothed))))
+
+    return series

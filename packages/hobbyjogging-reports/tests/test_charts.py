@@ -5,7 +5,9 @@ from datetime import date
 from pathlib import Path
 
 from hobbyjogging_report.charts import (
+    plot_compare,
     plot_load,
+    plot_pace_hr,
     plot_overview,
     plot_recovery,
     plot_subt,
@@ -17,6 +19,7 @@ from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
     AverageWindows,
+    PaceHrPoint,
     RecoveryPoint,
     RpePoint,
     SubtPoint,
@@ -357,6 +360,78 @@ class FixedRangeTests(unittest.TestCase):
 
         self.assertIn("clipped above 130 km", html)
         self.assertIn("187.0 km (bar clipped)", html)
+
+
+
+class PaceHrChartTests(unittest.TestCase):
+
+    def test_pace_hr_chart_writes_file(self):
+        points = [
+            PaceHrPoint(D, 300.0, 150.0, "Easy"),
+            PaceHrPoint(date(2026, 1, 2), 240.0, 165.0, "Tempo"),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "pace-hr.png"
+
+            result = plot_pace_hr(points, str(output))
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_pace_hr_chart_uses_speed_with_pace_labels(self):
+        html = plot_pace_hr([PaceHrPoint(D, 300.0, 150.0)], "", as_html=True)
+
+        self.assertIn('"range":[2.0,5.2]', html)
+        self.assertIn("5:00", html)
+        self.assertIn('"range":[90,190]', html)
+
+    def test_pace_hr_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+
+class CompareChartTests(unittest.TestCase):
+
+    def test_compare_chart_aligns_years_on_a_reference_axis(self):
+        series = [
+            (2025, [(date(2025, 1, 1), 10.0), (date(2025, 1, 2), 12.0)]),
+            (2026, [(date(2026, 1, 1), 20.0)]),
+        ]
+
+        html = plot_compare(
+            series,
+            "",
+            metric="volume",
+            window=42,
+            today=date(2026, 11, 11),
+            as_html=True,
+        )
+
+        self.assertIn('"name":"2025"', html)
+        self.assertIn('"name":"2026"', html)
+        self.assertIn("2001-01-01", html)
+        self.assertIn("2001-12-31", html)
+        self.assertIn("2001-11-11", html)
+        self.assertIn("today", html)
+
+    def test_compare_chart_writes_file(self):
+        series = [(2026, [(date(2026, 1, 1), 20.0)])]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "compare.png"
+
+            result = plot_compare(
+                series,
+                str(output),
+                metric="load",
+                window=7,
+                today=date(2026, 1, 2),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
 
 
 class LoadChartTests(unittest.TestCase):

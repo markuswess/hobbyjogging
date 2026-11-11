@@ -19,6 +19,9 @@ All options other than --no-open are passed to the dashboard command:
   --future-days N    main chart planned horizon in days (default 14)
   --recovery-days N  recovery plot history in days (default 186)
   --analysis-days N  analysis tab history in days (default 731)
+  --compare-metric M compare chart metric: volume|time|load|runs
+                     (default: volume)
+  --compare-window N compare chart EWMA window in days (default 42)
   --reports LIST     comma-separated Markdown reports to embed
                      (overview,recovery-report,daily,weekly,monthly,yearly,
                      report,planned,subt-report,compare-years,compare-months)

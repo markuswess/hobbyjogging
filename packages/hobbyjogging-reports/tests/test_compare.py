@@ -1,7 +1,8 @@
+import math
 import unittest
 from datetime import date
 
-from hobbyjogging_report.analysis import compare_periods
+from hobbyjogging_report.analysis import compare_periods, compare_year_ewma
 from hobbyjogging_report.compare import compare_report
 from support import FakeSource, activity_factory
 
@@ -253,6 +254,58 @@ class CompareReportTests(unittest.TestCase):
 
         self.assertIn("- No activities in this range", report)
         self.assertNotIn("| Period |", report)
+
+
+
+class CompareYearEwmaTests(unittest.TestCase):
+
+    def test_one_series_per_year_aligned_to_january(self):
+        activities = [
+            activity(id="a", date=date(2025, 3, 1), distance_m=10000),
+            activity(id="b", date=date(2026, 3, 1), distance_m=20000),
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "volume",
+            7,
+            today=date(2026, 11, 11),
+        )
+
+        self.assertEqual([2025, 2026], [year for year, _ in series])
+
+        for _year, points in series:
+            self.assertEqual(date(_year, 1, 1), points[0][0])
+            self.assertEqual(date(_year, 3, 1), points[59][0])
+
+        # The current year stops at today, complete years run to Dec 31.
+        self.assertEqual(date(2026, 11, 11), series[1][1][-1][0])
+        self.assertEqual(date(2025, 12, 31), series[0][1][-1][0])
+
+    def test_metric_values_are_daily(self):
+        activities = [
+            activity(id="a", date=date(2026, 1, 2), distance_m=10000),
+            activity(id="b", date=date(2026, 1, 2), distance_m=5000),
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "volume",
+            7,
+            today=date(2026, 1, 3),
+        )
+        points = dict(series[0][1])
+        alpha = 1 - math.exp(-1 / 7)
+
+        self.assertEqual(0.0, points[date(2026, 1, 1)])
+        self.assertAlmostEqual(
+            15.0 * alpha,
+            points[date(2026, 1, 2)],
+        )
+
+    def test_unknown_metric_is_rejected(self):
+        with self.assertRaises(ValueError):
+            compare_year_ewma([], "watts", 7)
 
 
 if __name__ == "__main__":

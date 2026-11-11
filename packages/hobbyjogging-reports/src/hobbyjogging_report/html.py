@@ -238,6 +238,7 @@ NAV = (
     ("activities", "activities.html", "Activities"),
     ("analysis", "analysis.html", "Analysis"),
     ("nsa", "nsa.html", "NSA"),
+    ("compare", "compare.html", "Compare"),
     ("recovery", "recovery.html", "Recovery and Health"),
     ("reports", "reports.html", "Reports"),
     ("health", "health.html", "Data Health"),
