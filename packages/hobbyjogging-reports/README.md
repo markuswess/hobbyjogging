@@ -64,9 +64,10 @@ HTML dashboard:
   and 7-day fatigue exponentially weighted averages, plus planned load and
   the three session-RPE EWMAs on a right-hand axis (RPE carries the last
   rated value between sessions).
-- **time** — Weekly running time stacked by pace zone, with
-  182/42/7-day time averages, a per-zone EWMA panel, and planned weekly
-  time including planned pace zone distributions.
+- **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
+  at the bottom), with 182/42/7-day time averages, a share-of-week panel, a
+  per-zone EWMA panel, and planned weekly time including planned pace zone
+  distributions.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers.
 - **subt** — subT and LT1 work intervals over the last 365 days by

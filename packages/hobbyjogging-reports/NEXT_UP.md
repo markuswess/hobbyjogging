@@ -17,7 +17,8 @@ comparison.
 - **Time chart uses pace zones.** The weekly stack and zone EWMA panel use
   activity pace zones. Planned pace zones appear as hatched weekly bars and
   continue through the EWMA panel as dashed projections. Planned zones of
-  other kinds are ignored.
+  other kinds are ignored. Zones stack Z1 on top and higher zones below, and
+  a third panel shows each zone's share of the week's running time.
 - **Planned report Z3+4 column.** Sums each event's own Z3 and Z4 time,
   ignoring `SS`. Missing zone data shows `-`; genuine zero Z3+4 time shows
   `0min`.

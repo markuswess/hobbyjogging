@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from datetime import date
@@ -184,6 +185,57 @@ class TimeChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_time([], str(Path(tmp) / "time.png"))
+
+    def test_time_chart_flips_zones_and_adds_a_share_panel(self):
+        weeks = [
+            TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 900, 0], 600),
+            TimeZoneWeek(date(2026, 1, 12), [1800, 3600, 900, 300], 0),
+        ]
+        zone_points = [
+            ZoneAveragePoint(date(2026, 1, 5), [1200, 900, 300, 0]),
+            ZoneAveragePoint(date(2026, 1, 12), [1300, 850, 350, 0]),
+        ]
+
+        html = plot_time(
+            weeks,
+            "",
+            zone_points=zone_points,
+            zone_window_days=42,
+            as_html=True,
+        )
+
+        self.assertIn("share of weekly running time", html)
+        self.assertIn("42-day EWMA stacked by pace zone", html)
+        self.assertIn('"text":"% of week"', html)
+
+        index = html.find("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.find("[", index):]
+        )
+        absolute = [
+            trace
+            for trace in data
+            if trace.get("type") == "bar" and trace.get("yaxis") == "y"
+        ]
+        percent = [
+            trace
+            for trace in data
+            if trace.get("type") == "bar" and trace.get("yaxis") == "y2"
+        ]
+
+        # Bottom to top: unzoned, Z4, Z3, Z2, Z1.
+        self.assertEqual(
+            ["Unzoned", "Z4", "Z3", "Z2", "Z1"],
+            [trace["name"] for trace in absolute],
+        )
+        self.assertEqual(
+            ["Unzoned", "Z4", "Z3", "Z2", "Z1"],
+            [trace["name"] for trace in percent],
+        )
+        self.assertEqual(
+            100.0,
+            round(sum(trace["y"][0] for trace in percent), 6),
+        )
 
 
 class OverviewChartTests(unittest.TestCase):

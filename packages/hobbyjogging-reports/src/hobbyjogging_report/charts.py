@@ -322,51 +322,43 @@ def plot_time(
         else 0
     )
 
+    rows = 3 if zone_points else 2
+    subplot_titles = ["", "share of weekly running time"]
+
     if zone_points:
-        figure = make_subplots(
-            rows=2,
-            cols=1,
-            shared_xaxes=True,
-            row_heights=[3, 2],
-            vertical_spacing=0.08,
-            subplot_titles=(
-                "",
-                (
-                    f"{zone_window_days}-day EWMA stacked by pace zone"
-                    if zone_window_days
-                    else "EWMA stacked by pace zone"
-                ),
-            ),
+        subplot_titles.append(
+            (
+                f"{zone_window_days}-day EWMA stacked by pace zone"
+                if zone_window_days
+                else "EWMA stacked by pace zone"
+            )
         )
-    else:
-        figure = go.Figure()
+
+    figure = make_subplots(
+        rows=rows,
+        cols=1,
+        shared_xaxes=True,
+        row_heights=[3, 2, 2][:rows],
+        vertical_spacing=0.08,
+        subplot_titles=tuple(subplot_titles),
+    )
 
     week_dates = [week.week for week in weeks]
+    totals = [
+        (sum(week.zones) + week.unzoned) / 3600 for week in weeks
+    ]
 
     if weeks:
         bottoms = [0.0] * len(weeks)
-
-        for index in range(zone_count):
-            values = [week.zones[index] / 3600 for week in weeks]
-            _add(
-                figure,
-                go.Bar(
-                    x=week_dates,
-                    y=values,
-                    base=bottoms,
-                    name=f"Z{index + 1}",
-                    width=WEEK_MS,
-                    marker_color=ZONE_COLORS[index % len(ZONE_COLORS)],
-                ),
-                row=1 if zone_points else None,
-                col=1 if zone_points else None,
-            )
-            bottoms = [
-                bottom + value
-                for bottom, value in zip(bottoms, values)
-            ]
-
         unzoned = [week.unzoned / 3600 for week in weeks]
+        shares = [
+            (
+                value / total * 100
+                if total
+                else 0.0
+            )
+            for value, total in zip(unzoned, totals)
+        ]
 
         if any(unzoned):
             _add(
@@ -379,31 +371,96 @@ def plot_time(
                     width=WEEK_MS,
                     marker_color=UNZONED_COLOR,
                 ),
-                row=1 if zone_points else None,
-                col=1 if zone_points else None,
+                row=1,
+                col=1,
             )
+            _add(
+                figure,
+                go.Bar(
+                    x=week_dates,
+                    y=shares,
+                    base=[0.0] * len(weeks),
+                    name="Unzoned",
+                    width=WEEK_MS,
+                    showlegend=False,
+                    marker_color=UNZONED_COLOR,
+                ),
+                row=2,
+                col=1,
+            )
+            bottoms = [
+                bottom + value
+                for bottom, value in zip(bottoms, unzoned)
+            ]
+            percent_bottoms = list(shares)
+
+        else:
+            percent_bottoms = [0.0] * len(weeks)
+
+        # Highest zones at the bottom, Z1 on top.
+        for index in reversed(range(zone_count)):
+            values = [week.zones[index] / 3600 for week in weeks]
+            shares = [
+                value / total * 100 if total else 0.0
+                for value, total in zip(values, totals)
+            ]
+            color = ZONE_COLORS[index % len(ZONE_COLORS)]
+            _add(
+                figure,
+                go.Bar(
+                    x=week_dates,
+                    y=values,
+                    base=bottoms,
+                    name=f"Z{index + 1}",
+                    width=WEEK_MS,
+                    marker_color=color,
+                ),
+                row=1,
+                col=1,
+            )
+            _add(
+                figure,
+                go.Bar(
+                    x=week_dates,
+                    y=shares,
+                    base=percent_bottoms,
+                    name=f"Z{index + 1}",
+                    width=WEEK_MS,
+                    showlegend=False,
+                    marker_color=color,
+                ),
+                row=2,
+                col=1,
+            )
+            bottoms = [
+                bottom + value
+                for bottom, value in zip(bottoms, values)
+            ]
+            percent_bottoms = [
+                bottom + value
+                for bottom, value in zip(percent_bottoms, shares)
+            ]
 
     planned_zone_dates = {week.week for week in planned_zone_weeks}
 
     if planned_zone_weeks:
         planned_bottoms = [0.0] * len(planned_zone_weeks)
 
-        for index in range(zone_count):
+        for index in reversed(range(zone_count)):
             values = [
                 week.zones[index] / 3600
                 for week in planned_zone_weeks
             ]
+            first = index == zone_count - 1
             _add(
                 figure,
                 go.Bar(
                     x=[week.week for week in planned_zone_weeks],
                     y=values,
                     base=planned_bottoms,
-                    name=(
-                        planned_zone_label if index == 0 else None
-                    ),
+                    name=planned_zone_label if first else None,
                     width=WEEK_MS,
-                    showlegend=index == 0,
+                    showlegend=first,
                     marker={
                         "color": "rgba(0, 0, 0, 0)",
                         "line": {
@@ -421,8 +478,8 @@ def plot_time(
                         },
                     },
                 ),
-                row=1 if zone_points else None,
-                col=1 if zone_points else None,
+                row=1,
+                col=1,
             )
             planned_bottoms = [
                 bottom + value
@@ -448,8 +505,8 @@ def plot_time(
                     "line": {"color": "black", "width": 1.4},
                 },
             ),
-            row=1 if zone_points else None,
-            col=1 if zone_points else None,
+            row=1,
+            col=1,
         )
 
     if time_points:
@@ -459,8 +516,8 @@ def plot_time(
             windows,
             scale=time_scale / 3600,
             label=lambda attribute, days: f"{days}d avg (weekly)",
-            row=1 if zone_points else None,
-            col=1 if zone_points else None,
+            row=1,
+            col=1,
         )
 
     axis_weeks = sorted(
@@ -483,7 +540,7 @@ def plot_time(
         )
         projected = [point for point in zone_points if point.projected]
 
-        for index in range(zone_count):
+        for index in reversed(range(zone_count)):
             _add(
                 figure,
                 go.Scatter(
@@ -503,7 +560,7 @@ def plot_time(
                         "width": 1.2,
                     },
                 ),
-                row=2,
+                row=3,
                 col=1,
             )
 
@@ -513,19 +570,26 @@ def plot_time(
                 line_width=1,
                 line_dash="dash",
                 line_color="#7f7f7f",
-                row=2,
+                row=3,
                 col=1,
             )
 
-        figure.update_yaxes(title_text=ylabel, row=2, col=1)
-        figure.update_xaxes(
-            title_text="week starting (Monday)",
-            row=2,
-            col=1,
-        )
-        figure.update_yaxes(title_text=ylabel, row=1, col=1)
-    else:
-        figure.update_xaxes(title_text="week starting (Monday)")
+        figure.update_yaxes(title_text=ylabel, row=3, col=1)
+
+    figure.update_yaxes(
+        title_text="% of week",
+        range=[0, 100],
+        ticksuffix="%",
+        dtick=25,
+        row=2,
+        col=1,
+    )
+    figure.update_yaxes(title_text=ylabel, row=1, col=1)
+    figure.update_xaxes(
+        title_text="week starting (Monday)",
+        row=rows,
+        col=1,
+    )
 
     figure.update_layout(
         template="plotly_white",
@@ -542,7 +606,7 @@ def plot_time(
         output,
         as_html=as_html,
         width=1800,
-        height=2400 if zone_points else 1500,
+        height=2900 if zone_points else 2000,
     )
 
 
