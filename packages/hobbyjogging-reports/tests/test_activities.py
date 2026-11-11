@@ -140,6 +140,26 @@ class ActivitiesReportTests(unittest.TestCase):
 
         self.assertNotIn("abc-123", report)
 
+    def test_eff_column_is_available_but_not_default(self):
+        self.assertNotIn("eff", DEFAULT_COLUMNS)
+
+        source = FakeSource(
+            [
+                make_activity(
+                    id="a",
+                    name="Easy",
+                    distance_m=10000,
+                    duration_s=3600,
+                    avg_hr=150,
+                )
+            ]
+        )
+        query = ActivityQuery(columns=(*DEFAULT_COLUMNS, "eff"))
+
+        report = activities_report(source, query, today=TODAY)
+
+        self.assertIn("1.11", report)
+
     def test_added_id_column_is_shown(self):
         source = FakeSource([make_activity(id="abc-123", name="Easy")])
         query = ActivityQuery(columns=(*DEFAULT_COLUMNS, "id"))

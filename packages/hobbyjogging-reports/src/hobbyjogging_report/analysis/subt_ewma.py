@@ -19,6 +19,7 @@ class SubtEwmaRow:
     category: str
     pace: dict[int, float | None]
     hr: dict[int, float | None]
+    efficiency: dict[int, float | None]
 
 
 def _daily_means(points: list[SubtPoint], category: str, start: date, end: date):
@@ -39,6 +40,35 @@ def _daily_means(points: list[SubtPoint], category: str, start: date, end: date)
         {day: sum(values) / len(values) for day, values in paces.items()},
         {day: sum(values) / len(values) for day, values in hrs.items()},
     )
+
+
+def _daily_efficiency(
+    points: list[SubtPoint],
+    category: str,
+    start: date,
+    end: date,
+) -> dict[date, float]:
+    """Weighted metres per beat per day: sum(distance) / sum(beats)."""
+    by_day: dict[date, tuple[float, float]] = {}
+
+    for point in points:
+        if point.category != category or not (start <= point.date <= end):
+            continue
+
+        if point.efficiency is None or point.beats <= 0 or not point.distance_m:
+            continue
+
+        distance, beats = by_day.get(point.date, (0.0, 0.0))
+        by_day[point.date] = (
+            distance + point.distance_m,
+            beats + point.beats,
+        )
+
+    return {
+        day: distance / beats
+        for day, (distance, beats) in by_day.items()
+        if beats > 0
+    }
 
 
 def _last_ewma(
@@ -99,6 +129,12 @@ def subt_ewma(
             start,
             end,
         )
+        efficiency_by_day = _daily_efficiency(
+            points,
+            category,
+            start,
+            end,
+        )
         rows.append(
             SubtEwmaRow(
                 category=category,
@@ -114,6 +150,15 @@ def subt_ewma(
                 hr={
                     tau: _last_ewma(
                         hr_by_day,
+                        start,
+                        end,
+                        alpha_from_time_constant(tau),
+                    )
+                    for tau in taus
+                },
+                efficiency={
+                    tau: _last_ewma(
+                        efficiency_by_day,
                         start,
                         end,
                         alpha_from_time_constant(tau),

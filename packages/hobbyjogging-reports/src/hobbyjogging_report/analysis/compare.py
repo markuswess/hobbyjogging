@@ -7,6 +7,7 @@ from hobbyjogging_core.model import Activity
 from ..model import ComparePeriod
 from ..series import alpha_from_time_constant, ewma
 from .common import RUN_TYPES
+from .efficiency import beats
 
 COMPARE_MODES = ("years", "months")
 
@@ -136,7 +137,7 @@ def compare_periods(
     return result
 
 
-COMPARE_METRICS = ("volume", "time", "load", "runs")
+COMPARE_METRICS = ("volume", "time", "load", "runs", "efficiency")
 
 
 def _daily_metric(
@@ -168,6 +169,44 @@ def _daily_metric(
         by_day[activity.date] = by_day.get(activity.date, 0.0) + value
 
     return [(day, by_day.get(day, 0.0)) for day in _date_range(start, end)]
+
+
+def _daily_efficiency(
+    activities: list[Activity],
+    start: date,
+    end: date,
+) -> list[tuple[date, float | None]]:
+    """Daily weighted m/beat with rest days carrying the previous value."""
+    by_day: dict[date, tuple[float, float]] = {}
+
+    for activity in activities:
+        if activity.type not in RUN_TYPES:
+            continue
+        if not (start <= activity.date <= end):
+            continue
+
+        total_beats = beats(activity.duration_s, activity.avg_hr)
+
+        if not activity.distance_m or total_beats is None:
+            continue
+
+        distance, day_beats = by_day.get(activity.date, (0.0, 0.0))
+        by_day[activity.date] = (
+            distance + activity.distance_m,
+            day_beats + total_beats,
+        )
+
+    series = []
+    carried = None
+
+    for day in _date_range(start, end):
+        if day in by_day:
+            distance, day_beats = by_day[day]
+            carried = distance / day_beats if day_beats > 0 else carried
+
+        series.append((day, carried))
+
+    return series
 
 
 def _date_range(start: date, end: date) -> list[date]:
@@ -202,7 +241,14 @@ def compare_year_ewma(
         return []
 
     start = date(years[0], 1, 1)
-    daily = _daily_metric(activities, metric, start, today)
+
+    if metric == "efficiency":
+        daily = [
+            row for row in _daily_efficiency(activities, start, today)
+            if row[1] is not None
+        ]
+    else:
+        daily = _daily_metric(activities, metric, start, today)
 
     if not daily:
         return []

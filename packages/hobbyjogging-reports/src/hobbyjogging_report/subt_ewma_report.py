@@ -33,6 +33,10 @@ def _hr_cell(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f} bpm"
 
 
+def _efficiency_cell(value: float | None) -> str:
+    return "-" if value is None else f"{value:.2f} m/beat"
+
+
 def subt_ewma_markdown(
     points,
     end: date,
@@ -84,8 +88,25 @@ def subt_ewma_markdown(
 
     lines.extend([
         "",
-        "EWMAs of the work-interval pace and the session average heart rate "
-        "per category; days between sessions keep the last measured value.",
+        "## Efficiency",
+        "",
+        header,
+        divider,
+    ])
+
+    for row in rows:
+        cells = " | ".join(
+            _efficiency_cell(row.efficiency[tau])
+            for tau, _ in WINDOW_LABELS
+        )
+        label = CATEGORY_LABELS.get(row.category, row.category.title())
+        lines.append(f"| {label} | {cells} |")
+
+    lines.extend([
+        "",
+        "EWMAs of the work-interval pace, the session average heart rate, and "
+        "efficiency (sum(distance) / sum(beats)) per category; days between "
+        "sessions keep the last measured value.",
     ])
 
     return "\n".join(lines)

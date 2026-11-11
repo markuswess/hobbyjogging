@@ -24,6 +24,7 @@ class CompareSection:
 
     volume_html: str
     time_html: str
+    efficiency_html: str
     years_report_html: str
     months_report_html: str
 
@@ -66,6 +67,7 @@ def build_compare_section(
     return CompareSection(
         volume_html=chart("volume"),
         time_html=chart("time"),
+        efficiency_html=chart("efficiency"),
         years_report_html=markdown_to_html(
             compare_report(
                 "years",

@@ -47,6 +47,21 @@ def _subt_point(
         default=None,
     )
 
+    # Efficiency only counts reps with both a heart rate and a distance.
+    efficiency_distance = sum(
+        i.distance_m for i in intervals if i.avg_hr is not None
+    )
+    efficiency_beats = sum(
+        i.avg_hr * i.duration_s / 60
+        for i in intervals
+        if i.avg_hr is not None
+    )
+    efficiency = (
+        efficiency_distance / efficiency_beats
+        if efficiency_beats > 0
+        else None
+    )
+
     rep_paces = []
     for interval in intervals:
         rep_pace = pace_s_per_km(interval.duration_s, interval.distance_m)
@@ -63,6 +78,9 @@ def _subt_point(
         avg_rep_s=total_time / len(intervals),
         fastest_pace_s_per_km=min(rep_paces) if rep_paces else None,
         slowest_pace_s_per_km=max(rep_paces) if rep_paces else None,
+        distance_m=efficiency_distance,
+        beats=efficiency_beats,
+        efficiency=efficiency,
     )
 
 
@@ -180,6 +198,12 @@ def _combine_points(
         slowest_pace_s_per_km=max(slowest) if slowest else None,
         avg_hr=avg_hr,
         max_hr=max(max_hrs) if max_hrs else None,
+        efficiency=(
+            sum(point.distance_m for point in points)
+            / sum(point.beats for point in points)
+            if sum(point.beats for point in points) > 0
+            else None
+        ),
     )
 
 
@@ -262,6 +286,11 @@ def _summary_from_blocks(
         for block in blocks
         if block.max_hr is not None
     ]
+    avg_hr = (
+        sum(hr * time for hr, time in hr_pairs) / hr_time
+        if hr_time
+        else None
+    )
 
     return SubtSummary(
         category=category,
@@ -270,12 +299,13 @@ def _summary_from_blocks(
         total_time_s=total_time,
         total_distance_m=total_distance,
         pace_s_per_km=pace_s_per_km(total_time, total_distance),
-        avg_hr=(
-            sum(hr * time for hr, time in hr_pairs) / hr_time
-            if hr_time
+        avg_hr=avg_hr,
+        max_hr=max(max_hrs) if max_hrs else None,
+        efficiency=(
+            total_distance / (avg_hr * total_time / 60)
+            if avg_hr is not None and total_time > 0
             else None
         ),
-        max_hr=max(max_hrs) if max_hrs else None,
     )
 
 

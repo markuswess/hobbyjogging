@@ -20,6 +20,9 @@ class SubtPoint:
     avg_rep_s: float = 0
     fastest_pace_s_per_km: float | None = None
     slowest_pace_s_per_km: float | None = None
+    distance_m: float = 0
+    beats: float = 0
+    efficiency: float | None = None
 
 
 @dataclass
@@ -39,6 +42,7 @@ class SubtBlock:
     slowest_pace_s_per_km: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
+    efficiency: float | None = None
 
 
 @dataclass
@@ -53,6 +57,7 @@ class SubtSummary:
     pace_s_per_km: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
+    efficiency: float | None = None
 
 
 @dataclass(frozen=True)

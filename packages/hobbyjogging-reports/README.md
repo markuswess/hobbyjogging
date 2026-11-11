@@ -41,6 +41,9 @@ HTML dashboard:
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the last four nights' values in the
   same layout as the daily report. Missing days are skipped.
+- **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace,
+  session heart rate, and efficiency (m/beat) for short, medium, long, and
+  LT1, ending today.
 - **planned** — Upcoming planned workouts starting tomorrow, as a compact
   key-facts table (date, weekday, workout, sport, distance, time, planned
   Z3+4 time, load); ends with weekly-average total time and Z3+4 time.
@@ -76,11 +79,13 @@ HTML dashboard:
   standard deviation below, red below; resting HR mirrored; sleep green
   7–9 h, amber 6–7 h or 9–10 h, red outside.
 - **subt** — subT and LT1 work intervals over the last 365 days by
-  default, with pace and average HR as two stacked panels sharing a
-  date axis. Dots are color-coded by rep length (short/medium/long)
-  or LT1; pace ranges show fastest–slowest, HR ranges show
-  average–max, and both metrics have a 42-day EWMA trend line. The pace
-  axis is fixed at 4:20–3:15 min/km (faster up) and HR at 140–180 bpm.
+  default, with pace, average HR, and efficiency (m/beat) as three stacked
+  panels sharing a date axis. Dots are color-coded by rep length
+  (short/medium/long) or LT1; pace ranges show fastest–slowest, HR ranges
+  show average–max, and the pace/HR lines are 42-day EWMAs while the
+  efficiency line is a 42-day *weighted* mean (sum(distance)/sum(beats)).
+  The pace axis is fixed at 4:20–3:15 min/km (faster up) and HR at
+  140–180 bpm; efficiency uses auto-ranging until the data settles.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
@@ -360,8 +365,8 @@ without usable work reps are omitted.
 
 ## subT EWMA report
 
-`subt-ewma-report` smooths each category's work pace and session heart rate
-over the last 7, 42, and 182 days:
+`subt-ewma-report` smooths each category's work pace, session heart rate,
+and efficiency over the last 7, 42, and 182 days:
 
     ./reports.sh subt-ewma-report
 
@@ -374,9 +379,10 @@ over the last 7, 42, and 182 days:
 | LT1 | 3:48/km | 3:51/km | 3:58/km |
 ```
 
-A second table repeats the shape for average heart rate. Days between
-sessions keep the last measured value, so the lines describe the standing
-pace and HR of each category. The report also tops the NSA dashboard tab.
+A second table repeats the shape for average heart rate, and a third for
+efficiency (sum(distance) / sum(beats)). Days between sessions keep the
+last measured value, so the tables describe the standing level of each
+category. The report also tops the NSA dashboard tab.
 
 The report starts with a summary table (sessions, reps, weekly work time
 and distance, weighted pace, average/max HR) and then shows one table
@@ -402,7 +408,7 @@ Default columns: date, sport, name, duration, distance, pace, avg HR,
 load, RPE, feel, methods, targets. `--columns` replaces them (in the order
 given); `--add` appends. Available columns: id, date, started (UTC), sport,
 name, duration, elapsed, distance, pace, avg_hr, load, rpe, feel, intensity,
-category, methods, targets. The category is only computed when requested,
+category, methods, targets, eff (m/beat). The category is only computed when requested,
 and uses intervals for subT/LT1-named sessions. Methods and targets are the
 canonical set tokens with their display labels.
 
@@ -549,9 +555,9 @@ Pages:
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
   EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
   last year.
-- `compare.html` — volume and time EWMA lines per calendar year over a fixed
-  Jan–Dec axis (`--compare-window`, default 182) plus the year and month
-  comparison reports.
+- `compare.html` — volume, time, and efficiency EWMA lines per calendar
+  year over a fixed Jan–Dec axis (`--compare-window`, default 182) plus the
+  year and month comparison reports.
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

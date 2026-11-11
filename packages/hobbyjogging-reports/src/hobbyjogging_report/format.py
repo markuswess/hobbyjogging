@@ -10,6 +10,7 @@ from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 
 from .analysis import (
     RUN_TYPES,
+    activity_efficiency,
     is_lt1_activity,
     is_subt_activity,
     pace_s_per_km,
@@ -219,11 +220,17 @@ def format_work_result(point: SubtPoint, label: str | None = None):
     else:
         hr = f"{point.avg_hr:.0f} avg / {point.max_hr:.0f} max bpm"
 
+    efficiency = (
+        f", {point.efficiency:.2f} m/beat"
+        if point.efficiency is not None
+        else ""
+    )
+
     return (
         f"{point.count}x{interval_duration} "
         f"{label}: "
         f"{format_pace(point.pace_s_per_km)}/km, "
-        f"{hr}"
+        f"{hr}{efficiency}"
     )
 
 
@@ -344,6 +351,11 @@ def _activity_metric_lines(
             lines.append(f"- Avg HR: {activity.avg_hr:.0f} bpm")
         else:
             lines.append(f"- HR: {activity.avg_hr:.0f} avg")
+
+    efficiency = activity_efficiency(activity)
+
+    if detailed and efficiency is not None:
+        lines.append(f"- Efficiency: {efficiency:.2f} m/beat")
 
     if activity.training_load:
         lines.append(f"- Load: {activity.training_load:.0f}")
@@ -552,6 +564,10 @@ def _hr_cell(value: float | None) -> str:
     return f"{value:.0f}" if value is not None else "-"
 
 
+def _efficiency_cell(value: float | None) -> str:
+    return "-" if value is None else f"{value:.2f}"
+
+
 def _km_cell(distance_m: float, decimals: int) -> str:
     if not distance_m:
         return "-"
@@ -572,8 +588,8 @@ def format_subt_summary_table(
 
     lines = [
         "| Category | Sessions | Reps | Work time / week | "
-        "Work km / week | Avg pace | Avg HR | Max HR |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "Work km / week | Avg pace | Avg HR | Max HR | Efficiency |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
     def row(label: str, summary: SubtSummary) -> str:
@@ -587,7 +603,8 @@ def format_subt_summary_table(
             f"{_km_cell(distance, 1)} | "
             f"{_pace_cell(summary.pace_s_per_km)} | "
             f"{_hr_cell(summary.avg_hr)} | "
-            f"{_hr_cell(summary.max_hr)} |"
+            f"{_hr_cell(summary.max_hr)} | "
+            f"{_efficiency_cell(summary.efficiency)} |"
         )
 
     for summary in summaries:
@@ -602,8 +619,8 @@ def format_subt_block_table(blocks: list[SubtBlock]):
     """Render one category's work blocks as a Markdown table."""
     lines = [
         "| Date | Session | Reps | Work time | Work km | Pace | "
-        "Fastest | Slowest | Avg HR | Max HR |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "Fastest | Slowest | Avg HR | Max HR | Efficiency |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
     for block in blocks:
@@ -618,7 +635,8 @@ def format_subt_block_table(blocks: list[SubtBlock]):
             f"{_pace_cell(block.fastest_pace_s_per_km)} | "
             f"{_pace_cell(block.slowest_pace_s_per_km)} | "
             f"{_hr_cell(block.avg_hr)} | "
-            f"{_hr_cell(block.max_hr)} |"
+            f"{_hr_cell(block.max_hr)} | "
+            f"{_efficiency_cell(block.efficiency)} |"
         )
 
     return lines

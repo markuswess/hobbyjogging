@@ -798,6 +798,29 @@ def _time_ewma(dates, values, window_days: int):
     return result
 
 
+def _weighted_efficiency(points, window_days: int):
+    """Trailing weighted metres per beat: sum(distance) / sum(beats)."""
+    curve = []
+
+    for point in points:
+        cutoff = point.date - timedelta(days=window_days - 1)
+        distance = 0.0
+        beats = 0.0
+
+        for sample in points:
+            if not (cutoff <= sample.date <= point.date):
+                continue
+            if sample.beats <= 0 or not sample.distance_m:
+                continue
+
+            distance += sample.distance_m
+            beats += sample.beats
+
+        curve.append(distance / beats if beats > 0 else None)
+
+    return curve
+
+
 def plot_subt(
     points: list[SubtPoint],
     output: str,
@@ -811,12 +834,12 @@ def plot_subt(
     """
     _require_data(points)
     figure = make_subplots(
-        rows=2,
+        rows=3,
         cols=1,
         shared_xaxes=True,
-        row_heights=[3, 2],
+        row_heights=[3, 2, 2],
         vertical_spacing=0.08,
-        subplot_titles=("Pace", "Average heart rate"),
+        subplot_titles=("Pace", "Average heart rate", "Efficiency"),
     )
     plotted = False
 
@@ -953,6 +976,45 @@ def plot_subt(
             col=1,
         )
 
+    for category in CHART_CATEGORIES:
+        color = SUBT_COLORS[category]
+        efficiency = _subt_points_for(
+            points,
+            category,
+            lambda point: point.efficiency,
+        )
+
+        if not efficiency:
+            continue
+
+        dates = [point.date for point in efficiency]
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=[point.efficiency for point in efficiency],
+                mode="markers",
+                marker={"color": color, "size": 7},
+                showlegend=False,
+            ),
+            row=3,
+            col=1,
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=_weighted_efficiency(
+                    efficiency,
+                    window_days,
+                ),
+                mode="lines",
+                line={"color": color, "width": 1.8},
+                opacity=0.55,
+                showlegend=False,
+            ),
+            row=3,
+            col=1,
+        )
+
     if not plotted:
         raise ValueError("no data to plot")
 
@@ -979,13 +1041,18 @@ def plot_subt(
         row=2,
         col=1,
     )
-    figure.update_xaxes(title_text="date", row=2, col=1)
+    figure.update_yaxes(
+        title_text="efficiency (m/beat)",
+        row=3,
+        col=1,
+    )
+    figure.update_xaxes(title_text="date", row=3, col=1)
     figure.update_layout(
         template="plotly_white",
         title=title,
-        height=900,
+        height=1200,
         margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.12, "x": 0},
+        legend={"orientation": "h", "y": 1.08, "x": 0},
         hovermode="x unified",
     )
     return _render(
@@ -993,7 +1060,7 @@ def plot_subt(
         output,
         as_html=as_html,
         width=1650,
-        height=2400,
+        height=3300,
     )
 
 
@@ -1299,6 +1366,7 @@ def plot_compare(
         "time": "hours / day",
         "load": "load / day",
         "runs": "runs / day",
+        "efficiency": "m / beat",
     }
     figure = go.Figure()
 

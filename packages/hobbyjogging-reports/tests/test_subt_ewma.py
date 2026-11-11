@@ -80,7 +80,7 @@ class SubtEwmaMarkdownTests(unittest.TestCase):
     def test_without_points_all_cells_are_dashes(self):
         markdown = subt_ewma_markdown([], END)
 
-        self.assertEqual(2, markdown.count("| Long | - | - | - |"))
+        self.assertEqual(3, markdown.count("| Long | - | - | - |"))
 
 
 if __name__ == "__main__":

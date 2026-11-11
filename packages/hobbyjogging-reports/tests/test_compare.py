@@ -320,6 +320,41 @@ class CompareYearEwmaTests(unittest.TestCase):
         self.assertGreater(last_2025, 0)
         self.assertEqual(last_2025, first_2026)
 
+    def test_efficiency_skips_rest_days_and_carries_forward(self):
+        activities = [
+            activity(
+                id="a",
+                date=date(2025, 3, 1),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=150,
+            ),
+            activity(
+                id="b",
+                date=date(2025, 3, 5),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=160,
+            ),
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "efficiency",
+            42,
+            today=date(2025, 3, 10),
+        )
+        points = dict(series[0][1])
+
+        self.assertAlmostEqual(1.1111, points[date(2025, 3, 1)], places=4)
+        # Rest days carry the previous value instead of dropping to zero.
+        self.assertAlmostEqual(1.1111, points[date(2025, 3, 4)], places=4)
+        alpha = 1 - math.exp(-1 / 42)
+        expected = alpha * (10000 / (160 * 60)) + (1 - alpha) * 1.111111
+        self.assertAlmostEqual(expected, points[date(2025, 3, 5)], places=4)
+        self.assertLess(points[date(2025, 3, 5)], points[date(2025, 3, 4)])
+        self.assertEqual(date(2025, 3, 10), series[0][1][-1][0])
+
     def test_unknown_metric_is_rejected(self):
         with self.assertRaises(ValueError):
             compare_year_ewma([], "watts", 7)

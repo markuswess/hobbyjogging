@@ -7,7 +7,12 @@ from datetime import date
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Activity
 
-from .analysis import activity_sort_key, is_lt1_activity, is_subt_activity
+from .analysis import (
+    activity_efficiency,
+    activity_sort_key,
+    is_lt1_activity,
+    is_subt_activity,
+)
 from .classify import classify
 from .cli import range_parser, resolve_range
 from .format import (
@@ -82,6 +87,10 @@ COLUMNS = {
         "intensity",
         lambda a: _optional(a.intensity, lambda v: f"{v:.0%}"),
         True,
+    ),
+    "eff": _plain(
+        "eff",
+        lambda a: _optional(activity_efficiency(a), lambda v: f"{v:.2f}"),
     ),
     "category": Column(
         "category",
