@@ -26,11 +26,13 @@ from ..planned import planned_report
 from ..recovery_report import recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
+from .analysis import build_analysis_section
 from .health import collect_health
 from .pages import (
     activity_filename,
     activity_page,
     activities_page,
+    analysis_page,
     health_page,
     overview_page,
     recovery_page,
@@ -46,6 +48,7 @@ from ..zone_groups import (
 MARKER = ".hobbyjogging-dashboard"
 RACE_DAYS = 180
 RECOVERY_DAYS = 186
+ANALYSIS_DAYS = 731
 
 
 def resolve_output_dir(output: str | Path | None = None) -> Path:
@@ -75,6 +78,7 @@ def build_dashboard(
     chart_days: int = 70,
     future_days: int = 14,
     recovery_days: int = RECOVERY_DAYS,
+    analysis_days: int = ANALYSIS_DAYS,
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
@@ -90,6 +94,8 @@ def build_dashboard(
         raise ValueError("future days must be zero or greater")
     if recovery_days <= 0:
         raise ValueError("recovery days must be positive")
+    if analysis_days <= 0:
+        raise ValueError("analysis days must be positive")
 
     unknown_reports = [
         name for name in reports if name not in REPORT_NAMES
@@ -103,6 +109,7 @@ def build_dashboard(
     today = today or date.today()
     start = today - timedelta(days=days - 1)
     recovery_start = today - timedelta(days=recovery_days - 1)
+    analysis_start = today - timedelta(days=analysis_days - 1)
 
     raw_activities = source.activities(start, today)
     activities, _ = exclude_review(
@@ -166,6 +173,12 @@ def build_dashboard(
     recovery_html = markdown_to_html(
         recovery_report(source, today=today),
         demote=1,
+    )
+    analysis_section = build_analysis_section(
+        source,
+        start=analysis_start,
+        end=today,
+        include_review=include_review,
     )
 
     overview_html = markdown_to_html(
@@ -265,6 +278,14 @@ def build_dashboard(
             include_review=include_review,
             activities=listed_activities,
             excluded=listed_excluded,
+        ),
+        "analysis.html": analysis_page(
+            generated_at=generated_at,
+            health=health,
+            include_review=include_review,
+            section=analysis_section,
+            start=analysis_start,
+            end=today,
         ),
         "recovery.html": recovery_page(
             generated_at=generated_at,

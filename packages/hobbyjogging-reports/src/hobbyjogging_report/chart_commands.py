@@ -299,6 +299,7 @@ def run_load_chart(
         average_warmup_days,
         daily_planned_load,
         load_metrics,
+        rpe_metrics,
     )
     from .charts import plot_load
 
@@ -342,6 +343,13 @@ def run_load_chart(
         output=output,
         planned_load=daily_planned_load(events, start, planned_end),
         windows=windows,
+        rpe_points=rpe_metrics(
+            activities,
+            start,
+            end,
+            windows=windows,
+            warmup_days=warmup_days,
+        ),
     )
     print(path)
 

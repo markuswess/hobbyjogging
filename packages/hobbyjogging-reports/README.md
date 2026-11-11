@@ -59,7 +59,9 @@ HTML dashboard:
   distance averages and the planned weekly distance; last 90 days by
   default.
 - **load** — Daily training load with 182-day base, 42-day fitness,
-  and 7-day fatigue exponentially weighted averages, plus planned load.
+  and 7-day fatigue exponentially weighted averages, plus planned load and
+  the three session-RPE EWMAs on a right-hand axis (RPE carries the last
+  rated value between sessions).
 - **time** — Weekly running time stacked by pace zone, with
   182/42/7-day time averages, a per-zone EWMA panel, and planned weekly
   time including planned pace zone distributions.
@@ -501,6 +503,9 @@ Pages:
   uses the last 182 days plus the next 14 by default.
 - `activities.html` — the recent activity table (default 50) with workout
   methods and targets, linked to per-activity pages.
+- `analysis.html` — the subT/LT1 chart, the `subT Report`, and the weekly
+  volume, weekly time-by-pace-zone, and load/RPE charts over the last two
+  years (`--analysis-days`, default 731).
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

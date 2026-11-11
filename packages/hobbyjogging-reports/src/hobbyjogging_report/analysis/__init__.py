@@ -47,6 +47,7 @@ from .planned import (
     weekly_planned_time,
 )
 from .recovery import recovery_trends
+from .rpe import daily_session_rpe, rpe_metrics
 from .subt import (
     subt_blocks,
     subt_report_blocks,
@@ -95,6 +96,7 @@ __all__ = [
     "daily_planned_zone_time",
     "daily_run_distance",
     "daily_run_time",
+    "daily_session_rpe",
     "daily_training_load",
     "daily_zone_time",
     "distance_averages",
@@ -106,6 +108,7 @@ __all__ = [
     "pace_s_per_km",
     "planned_workout_dates",
     "recovery_trends",
+    "rpe_metrics",
     "subt_blocks",
     "subt_report_blocks",
     "subt_report_summary",

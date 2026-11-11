@@ -19,6 +19,7 @@ from ..format import (
 from ..charts import plot_overview, plot_recovery
 from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, Vo2maxPoint
+from .analysis import AnalysisSection
 from .health import DataHealth, banner
 from ..zone_groups import ZoneGroupSeries
 
@@ -276,6 +277,40 @@ def recovery_page(
             include_review=include_review,
         ),
         active="recovery",
+        plotly=True,
+    )
+
+
+def analysis_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    section: AnalysisSection,
+    start: date,
+    end: date,
+) -> str:
+    """Render the analysis tab: subT, volume, time, and load charts."""
+    body = (
+        card("subT and LT1 intervals", section.subt_html)
+        + card(
+            None,
+            f'<div class="report">{section.subt_report_html}</div>',
+        )
+        + card("Weekly running volume", section.volume_html)
+        + card("Weekly running time by pace zone", section.time_html)
+        + card("Training load and session RPE", section.load_html)
+    )
+
+    return page(
+        title=f"Analysis · {start} → {end}",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        active="analysis",
         plotly=True,
     )
 

@@ -27,6 +27,11 @@ HARD_LINE_COLORS = {
 }
 LINE_STYLES = {7: "solid", 42: "dash", 182: "dashdot"}
 LINE_WIDTHS = {7: 1.8, 42: 1.8, 182: 2.4}
+RPE_LINE_COLORS = {
+    7: "#2ca02c",
+    42: "#1b7837",
+    182: "#00441b",
+}
 
 # Planned / projected overlays
 PLANNED_FILL_ALPHA = 0.45

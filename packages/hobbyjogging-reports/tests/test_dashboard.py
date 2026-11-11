@@ -38,6 +38,7 @@ def _source():
                 training_load=50,
                 pace_zone_times=[1800, 1200, 600, 0],
                 feel=2,
+                rpe=3,
                 workout_methods=["continuous"],
                 workout_targets=["base"],
             ),
@@ -51,6 +52,7 @@ def _source():
                 training_load=30,
                 pace_zone_times=[600, 600, 300, 300],
                 feel=2,
+                rpe=5,
             ),
             activity(
                 id="ride1",
@@ -250,6 +252,26 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Base", activities)
             self.assertIn("activities are hidden by import review", activities)
 
+            analysis = (target / "analysis.html").read_text()
+            self.assertIn("Analysis · 2024-11-09 → 2026-11-09", analysis)
+            self.assertIn(
+                'href="analysis.html" class="active"',
+                analysis,
+            )
+            self.assertIn("subT and LT1 intervals", analysis)
+            self.assertIn("subT Report", analysis)
+            self.assertIn("Weekly running volume", analysis)
+            self.assertIn(
+                "Weekly running time by pace zone",
+                analysis,
+            )
+            self.assertIn("Training load and session RPE", analysis)
+            self.assertIn("RPE 7d", analysis)
+            self.assertIn("RPE 42d", analysis)
+            self.assertIn("RPE 182d", analysis)
+            self.assertIn("No subT or LT1 sessions", analysis)
+            self.assertEqual(3, analysis.count("Plotly.newPlot"))
+
             detail = (target / "activity" / "run1.html").read_text()
             self.assertIn("Session 2026-11-08", detail)
             self.assertIn("Easy", detail)
@@ -357,6 +379,12 @@ class DashboardBuildTests(unittest.TestCase):
                 "No wellness data",
                 (target / "recovery.html").read_text(),
             )
+            analysis_path = target / "analysis.html"
+            self.assertTrue(analysis_path.exists())
+            analysis = analysis_path.read_text()
+            self.assertIn("No subT or LT1 sessions", analysis)
+            self.assertIn("No running volume", analysis)
+            self.assertIn("No running time", analysis)
 
     def test_second_build_replaces_dashboard_atomically(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -24,6 +24,12 @@ comparison.
 - **Zone helpers.** `event_zone_seconds()`, `event_zone_time()`,
   `daily_planned_zone_time()`, and `weekly_planned_time_by_zone()` handle
   normalization, `SS`, empty zones, and weekly aggregation.
+- **Analysis tab.** `analysis.html` shows the subT/LT1 chart, the `subT
+  Report`, and the weekly volume, weekly time-by-zone, and load charts over
+  the last two years (`--analysis-days`, default 731). The load chart gained
+  the three session-RPE EWMAs (7/42/182) on a right-hand RPE axis; the daily
+  value is the mean RPE of that day's rated sessions, carried forward between
+  sessions like VO2max, with the EWMAs warming up over the usual 910 days.
 - **Recovery report.** `reports.sh recovery-report` renders HRV, resting HR,
   and sleep with simple 7/42/182-day calendar-day moving averages (missing
   days skipped) plus the last four nights in the daily report's format. The

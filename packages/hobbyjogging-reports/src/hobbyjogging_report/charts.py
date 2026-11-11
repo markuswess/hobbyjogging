@@ -21,6 +21,7 @@ from .model import (
     DistancePoint,
     LoadPoint,
     RecoveryPoint,
+    RpePoint,
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
@@ -40,6 +41,7 @@ from .style import (
     LINE_WIDTHS,
     PLANNED_PATTERN,
     PROJECTED_OPACITY,
+    RPE_LINE_COLORS,
     TOTAL_LINE_COLORS,
     UNZONED_COLOR,
     UNZONED_EDGE,
@@ -754,10 +756,11 @@ def plot_load(
     output: str,
     planned_load: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
+    rpe_points: list[RpePoint] | None = None,
     title: str = "Training load",
     as_html: bool = False,
 ) -> str:
-    """Daily load bars with base, fitness, and fatigue EWMA lines."""
+    """Daily load bars with EWMAs, plus session RPE on a right axis."""
     _require_data(points)
     windows = windows or AverageWindows()
     actual = [point for point in points if not point.projected]
@@ -788,12 +791,51 @@ def plot_load(
         windows,
         label=lambda attribute, days: f"{attribute.title()} ({days}d)",
     )
+
+    rpe = [point for point in rpe_points or [] if point.base is not None]
+
+    for attribute, window in (
+        ("base", 182),
+        ("fitness", 42),
+        ("fatigue", 7),
+    ):
+        if not rpe:
+            break
+
+        figure.add_trace(
+            go.Scatter(
+                x=[point.date for point in rpe],
+                y=[getattr(point, attribute) for point in rpe],
+                mode="lines",
+                name=f"RPE {window}d",
+                yaxis="y2",
+                line={
+                    "color": RPE_LINE_COLORS[window],
+                    "width": LINE_WIDTHS[window],
+                    "dash": LINE_STYLES[window],
+                },
+            )
+        )
+
     _base_layout(
         figure,
         title=title,
         xlabel="date",
         ylabel="training load",
     )
+
+    if rpe:
+        figure.update_layout(
+            yaxis2={
+                "title": "RPE",
+                "overlaying": "y",
+                "side": "right",
+                "showgrid": False,
+                "range": [0, 10],
+                "dtick": 2,
+            },
+        )
+
     return _render(
         figure,
         output,

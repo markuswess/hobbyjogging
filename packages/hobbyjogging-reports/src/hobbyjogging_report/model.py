@@ -77,6 +77,17 @@ class LoadPoint:
 
 
 @dataclass
+class RpePoint:
+    """Daily session RPE plus its smoothed averages."""
+
+    date: date
+    rpe: float | None = None
+    base: float | None = None
+    fitness: float | None = None
+    fatigue: float | None = None
+
+
+@dataclass
 class DistancePoint:
     """Daily running distance plus its smoothed averages."""
 

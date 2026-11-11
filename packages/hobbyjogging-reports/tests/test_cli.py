@@ -533,13 +533,16 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 182, 14, 186, ()),
+            (None, 14, 50, 182, 14, 186, 731, ()),
             parse_dashboard_args([]),
         )
 
     def test_custom_output_and_limits(self):
         self.assertEqual(
-            ("/tmp/site", 30, 100, 90, 21, 60, ("overview", "daily")),
+            (
+                "/tmp/site", 30, 100, 90, 21, 60, 120,
+                ("overview", "daily"),
+            ),
             parse_dashboard_args(
                 [
                     "--output", "/tmp/site",
@@ -548,6 +551,7 @@ class DashboardArgsTests(unittest.TestCase):
                     "--chart-days", "90",
                     "--future-days", "21",
                     "--recovery-days", "60",
+                    "--analysis-days", "120",
                     "--reports", "overview,daily",
                 ]
             ),
@@ -572,6 +576,10 @@ class DashboardArgsTests(unittest.TestCase):
     def test_rejects_non_positive_recovery_days(self):
         with self.assertRaises(ValueError):
             parse_dashboard_args(["--recovery-days", "0"])
+
+    def test_rejects_non_positive_analysis_days(self):
+        with self.assertRaises(ValueError):
+            parse_dashboard_args(["--analysis-days", "0"])
 
     def test_rejects_unknown_reports(self):
         with self.assertRaises(ValueError):
