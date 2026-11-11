@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import warnings
 from datetime import date, timedelta
 
@@ -30,6 +31,7 @@ from .model import (
 )
 from .series import sma
 from .style import (
+    CLIPPED_COLOR,
     EASY_COLOR,
     EASY_EDGE,
     EASY_PLANNED_COLOR,
@@ -39,13 +41,19 @@ from .style import (
     HARD_PLANNED_COLOR,
     LINE_STYLES,
     LINE_WIDTHS,
+    LOAD_Y_MAX,
     PLANNED_PATTERN,
     PROJECTED_OPACITY,
     RPE_LINE_COLORS,
+    RPE_PER_LOAD,
+    SUBT_HR_RANGE,
+    SUBT_PACE_RANGE,
+    TIME_Y_MAX,
     TOTAL_LINE_COLORS,
     UNZONED_COLOR,
     UNZONED_EDGE,
     UNZONED_PLANNED_COLOR,
+    VOLUME_Y_MAX,
 )
 from .zone_groups import ZoneGroupSeries
 
@@ -212,6 +220,49 @@ def _planned_total_bars(figure, values, *, label: str = "planned"):
     )
 
 
+def _clipped_markers(
+    figure,
+    x,
+    values,
+    limit: float,
+    unit: str,
+    *,
+    row: int | None = None,
+    col: int | None = None,
+):
+    """Mark bars that exceed a fixed axis limit instead of hiding them."""
+    clipped = [
+        (day, value)
+        for day, value in zip(x, values)
+        if value > limit
+    ]
+
+    if not clipped:
+        return
+
+    _add(
+        figure,
+        go.Scatter(
+            x=[day for day, _ in clipped],
+            y=[limit * 0.98] * len(clipped),
+            mode="markers",
+            marker={
+                "symbol": "triangle-up",
+                "size": 9,
+                "color": CLIPPED_COLOR,
+            },
+            name=f"clipped above {limit:g} {unit}",
+            hovertext=[
+                f"{value:.1f} {unit} (bar clipped)"
+                for _, value in clipped
+            ],
+            hoverinfo="text",
+        ),
+        row=row,
+        col=col,
+    )
+
+
 def plot_volume(
     data: list[tuple[date, float]],
     output: str,
@@ -265,6 +316,15 @@ def plot_volume(
             scale=distance_scale,
             label=lambda attribute, days: f"{days}d avg (weekly)",
         )
+
+    _clipped_markers(
+        figure,
+        weeks,
+        [value for _, value in data],
+        VOLUME_Y_MAX,
+        "km",
+    )
+    figure.update_yaxes(range=[0, VOLUME_Y_MAX], dtick=20)
 
     axis_weeks = sorted(
         set(weeks) | {week for week, _ in planned_distance or []}
@@ -486,6 +546,16 @@ def plot_time(
                 for bottom, value in zip(planned_bottoms, values)
             ]
 
+    _clipped_markers(
+        figure,
+        week_dates,
+        [total for total in totals],
+        TIME_Y_MAX,
+        "h",
+        row=1,
+        col=1,
+    )
+
     planned_totals = [
         (week, seconds / 3600)
         for week, seconds in planned_time or []
@@ -574,7 +644,13 @@ def plot_time(
                 col=1,
             )
 
-        figure.update_yaxes(title_text=ylabel, row=3, col=1)
+        figure.update_yaxes(
+            title_text=ylabel,
+            range=[0, TIME_Y_MAX],
+            dtick=2,
+            row=3,
+            col=1,
+        )
 
     figure.update_yaxes(
         title_text="% of week",
@@ -584,7 +660,13 @@ def plot_time(
         row=2,
         col=1,
     )
-    figure.update_yaxes(title_text=ylabel, row=1, col=1)
+    figure.update_yaxes(
+        title_text=ylabel,
+        range=[0, TIME_Y_MAX],
+        dtick=2,
+        row=1,
+        col=1,
+    )
     figure.update_xaxes(
         title_text="week starting (Monday)",
         row=rows,
@@ -638,11 +720,6 @@ def plot_subt(
         subplot_titles=("Pace", "Average heart rate"),
     )
     plotted = False
-    pace_values = [
-        point.pace_s_per_km
-        for point in points
-        if point.pace_s_per_km is not None
-    ]
 
     for category in CHART_CATEGORIES:
         color = SUBT_COLORS[category]
@@ -780,23 +857,29 @@ def plot_subt(
     if not plotted:
         raise ValueError("no data to plot")
 
-    if pace_values:
-        low = min(pace_values)
-        high = max(pace_values)
-        ticks = [
-            low + (high - low) * index / 4
-            for index in range(5)
-        ]
-        figure.update_yaxes(
-            autorange="reversed",
-            tickvals=ticks,
-            ticktext=[format_pace(value) for value in ticks],
-            row=1,
-            col=1,
-        )
-
-    figure.update_yaxes(title_text="pace (min/km)", row=1, col=1)
-    figure.update_yaxes(title_text="heart rate (bpm)", row=2, col=1)
+    ticks = [
+        SUBT_PACE_RANGE[1] + 15 * index
+        for index in range(5)
+    ]
+    figure.update_yaxes(
+        range=list(SUBT_PACE_RANGE),
+        tickvals=ticks,
+        ticktext=[format_pace(value) for value in ticks],
+        row=1,
+        col=1,
+    )
+    figure.update_yaxes(
+        title_text="pace (min/km)",
+        row=1,
+        col=1,
+    )
+    figure.update_yaxes(
+        title_text="heart rate (bpm)",
+        range=list(SUBT_HR_RANGE),
+        dtick=10,
+        row=2,
+        col=1,
+    )
     figure.update_xaxes(title_text="date", row=2, col=1)
     figure.update_layout(
         template="plotly_white",
@@ -881,6 +964,31 @@ def plot_load(
             )
         )
 
+    if rpe:
+        highest = max(
+            max(
+                getattr(point, attribute)
+                for point in rpe
+                for attribute in ("base", "fitness", "fatigue")
+            ),
+            0.0,
+        )
+        load_max = max(
+            LOAD_Y_MAX,
+            math.ceil(highest) * RPE_PER_LOAD,
+        )
+    else:
+        load_max = LOAD_Y_MAX
+
+    _clipped_markers(
+        figure,
+        [point.date for point in actual],
+        [point.load for point in actual],
+        load_max,
+        "load",
+    )
+    figure.update_yaxes(range=[0, load_max], dtick=25)
+
     _base_layout(
         figure,
         title=title,
@@ -895,8 +1003,8 @@ def plot_load(
                 "overlaying": "y",
                 "side": "right",
                 "showgrid": False,
-                "range": [0, 10],
-                "dtick": 2,
+                "range": [0, load_max / RPE_PER_LOAD],
+                "dtick": 1,
             },
         )
 

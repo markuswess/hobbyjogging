@@ -72,6 +72,14 @@ Dashboard follow-ups, handed over together with the triage work:
   category, detail, linked activity, and reported date; the count is in the
   stat grid. Category filters exist in the API for a later per-category view.
 
+- **Fixed chart axes.** Charts no longer autoscale: volume 0–130 km, time
+  0–10 h (both panels), load 0–150 with the RPE axis on the right at 0–6 so
+  one RPE point lines up with 25 load units, subT pace 3:15–4:20 min/km
+  (faster up), subT HR 140–180 bpm. Bars that exceed a fixed limit are
+  marked with a "clipped above …" triangle instead of being hidden. The RPE
+  axis extends in whole points (and the load axis with it) if a session-RPE
+  EWMA ever passes 6.
+
 ## Next
 
 1. **Daily planned session.** Show the upcoming/current workout's planned
@@ -83,30 +91,22 @@ Dashboard follow-ups, handed over together with the triage work:
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Review queue in the dashboard.** `DataSource.review_items` now
-   exposes the queue (root/core change is done); render the open items,
-   grouped by category, on the health page.
-5. **Compare tab and compare chart.** Render the existing year/month compare
+4. **Compare tab and compare chart.** Render the existing year/month compare
    reports on a new dashboard tab, and add a compare chart: one line per
    calendar year over a single Jan–Dec x-axis, plotting an EWMA of a chosen
    metric (volume, time, load, runs) with a chosen window (7/42/182 days).
    The current year is partial — mark today and keep the axis fixed so the
    years line up.
-6. **Pace vs HR scatter.** One point per run (average pace vs average HR) for
+5. **Pace vs HR scatter.** One point per run (average pace vs average HR) for
    aerobic-efficiency analysis. Decide the pace axis: `min/km` is intuitive
    but reciprocal (equal speed changes curve the cloud), `m/s` is linear and
    better for a trend line or correlation. Recommendation: plot `m/s` and
    label the ticks in `min/km`, or offer a toggle.
-7. **Fixed chart axis ranges.** Give the charts stable y-ranges so periods are
-   comparable instead of autoscaling: running volume 0–130 km, running time
-   0–10 h, training load 0–150, RPE overlaid on the load axis at `RPE × 25`
-   (so RPE 2 sits at 50), subT pace 4:20–3:15 min/km (inverted, faster up),
-   subT HR 140–180 bpm. Chart constants; an override can come later.
-8. **Recovery bands.** Red/yellow/green zones behind the recovery plots (HRV,
+6. **Recovery bands.** Red/yellow/green zones behind the recovery plots (HRV,
    resting HR, sleep) so a point's status reads at a glance. Thresholds are
    not defined yet — propose HRV relative to the 42-day baseline (±1 SD),
    resting HR relative to its baseline, and sleep 7–9 h green.
-9. **Shoe mileage.** Distance per equipment item from canonical data:
+7. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -114,7 +114,7 @@ Dashboard follow-ups, handed over together with the triage work:
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-10. **Session report completeness** (low priority, last). The `session` report
+8. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.

@@ -18,6 +18,7 @@ from hobbyjogging_report.model import (
     LoadPoint,
     AverageWindows,
     RecoveryPoint,
+    RpePoint,
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
@@ -312,6 +313,50 @@ class OverviewChartTests(unittest.TestCase):
         )
 
         self.assertIn("Plotly.newPlot", result)
+
+
+class FixedRangeTests(unittest.TestCase):
+
+    def test_charts_use_stable_axes(self):
+        load_html = plot_load(
+            [LoadPoint(D, 50, 40, 45, 48)],
+            "",
+            rpe_points=[RpePoint(D, 3.0, 2.8, 2.9, 3.0)],
+            as_html=True,
+        )
+
+        self.assertIn('"range":[0,150.0]', load_html)
+        self.assertIn('"range":[0,6.0]', load_html)
+
+        volume_html = plot_volume([(D, 60.0)], "", as_html=True)
+        self.assertIn('"range":[0,130.0]', volume_html)
+
+        time_html = plot_time(
+            [TimeZoneWeek(D, [3600, 1800, 0, 0], 0)],
+            "",
+            as_html=True,
+        )
+        self.assertIn('"range":[0,10.0]', time_html)
+        self.assertIn('"range":[0,100]', time_html)
+
+    def test_rpe_axis_extends_with_the_load_axis(self):
+        html = plot_load(
+            [LoadPoint(D, 50, 40, 45, 48)],
+            "",
+            rpe_points=[RpePoint(D, 7.2, 7.8, 7.2, 7.0)],
+            as_html=True,
+        )
+
+        # RPE 7.8 rounds up to 8 -> load 0-200, RPE 0-8; gridlines align
+        # every 25 load units with one RPE point.
+        self.assertIn('"range":[0,200.0]', html)
+        self.assertIn('"range":[0,8.0]', html)
+
+    def test_clipped_bars_are_marked(self):
+        html = plot_volume([(D, 187.0)], "", as_html=True)
+
+        self.assertIn("clipped above 130 km", html)
+        self.assertIn("187.0 km (bar clipped)", html)
 
 
 class LoadChartTests(unittest.TestCase):

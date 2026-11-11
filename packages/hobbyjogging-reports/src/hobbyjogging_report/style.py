@@ -38,3 +38,12 @@ PLANNED_FILL_ALPHA = 0.45
 PLANNED_HATCH = "//"
 PLANNED_PATTERN = "/"
 PROJECTED_OPACITY = 0.55
+
+# Fixed axes keep periods comparable instead of autoscaling.
+VOLUME_Y_MAX = 130.0
+TIME_Y_MAX = 10.0
+LOAD_Y_MAX = 150.0
+RPE_PER_LOAD = 25.0  # one RPE point maps to 25 load units on the right axis
+SUBT_PACE_RANGE = (260.0, 195.0)  # 4:20 .. 3:15 min/km, slow at the bottom
+SUBT_HR_RANGE = (140.0, 180.0)
+CLIPPED_COLOR = "#7f7f7f"

@@ -59,22 +59,24 @@ HTML dashboard:
   and clipped.
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
-  default.
+  default. The axis is fixed at 0–130 km/week; larger weeks are marked.
 - **load** — Daily training load with 182-day base, 42-day fitness,
   and 7-day fatigue exponentially weighted averages, plus planned load and
   the three session-RPE EWMAs on a right-hand axis (RPE carries the last
-  rated value between sessions).
+  rated value between sessions). The axis is fixed at 0–150 load with the
+  RPE axis at 0–6, so one RPE point lines up with 25 load units.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
   at the bottom), with 182/42/7-day time averages, a share-of-week panel, a
   per-zone EWMA panel, and planned weekly time including planned pace zone
-  distributions.
+  distributions. The axis is fixed at 0–10 h/week; larger weeks are marked.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers.
 - **subt** — subT and LT1 work intervals over the last 365 days by
   default, with pace and average HR as two stacked panels sharing a
   date axis. Dots are color-coded by rep length (short/medium/long)
   or LT1; pace ranges show fastest–slowest, HR ranges show
-  average–max, and both metrics have rolling averages.
+  average–max, and both metrics have rolling averages. The pace axis is
+  fixed at 4:20–3:15 min/km (faster up) and HR at 140–180 bpm.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
 - **classify** — Print the workout category for each activity over
