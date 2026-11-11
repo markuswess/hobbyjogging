@@ -548,7 +548,7 @@ Pages:
   (`--analysis-days`, default 731).
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
   EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
-  same window.
+  last year.
 - `compare.html` — volume and time EWMA lines per calendar year over a fixed
   Jan–Dec axis (`--compare-window`, default 182) plus the year and month
   comparison reports.

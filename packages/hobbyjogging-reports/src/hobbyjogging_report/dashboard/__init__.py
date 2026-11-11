@@ -53,6 +53,7 @@ MARKER = ".hobbyjogging-dashboard"
 RACE_DAYS = 180
 RECOVERY_DAYS = 186
 ANALYSIS_DAYS = 731
+NSA_DAYS = 365
 
 
 def resolve_output_dir(output: str | Path | None = None) -> Path:
@@ -117,6 +118,7 @@ def build_dashboard(
     start = today - timedelta(days=days - 1)
     recovery_start = today - timedelta(days=recovery_days - 1)
     analysis_start = today - timedelta(days=analysis_days - 1)
+    nsa_start = today - timedelta(days=NSA_DAYS - 1)
 
     raw_activities = source.activities(start, today)
     activities, _ = exclude_review(
@@ -189,7 +191,7 @@ def build_dashboard(
     )
     nsa_section = build_nsa_section(
         source,
-        start=analysis_start,
+        start=nsa_start,
         end=today,
         include_review=include_review,
     )
@@ -311,7 +313,7 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             section=nsa_section,
-            start=analysis_start,
+            start=nsa_start,
             end=today,
         ),
         "compare.html": compare_page(

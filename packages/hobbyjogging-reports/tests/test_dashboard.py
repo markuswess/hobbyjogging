@@ -273,7 +273,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertEqual(4, analysis.count("Plotly.newPlot"))
 
             nsa = (target / "nsa.html").read_text()
-            self.assertIn("NSA · 2024-11-09 → 2026-11-09", nsa)
+            self.assertIn("NSA · 2025-11-10 → 2026-11-09", nsa)
             self.assertIn('href="nsa.html" class="active"', nsa)
             self.assertIn("subT EWMA Report", nsa)
             self.assertIn("<h3>Pace</h3>", nsa)
