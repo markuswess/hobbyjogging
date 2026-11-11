@@ -26,11 +26,14 @@ comparison.
   normalization, `SS`, empty zones, and weekly aggregation.
 - **Analysis and NSA tabs.** `analysis.html` shows the weekly volume, weekly
   time-by-zone, and load charts over the last two years (`--analysis-days`,
-  default 731). `nsa.html` (NSA) holds the subT/LT1 chart and the `subT
-  Report` over the same window. The load chart gained the three session-RPE
-  EWMAs (7/42/182) on a right-hand RPE axis; the daily value is the mean RPE
-  of that day's rated sessions, carried forward between sessions like
-  VO2max, with the EWMAs warming up over the usual 910 days.
+  default 731). `nsa.html` (NSA) holds the subT EWMA report (7/42/182-day
+  pace and session-HR EWMAs for short/medium/long/LT1), the subT/LT1 chart,
+  and the `subT Report` over the same window. The same EWMA report is
+  available as `reports.sh subt-ewma-report`. The load chart gained the
+  three session-RPE EWMAs (7/42/182) on a right-hand RPE axis; the daily
+  value is the mean RPE of that day's rated sessions, carried forward
+  between sessions like VO2max, with the EWMAs warming up over the usual
+  910 days.
 - **Recovery report.** `reports.sh recovery-report` renders HRV, resting HR,
   and sleep with simple 7/42/182-day calendar-day moving averages (missing
   days skipped) plus the last four nights in the daily report's format. The

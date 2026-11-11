@@ -245,13 +245,8 @@ def run_subt_chart(
     include_review: bool = False,
 ) -> None:
     """Render subT and LT1 work interval pace and HR for the given range."""
-    from .analysis import (
-        activity_sort_key,
-        is_lt1_activity,
-        is_subt_activity,
-        subt_session_point,
-    )
     from .charts import plot_subt
+    from .command_support import subt_session_points
 
     activities = reviewed_range(
         source,
@@ -259,25 +254,7 @@ def run_subt_chart(
         end,
         include_review,
     )
-    activities = sorted(activities, key=activity_sort_key)
-
-    points = []
-
-    for activity in activities:
-        if is_lt1_activity(activity):
-            category = "lt1"
-        elif is_subt_activity(activity):
-            category = None
-        else:
-            continue
-
-        point = subt_session_point(
-            activity,
-            source.activity_intervals(activity.id),
-            category=category,
-        )
-        if point is not None:
-            points.append(point)
+    points = subt_session_points(source, activities)
 
     path = plot_subt(points, output=output)
 

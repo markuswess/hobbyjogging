@@ -291,9 +291,13 @@ def nsa_page(
     start: date,
     end: date,
 ) -> str:
-    """Render the NSA tab: the subT chart and the subT report."""
+    """Render the NSA tab: the EWMA report, the subT chart, and the report."""
     body = (
-        card("subT and LT1 intervals", section.subt_html)
+        card(
+            None,
+            f'<div class="report">{section.ewma_report_html}</div>',
+        )
+        + card("subT and LT1 intervals", section.subt_html)
         + card(
             None,
             f'<div class="report">{section.subt_report_html}</div>',

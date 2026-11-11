@@ -55,6 +55,7 @@ from .subt import (
     subt_session_point,
     subt_work_points,
 )
+from .subt_ewma import SubtEwmaRow, subt_ewma
 from .vo2max import (
     VO2MAX_LONG_DAYS,
     VO2MAX_SHORT_DAYS,
@@ -83,6 +84,7 @@ __all__ = [
     "RUN_TYPES",
     "SUBT_CATEGORIES",
     "SUBT_CATEGORY_ORDER",
+    "SubtEwmaRow",
     "VO2MAX_LONG_DAYS",
     "VO2MAX_SHORT_DAYS",
     "VO2MAX_WARMUP_DAYS",
@@ -114,6 +116,7 @@ __all__ = [
     "subt_report_summary",
     "subt_session_point",
     "subt_work_points",
+    "subt_ewma",
     "time_averages",
     "vo2max_points",
     "week_bounds",

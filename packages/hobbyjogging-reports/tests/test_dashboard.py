@@ -273,6 +273,13 @@ class DashboardBuildTests(unittest.TestCase):
             nsa = (target / "nsa.html").read_text()
             self.assertIn("NSA · 2024-11-09 → 2026-11-09", nsa)
             self.assertIn('href="nsa.html" class="active"', nsa)
+            self.assertIn("subT EWMA Report", nsa)
+            self.assertIn("<h3>Pace</h3>", nsa)
+            self.assertIn("<h3>Heart rate</h3>", nsa)
+            self.assertLess(
+                nsa.find("subT EWMA Report"),
+                nsa.find("subT and LT1 intervals"),
+            )
             self.assertIn("subT and LT1 intervals", nsa)
             self.assertIn("subT Report", nsa)
             self.assertIn("No subT or LT1 sessions", nsa)

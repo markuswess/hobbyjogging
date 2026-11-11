@@ -71,3 +71,37 @@ def warmup_reviewed(
     )
 
     return display, activities
+
+
+def subt_session_points(
+    source: DataSource,
+    activities: list[Activity],
+):
+    """Collect subT/LT1 work points from activities, oldest first."""
+    from .analysis import (
+        activity_sort_key,
+        is_lt1_activity,
+        is_subt_activity,
+        subt_session_point,
+    )
+
+    points = []
+
+    for activity in sorted(activities, key=activity_sort_key):
+        if is_lt1_activity(activity):
+            category = "lt1"
+        elif is_subt_activity(activity):
+            category = None
+        else:
+            continue
+
+        point = subt_session_point(
+            activity,
+            source.activity_intervals(activity.id),
+            category=category,
+        )
+
+        if point is not None:
+            points.append(point)
+
+    return points

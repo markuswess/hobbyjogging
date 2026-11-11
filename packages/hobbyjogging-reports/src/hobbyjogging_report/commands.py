@@ -46,6 +46,7 @@ from .report_commands import (
     run_recovery_report_command,
     run_report_command,
     run_session_command,
+    run_subt_ewma_report_command,
     run_subt_report_command,
     summary_handler,
 )
@@ -181,6 +182,13 @@ COMMANDS = {
         "recovery-report",
         ("reports.sh recovery-report",),
         run=run_recovery_report_command,
+    ),
+    "subt-ewma-report": Command(
+        "subt-ewma-report",
+        "subT/LT1 work pace and HR with 7/42/182-day EWMAs",
+        "subt-ewma-report",
+        ("reports.sh subt-ewma-report",),
+        run=run_subt_ewma_report_command,
     ),
     "planned": Command(
         "planned",

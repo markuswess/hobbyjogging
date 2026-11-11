@@ -36,6 +36,8 @@ HTML dashboard:
   (`--days`, `--from`, `--to`).
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
+- **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace and
+  session heart rate for short, medium, long, and LT1, ending today.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the last four nights' values in the
   same layout as the daily report. Missing days are skipped.
@@ -338,6 +340,26 @@ A session with work in several categories therefore appears in each
 relevant group. LT1 sessions always go to the LT1 group, and sessions
 without usable work reps are omitted.
 
+## subT EWMA report
+
+`subt-ewma-report` smooths each category's work pace and session heart rate
+over the last 7, 42, and 182 days:
+
+    ./reports.sh subt-ewma-report
+
+```
+| Category | 7-day EWMA | 42-day EWMA | 182-day EWMA |
+|---|---:|---:|---:|
+| Short | 3:28/km | 3:29/km | 3:33/km |
+| Medium | 3:38/km | 3:36/km | 3:41/km |
+| Long | 3:43/km | 3:45/km | 3:47/km |
+| LT1 | 3:48/km | 3:51/km | 3:58/km |
+```
+
+A second table repeats the shape for average heart rate. Days between
+sessions keep the last measured value, so the lines describe the standing
+pace and HR of each category. The report also tops the NSA dashboard tab.
+
 The report starts with a summary table (sessions, reps, weekly work time
 and distance, weighted pace, average/max HR) and then shows one table
 per non-empty category. Work pace, fastest/slowest rep pace, and HR are
@@ -505,8 +527,9 @@ Pages:
   methods and targets, linked to per-activity pages.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts over the last two years (`--analysis-days`, default 731).
-- `nsa.html` (NSA) — the subT/LT1 chart and the `subT Report` over the same
-  window.
+- `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
+  EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
+  same window.
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.
