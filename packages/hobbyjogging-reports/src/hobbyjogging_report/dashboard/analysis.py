@@ -1,4 +1,4 @@
-"""Data for the dashboard Analysis tab: charts plus the subT report."""
+"""Data for the dashboard Analysis tab: volume, time, and load charts."""
 
 from __future__ import annotations
 
@@ -9,28 +9,21 @@ from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
     RUN_TYPES,
-    activity_sort_key,
     average_warmup_days,
     distance_averages,
-    is_lt1_activity,
-    is_subt_activity,
     load_metrics,
     rpe_metrics,
-    subt_session_point,
     time_averages,
     week_bounds,
     weekly_run_distance,
     weekly_time_by_zone,
     zone_time_averages,
 )
-from ..charts import plot_load, plot_subt, plot_time, plot_volume
-from ..html import markdown_to_html
+from ..charts import plot_load, plot_time, plot_volume
 from ..model import AverageWindows
 from ..review import exclude_review
-from ..subt_report import subt_report
 
 ZONE_COUNT = 4
-NO_SUBT = '<p class="muted">No subT or LT1 sessions in this window.</p>'
 NO_VOLUME = '<p class="muted">No running volume in this window.</p>'
 NO_TIME = '<p class="muted">No running time in this window.</p>'
 NO_LOAD = '<p class="muted">No training load in this window.</p>'
@@ -40,34 +33,9 @@ NO_LOAD = '<p class="muted">No training load in this window.</p>'
 class AnalysisSection:
     """Rendered analysis cards for the dashboard."""
 
-    subt_html: str
-    subt_report_html: str
     volume_html: str
     time_html: str
     load_html: str
-
-
-def _subt_points(source: DataSource, activities):
-    points = []
-
-    for activity in sorted(activities, key=activity_sort_key):
-        if is_lt1_activity(activity):
-            category = "lt1"
-        elif is_subt_activity(activity):
-            category = None
-        else:
-            continue
-
-        point = subt_session_point(
-            activity,
-            source.activity_intervals(activity.id),
-            category=category,
-        )
-
-        if point is not None:
-            points.append(point)
-
-    return points
 
 
 def build_analysis_section(
@@ -77,7 +45,7 @@ def build_analysis_section(
     end: date,
     include_review: bool = False,
 ) -> AnalysisSection:
-    """Build the four analysis charts and the subT report."""
+    """Build the volume, time, and load charts."""
     windows = AverageWindows()
     warmup_days = average_warmup_days(windows)
     activities, _ = exclude_review(
@@ -90,22 +58,9 @@ def build_analysis_section(
         if start <= activity.date <= end
     ]
     week_start, week_end = week_bounds(start, end)
-
-    subt = _subt_points(source, display)
-    subt_html = (
-        plot_subt(subt, "", as_html=True) if subt else NO_SUBT
-    )
-
-    subt_report_html = markdown_to_html(
-        subt_report(
-            start,
-            end,
-            "subT Report",
-            source,
-            include_review=include_review,
-        ),
-        demote=1,
-    )
+    runs = [
+        activity for activity in display if activity.type in RUN_TYPES
+    ]
 
     weekly_distance = weekly_run_distance(display)
     distance_points = distance_averages(
@@ -115,9 +70,6 @@ def build_analysis_section(
         windows=windows,
         warmup_days=warmup_days,
     )
-    runs = [
-        activity for activity in display if activity.type in RUN_TYPES
-    ]
     volume_html = (
         plot_volume(
             weekly_distance,
@@ -189,8 +141,6 @@ def build_analysis_section(
     )
 
     return AnalysisSection(
-        subt_html=subt_html,
-        subt_report_html=subt_report_html,
         volume_html=volume_html,
         time_html=time_html,
         load_html=load_html,

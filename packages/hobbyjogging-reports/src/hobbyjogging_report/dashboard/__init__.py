@@ -27,6 +27,7 @@ from ..recovery_report import recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .analysis import build_analysis_section
+from .nsa import build_nsa_section
 from .health import collect_health
 from .pages import (
     activity_filename,
@@ -34,6 +35,7 @@ from .pages import (
     activities_page,
     analysis_page,
     health_page,
+    nsa_page,
     overview_page,
     recovery_page,
     reports_page,
@@ -180,6 +182,12 @@ def build_dashboard(
         end=today,
         include_review=include_review,
     )
+    nsa_section = build_nsa_section(
+        source,
+        start=analysis_start,
+        end=today,
+        include_review=include_review,
+    )
 
     overview_html = markdown_to_html(
         overview_report(
@@ -284,6 +292,14 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             section=analysis_section,
+            start=analysis_start,
+            end=today,
+        ),
+        "nsa.html": nsa_page(
+            generated_at=generated_at,
+            health=health,
+            include_review=include_review,
+            section=nsa_section,
             start=analysis_start,
             end=today,
         ),

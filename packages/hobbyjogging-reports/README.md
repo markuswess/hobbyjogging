@@ -503,9 +503,10 @@ Pages:
   uses the last 182 days plus the next 14 by default.
 - `activities.html` — the recent activity table (default 50) with workout
   methods and targets, linked to per-activity pages.
-- `analysis.html` — the subT/LT1 chart, the `subT Report`, and the weekly
-  volume, weekly time-by-pace-zone, and load/RPE charts over the last two
-  years (`--analysis-days`, default 731).
+- `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
+  charts over the last two years (`--analysis-days`, default 731).
+- `nsa.html` (NSA) — the subT/LT1 chart and the `subT Report` over the same
+  window.
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

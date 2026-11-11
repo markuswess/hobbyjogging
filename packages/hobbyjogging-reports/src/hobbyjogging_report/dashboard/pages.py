@@ -21,6 +21,7 @@ from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, Vo2maxPoint
 from .analysis import AnalysisSection
 from .health import DataHealth, banner
+from .nsa import NsaSection
 from ..zone_groups import ZoneGroupSeries
 
 
@@ -281,6 +282,37 @@ def recovery_page(
     )
 
 
+def nsa_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    section: NsaSection,
+    start: date,
+    end: date,
+) -> str:
+    """Render the NSA tab: the subT chart and the subT report."""
+    body = (
+        card("subT and LT1 intervals", section.subt_html)
+        + card(
+            None,
+            f'<div class="report">{section.subt_report_html}</div>',
+        )
+    )
+
+    return page(
+        title=f"NSA · {start} → {end}",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        active="nsa",
+        plotly=True,
+    )
+
+
 def analysis_page(
     *,
     generated_at: str,
@@ -290,14 +322,9 @@ def analysis_page(
     start: date,
     end: date,
 ) -> str:
-    """Render the analysis tab: subT, volume, time, and load charts."""
+    """Render the analysis tab: volume, time, and load charts."""
     body = (
-        card("subT and LT1 intervals", section.subt_html)
-        + card(
-            None,
-            f'<div class="report">{section.subt_report_html}</div>',
-        )
-        + card("Weekly running volume", section.volume_html)
+        card("Weekly running volume", section.volume_html)
         + card("Weekly running time by pace zone", section.time_html)
         + card("Training load and session RPE", section.load_html)
     )

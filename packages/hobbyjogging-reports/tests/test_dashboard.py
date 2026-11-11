@@ -258,8 +258,6 @@ class DashboardBuildTests(unittest.TestCase):
                 'href="analysis.html" class="active"',
                 analysis,
             )
-            self.assertIn("subT and LT1 intervals", analysis)
-            self.assertIn("subT Report", analysis)
             self.assertIn("Weekly running volume", analysis)
             self.assertIn(
                 "Weekly running time by pace zone",
@@ -269,8 +267,16 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("RPE 7d", analysis)
             self.assertIn("RPE 42d", analysis)
             self.assertIn("RPE 182d", analysis)
-            self.assertIn("No subT or LT1 sessions", analysis)
+            self.assertNotIn("subT and LT1 intervals", analysis)
             self.assertEqual(3, analysis.count("Plotly.newPlot"))
+
+            nsa = (target / "nsa.html").read_text()
+            self.assertIn("NSA · 2024-11-09 → 2026-11-09", nsa)
+            self.assertIn('href="nsa.html" class="active"', nsa)
+            self.assertIn("subT and LT1 intervals", nsa)
+            self.assertIn("subT Report", nsa)
+            self.assertIn("No subT or LT1 sessions", nsa)
+            self.assertNotIn("Weekly running volume", nsa)
 
             detail = (target / "activity" / "run1.html").read_text()
             self.assertIn("Session 2026-11-08", detail)
@@ -382,9 +388,15 @@ class DashboardBuildTests(unittest.TestCase):
             analysis_path = target / "analysis.html"
             self.assertTrue(analysis_path.exists())
             analysis = analysis_path.read_text()
-            self.assertIn("No subT or LT1 sessions", analysis)
             self.assertIn("No running volume", analysis)
             self.assertIn("No running time", analysis)
+
+            nsa_path = target / "nsa.html"
+            self.assertTrue(nsa_path.exists())
+            self.assertIn(
+                "No subT or LT1 sessions",
+                nsa_path.read_text(),
+            )
 
     def test_second_build_replaces_dashboard_atomically(self):
         with tempfile.TemporaryDirectory() as tmp:
