@@ -186,8 +186,9 @@ def compare_year_ewma(
 ) -> list[tuple[int, list[tuple[date, float]]]]:
     """One EWMA series per year, each from Jan 1 to Dec 31 (or today).
 
-    The series are aligned by day of year; the caller normalizes the dates
-    onto a single reference year for plotting.
+    The EWMA is computed once over the whole history and then sliced by
+    year, so every year starts with the value the previous year ended on.
+    The caller aligns the dates onto a single reference year for plotting.
     """
     if metric not in COMPARE_METRICS:
         raise ValueError(f"unknown compare metric: {metric}")
@@ -195,23 +196,38 @@ def compare_year_ewma(
         raise ValueError("window must be positive")
 
     today = today or date.today()
-    alpha = alpha_from_time_constant(window)
+    years = sorted({activity.date.year for activity in activities})
+
+    if not years:
+        return []
+
+    start = date(years[0], 1, 1)
+    daily = _daily_metric(activities, metric, start, today)
+
+    if not daily:
+        return []
+
+    values = [value for _, value in daily]
+    smoothed = ewma(
+        values,
+        alpha_from_time_constant(window),
+        initial=values[0],
+    )
+    by_year: dict[int, list[tuple[date, float]]] = {}
+
+    for (day, _), value in zip(daily, smoothed):
+        by_year.setdefault(day.year, []).append((day, value))
+
+    # Start each year exactly on the previous year's closing value, so the
+    # year lines meet at the axis edges.
     series = []
+    close = None
 
-    for year in sorted({activity.date.year for activity in activities}):
-        start = date(year, 1, 1)
-        end = min(date(year, 12, 31), today)
+    for year, points in sorted(by_year.items()):
+        if close is not None:
+            points = [(points[0][0], close), *points[1:]]
 
-        if start > end:
-            continue
-
-        daily = _daily_metric(activities, metric, start, end)
-
-        if not daily:
-            continue
-
-        values = [value for _, value in daily]
-        smoothed = ewma(values, alpha, initial=values[0])
-        series.append((year, list(zip([day for day, _ in daily], smoothed))))
+        series.append((year, points))
+        close = points[-1][1]
 
     return series

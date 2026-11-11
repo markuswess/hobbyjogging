@@ -303,6 +303,23 @@ class CompareYearEwmaTests(unittest.TestCase):
             points[date(2026, 1, 2)],
         )
 
+    def test_each_year_starts_where_the_previous_one_ended(self):
+        activities = [
+            activity(id="a", date=date(2025, 7, 1), distance_m=10000)
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "volume",
+            42,
+            today=date(2026, 6, 1),
+        )
+        last_2025 = series[0][1][-1][1]
+        first_2026 = series[1][1][0][1]
+
+        self.assertGreater(last_2025, 0)
+        self.assertEqual(last_2025, first_2026)
+
     def test_unknown_metric_is_rejected(self):
         with self.assertRaises(ValueError):
             compare_year_ewma([], "watts", 7)

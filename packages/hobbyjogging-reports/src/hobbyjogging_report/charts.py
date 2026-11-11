@@ -72,18 +72,18 @@ AVERAGE_COLORS = {
 }
 
 ZONE_COLORS = (
-    "#e5f5e0",
-    "#c7e9c0",
-    "#a1d99b",
-    "#74c476",
-    "#31a354",
+    "#8ecae6",
+    "#219ebc",
+    "#ffb3b3",
+    "#ff6b6b",
+    "#e63946",
 )
 ZONE_LINE_COLORS = (
-    "#74c476",
-    "#41ab5d",
-    "#238b45",
-    "#006d2c",
-    "#00441b",
+    "#0077b6",
+    "#023e8a",
+    "#d00000",
+    "#9d0208",
+    "#6a040f",
 )
 SUBT_COLORS = {
     "short": "#1f77b4",
@@ -702,9 +702,9 @@ def plot_time(
         template="plotly_white",
         title=title,
         barmode="overlay",
-        height=800,
+        height=1500,
         margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.12, "x": 0},
+        legend={"orientation": "h", "y": 1.08, "x": 0},
         hovermode="x unified",
     )
 
@@ -713,7 +713,7 @@ def plot_time(
         output,
         as_html=as_html,
         width=1800,
-        height=2900 if zone_points else 2000,
+        height=3600 if zone_points else 2400,
     )
 
 
@@ -1103,13 +1103,31 @@ def plot_pace_hr(
     """One point per run: average speed against average heart rate."""
     _require_data(points)
     figure = go.Figure()
+    years = sorted({point.date.year for point in points})
     figure.add_trace(
         go.Scatter(
             x=[point.speed_m_s for point in points],
             y=[point.avg_hr for point in points],
             mode="markers",
             name="runs",
-            marker={"color": "#1f77b4", "size": 6, "opacity": 0.55},
+            marker={
+                "color": [point.date.toordinal() for point in points],
+                "colorscale": [
+                    [0.0, "#1f77b4"],
+                    [1.0, "#d62728"],
+                ],
+                "size": 6,
+                "opacity": 0.75,
+                "showscale": True,
+                "colorbar": {
+                    "title": {"text": "year"},
+                    "thickness": 12,
+                    "tickvals": [
+                        date(year, 1, 1).toordinal() for year in years
+                    ],
+                    "ticktext": [str(year) for year in years],
+                },
+            },
             text=[
                 (
                     f"{point.date} {point.name}".strip()

@@ -66,9 +66,10 @@ HTML dashboard:
   rated value between sessions). The axis is fixed at 0–150 load with the
   RPE axis at 0–6, so one RPE point lines up with 25 load units.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
-  at the bottom), with 182/42/7-day time averages, a share-of-week panel, a
-  per-zone EWMA panel, and planned weekly time including planned pace zone
-  distributions. The axis is fixed at 0–10 h/week; larger weeks are marked.
+  at the bottom; Z1/Z2 in blues and Z3/Z4 in reds), with 182/42/7-day time
+  averages, a share-of-week panel, a per-zone EWMA panel, and planned weekly
+  time including planned pace zone distributions. The axis is fixed at
+  0–10 h/week; larger weeks are marked.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers. Readiness bands shade
   the background: HRV green at/above its 42-day baseline, amber within one
@@ -84,10 +85,13 @@ HTML dashboard:
   42-day exponentially weighted averages; last 365 days by default.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
-  (m/s) labelled in min/km ticks.
+  (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
+  to red (newest) and the colour bar marks the years.
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs` and `--window 7|42|182` choose the
-  metric and smoothing. The current year is partial and marks today.
+  metric and smoothing. The EWMA is computed over the whole history, so
+  each year starts on the previous year's closing value. The current year
+  is partial and marks today.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with
