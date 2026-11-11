@@ -1,7 +1,8 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
-from hobbyjogging_report.analysis import pace_hr_points
+from hobbyjogging_report.analysis import pace_hr_points, pace_hr_trends
+from hobbyjogging_report.model import PaceHrPoint
 from support import activity_factory
 
 D = date(2026, 1, 1)
@@ -60,6 +61,42 @@ class PaceHrTests(unittest.TestCase):
         ]
 
         self.assertEqual([], pace_hr_points(activities, D, D))
+
+    def test_trends_are_fitted_per_half(self):
+        points = []
+
+        for index in range(10):
+            speed = 2.5 + 0.1 * index
+            base = 120 if index < 5 else 130
+            points.append(
+                PaceHrPoint(
+                    D + timedelta(days=index),
+                    pace_s_per_km=1000 / speed,
+                    avg_hr=base + (speed - 3.0),
+                )
+            )
+
+        trends = pace_hr_trends(points)
+
+        self.assertEqual(
+            ["first half", "second half"],
+            [t.label for t in trends],
+        )
+        self.assertEqual(5, trends[0].points)
+        self.assertAlmostEqual(2.5, trends[0].speed_low)
+        self.assertAlmostEqual(2.9, trends[0].speed_high)
+        self.assertAlmostEqual(1.0, trends[0].slope)
+        self.assertAlmostEqual(117.0, trends[0].intercept)
+        self.assertAlmostEqual(127.0, trends[1].intercept)
+
+    def test_trends_need_four_points(self):
+        points = [
+            PaceHrPoint(D, 300.0, 150.0),
+            PaceHrPoint(D, 290.0, 151.0),
+            PaceHrPoint(D, 280.0, 152.0),
+        ]
+
+        self.assertEqual([], pace_hr_trends(points))
 
     def test_speed_is_reciprocal_pace(self):
         points = pace_hr_points(

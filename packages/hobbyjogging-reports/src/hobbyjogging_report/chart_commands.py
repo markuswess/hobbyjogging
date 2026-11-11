@@ -159,6 +159,14 @@ def run_time_chart(
         projected_end=planned_chart_end,
         projection_start=end,
     )
+    hard_points = time_averages(
+        activities,
+        chart_start,
+        chart_end,
+        windows=windows,
+        warmup_days=warmup_days,
+        zones=(3, 4),
+    )
     zone_window_days = getattr(windows, zone_window)
     zone_points = zone_time_averages(
         activities,
@@ -185,6 +193,7 @@ def run_time_chart(
         weeks,
         output=output,
         time_points=points,
+        hard_points=hard_points,
         planned_time=weekly_planned_time(
             events,
             chart_start,
@@ -551,11 +560,18 @@ def run_pace_hr_chart(
     include_review: bool = False,
 ) -> None:
     """Render the per-run pace vs heart-rate scatter."""
-    from .analysis import pace_hr_points
+    from .analysis import pace_hr_points, pace_hr_trends
     from .charts import plot_pace_hr
 
     activities = reviewed_range(source, start, end, include_review)
     points = pace_hr_points(activities, start, end)
+
+    for trend in pace_hr_trends(points):
+        print(
+            f"note: {trend.label}: HR = {trend.intercept:.1f} + "
+            f"{trend.slope:.2f}*speed, r={trend.correlation:.2f} "
+            f"(n={trend.points})"
+        )
 
     path = plot_pace_hr(points, output=output)
     print(path)

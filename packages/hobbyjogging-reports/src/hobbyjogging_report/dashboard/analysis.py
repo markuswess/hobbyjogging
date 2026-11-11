@@ -99,11 +99,20 @@ def build_analysis_section(
         windows=windows,
         warmup_days=warmup_days,
     )
+    hard_points = time_averages(
+        activities,
+        week_start,
+        week_end,
+        windows=windows,
+        warmup_days=warmup_days,
+        zones=(3, 4),
+    )
     time_html = (
         plot_time(
             weeks,
             "",
             time_points=time_points,
+            hard_points=hard_points,
             zone_points=zone_time_averages(
                 activities,
                 week_start,

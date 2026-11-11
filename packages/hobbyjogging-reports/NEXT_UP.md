@@ -85,12 +85,15 @@ Dashboard follow-ups, handed over together with the triage work:
   `--compare-metric volume|time|load|runs` and `--compare-window N`,
   default volume/42d; the current year stops at today and is marked) plus
   the year and month comparison reports. The EWMA runs across the whole
-  history, so each year line starts on the previous year's close. Also
+  history, so each year line starts on the previous year's close. The tab
+  shows volume and time charts (182-day EWMA by default). Also
   `charts.sh compare`.
 - **Pace vs HR scatter.** `charts.sh pace-hr` and the Analysis tab plot one
   point per run: linear speed (m/s, labelled in min/km ticks) against
   average HR, coloured by date from blue (oldest) to red (newest) with a
-  year colour bar.
+  year colour bar, plus least-squares lines for the older and newer half of
+  the runs (slope, intercept, and r shown on the chart and printed by the
+  CLI).
 
 - **Recovery readiness bands.** The recovery chart shades three bands
   behind each panel using the last 42 days: HRV green at/above its

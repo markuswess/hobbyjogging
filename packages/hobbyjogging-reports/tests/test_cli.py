@@ -534,7 +534,7 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 182, 14, 186, 731, "volume", 42, ()),
+            (None, 14, 50, 182, 14, 186, 731, 182, ()),
             parse_dashboard_args([]),
         )
 
@@ -542,7 +542,7 @@ class DashboardArgsTests(unittest.TestCase):
         self.assertEqual(
             (
                 "/tmp/site", 30, 100, 90, 21, 60, 120,
-                "load", 7, ("overview", "daily"),
+                7, ("overview", "daily"),
             ),
             parse_dashboard_args(
                 [
@@ -553,7 +553,6 @@ class DashboardArgsTests(unittest.TestCase):
                     "--future-days", "21",
                     "--recovery-days", "60",
                     "--analysis-days", "120",
-                    "--compare-metric", "load",
                     "--compare-window", "7",
                     "--reports", "overview,daily",
                 ]
@@ -593,7 +592,7 @@ class CompareChartArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            ("compare.png", "volume", 42, TODAY),
+            ("compare.png", "volume", 182, TODAY),
             parse_compare_chart_args([], today=TODAY),
         )
 

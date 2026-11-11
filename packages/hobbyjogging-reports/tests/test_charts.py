@@ -190,6 +190,33 @@ class TimeChartTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 plot_time([], str(Path(tmp) / "time.png"))
 
+    def test_time_chart_draws_hard_ewmas_and_the_22_percent_mark(self):
+        weeks = [
+            TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 900, 300], 0),
+            TimeZoneWeek(date(2026, 1, 12), [1800, 1800, 900, 900], 0),
+        ]
+        time_points = [
+            TimePoint(D, 6600, 6000, 6500, 7000),
+            TimePoint(date(2026, 1, 12), 5400, 6100, 6500, 6600),
+        ]
+        hard_points = [
+            TimePoint(D, 1200, 1000, 1100, 1150),
+            TimePoint(date(2026, 1, 12), 1800, 1100, 1200, 1250),
+        ]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=time_points,
+            hard_points=hard_points,
+            as_html=True,
+        )
+
+        self.assertIn("hard 7d avg (weekly)", html)
+        self.assertIn("hard 42d avg (weekly)", html)
+        self.assertIn("hard 182d avg (weekly)", html)
+        self.assertIn('"text":"22%"', html)
+
     def test_time_chart_flips_zones_and_adds_a_share_panel(self):
         weeks = [
             TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 900, 0], 600),
@@ -385,6 +412,22 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn('"range":[2.0,5.2]', html)
         self.assertIn("5:00", html)
         self.assertIn('"range":[90,190]', html)
+
+    def test_pace_hr_chart_draws_half_trends(self):
+        points = [
+            PaceHrPoint(
+                D + timedelta(days=index),
+                1000 / (2.5 + 0.1 * index),
+                120 + 0.1 * index,
+            )
+            for index in range(8)
+        ]
+
+        html = plot_pace_hr(points, "", as_html=True)
+
+        self.assertIn("first half trend", html)
+        self.assertIn("second half trend", html)
+        self.assertIn("HR = ", html)
 
     def test_pace_hr_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:

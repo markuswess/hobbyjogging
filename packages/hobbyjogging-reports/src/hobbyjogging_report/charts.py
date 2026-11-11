@@ -15,7 +15,7 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
-from .analysis import SUBT_CATEGORIES, recovery_bands
+from .analysis import SUBT_CATEGORIES, pace_hr_trends, recovery_bands
 from .format import format_pace
 from .model import (
     AverageWindows,
@@ -30,7 +30,6 @@ from .model import (
     Vo2maxPoint,
     ZoneAveragePoint,
 )
-from .series import sma
 from .style import (
     CLIPPED_COLOR,
     EASY_COLOR,
@@ -171,13 +170,25 @@ def _plot_average_lines(
     *,
     scale: float = 1.0,
     label,
+    colors: dict[str, str] | None = None,
+    dash: dict[str, str] | None = None,
     row: int | None = None,
     col: int | None = None,
 ):
     actual = [point for point in points if not point.projected]
     projected = [point for point in points if point.projected]
+    colors = colors or AVERAGE_COLORS
+    dash = dash or {}
 
     for attribute in ("base", "fitness", "fatigue"):
+        style = {
+            "color": colors[attribute],
+            "width": 2,
+        }
+
+        if attribute in dash:
+            style["dash"] = dash[attribute]
+
         if actual:
             _add(
                 figure,
@@ -186,7 +197,7 @@ def _plot_average_lines(
                     y=[getattr(point, attribute) * scale for point in actual],
                     mode="lines",
                     name=label(attribute, getattr(windows, attribute)),
-                    line={"color": AVERAGE_COLORS[attribute], "width": 2},
+                    line=style,
                 ),
                 row=row,
                 col=col,
@@ -203,11 +214,7 @@ def _plot_average_lines(
                         for point in bridge
                     ],
                     mode="lines",
-                    line={
-                        "color": AVERAGE_COLORS[attribute],
-                        "width": 2,
-                        "dash": "dash",
-                    },
+                    line={**style, "dash": "dash"},
                     showlegend=False,
                 ),
                 row=row,
@@ -383,6 +390,7 @@ def plot_time(
     output: str,
     *,
     time_points: list[TimePoint] | None = None,
+    hard_points: list[TimePoint] | None = None,
     planned_time: list[tuple[date, float]] | None = None,
     planned_zone_weeks: list[TimeZoneWeek] | None = None,
     planned_zone_label: str = "planned zones",
@@ -611,6 +619,39 @@ def plot_time(
             windows,
             scale=time_scale / 3600,
             label=lambda attribute, days: f"{days}d avg (weekly)",
+            colors={
+                attribute: TOTAL_LINE_COLORS[
+                    getattr(windows, attribute)
+                ]
+                for attribute in ("base", "fitness", "fatigue")
+            },
+            dash={
+                attribute: LINE_STYLES[getattr(windows, attribute)]
+                for attribute in ("base", "fitness", "fatigue")
+            },
+            row=1,
+            col=1,
+        )
+
+    if hard_points:
+        _plot_average_lines(
+            figure,
+            hard_points,
+            windows,
+            scale=time_scale / 3600,
+            label=lambda attribute, days: (
+                f"hard {days}d avg (weekly)"
+            ),
+            colors={
+                attribute: HARD_LINE_COLORS[
+                    getattr(windows, attribute)
+                ]
+                for attribute in ("base", "fitness", "fatigue")
+            },
+            dash={
+                attribute: LINE_STYLES[getattr(windows, attribute)]
+                for attribute in ("base", "fitness", "fatigue")
+            },
             row=1,
             col=1,
         )
@@ -685,6 +726,16 @@ def plot_time(
         row=2,
         col=1,
     )
+    figure.add_hline(
+        y=22,
+        line_width=1,
+        line_dash="dot",
+        line_color="#7f7f7f",
+        annotation_text="22%",
+        annotation_position="right",
+        row=2,
+        col=1,
+    )
     figure.update_yaxes(
         title_text=ylabel,
         range=[0, TIME_Y_MAX],
@@ -727,14 +778,37 @@ def _subt_points_for(points: list[SubtPoint], category: str, value):
     )
 
 
+def _time_ewma(dates, values, window_days: int):
+    """Gap-aware EWMA evaluated at each observation date."""
+    state = None
+    last = None
+    result = []
+
+    for day, value in zip(dates, values):
+        if state is None:
+            state = value
+        else:
+            gap = max((day - last).days, 1)
+            alpha = 1 - math.exp(-gap / window_days)
+            state = alpha * value + (1 - alpha) * state
+
+        result.append(state)
+        last = day
+
+    return result
+
+
 def plot_subt(
     points: list[SubtPoint],
     output: str,
-    window: int = 5,
+    window_days: int = 42,
     title: str = "subT and LT1 work intervals",
     as_html: bool = False,
 ) -> str:
-    """Pace and heart rate in two stacked panels sharing a date axis."""
+    """Pace and heart rate in two stacked panels sharing a date axis.
+
+    Lines are gap-aware EWMAs with a 42-day time constant.
+    """
     _require_data(points)
     figure = make_subplots(
         rows=2,
@@ -786,7 +860,7 @@ def plot_subt(
                 figure.add_trace(
                     go.Scatter(
                         x=dates,
-                        y=sma(values, window),
+                        y=_time_ewma(dates, values, window_days),
                         mode="lines",
                         line={"color": color, "width": 1.8},
                         opacity=0.55,
@@ -857,7 +931,7 @@ def plot_subt(
             figure.add_trace(
                 go.Scatter(
                     x=dates,
-                    y=sma(values, window),
+                    y=_time_ewma(dates, values, window_days),
                     mode="lines",
                     line={"color": color, "width": 1.8},
                     opacity=0.55,
@@ -1140,6 +1214,43 @@ def plot_pace_hr(
         )
     )
 
+    trends = pace_hr_trends(points)
+    colors = ("#1f77b4", "#d62728")
+    notes = []
+
+    for trend, color in zip(trends, colors):
+        figure.add_trace(
+            go.Scatter(
+                x=[trend.speed_low, trend.speed_high],
+                y=[
+                    trend.at(trend.speed_low),
+                    trend.at(trend.speed_high),
+                ],
+                mode="lines",
+                name=f"{trend.label} trend",
+                line={"color": color, "width": 2},
+                hoverinfo="skip",
+            )
+        )
+        notes.append(
+            f"{trend.label}: HR = {trend.intercept:.1f} "
+            f"+ {trend.slope:.2f}\u00b7v, r = {trend.correlation:.2f}"
+        )
+
+    if notes:
+        figure.add_annotation(
+            text="<br>".join(notes),
+            xref="paper",
+            yref="paper",
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            align="left",
+            showarrow=False,
+            font={"size": 11},
+        )
+
     tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
     figure.update_xaxes(
         title_text="pace (min/km)",
@@ -1157,6 +1268,7 @@ def plot_pace_hr(
         title=title,
         height=900,
         margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.08, "x": 0},
         hovermode="closest",
     )
     return _render(

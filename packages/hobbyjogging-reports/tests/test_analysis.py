@@ -518,6 +518,33 @@ class TimeMetricsTests(unittest.TestCase):
         self.assertLess(last.base, last.fitness)
         self.assertLess(last.fitness, last.fatigue)
 
+    def test_time_averages_can_cover_only_hard_zones(self):
+        start = date(2026, 1, 1)
+        end = date(2026, 1, 3)
+        activities = [
+            Activity(
+                id="a",
+                date=day,
+                type="run",
+                duration_s=3600,
+                pace_zone_times=[600, 900, 1200, 900],
+            )
+            for day in (start, start + timedelta(days=1))
+        ]
+
+        points = time_averages(
+            activities,
+            start,
+            end,
+            warmup_days=0,
+            zones=(3, 4),
+        )
+
+        # Z3 + Z4 only: 1200 + 900 seconds on the session day.
+        self.assertEqual(2100, points[1].time_s)
+        self.assertGreater(points[1].fatigue, 0)
+        self.assertGreater(points[1].fatigue, points[0].fatigue)
+
     def test_weekly_time_by_zone_uses_pace_zones_and_monday_weeks(self):
         activities = [
             Activity(

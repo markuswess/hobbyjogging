@@ -22,7 +22,8 @@ NO_CHART = '<p class="muted">No activities to compare.</p>'
 class CompareSection:
     """Rendered compare cards for the dashboard."""
 
-    chart_html: str
+    volume_html: str
+    time_html: str
     years_report_html: str
     months_report_html: str
 
@@ -31,7 +32,6 @@ def build_compare_section(
     source: DataSource,
     *,
     today: date,
-    metric: str,
     window: int,
     include_review: bool = False,
 ) -> CompareSection:
@@ -41,27 +41,31 @@ def build_compare_section(
         source.activities(start, today),
         include_review=include_review,
     )
-    series = compare_year_ewma(
-        activities,
-        metric,
-        window,
-        today=today,
-    )
+
+    def chart(metric: str) -> str:
+        series = compare_year_ewma(
+            activities,
+            metric,
+            window,
+            today=today,
+        )
+
+        if not series:
+            return NO_CHART
+
+        return plot_compare(
+            series,
+            "",
+            metric=metric,
+            window=window,
+            today=today,
+            title=f"Year comparison — {metric}, {window}-day EWMA",
+            as_html=True,
+        )
 
     return CompareSection(
-        chart_html=(
-            plot_compare(
-                series,
-                "",
-                metric=metric,
-                window=window,
-                today=today,
-                title=f"Year comparison — {metric}, {window}-day EWMA",
-                as_html=True,
-            )
-            if series
-            else NO_CHART
-        ),
+        volume_html=chart("volume"),
+        time_html=chart("time"),
         years_report_html=markdown_to_html(
             compare_report(
                 "years",

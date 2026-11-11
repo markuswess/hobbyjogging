@@ -331,7 +331,8 @@ def compare_page(
 ) -> str:
     """Render the compare tab: year chart plus the year/month reports."""
     body = (
-        card(None, section.chart_html)
+        card(None, section.volume_html)
+        + card(None, section.time_html)
         + card(
             None,
             f'<div class="report">{section.years_report_html}</div>',

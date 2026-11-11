@@ -79,16 +79,18 @@ HTML dashboard:
   default, with pace and average HR as two stacked panels sharing a
   date axis. Dots are color-coded by rep length (short/medium/long)
   or LT1; pace ranges show fastest–slowest, HR ranges show
-  average–max, and both metrics have rolling averages. The pace axis is
-  fixed at 4:20–3:15 min/km (faster up) and HR at 140–180 bpm.
+  average–max, and both metrics have a 42-day EWMA trend line. The pace
+  axis is fixed at 4:20–3:15 min/km (faster up) and HR at 140–180 bpm.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
-  to red (newest) and the colour bar marks the years.
+  to red (newest) with a year colour bar, and a least-squares line is fitted
+  to the older and newer half of the runs (parameters on the chart and
+  printed by the CLI).
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
-  `--metric volume|time|load|runs` and `--window 7|42|182` choose the
+  `--metric volume|time|load|runs` and `--window N` (default 182) choose the
   metric and smoothing. The EWMA is computed over the whole history, so
   each year starts on the previous year's closing value. The current year
   is partial and marks today.
@@ -547,8 +549,8 @@ Pages:
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
   EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
   same window.
-- `compare.html` — one EWMA line per calendar year over a fixed Jan–Dec axis
-  (`--compare-metric`, `--compare-window`) plus the year and month
+- `compare.html` — volume and time EWMA lines per calendar year over a fixed
+  Jan–Dec axis (`--compare-window`, default 182) plus the year and month
   comparison reports.
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),

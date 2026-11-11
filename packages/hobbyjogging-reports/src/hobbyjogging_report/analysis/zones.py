@@ -94,12 +94,15 @@ def time_averages(
     events: list[Event] | None = None,
     projected_end: date | None = None,
     projection_start: date | None = None,
+    zones: tuple[int, ...] | None = None,
 ) -> list[TimePoint]:
     """Return daily running time with its three EWMAs.
 
     ``activities`` must include the warm-up range before ``start``. When
     ``events`` and ``projected_end`` are given, the averages continue
-    through planned time; those points are marked ``projected``.
+    through planned time; those points are marked ``projected``. Pass
+    ``zones`` (1-based) to average only those pace zones, e.g. ``(3, 4)``
+    for hard running; such series are not projected.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
@@ -111,11 +114,25 @@ def time_averages(
         events is not None
         and projected_end is not None
         and projected_end > projection_start
+        and zones is None
     )
     series_end = projection_start if projected else end
 
     warm_start = start - timedelta(days=warmup_days)
-    series = daily_run_time(activities, warm_start, series_end)
+
+    if zones is None:
+        series = daily_run_time(activities, warm_start, series_end)
+    else:
+        zone_series = daily_zone_time(
+            activities,
+            warm_start,
+            series_end,
+            zone_count=max(zones),
+        )
+        series = [
+            (day, sum(values[index - 1] for index in zones))
+            for day, values in zone_series
+        ]
 
     if projected:
         series = _extend_series(

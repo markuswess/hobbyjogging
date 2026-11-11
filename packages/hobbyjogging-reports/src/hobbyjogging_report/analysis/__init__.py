@@ -43,7 +43,7 @@ from .load import (
     load_metrics,
     weekly_run_distance,
 )
-from .pace_hr import pace_hr_points
+from .pace_hr import PaceHrTrend, pace_hr_points, pace_hr_trends
 from .planned import (
     daily_planned_distance,
     daily_planned_load,
@@ -115,7 +115,9 @@ __all__ = [
     "is_lt1_activity",
     "is_subt_activity",
     "load_metrics",
+    "PaceHrTrend",
     "pace_hr_points",
+    "pace_hr_trends",
     "pace_s_per_km",
     "planned_workout_dates",
     "RecoveryBand",

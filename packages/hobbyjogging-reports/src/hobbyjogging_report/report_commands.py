@@ -90,7 +90,6 @@ def run_dashboard_command(parsed, source, include_review):
         future_days,
         recovery_days,
         analysis_days,
-        compare_metric,
         compare_window,
         reports,
     ) = parsed
@@ -103,7 +102,6 @@ def run_dashboard_command(parsed, source, include_review):
         future_days=future_days,
         recovery_days=recovery_days,
         analysis_days=analysis_days,
-        compare_metric=compare_metric,
         compare_window=compare_window,
         reports=reports,
         include_review=include_review,

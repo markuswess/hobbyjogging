@@ -204,7 +204,7 @@ def parse_compare_args(
 
 def parse_dashboard_args(
     argv: list[str],
-) -> tuple[str | None, int, int, int, int, int, int, str, int, tuple[str, ...]]:
+) -> tuple[str | None, int, int, int, int, int, int, int, tuple[str, ...]]:
     """Parse dashboard output, windows, chart ranges, and reports."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
@@ -214,12 +214,7 @@ def parse_dashboard_args(
     parser.add_argument("--future-days", type=int, default=14)
     parser.add_argument("--recovery-days", type=int, default=186)
     parser.add_argument("--analysis-days", type=int, default=731)
-    parser.add_argument(
-        "--compare-metric",
-        choices=("volume", "time", "load", "runs"),
-        default="volume",
-    )
-    parser.add_argument("--compare-window", type=int, default=42)
+    parser.add_argument("--compare-window", type=int, default=182)
     parser.add_argument("--reports")
     args = parser.parse_args(argv)
 
@@ -261,7 +256,6 @@ def parse_dashboard_args(
         args.future_days,
         args.recovery_days,
         args.analysis_days,
-        args.compare_metric,
         args.compare_window,
         reports,
     )
@@ -343,7 +337,7 @@ def parse_compare_chart_args(
         choices=COMPARE_METRICS,
         default="volume",
     )
-    parser.add_argument("--window", type=int, default=42)
+    parser.add_argument("--window", type=int, default=182)
     args = parser.parse_args(argv)
 
     if args.window <= 0:

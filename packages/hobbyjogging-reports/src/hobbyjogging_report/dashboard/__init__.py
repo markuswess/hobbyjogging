@@ -83,8 +83,7 @@ def build_dashboard(
     future_days: int = 14,
     recovery_days: int = RECOVERY_DAYS,
     analysis_days: int = ANALYSIS_DAYS,
-    compare_metric: str = "volume",
-    compare_window: int = 42,
+    compare_window: int = 182,
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
@@ -197,7 +196,6 @@ def build_dashboard(
     compare_section = build_compare_section(
         source,
         today=today,
-        metric=compare_metric,
         window=compare_window,
         include_review=include_review,
     )

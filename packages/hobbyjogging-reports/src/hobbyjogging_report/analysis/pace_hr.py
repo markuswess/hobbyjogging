@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 
 from hobbyjogging_core.model import Activity
@@ -44,3 +45,66 @@ def pace_hr_points(
         )
 
     return sorted(points, key=lambda point: point.date)
+
+
+@dataclass(frozen=True)
+class PaceHrTrend:
+    """Least-squares heart rate against speed for one half of the data."""
+
+    label: str
+    points: int
+    speed_low: float
+    speed_high: float
+    slope: float
+    intercept: float
+    correlation: float
+
+    def at(self, speed: float) -> float:
+        return self.intercept + self.slope * speed
+
+
+def pace_hr_trends(points: list[PaceHrPoint]) -> list[PaceHrTrend]:
+    """Fit HR against speed for the older and newer half of the points."""
+    ordered = sorted(points, key=lambda point: point.date)
+
+    if len(ordered) < 4:
+        return []
+
+    split = len(ordered) // 2
+    halves = (("first half", ordered[:split]), ("second half", ordered[split:]))
+    trends = []
+
+    for label, chunk in halves:
+        xs = [point.speed_m_s for point in chunk]
+        ys = [point.avg_hr for point in chunk]
+        mean_x = sum(xs) / len(xs)
+        mean_y = sum(ys) / len(ys)
+        variance = sum((value - mean_x) ** 2 for value in xs)
+
+        if variance == 0:
+            continue
+
+        covariance = sum(
+            (x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)
+        )
+        slope = covariance / variance
+        intercept = mean_y - slope * mean_x
+        var_y = sum((value - mean_y) ** 2 for value in ys)
+        correlation = (
+            covariance / (variance ** 0.5 * var_y ** 0.5)
+            if var_y
+            else 0.0
+        )
+        trends.append(
+            PaceHrTrend(
+                label=label,
+                points=len(chunk),
+                speed_low=min(xs),
+                speed_high=max(xs),
+                slope=slope,
+                intercept=intercept,
+                correlation=correlation,
+            )
+        )
+
+    return trends
