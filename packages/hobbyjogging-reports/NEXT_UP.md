@@ -85,7 +85,15 @@ Dashboard follow-ups, handed over together with the triage work:
 4. **Review queue in the dashboard.** `DataSource.review_items` now
    exposes the queue (root/core change is done); render the open items,
    grouped by category, on the health page.
-5. **Session report completeness** (low priority, last). The `session` report
+5. **Shoe mileage.** Distance per equipment item from canonical data:
+   `equipment` → `activity_equipment` → `activities.distance_m`. No schema
+   change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
+   3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
+   distance and session count per shoe, wear against `target_distance_m` when
+   set (currently NULL for every shoe), and retirement candidates
+   (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
+   card; compute in `analysis/`, render separately.
+6. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.
