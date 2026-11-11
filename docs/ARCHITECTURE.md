@@ -14,20 +14,46 @@ see [ROADMAP.md](ROADMAP.md); for working conventions see
 - Reports and dashboards that read the canonical data only and are cheap to
   render anywhere: terminal, laptop browser, phone, wall screen.
 - A deterministic data bundle for LLM coaching conversations.
+- Advanced and experimental analysis tools, so analysis can evolve
+  independently of the established platforms.
+- Independence from hardware manufacturers and platforms for training
+  planning and analysis, while still using the features they offer.
+
+## Where the data comes from
+
+The canonical database consolidates data that used to live in several places:
+
+- **FIT files** — raw recordings from the devices, plus the Garmin Connect
+  archive.
+- **A spreadsheet** — the legacy log (2009–2021): activities, shoes, tags.
+- **Runalyze** — tags, comments, equipment, and its VO2max estimate.
+- **Intervals.icu** — intervals, names, zones, and the planned calendar.
+- **Strava** — titles and sparse social comments; not used for training data.
+
+Each source keeps its raw payload in `source_records`, so canonical values can
+always be re-derived or audited.
 
 ## Principles
 
-1. **Imports write, reports read.** The report layer never mutates the
-   database; the import layer never formats output.
-2. **No silent overwrites.** Manual values outrank every source. Cross-source
-   disagreement becomes a review item, not a priority-rule outcome.
-3. **Delete is exclusion.** Rows are retained for audit; nothing is hard
+1. **Three roles, one direction.** Importers write *received facts* (raw
+   payloads and the fields they report). Maintenance writes *derived stored
+   values* (one-time backfills and recurring recomputes). Reports compute
+   *cheap metrics on read* and never mutate the database. No layer formats
+   another layer's output.
+2. **Placement follows cost.** A value that is cheap to derive stays in the
+   report layer. A value that is expensive, or needs cross-row context
+   (ownership, classification, review state), is stored and maintained — with
+   manual values outranking derived ones.
+3. **The database is the truth; importers are replaceable.** Reimporting is
+   idempotent, manual values outrank every source, and cross-source
+   disagreement becomes a review item rather than a priority-rule outcome.
+4. **Delete is exclusion.** Rows are retained for audit; nothing is hard
    deleted, so a reimport cannot resurrect deleted data.
-4. **Compute → render.** Metrics live in analysis code and return typed data.
+5. **Compute → render.** Metrics live in analysis code and return typed data.
    Markdown, HTML, charts, and JSON are renderers over the same values.
-5. **Source-independent reads.** Reports consume the canonical model through a
+6. **Source-independent reads.** Reports consume the canonical model through a
    `DataSource`, never a specific API or file format.
-6. **Reproducible output.** Same database and date range produce the same
+7. **Reproducible output.** Same database and date range produce the same
    report; generation timestamps are explicit, not hidden.
 
 ## Topology
@@ -39,30 +65,35 @@ never hold a copy.
 ```text
    FIT archive      Garmin Personal API     Intervals.icu API     Runalyze API
         |                   |                     |                   |
-        |            garmin fetch (FITs)          |          runalyze enrichment
+        |            garmin fetch (FITs)          |                   |
         |                   |                     |                   |
         +-------------------+---------------------+-------------------+
                             |
-                     import / sync job
+                     import / sync job            manual input & computed data
+                            |                               |
+                            +-------------------------------+
                             |
                   canonical SQLite DB  (source of truth)
-                           |
+                            |
                  analysis + view models
-                     /           \
-              markdown/CLI     static HTML + SVG
-                (terminal)     (generated dashboard)
-                                      |
-                                Caddy / nginx
-                                      |
-                    laptop browser · phone · wall screens
+                            |
+                    markdown reports and charts
+                     /                     \
+            .md and PNG export       static HTML
+                (terminal)        (dashboard: plotly + reports)
+                    |                       |
+             llm coaching             Caddy / nginx
+                                           |
+                                laptop browser · phone · wall screens
 ```
 
 - **Homelab host**: database on local disk (never NFS/SMB), importers, review
   CLI, dashboard generator, static web server.
 - **FIT archive**: synced from the laptop to the homelab (Syncthing or rsync).
   New activities are also fetched directly from the Garmin Personal API.
-- **Runalyze**: enrichment only (comments, tags, gear, VO2max), never timing
-  or distance.
+- **Runalyze**: synced from the Runalyze API (enrichment only).
+- **Intervals.icu**: synced from the API (activities, wellness, planned
+  events).
 - **Clients**: browsers only. No database credentials, no JavaScript
   framework, no write access.
 - **Access**: private network (Tailscale/WireGuard) or basic auth at the
@@ -132,7 +163,7 @@ Analysis, views, and rendering.
 - `model.py` — typed view models and analysis result types.
 - `classify.py` — workout taxonomy for display. It prefers the stored
   classification and falls back to the heuristic for unclassified activities;
-  the backfill calls it with `use_stored=False`.
+  the classification tasks call it with `use_stored=False`.
 - `daily.py`, `period_report.py`, `subt_report.py`, `overview.py`,
   `recovery_report.py` — one Markdown report per file; `report_commands.py`
   dispatches them.
@@ -163,7 +194,9 @@ changes.
 - `workouts.py` — classifier/sheet proposals shared by the classification
   tasks.
 - `backfills/event_zones.py` — `event_zones_v1`.
+- `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
 - `backfills/workout_classification.py` — `workout_classification_v1`.
+- `recompute/workout_sets_current.py` — `workout_sets_current`.
 - `recompute/workout_classification_queue.py` —
   `workout_classification_queue`.
 - `cli.py` — `list`, `status`, `run`.
@@ -383,8 +416,7 @@ is implemented in `hobbyjogging-import` as `garmin fetch`.
 ### Runalyze enrichment
 
 Runalyze is an enrichment source, not an activity source. The API provides
-comments, tags, gear, and the Runalyze VO2max estimate; it is never used for
-timing or distance.
+comments, tags, gear, and the Runalyze VO2max estimate:
 
 - Rows are matched to existing activities temporally (Runalyze exposes no
   Garmin activity id) and stored as `source_records` with
@@ -494,16 +526,16 @@ dashboard: the view models make it cheap to add later.
 
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
 - Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
-  implemented; schema v9 adds set-based workout methods/targets.
+  implemented; schema v10 adds set-based workout methods/targets and the
+  maintenance bookkeeping tables.
 - Schema evolution is two-track: immutable SQL migrations plus registered
-  backfills/recomputes in `hobbyjogging-maintenance` (schema v10 adds the
-  bookkeeping tables).
+  backfills/recomputes in `hobbyjogging-maintenance`.
 - Reports: Markdown reports, charts, the activities table, the year/month
   comparison, and the static dashboard; report code is split per report.
-- The review queue still contains warnings the user chose to leave. Reports
-  hide flagged activities by default (`--include-review` shows them).
-- Remaining: Runalyze enrichment (API details), review-queue dashboard API,
-  homelab cutover.
+- The review queue is currently empty; reports still hide activities with
+  open items by default (`--include-review` shows them).
+- Remaining: Runalyze enrichment (API details), the dashboard's review-queue
+  rendering, and the homelab cutover.
 
 ## Deployment
 
@@ -519,8 +551,8 @@ dashboard: the view models make it cheap to add later.
   only irreplaceable artifact.
 - **Database placement**: local disk on the homelab. Do not share SQLite over
   NFS/SMB.
-- **Roles**: read-only connections for the app/report layer; writes only from
-  the import and review CLI.
+- **Roles**: read-only connections for the report layer; writes only from the
+  import/review CLI and the maintenance tasks.
 
 ## Non-goals and deferred work
 
@@ -539,5 +571,5 @@ dashboard: the view models make it cheap to add later.
 - Package-scoped changes happen in package sessions; cross-package contracts,
   schema, and architecture happen at the repo root. Details in `AGENTS.md`.
 - Tests are `unittest` (pytest is not installed) and run per package from its
-  tests directory. All three suites must stay green for cross-package changes.
+  tests directory. All four suites must stay green for cross-package changes.
 - Commits follow session scope; the user pushes manually.

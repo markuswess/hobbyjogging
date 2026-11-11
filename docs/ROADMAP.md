@@ -87,13 +87,10 @@ Turn planned races into a first-class part of the record:
 
 ## Principles that hold across all stages
 
-- **The DB is the truth; every importer is replaceable.** Reimporting anything
-  is safe and idempotent; manual data always wins over imported data.
-- **Ingestion writes, reports read.** Reports and charts only ever see
-  canonical model objects, never source-specific shapes — adding a source never
-  changes a report.
-- **Doubtful data is surfaced, never silently mixed in.** Anything the rules
-  flag waits in the review queue; reports exclude open items but never churn
-  because of them.
-- **Terminal-first, no pandas; one plotly chart layer for CLI PNGs and the
-  dashboard.**
+The durable rules live in one place: the seven principles in
+[ARCHITECTURE.md](ARCHITECTURE.md#principles). In short — three roles (importers
+write facts, maintenance writes derived values, reports compute on read),
+placement follows cost, the database is the truth, delete is exclusion,
+compute → render, source-independent reads, reproducible output.
+
+This roadmap only stages the work that follows from them.
