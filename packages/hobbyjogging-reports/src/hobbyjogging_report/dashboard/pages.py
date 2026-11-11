@@ -266,7 +266,11 @@ def recovery_page(
             "Data completeness",
             f'<p class="muted">{esc(completeness)}</p>'
             '<p class="muted">Daily values are points; lines are 7-day '
-            "calendar-day averages. Missing values are skipped.</p>",
+            "calendar-day averages. Missing values are skipped.</p>"
+            '<p class="muted">Bands compare the last 42 days: HRV is green '
+            "at or above its baseline, amber within one standard deviation "
+            "below, red below that; resting HR is mirrored; sleep is green "
+            "7\u20139 h, amber 6\u20137 h or 9\u201310 h, red outside.</p>",
         )
     )
 

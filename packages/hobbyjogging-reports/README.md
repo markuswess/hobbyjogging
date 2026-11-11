@@ -70,7 +70,10 @@ HTML dashboard:
   per-zone EWMA panel, and planned weekly time including planned pace zone
   distributions. The axis is fixed at 0–10 h/week; larger weeks are marked.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
-  calendar-day average and planned-workout markers.
+  calendar-day average and planned-workout markers. Readiness bands shade
+  the background: HRV green at/above its 42-day baseline, amber within one
+  standard deviation below, red below; resting HR mirrored; sleep green
+  7–9 h, amber 6–7 h or 9–10 h, red outside.
 - **subt** — subT and LT1 work intervals over the last 365 days by
   default, with pace and average HR as two stacked panels sharing a
   date axis. Dots are color-coded by rep length (short/medium/long)
@@ -549,7 +552,7 @@ Pages:
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages and
   the last four nights), then HRV, resting HR, and sleep as interactive
   plotly panels over the last 186 days (`--recovery-days`) with 7-day
-  averages, and a data-completeness note.
+  averages, readiness bands, and a data-completeness note.
 - `reports.html` — the Markdown reports selected with `--reports`, rendered
   as HTML with the same content as `reports.sh`.
 - `health.html` (Data Health) — the open review queue (severity, category,

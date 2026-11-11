@@ -47,3 +47,15 @@ RPE_PER_LOAD = 25.0  # one RPE point maps to 25 load units on the right axis
 SUBT_PACE_RANGE = (260.0, 195.0)  # 4:20 .. 3:15 min/km, slow at the bottom
 SUBT_HR_RANGE = (140.0, 180.0)
 CLIPPED_COLOR = "#7f7f7f"
+
+# Recovery readiness bands (background fills and legend markers).
+RECOVERY_BAND_COLORS = {
+    "normal": "rgba(46, 139, 87, 0.10)",
+    "watch": "rgba(255, 193, 7, 0.16)",
+    "alert": "rgba(220, 53, 69, 0.10)",
+}
+RECOVERY_BAND_MARKERS = {
+    "normal": "#2e8b57",
+    "watch": "#ffc107",
+    "alert": "#dc3545",
+}

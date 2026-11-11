@@ -1,7 +1,7 @@
 import json
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_report.charts import (
@@ -508,6 +508,29 @@ class RecoveryChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_recovery([], str(Path(tmp) / "recovery.png"))
+
+    def test_recovery_chart_draws_readiness_bands(self):
+        points = [
+            RecoveryPoint(
+                D + timedelta(days=offset),
+                hrv=50 + offset % 5,
+                resting_hr=48 + offset % 3,
+                sleep_s=7 * 3600,
+                hrv_avg=50,
+                resting_hr_avg=48,
+                sleep_avg=7 * 3600,
+            )
+            for offset in range(60)
+        ]
+
+        html = plot_recovery(points, "", as_html=True)
+
+        self.assertIn('"type":"rect"', html)
+        self.assertIn("rgba(46, 139, 87", html)
+        self.assertIn("rgba(255, 193, 7", html)
+        self.assertIn("rgba(220, 53, 69", html)
+        self.assertIn("normal", html)
+        self.assertIn("alert", html)
 
 
 class Vo2maxChartTests(unittest.TestCase):

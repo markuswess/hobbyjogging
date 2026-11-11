@@ -15,7 +15,7 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
-from .analysis import SUBT_CATEGORIES
+from .analysis import SUBT_CATEGORIES, recovery_bands
 from .format import format_pace
 from .model import (
     AverageWindows,
@@ -45,6 +45,8 @@ from .style import (
     LOAD_Y_MAX,
     PLANNED_PATTERN,
     PROJECTED_OPACITY,
+    RECOVERY_BAND_COLORS,
+    RECOVERY_BAND_MARKERS,
     RPE_LINE_COLORS,
     RPE_PER_LOAD,
     SUBT_HR_RANGE,
@@ -1233,6 +1235,15 @@ def plot_compare(
     )
 
 
+def _recovery_axis_bounds(values: list[float]) -> tuple[float, float]:
+    """Padded y-range for one recovery panel."""
+    low = min(values)
+    high = max(values)
+    pad = max((high - low) * 0.08, 1.0)
+
+    return low - pad, high + pad
+
+
 def plot_recovery(
     points: list[RecoveryPoint],
     output: str,
@@ -1241,7 +1252,7 @@ def plot_recovery(
     title: str = "Recovery trends",
     as_html: bool = False,
 ) -> str:
-    """HRV, resting HR, and sleep with rolling averages."""
+    """HRV, resting HR, and sleep with averages and readiness bands."""
     _require_data(points)
     figure = make_subplots(
         rows=3,
@@ -1255,6 +1266,8 @@ def plot_recovery(
         ("resting_hr", "resting_hr_avg", 1.0, "bpm", "#d62728"),
         ("sleep_s", "sleep_avg", 1 / 3600, "hours", "#9467bd"),
     )
+    bands = recovery_bands(points)
+    band_sets = (bands.hrv, bands.resting_hr, bands.sleep_s)
 
     for row, (raw_attr, average_attr, scale, unit, color) in enumerate(
         metrics,
@@ -1270,6 +1283,10 @@ def plot_recovery(
             for point in points
             if getattr(point, average_attr) is not None
         ]
+        bounds = _recovery_axis_bounds(
+            [value for _, value in raw] + [value for _, value in average]
+            or [0.0]
+        )
 
         if raw:
             figure.add_trace(
@@ -1299,6 +1316,25 @@ def plot_recovery(
                 col=1,
             )
 
+        # Shapes only attach to populated subplot axes, so draw the bands
+        # after the panel's traces.
+        for band in band_sets[row - 1]:
+            low = bounds[0] if band.low is None else band.low * scale
+            high = bounds[1] if band.high is None else band.high * scale
+
+            if low >= high:
+                continue
+
+            figure.add_hrect(
+                y0=low,
+                y1=high,
+                fillcolor=RECOVERY_BAND_COLORS[band.level],
+                line_width=0,
+                layer="below",
+                row=row,
+                col=1,
+            )
+
         label = {
             "hrv": "HRV (ms)",
             "resting_hr": "Resting HR (bpm)",
@@ -1307,9 +1343,25 @@ def plot_recovery(
 
         figure.update_yaxes(
             title_text=label,
+            range=list(bounds),
             row=row,
             col=1,
         )
+
+    figure.add_annotation(
+        text="   ".join(
+            f"<span style='color:{color}'>\u25a0 {level}</span>"
+            for level, color in RECOVERY_BAND_MARKERS.items()
+        ),
+        xref="paper",
+        yref="paper",
+        x=0.995,
+        y=1.0,
+        xanchor="right",
+        yanchor="bottom",
+        showarrow=False,
+        font={"size": 11},
+    )
 
     if planned_dates:
         for day in planned_dates:

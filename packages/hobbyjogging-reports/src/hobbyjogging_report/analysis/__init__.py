@@ -52,7 +52,7 @@ from .planned import (
     weekly_planned_distance,
     weekly_planned_time,
 )
-from .recovery import recovery_trends
+from .recovery import RecoveryBand, RecoveryBands, recovery_bands, recovery_trends
 from .rpe import daily_session_rpe, rpe_metrics
 from .subt import (
     subt_blocks,
@@ -118,6 +118,9 @@ __all__ = [
     "pace_hr_points",
     "pace_s_per_km",
     "planned_workout_dates",
+    "RecoveryBand",
+    "RecoveryBands",
+    "recovery_bands",
     "recovery_trends",
     "rpe_metrics",
     "subt_blocks",

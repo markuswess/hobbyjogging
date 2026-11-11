@@ -89,6 +89,14 @@ Dashboard follow-ups, handed over together with the triage work:
   point per run: linear speed (m/s, labelled in min/km ticks) against
   average HR.
 
+- **Recovery readiness bands.** The recovery chart shades three bands
+  behind each panel using the last 42 days: HRV green at/above its
+  baseline, amber down to one standard deviation below, red below;
+  resting HR mirrored; sleep green 7-9 h, amber 6-7 h or 9-10 h, red
+  outside. Fewer than seven values in the baseline window means no HRV/RHR
+  bands. A small colored key sits at the top right of the chart and the
+  dashboard note explains the thresholds.
+
 ## Next
 
 1. **Daily planned session.** Show the upcoming/current workout's planned
@@ -100,11 +108,7 @@ Dashboard follow-ups, handed over together with the triage work:
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Recovery bands.** Red/yellow/green zones behind the recovery plots (HRV,
-   resting HR, sleep) so a point's status reads at a glance. Thresholds are
-   not defined yet — propose HRV relative to the 42-day baseline (±1 SD),
-   resting HR relative to its baseline, and sleep 7–9 h green.
-5. **Shoe mileage.** Distance per equipment item from canonical data:
+4. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -112,7 +116,7 @@ Dashboard follow-ups, handed over together with the triage work:
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-6. **Session report completeness** (low priority, last). The `session` report
+5. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.
