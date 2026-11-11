@@ -111,7 +111,42 @@ Dashboard follow-ups, handed over together with the triage work:
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
+4. **Efficiency (m/beat).** Meters covered per heartbeat: the linear,
+   intuitive efficiency metric (higher is better, unlike pace/HR or HR/pace,
+   which are reciprocal and average badly). No schema change — compute on
+   read.
+   - **Helper** (`analysis/efficiency.py`): `m_per_beat(distance_m,
+     duration_s, avg_hr) = distance_m / (avg_hr * duration_s / 60)`, plus
+     `activity_efficiency`, `interval_efficiency`, and
+     `aggregate_efficiency` = **Σdistance / Σbeats**, never the mean of
+     ratios. Drop samples missing HR, distance, or duration.
+   - **Session report**: `- Efficiency: 1.24 m/beat` after Pace / Avg HR.
+   - **Activities table**: an `eff` column (2 decimals), not in the defaults.
+   - **subT**: `SubtPoint` gains `efficiency` plus the raw `distance_m` /
+     `beats` so every aggregate stays weighted. Print it on the work-rep
+     lines and add a weighted Efficiency column to the subT summary tables.
+   - **subT chart**: a third panel in `plot_subt` ("Efficiency", m/beat)
+     beside Pace and HR, with the same category colors and window — the
+     efficiency analogue of the existing two panels. Smooth with a rolling
+     **weighted** mean (Σdistance / Σbeats), not an EWMA of per-point ratios;
+     document which one ships.
+   - **subT EWMA report**: an efficiency row/section using the same weighted
+     aggregation.
+   - **Compare page**: add `efficiency` to `COMPARE_METRICS`. It is not
+     additive like volume/time, so the daily value is Σdistance/Σbeats over
+     days with HR data, and rest days carry the previous value forward
+     instead of contributing 0. Axis label `m / beat`.
+   - **Axis range**: pick a fixed range like the other charts (roughly
+     1.0–1.6 m/beat for runs) or keep it auto until the data settles.
+   - **Caveats**: HR lag understates short reps (compare same rep lengths,
+     prefer ≥5 min); heat, terrain and fatigue move the number, so it is a
+     within-similar-conditions trend. Runs only for display; the helper stays
+     sport-agnostic but rides are a different scale.
+   - **Tests**: known value (10 000 m / 3 600 s / 150 bpm → 1.111 m/beat),
+     missing pieces → `None`, weighted aggregate vs naive mean, subT group
+     with partial HR coverage, compare series skipping rest days, and `-` in
+     the renderers when absent.
+5. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -119,7 +154,7 @@ Dashboard follow-ups, handed over together with the triage work:
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-5. **Session report completeness** (low priority, last). The `session` report
+6. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.
