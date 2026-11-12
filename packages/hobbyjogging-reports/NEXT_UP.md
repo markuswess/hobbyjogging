@@ -131,6 +131,9 @@ comparison.
   365-day baseline. Points without a baseline stay in the scatter but not in
   the line. The chart and CLI annotate `E` and RHR; the Analysis tab and
   `charts.sh pace-hr` fetch wellness with a 365-day lead-in.
+- **Compare tab pace/HR scatter.** The compare page adds the same
+  speed-vs-HR scatter as the Analysis tab, but one categorical colour per
+  calendar year, with the same fixed pace/HR axes and hover text.
 - **Efficiency in the Markdown reports.** Daily runs show a compact
   efficiency line; `report`/`weekly`/`monthly`/`yearly` show a weighted
   efficiency total and an `Efficiency (m/excess beat)` category column;

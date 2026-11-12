@@ -642,9 +642,9 @@ Pages:
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year.
 - `compare.html` — volume, time, and efficiency EWMA lines per calendar
-  year over a fixed Jan–Dec axis (`--compare-window`, default 182) plus the
-  year and month comparison reports (which now include a weighted efficiency
-  column). The efficiency chart drops years with
+  year over a fixed Jan–Dec axis (`--compare-window`, default 182), a
+  pace-vs-heart-rate scatter coloured by year, plus the year and month
+  comparison reports (which now include a weighted efficiency column). The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and

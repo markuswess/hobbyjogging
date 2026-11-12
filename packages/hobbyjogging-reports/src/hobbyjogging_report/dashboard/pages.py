@@ -349,6 +349,7 @@ def compare_page(
         card(None, section.volume_html)
         + card(None, section.time_html)
         + card(None, section.efficiency_html)
+        + card(None, section.pace_hr_html)
         + card(
             None,
             f'<div class="report">{section.years_report_html}</div>',

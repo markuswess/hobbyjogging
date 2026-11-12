@@ -7,8 +7,8 @@ from datetime import date
 
 from hobbyjogging_core.datasource import DataSource
 
-from ..analysis import compare_year_ewma
-from ..charts import plot_compare
+from ..analysis import compare_year_ewma, pace_hr_points
+from ..charts import plot_compare, plot_compare_pace_hr
 from ..command_support import activity_start, resting_hr_lookup
 from ..compare import compare_report
 from ..html import markdown_to_html
@@ -16,6 +16,9 @@ from ..review import exclude_review
 from .reports import _months_before
 
 NO_CHART = '<p class="muted">No activities to compare.</p>'
+NO_PACE_HR = (
+    '<p class="muted">No runs with pace and heart rate to compare.</p>'
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,7 @@ class CompareSection:
     volume_html: str
     time_html: str
     efficiency_html: str
+    pace_hr_html: str
     years_report_html: str
     months_report_html: str
 
@@ -44,6 +48,12 @@ def build_compare_section(
     )
 
     baseline = resting_hr_lookup(source, start, today)
+    pace_hr = pace_hr_points(
+        activities,
+        start,
+        today,
+        resting_hr_baseline=baseline,
+    )
 
     def chart(metric: str) -> str:
         series = compare_year_ewma(
@@ -71,6 +81,11 @@ def build_compare_section(
         volume_html=chart("volume"),
         time_html=chart("time"),
         efficiency_html=chart("efficiency"),
+        pace_hr_html=(
+            plot_compare_pace_hr(pace_hr, "", as_html=True)
+            if pace_hr
+            else NO_PACE_HR
+        ),
         years_report_html=markdown_to_html(
             compare_report(
                 "years",

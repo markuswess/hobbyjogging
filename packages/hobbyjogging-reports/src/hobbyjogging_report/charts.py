@@ -1241,6 +1241,22 @@ def plot_vo2max(
     )
 
 
+def _style_pace_hr_axes(figure) -> None:
+    """Shared linear-speed axis with pace ticks and HR bounds."""
+    tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    figure.update_xaxes(
+        title_text="pace (min/km)",
+        range=[2.0, 5.2],
+        tickvals=tick_speeds,
+        ticktext=[format_pace(1000 / speed) for speed in tick_speeds],
+    )
+    figure.update_yaxes(
+        title_text="avg HR (bpm)",
+        range=[90, 190],
+        dtick=10,
+    )
+
+
 def plot_pace_hr(
     points: list[PaceHrPoint],
     output: str,
@@ -1352,18 +1368,62 @@ def plot_pace_hr(
             font={"size": 11},
         )
 
-    tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-    figure.update_xaxes(
-        title_text="pace (min/km)",
-        range=[2.0, 5.2],
-        tickvals=tick_speeds,
-        ticktext=[format_pace(1000 / speed) for speed in tick_speeds],
+    _style_pace_hr_axes(figure)
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        legend={"orientation": "h", "y": 1.08, "x": 0},
+        hovermode="closest",
     )
-    figure.update_yaxes(
-        title_text="avg HR (bpm)",
-        range=[90, 190],
-        dtick=10,
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1500,
     )
+
+
+def plot_compare_pace_hr(
+    points: list[PaceHrPoint],
+    output: str,
+    title: str = "Pace vs heart rate by year",
+    as_html: bool = False,
+) -> str:
+    """One point per run, coloured by calendar year for the compare view."""
+    _require_data(points)
+    figure = go.Figure()
+    years = sorted({point.date.year for point in points})
+
+    for index, year in enumerate(years):
+        chunk = [point for point in points if point.date.year == year]
+
+        figure.add_trace(
+            go.Scatter(
+                x=[point.speed_m_s for point in chunk],
+                y=[point.avg_hr for point in chunk],
+                mode="markers",
+                name=str(year),
+                marker={
+                    "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
+                    "size": 6,
+                    "opacity": 0.72,
+                },
+                text=[
+                    (
+                        f"{point.date} {point.name}".strip()
+                        + f"<br>{format_pace(point.pace_s_per_km)}/km"
+                        + f", {point.avg_hr:.0f} bpm"
+                    )
+                    for point in chunk
+                ],
+                hoverinfo="text",
+            )
+        )
+
+    _style_pace_hr_axes(figure)
     figure.update_layout(
         template="plotly_white",
         title=title,

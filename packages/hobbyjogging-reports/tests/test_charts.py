@@ -6,6 +6,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     plot_compare,
+    plot_compare_pace_hr,
     plot_load,
     plot_pace_hr,
     plot_overview,
@@ -453,6 +454,34 @@ class PaceHrChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+
+class ComparePaceHrChartTests(unittest.TestCase):
+
+    def test_groups_points_by_year_with_one_trace_per_year(self):
+        points = [
+            PaceHrPoint(D + timedelta(days=index), 300.0, 150.0)
+            for index in range(2)
+        ]
+        points += [
+            PaceHrPoint(date(2025, 6, 1), 280.0, 155.0),
+            PaceHrPoint(date(2025, 7, 1), 275.0, 158.0),
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertIn('"name":"2026"', html)
+        self.assertIn('"name":"2025"', html)
+        self.assertIn('"range":[2.0,5.2]', html)
+        self.assertIn("Pace vs heart rate by year", html)
+
+    def test_empty_points_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_compare_pace_hr(
+                    [],
+                    str(Path(tmp) / "compare-pace-hr.png"),
+                )
 
 
 class CompareChartTests(unittest.TestCase):
