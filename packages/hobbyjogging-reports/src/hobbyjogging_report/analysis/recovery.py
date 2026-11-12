@@ -1,18 +1,34 @@
-"""Wellness recovery trends and readiness bands."""
+"""Wellness recovery trends and readiness bands.
+
+Bands use a robust 365-day baseline (median centre, 1.4826 x MAD spread)
+computed at the end of the displayed range. Both failure modes matter:
+
+- A short window slowly becomes a long illness. In March 2026 the 42-day
+  RHR mean was 58.4 because the window was full of elevated values, so an
+  RHR of 58 read green; the one-year median of 51 flags it red.
+- A short window also collapses when the athlete is stable. In November
+  2026 the 42-day SD was 1.5, so a 2 bpm rise read red; the one-year band
+  (median 50, spread ~3) calls the same rise amber.
+
+The trade-off is a slow adaptation to a genuinely new normal. That is the
+right bias for a readiness flag: a false all-clear is worse than a slow
+adjustment.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
-from statistics import pstdev
+from datetime import date
 
 from hobbyjogging_core.model import WellnessDay
 
 from ..model import RecoveryPoint
 from ..series import rolling_mean_by_date
+from .baseline import BASELINE_WINDOW_DAYS, robust_baseline
 
-# Bands compare the last four weeks of wellness.
-BASELINE_DAYS = 42
+# Bands compare a year of wellness: a short window becomes a long illness
+# and collapses to a hair-trigger band when the athlete is stable.
+BASELINE_DAYS = BASELINE_WINDOW_DAYS
 MIN_BASELINE_VALUES = 7
 
 SLEEP_NORMAL = (7 * 3600, 9 * 3600)
@@ -37,60 +53,63 @@ class RecoveryBands:
     sleep_s: tuple[RecoveryBand, ...] = ()
 
 
-def _baseline(points: list[RecoveryPoint], attribute: str):
-    """Return ``(mean, sd)`` over the last four weeks, or ``None``."""
-    cutoff = max(point.date for point in points) - timedelta(
-        days=BASELINE_DAYS - 1
+def _baseline(
+    points: list[RecoveryPoint],
+    attribute: str,
+    day: date,
+):
+    """Return the robust year-long baseline, or ``None``."""
+    return robust_baseline(
+        (
+            (point.date, getattr(point, attribute))
+            for point in points
+        ),
+        day,
+        window_days=BASELINE_DAYS,
+        min_values=MIN_BASELINE_VALUES,
     )
-    values = [
-        value
-        for point in points
-        if point.date >= cutoff
-        and (value := getattr(point, attribute)) is not None
-    ]
-
-    if len(values) < MIN_BASELINE_VALUES:
-        return None
-
-    return sum(values) / len(values), pstdev(values)
 
 
 def recovery_bands(points: list[RecoveryPoint]) -> RecoveryBands:
-    """Readiness bands relative to the last 42 days of each metric.
+    """Readiness bands relative to a robust year-long baseline.
 
-    HRV is green at or above its baseline, amber down to one standard
-    deviation below, and red below that. Resting HR mirrors it (lower is
+    The center is the 365-day median and the spread is 1.4826 x MAD, so an
+    illness cannot become the baseline and a stable period does not produce
+    a hair-trigger band. HRV is green at or above its center, amber down to
+    one spread below, and red below that. Resting HR mirrors it (lower is
     better). Sleep is absolute: green 7-9 h, amber 6-7 h or 9-10 h, red
     outside that.
+
+    One band set is computed at the end of the displayed range: the window
+    defines the current normal.
     """
     if not points:
         return RecoveryBands()
 
     bands = RecoveryBands()
-    hrv = _baseline(points, "hrv")
+    last_day = max(point.date for point in points)
+    hrv = _baseline(points, "hrv", last_day)
 
     if hrv is not None:
-        mean, sd = hrv
         bands = RecoveryBands(
             hrv=(
-                RecoveryBand("normal", mean, None),
-                RecoveryBand("watch", mean - sd, mean),
-                RecoveryBand("alert", None, mean - sd),
+                RecoveryBand("normal", hrv.center, None),
+                RecoveryBand("watch", hrv.center - hrv.spread, hrv.center),
+                RecoveryBand("alert", None, hrv.center - hrv.spread),
             ),
             resting_hr=bands.resting_hr,
             sleep_s=bands.sleep_s,
         )
 
-    rhr = _baseline(points, "resting_hr")
+    rhr = _baseline(points, "resting_hr", last_day)
 
     if rhr is not None:
-        mean, sd = rhr
         bands = RecoveryBands(
             hrv=bands.hrv,
             resting_hr=(
-                RecoveryBand("normal", None, mean),
-                RecoveryBand("watch", mean, mean + sd),
-                RecoveryBand("alert", mean + sd, None),
+                RecoveryBand("normal", None, rhr.center),
+                RecoveryBand("watch", rhr.center, rhr.center + rhr.spread),
+                RecoveryBand("alert", rhr.center + rhr.spread, None),
             ),
             sleep_s=bands.sleep_s,
         )

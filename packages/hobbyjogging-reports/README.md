@@ -74,9 +74,13 @@ HTML dashboard:
   0–10 h/week; larger weeks are marked.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers. Readiness bands shade
-  the background: HRV green at/above its 42-day baseline, amber within one
-  standard deviation below, red below; resting HR mirrored; sleep green
-  7–9 h, amber 6–7 h or 9–10 h, red outside.
+  the background using a robust 365-day baseline computed at the end of the
+  displayed range: the centre is the median and the spread is 1.4826 × MAD.
+  HRV is green at/above the centre, amber down to one spread below, red
+  below; resting HR mirrored; sleep is absolute (green 7–9 h, amber 6–7 h
+  or 9–10 h, red outside). A one-year window is deliberate: a short window
+  becomes a long illness (March 2026 read RHR 58 green), while in a stable
+  period its tiny SD makes a 2 bpm rise red instead of amber.
 - **subt** — subT and LT1 work intervals over the last 365 days by
   default, with pace, average HR, and efficiency (m/excess beat) as three
   stacked panels sharing a date axis. Dots are color-coded by rep length

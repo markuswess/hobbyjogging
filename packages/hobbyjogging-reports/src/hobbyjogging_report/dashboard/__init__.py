@@ -12,6 +12,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from ..activity_list import select_activities
 from ..analysis import (
+    BASELINE_WINDOW_DAYS,
     average_warmup_days,
     recovery_trends,
     vo2max_points,
@@ -171,15 +172,20 @@ def build_dashboard(
     )
 
     wellness = source.wellness(
-        recovery_start - timedelta(days=6),
+        today - timedelta(days=BASELINE_WINDOW_DAYS + 6),
         today,
     )
-    recovery = recovery_trends(
+    baseline_points = recovery_trends(
         wellness,
-        recovery_start,
+        today - timedelta(days=BASELINE_WINDOW_DAYS - 1),
         today,
         window_days=7,
     )
+    recovery = [
+        point
+        for point in baseline_points
+        if recovery_start <= point.date <= today
+    ]
     recovery_html = markdown_to_html(
         recovery_report(source, today=today),
         demote=1,
@@ -328,6 +334,7 @@ def build_dashboard(
             health=health,
             include_review=include_review,
             points=recovery,
+            baseline_points=baseline_points,
             report_html=recovery_html,
             start=recovery_start,
             end=today,

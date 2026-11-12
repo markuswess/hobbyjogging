@@ -223,16 +223,22 @@ def run_recovery_chart(
     from .charts import plot_recovery
 
     planned_end = planned_end or end
+    baseline_start = end - timedelta(days=364)
     wellness = source.wellness(
-        start - timedelta(days=window_days - 1),
+        baseline_start - timedelta(days=window_days - 1),
         end,
     )
-    points = recovery_trends(
+    baseline_points = recovery_trends(
         wellness,
-        start,
+        baseline_start,
         end,
         window_days=window_days,
     )
+    points = [
+        point
+        for point in baseline_points
+        if start <= point.date <= end
+    ]
 
     events = source.events(end, planned_end)
 
@@ -241,6 +247,7 @@ def run_recovery_chart(
         output=output,
         planned_dates=planned_workout_dates(events, end, planned_end),
         window_days=window_days,
+        baseline_points=baseline_points,
     )
 
     print(path)

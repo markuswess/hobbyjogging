@@ -1449,8 +1449,14 @@ def plot_recovery(
     window_days: int = 7,
     title: str = "Recovery trends",
     as_html: bool = False,
+    baseline_points: list[RecoveryPoint] | None = None,
 ) -> str:
-    """HRV, resting HR, and sleep with averages and readiness bands."""
+    """HRV, resting HR, and sleep with averages and readiness bands.
+
+    ``baseline_points`` may include a year of history before the displayed
+    range; the bands are computed at the end of that history, while only
+    ``points`` are drawn.
+    """
     _require_data(points)
     figure = make_subplots(
         rows=3,
@@ -1464,7 +1470,7 @@ def plot_recovery(
         ("resting_hr", "resting_hr_avg", 1.0, "bpm", "#d62728"),
         ("sleep_s", "sleep_avg", 1 / 3600, "hours", "#9467bd"),
     )
-    bands = recovery_bands(points)
+    bands = recovery_bands(baseline_points or points)
     band_sets = (bands.hrv, bands.resting_hr, bands.sleep_s)
 
     for row, (raw_attr, average_attr, scale, unit, color) in enumerate(

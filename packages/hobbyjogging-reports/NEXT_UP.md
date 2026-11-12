@@ -96,12 +96,17 @@ Dashboard follow-ups, handed over together with the triage work:
   CLI).
 
 - **Recovery readiness bands.** The recovery chart shades three bands
-  behind each panel using the last 42 days: HRV green at/above its
-  baseline, amber down to one standard deviation below, red below;
+  behind each panel using a robust 365-day baseline (median centre,
+  `1.4826 x MAD` spread) computed at the end of the displayed range: HRV
+  green at/above the centre, amber down to one spread below, red below;
   resting HR mirrored; sleep green 7-9 h, amber 6-7 h or 9-10 h, red
   outside. Fewer than seven values in the baseline window means no HRV/RHR
-  bands. A small colored key sits at the top right of the chart and the
-  dashboard note explains the thresholds.
+  bands. `analysis/baseline.py` provides the generic helper, shared with
+  the efficiency resting-HR baseline. A year-long window deliberately
+  adapts slowly: March 2026 RHR 58 now reads red instead of green, while a
+  2 bpm rise in a stable period reads amber instead of red. A small colored
+  key sits at the top right of the chart and the dashboard note explains
+  the thresholds.
 
 - **Efficiency (m/excess beat).** Runs report meters per heartbeat above
   rest in the session report, the optional `eff` activities column, every
@@ -122,44 +127,16 @@ Dashboard follow-ups, handed over together with the triage work:
 
 ## Next
 
-1. **Wellness bands: 365-day median + MAD.** `analysis/recovery.py` derives
-   the readiness bands from the last **42 days** with mean ± SD. That window
-   *becomes* a long illness, so the bands go blind exactly when they matter,
-   and it over-reacts when the athlete is stable.
-   - **Evidence**: on 2026-03-15 the 42-day RHR baseline was 58.4 ± 2.0, so
-     RHR 58 read **green**; the 365-day median (51.0 ± 3.0) flags it **red**.
-     HRV 32 read normal against a 32.9 mean, amber against a 43 median. In a
-     stable period (Nov 2026) the 42-day SD collapses (48.0 ± 1.5 → red above
-     49.5), so a 2 bpm rise reads as red; the 365-day band (50 ± 3.0) calls
-     it amber.
-   - **Change**: center = **365-day median** (expanding fallback), spread =
-     **1.4826 × MAD**, thresholds unchanged in direction (HRV green ≥
-     center, amber down to center − σ, red below; RHR mirrored). Sleep stays
-     absolute (7–9 h green) with no baseline.
-   - **Both metrics**: the same robust baseline applies to HRV and resting
-     HR — one helper, not two policies.
-   - **Shared helper**: a generic `robust_baseline(values, day,
-     window_days=365)` used by HRV, resting HR, and the efficiency baseline,
-     so the concept lives in one place.
-   - **Behaviour kept**: one band set per chart, computed at the end of the
-     displayed range — the window defines "current normal".
-   - **Trade-off**: a year-long window adapts slowly to a genuinely new
-     normal. That is the right bias for a readiness flag: a false "all clear"
-     is worse than a slow adjustment.
-   - **Tests**: an illness-sized excursion moves the center by at most ~2 bpm;
-     a stable period does not produce a hair-trigger band (a 2 bpm rise is
-     amber, not red); the expanding fallback; sleep bands unchanged.
-   - **Docs**: the recovery docstring and README get both failure modes.
-2. **Daily planned session.** Show the upcoming/current workout's planned
+1. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
-3. **Planned vs actual by session.** Match events to activities by date +
+2. **Planned vs actual by session.** Match events to activities by date +
    sport and compare pace distributions. The time chart and dashboard
    currently compare by week only. Power comparisons remain impossible until
    activities store power zone times; do not fake them.
-4. **Optional HR-zone variant.** The time chart is pace-only now. Add
+3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-5. **Shoe mileage.** Distance per equipment item from canonical data:
+4. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -167,7 +144,7 @@ Dashboard follow-ups, handed over together with the triage work:
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-6. **Session report completeness** (low priority, last). The `session` report
+5. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.

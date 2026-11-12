@@ -552,6 +552,39 @@ class RecoveryChartTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 plot_recovery([], str(Path(tmp) / "recovery.png"))
 
+    def test_recovery_chart_bands_use_the_baseline_points(self):
+        display = [
+            RecoveryPoint(
+                D + timedelta(days=offset),
+                hrv=60,
+                resting_hr=60,
+                sleep_s=7 * 3600,
+                hrv_avg=60,
+                resting_hr_avg=60,
+                sleep_avg=7 * 3600,
+            )
+            for offset in range(30)
+        ]
+        baseline = [
+            RecoveryPoint(
+                D + timedelta(days=offset),
+                hrv=50,
+                resting_hr=50,
+            )
+            for offset in range(365)
+        ]
+
+        html = plot_recovery(
+            display,
+            "",
+            as_html=True,
+            baseline_points=baseline,
+        )
+
+        # The HRV normal band starts at the 365-day median (50), not at
+        # the displayed values' centre (60).
+        self.assertIn('"y0":50.0', html)
+
     def test_recovery_chart_draws_readiness_bands(self):
         points = [
             RecoveryPoint(

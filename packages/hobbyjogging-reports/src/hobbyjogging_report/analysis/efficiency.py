@@ -22,13 +22,12 @@ whole series; 365 days is about six times the episode.
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable
-from datetime import date, timedelta
-from statistics import median
+from datetime import date
 
 from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
+from .baseline import robust_baselines
 from .common import RUN_TYPES
 
 EFFICIENCY_UNIT = "m/excess beat"
@@ -60,31 +59,14 @@ def resting_hr_baselines(
     The lookup is pure: callers fetch the wellness (with a year of lead-in)
     and pass the resulting function through the rendering stack.
     """
-    if window_days <= 0:
-        raise ValueError("window must be positive")
-
-    points = sorted(
-        (entry.date, entry.resting_hr)
-        for entry in wellness
-        if entry.resting_hr is not None
+    lookup = robust_baselines(
+        ((entry.date, entry.resting_hr) for entry in wellness),
+        window_days=window_days,
     )
-    days = [point[0] for point in points]
-    values = [point[1] for point in points]
 
     def baseline(day: date) -> float | None:
-        end = bisect_right(days, day)
-
-        if not end:
-            return None
-
-        start = bisect_left(
-            days,
-            day - timedelta(days=window_days - 1),
-        )
-        window = values[start:end]
-
-        # Less than a year of history: expand over everything so far.
-        return median(window) if window else median(values[:end])
+        result = lookup(day)
+        return None if result is None else result.center
 
     return baseline
 

@@ -242,6 +242,7 @@ def recovery_page(
     report_html: str,
     start: date,
     end: date,
+    baseline_points: list[RecoveryPoint] | None = None,
 ) -> str:
     if points:
         chart_html = chart(
@@ -249,6 +250,7 @@ def recovery_page(
                 points,
                 output="",
                 as_html=True,
+                baseline_points=baseline_points,
             )
         )
     else:
@@ -267,10 +269,12 @@ def recovery_page(
             f'<p class="muted">{esc(completeness)}</p>'
             '<p class="muted">Daily values are points; lines are 7-day '
             "calendar-day averages. Missing values are skipped.</p>"
-            '<p class="muted">Bands compare the last 42 days: HRV is green '
-            "at or above its baseline, amber within one standard deviation "
-            "below, red below that; resting HR is mirrored; sleep is green "
-            "7\u20139 h, amber 6\u20137 h or 9\u201310 h, red outside.</p>",
+            '<p class="muted">Bands compare a robust 365-day baseline '
+            "(median centre, 1.4826 \u00d7 MAD spread) computed at the end "
+            "of this window: HRV is green at or above the centre, amber "
+            "within one spread below, red below that; resting HR is mirrored; "
+            "sleep is green 7\u20139 h, amber 6\u20137 h or 9\u201310 h, "
+            "red outside.</p>",
         )
     )
 
