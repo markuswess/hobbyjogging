@@ -151,16 +151,37 @@ comparison.
 
 ## Next
 
-1. **Daily planned session.** Show the upcoming/current workout's planned
+1. **One segment table in the session report.** The session report prints
+   `### Intervals` and `### Laps` unconditionally, so a structured workout
+   shows the same segmentation twice and an auto-lapped easy run shows one
+   whole-activity interval next to its splits.
+   - **Why**: of the 2,832 activities that have both, only 29% share a segment
+     count (37% once the empty trailing interval is filtered out — see the
+     maintenance `drop_empty_intervals_v1`). Laps are device splits (auto-lap,
+     manual), intervals are Intervals.icu's typed reps (`WORK`/`RECOVERY`,
+     group ids). They are complementary, not duplicates.
+   - **Rule**: render one table per activity —
+     - intervals when `len(intervals) > 1` (they carry types and groups);
+     - otherwise laps when `len(laps) > 1` (splits);
+     - otherwise neither: a single segment just restates the activity.
+   - Keep the subT "Work reps" section and the interval-based analysis
+     untouched; this is only the raw segment tables.
+   - **Tests**: intervals>1 → only the interval table; laps only → only the
+     lap table; intervals=1 with laps>1 → laps; intervals>1 with laps=1 →
+     intervals; one row on each side → no table.
+   - **Docs**: the reports README session section, and a line in
+     `docs/ARCHITECTURE.md` or `SOURCE_NOTES.md` stating the two concepts
+     (device splits vs detected reps) so nobody tries to merge them again.
+2. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
-2. **Planned vs actual by session.** Match events to activities by date +
+3. **Planned vs actual by session.** Match events to activities by date +
    sport and compare pace distributions. The time chart and dashboard
    currently compare by week only. Power comparisons remain impossible until
    activities store power zone times; do not fake them.
-3. **Optional HR-zone variant.** The time chart is pace-only now. Add
+4. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
+5. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
