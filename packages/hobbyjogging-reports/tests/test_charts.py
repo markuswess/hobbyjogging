@@ -387,7 +387,7 @@ class FixedRangeTests(unittest.TestCase):
         html = plot_volume([(D, 187.0)], "", as_html=True)
 
         self.assertIn("clipped above 130 km", html)
-        self.assertIn("187.0 km (bar clipped)", html)
+        self.assertIn("187.00 km (bar clipped)", html)
 
 
 
@@ -413,6 +413,7 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn('"range":[2.0,5.2]', html)
         self.assertIn("5:00", html)
         self.assertIn('"range":[90,190]', html)
+        self.assertIn('"hoverformat":".2f"', html)
 
     def test_pace_hr_chart_draws_half_trends(self):
         points = [
@@ -448,7 +449,7 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn("first half efficiency", html)
         self.assertIn("second half efficiency", html)
         self.assertIn("excess beat", html)
-        self.assertIn("RHR 50 bpm", html)
+        self.assertIn("RHR 50.00 bpm", html)
 
     def test_pace_hr_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -539,6 +540,26 @@ class CompareChartTests(unittest.TestCase):
         self.assertEqual(4, html.count('"visible":"legendonly"'))
         for year in range(2018, 2027):
             self.assertIn(f'"name":"{year}"', html)
+
+    def test_compare_chart_time_axis_is_in_minutes(self):
+        series = [
+            (
+                2026,
+                [(date(2026, 1, 1), 1.5), (date(2026, 1, 2), 2.0)],
+            )
+        ]
+
+        html = plot_compare(
+            series,
+            "",
+            metric="time",
+            window=42,
+            today=date(2026, 11, 11),
+            as_html=True,
+        )
+
+        self.assertIn("min \\u002f day", html)
+        self.assertIn('"y":[90.0,120.0]', html)
 
     def test_compare_chart_writes_file(self):
         series = [(2026, [(date(2026, 1, 1), 20.0)])]

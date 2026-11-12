@@ -129,6 +129,13 @@ def _require_data(*series) -> None:
         raise ValueError("no data to plot")
 
 
+def _two_decimal_hover(figure: go.Figure) -> None:
+    """Keep hover values compact; the default shows full float precision."""
+    for key in figure.layout:
+        if key.startswith("yaxis"):
+            figure.layout[key].hoverformat = ".2f"
+
+
 def _render(
     figure: go.Figure,
     output: str,
@@ -139,6 +146,7 @@ def _render(
 ) -> str:
     figure.update_xaxes(automargin=True)
     figure.update_yaxes(automargin=True)
+    _two_decimal_hover(figure)
 
     if as_html:
         return figure.to_html(
@@ -293,7 +301,7 @@ def _clipped_markers(
             },
             name=f"clipped above {limit:g} {unit}",
             hovertext=[
-                f"{value:.1f} {unit} (bar clipped)"
+                f"{value:.2f} {unit} (bar clipped)"
                 for _, value in clipped
             ],
             hoverinfo="text",
@@ -1324,7 +1332,7 @@ def plot_pace_hr(
             )
         )
         notes.append(
-            f"{trend.label}: HR = {trend.intercept:.1f} "
+            f"{trend.label}: HR = {trend.intercept:.2f} "
             f"+ {trend.slope:.2f}\u00b7v, r = {trend.correlation:.2f}"
         )
 
@@ -1353,7 +1361,7 @@ def plot_pace_hr(
         )
         notes.append(
             f"{line.label} efficiency: E = {line.efficiency:.2f} "
-            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm"
+            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.2f} bpm"
         )
 
     if notes:
@@ -1463,11 +1471,12 @@ def plot_compare(
     reference_start = date(reference_year, 1, 1)
     ylabels = {
         "volume": "km / day",
-        "time": "hours / day",
+        "time": "min / day",
         "load": "load / day",
         "runs": "runs / day",
         "efficiency": "m / excess beat",
     }
+    scale = 60.0 if metric == "time" else 1.0
     figure = go.Figure()
     visible_from = max(year for year, _ in series) - (
         COMPARE_VISIBLE_YEARS - 1
@@ -1482,7 +1491,7 @@ def plot_compare(
                     + timedelta(days=(day - year_start).days)
                     for day, _ in points
                 ],
-                y=[value for _, value in points],
+                y=[value * scale for _, value in points],
                 mode="lines",
                 name=str(year),
                 visible=True if year >= visible_from else "legendonly",
