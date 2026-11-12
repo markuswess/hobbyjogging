@@ -109,8 +109,10 @@ Dashboard follow-ups, handed over together with the triage work:
   tables), the subT chart's third panel, and the compare tab. Aggregates are
   always sum(distance)/sum(beats); the subT chart and compare series use a
   weighted rolling mean rather than an EWMA of ratios, and rest days carry
-  the previous value in the compare series. The subT efficiency axis
-  auto-ranges for now (roughly 1.5-1.9 m/beat in the current data).
+  the previous value in the compare series. The compare efficiency chart
+  drops years with fewer than 20 HR-backed runs (2014, 2017, 2018). The
+  subT efficiency axis auto-ranges for now (roughly 1.5-1.9 m/beat in the
+  current data).
 
 ## Next
 

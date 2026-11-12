@@ -557,7 +557,8 @@ Pages:
   last year.
 - `compare.html` — volume, time, and efficiency EWMA lines per calendar
   year over a fixed Jan–Dec axis (`--compare-window`, default 182) plus the
-  year and month comparison reports.
+  year and month comparison reports. The efficiency chart drops years with
+  fewer than 20 HR-backed runs (2014, 2017, and 2018 currently).
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

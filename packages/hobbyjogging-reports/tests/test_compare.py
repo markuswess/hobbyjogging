@@ -1,8 +1,9 @@
 import math
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_report.analysis import compare_periods, compare_year_ewma
+from hobbyjogging_report.analysis.compare import EFFICIENCY_MIN_RUNS
 from hobbyjogging_report.compare import compare_report
 from support import FakeSource, activity_factory
 
@@ -337,6 +338,16 @@ class CompareYearEwmaTests(unittest.TestCase):
                 avg_hr=160,
             ),
         ]
+        activities += [
+            activity(
+                id=f"f{index}",
+                date=date(2025, 3, 6) + timedelta(days=index),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=150,
+            )
+            for index in range(20)
+        ]
 
         series = compare_year_ewma(
             activities,
@@ -354,6 +365,48 @@ class CompareYearEwmaTests(unittest.TestCase):
         self.assertAlmostEqual(expected, points[date(2025, 3, 5)], places=4)
         self.assertLess(points[date(2025, 3, 5)], points[date(2025, 3, 4)])
         self.assertEqual(date(2025, 3, 10), series[0][1][-1][0])
+
+    def test_efficiency_drops_years_with_too_little_hr_data(self):
+        activities = [
+            # 2014: only a handful of HR-backed runs.
+            activity(
+                id="a",
+                date=date(2014, 4, 1),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=150,
+            )
+        ]
+        activities += [
+            activity(
+                id=f"b{index}",
+                date=date(2025, 1, 1) + timedelta(days=index),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=150,
+            )
+            for index in range(EFFICIENCY_MIN_RUNS)
+        ]
+        # A year with plenty of runs but no heart rate is dropped too.
+        activities += [
+            activity(
+                id=f"c{index}",
+                date=date(2026, 1, 1) + timedelta(days=index),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=None,
+            )
+            for index in range(EFFICIENCY_MIN_RUNS)
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "efficiency",
+            42,
+            today=date(2026, 2, 1),
+        )
+
+        self.assertEqual([2025], [year for year, _ in series])
 
     def test_unknown_metric_is_rejected(self):
         with self.assertRaises(ValueError):

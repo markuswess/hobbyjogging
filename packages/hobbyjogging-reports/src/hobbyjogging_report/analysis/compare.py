@@ -7,7 +7,7 @@ from hobbyjogging_core.model import Activity
 from ..model import ComparePeriod
 from ..series import alpha_from_time_constant, ewma
 from .common import RUN_TYPES
-from .efficiency import beats
+from .efficiency import activity_efficiency, beats
 
 COMPARE_MODES = ("years", "months")
 
@@ -138,6 +138,9 @@ def compare_periods(
 
 
 COMPARE_METRICS = ("volume", "time", "load", "runs", "efficiency")
+# A year needs enough HR-backed runs for its efficiency line to mean
+# something; sparse years would only show a carried-forward flat line.
+EFFICIENCY_MIN_RUNS = 20
 
 
 def _daily_metric(
@@ -265,7 +268,8 @@ def compare_year_ewma(
         by_year.setdefault(day.year, []).append((day, value))
 
     # Start each year exactly on the previous year's closing value, so the
-    # year lines meet at the axis edges.
+    # year lines meet at the axis edges. Carry through every year before
+    # filtering, so dropped years still feed the next kept year's start.
     series = []
     close = None
 
@@ -276,4 +280,25 @@ def compare_year_ewma(
         series.append((year, points))
         close = points[-1][1]
 
+    if metric == "efficiency":
+        eligible = _efficiency_run_counts(activities)
+        series = [
+            (year, points)
+            for year, points in series
+            if eligible.get(year, 0) >= EFFICIENCY_MIN_RUNS
+        ]
+
     return series
+
+
+def _efficiency_run_counts(activities: list[Activity]) -> dict[int, int]:
+    """Runs per year with the distance, duration, and HR efficiency needs."""
+    counts: dict[int, int] = {}
+
+    for activity in activities:
+        if activity_efficiency(activity) is None:
+            continue
+
+        counts[activity.date.year] = counts.get(activity.date.year, 0) + 1
+
+    return counts
