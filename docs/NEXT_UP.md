@@ -133,13 +133,49 @@ Updated 2026-11-12.
 
 ## Next
 
-1. **Runalyze enrichment** when the API auth/endpoint details are settled:
+1. **Derive the display category from the stored sets** (core + reports).
+   `classify()` currently re-derives the category from name, duration and
+   intervals even when the activity is classified, so the display contradicts
+   the canonical sets for **142 of 2,903 classified activities (4.9%)**: races
+   over 90 min show as `longrun` (7), `continuous`+`threshold` shows as
+   `intervals/other` (76) or `longrun` (18), `long_run` shows as `tempo` (12),
+   `intervals` as `longrun` (10), warmups as `race-support` (13).
+   - **Core**: add `category_for_sets(methods, targets)` next to
+     `classification_for_category` — the inverse mapping, with a fixed
+     priority: `race` → race, `long_run` → longrun, `intervals`/`progression`
+     → intervals, `continuous`+`threshold` → tempo, `continuous`+`recovery` →
+     recovery, `continuous` → easy, empty → unknown. It must round-trip
+     with `classification_for_category` for every mapped pair; the only
+     intentional ambiguity is `{continuous}, {base}`, which is `easy` (the
+     name-based race-support override handles warmups).
+   - **Reports**: `classify()` uses `category_for_sets` whenever
+     `activity.quality is not None`; the heuristic runs only for unclassified
+     activities (488 `unknown` + 743 cross-training today). Keep exactly two
+     documented display refinements applied afterwards:
+     - `subt-short/medium/long` from the work reps when methods contain
+       `intervals` and the target is `subthreshold`;
+     - `race-support` from the name for warmup/cooldown.
+   - **Not stored**: rep length and race-support stay read-time derivations.
+     They cover 134 and 13 activities; storing them would duplicate the
+     intervals/name and drift like the current category does.
+   - **Acceptance**: no classified activity gets a kind that contradicts its
+     sets; `Activity.quality` and `Category.quality` always agree; the
+     unclassified fallback is unchanged; the breakdown table and the
+     `category` column keep their current labels.
+   - **Tests**: round-trip mapping for every `classification_for_category`
+     case; the 142 mismatches resolve to the stored kind; a marathon-length
+     race stays `race`; a `continuous`+`threshold` session shows `tempo`; a
+     warmup still shows `race-support`.
+   - **Docs**: the reports README taxonomy section and the ARCHITECTURE
+     `classify.py` bullet.
+
+2. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-2. **Homelab cutover**: DB + importer + dashboard generator + static server,
+3. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-3. **Reports backlog** — handed to the reports session; the list lives in
+4. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
    vs actual by session, optional HR-zone variant, shoe mileage.
 
