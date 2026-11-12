@@ -701,11 +701,14 @@ def format_session_activity(
         lines.append("\n### Wellness")
         lines.append(format_wellness_summary(wellness))
 
-    if intervals:
+    # One raw segment table per activity: typed reps when there is more
+    # than one, otherwise device splits. A single segment just restates
+    # the activity; the subT work-reps section below is independent.
+    if len(intervals) > 1:
         lines.append("\n### Intervals")
         lines.extend(format_interval_table(intervals))
-
-    lines.extend(format_laps_table(laps or []))
+    elif len(laps or []) > 1:
+        lines.extend(format_laps_table(laps or []))
 
     points = []
 

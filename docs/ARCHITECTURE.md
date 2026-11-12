@@ -223,7 +223,12 @@ SQLite, forward-only migrations. Schema version 10.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
-  attached to activities, tagged by source record.
+  attached to activities, tagged by source record. Laps are device splits
+  (auto-lap or manual); intervals are Intervals.icu's typed reps (`WORK` /
+  `RECOVERY`, with group ids). They are complementary, not duplicates: the
+  session report prints one raw segment table — intervals when there is more
+  than one, otherwise laps when there is more than one — and the subT
+  work-reps section is derived separately.
 - `activity_tags` (v5) — activity labels with their source; used for dashboard
   filters and later analysis.
 - `activity_workout_methods`, `activity_workout_targets` (v9) — set-based

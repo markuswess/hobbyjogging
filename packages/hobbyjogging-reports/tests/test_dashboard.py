@@ -82,7 +82,10 @@ def _source():
             ),
         ],
         intervals={
-            "run1": [make_interval(300, 1000, avg_hr=160, max_hr=170)],
+            "run1": [
+                make_interval(300, 1000, avg_hr=160, max_hr=170),
+                make_interval(300, 1000, avg_hr=162, max_hr=172),
+            ],
         },
         events=[
             Event(

@@ -54,8 +54,9 @@ HTML dashboard:
   date, activity id, or `last` (the default): category, workout methods and
   targets, tags, VO2max, review status and open items, totals including
   efficiency (m/excess beat), zones, description, the day's planned workout
-  and wellness, the full interval and lap tables, subT/LT1 work reps, and
-  Intervals/Garmin Connect links when the source knows them.
+  and wellness, one raw segment table (typed intervals when there is more
+  than one, otherwise device laps when there is more than one), subT/LT1 work
+  reps, and Intervals/Garmin Connect links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **demo-db** — Write a deterministic synthetic database for the public
@@ -350,9 +351,11 @@ The report includes the activity id and date, category, review status,
 duration/elapsed time, distance and pace, efficiency, HR/load/RPE/feel/
 intensity, tags, VO2max, equipment, pace and HR zones, a fenced description
 block, the day's planned workout and wellness, a table of every recorded
-interval, the stored lap table when present, and the subT/LT1 work-rep
-summary when applicable. Open review items for the session are listed with
-their severity and detail.
+one raw segment table, and the subT/LT1 work-rep summary when applicable.
+The segment table shows typed intervals when there is more than one; otherwise
+it falls back to device laps when there is more than one; a single segment on
+either side is skipped because it only restates the activity. Open review
+items for the session are listed with their severity and detail.
 
 Id lookup scans recent history and expands up to about 20 years. If an
 activity is hidden by an open import review item, add `--include-review`.
@@ -651,7 +654,8 @@ Pages:
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and
-  targets, zone times, description, interval table, and subT/LT1 work reps),
+  targets, zone times, description, the raw segment table, and subT/LT1
+  work reps),
   exactly as `reports.sh session` renders it.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting

@@ -39,6 +39,51 @@ def work_intervals(count=5):
     ]
 
 
+def _lap(index):
+    return Lap(
+        index=index,
+        duration_s=300,
+        distance_m=1000,
+        avg_hr=150,
+        max_hr=160,
+    )
+
+
+class SegmentTableRuleTests(unittest.TestCase):
+
+    def _report(self, intervals, laps):
+        source = FakeSource(
+            [activity(id="a", date=D1)],
+            intervals={"a": intervals},
+            laps={"a": laps},
+        )
+        return session_report("a", source)
+
+    def test_multiple_intervals_win_over_laps(self):
+        report = self._report(work_intervals(count=2), [_lap(1), _lap(2)])
+
+        self.assertIn("### Intervals", report)
+        self.assertNotIn("### Laps", report)
+
+    def test_laps_are_used_when_there_is_one_interval(self):
+        report = self._report(work_intervals(count=1), [_lap(1), _lap(2)])
+
+        self.assertIn("### Laps", report)
+        self.assertNotIn("### Intervals", report)
+
+    def test_one_lap_does_not_replace_multiple_intervals(self):
+        report = self._report(work_intervals(count=2), [_lap(1)])
+
+        self.assertIn("### Intervals", report)
+        self.assertNotIn("### Laps", report)
+
+    def test_one_segment_on_each_side_renders_neither(self):
+        report = self._report(work_intervals(count=1), [_lap(1)])
+
+        self.assertNotIn("### Intervals", report)
+        self.assertNotIn("### Laps", report)
+
+
 class SessionSelectionTests(unittest.TestCase):
 
     def setUp(self):
@@ -225,7 +270,14 @@ class SessionReportTests(unittest.TestCase):
                         avg_hr=145,
                         max_hr=160,
                         elevation_gain_m=20,
-                    )
+                    ),
+                    Lap(
+                        index=2,
+                        duration_s=1800,
+                        distance_m=5000,
+                        avg_hr=150,
+                        max_hr=165,
+                    ),
                 ]
             },
             review_items=[
@@ -260,6 +312,10 @@ class SessionReportTests(unittest.TestCase):
         self.assertIn("### Laps", report)
         self.assertIn(
             "| 1 | 30:00 | 5.00 km | 6:00/km | 145 | 160 | 20 m |",
+            report,
+        )
+        self.assertIn(
+            "| 2 | 30:00 | 5.00 km | 6:00/km | 150 | 165 | - |",
             report,
         )
 
