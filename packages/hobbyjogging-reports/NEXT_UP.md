@@ -116,16 +116,51 @@ Dashboard follow-ups, handed over together with the triage work:
 
 ## Next
 
-1. **Daily planned session.** Show the upcoming/current workout's planned
+1. **Efficiency: subtract the resting baseline (`m/excess beat`).** The
+   shipped metric is raw `distance / (HR × min)`, which is biased by the HR
+   offset. A fit on the real data gives `HR ≈ 52.5 + 26.2·v` (R² = 0.54) with
+   the intercept matching the median resting HR (51 bpm), and `v/HR` spreads
+   11.3% across speed quartiles while `v/(HR − RHR)` spreads only 3.3%.
+   Subtracting the baseline makes the number comparable across paces — which
+   is what the subT categories, the compare page and the activity level need.
+   - **Metric**: `distance_m / ((avg_hr − rhr) × duration_min)`, still called
+     efficiency, label **`m/excess beat`**; `EFFICIENCY_UNIT` changes.
+   - **Baseline**: rolling **42-day median** of `wellness_days.resting_hr`;
+     when the window has no values, the all-time median of the supplied
+     wellness; `None` when there is none at all. Guard `avg_hr − rhr < 10` →
+     `None`. Keep it a pure helper, e.g.
+     `resting_hr_baseline(wellness, day, window_days=42)`.
+   - **Plumbing**: every caller fetches wellness with a 42-day lead-in and
+     passes the baseline through — `format_session_activity`,
+     `sessions.session_report`, `activity_list`, `analysis/subt`
+     (`SubtPoint`), `subt_ewma`, `charts.plot_subt`,
+     `compare.compare_year_ewma`, and the dashboard pages. `analysis/` stays
+     pure: the baseline is an argument, never a query.
+   - **Aggregates stay weighted**: Σdistance / Σexcess beats. Keep the raw
+     distance/excess-beat sums on `SubtPoint`.
+   - **Labels/ranges**: "Efficiency (m/excess beat)" in the session line, the
+     `eff` column, the subT panel title and the compare axis; subT axis
+     roughly 1.8–2.8 (the raw metric sat at 1.5–1.9).
+   - **Caveats**: RHR noise propagates (~5% for a 5 bpm error on a ~90 bpm
+     difference) — this is a trend signal, not a per-run score; HR lag still
+     understates short reps; runs only.
+   - **Tests**: known value (10 000 m / 3 600 s / 150 bpm / rhr 50 → 1.667),
+     the baseline fallback chain, the `hr − rhr < 10` guard, weighted
+     aggregate vs naive mean, a regression test that the metric is flat
+     across speed bands under a synthetic linear HR model, and `-` in the
+     renderers when absent.
+   - **Docs**: the module docstring gets the fitted model and the 11.3% → 3.3%
+     spread; update the Done bullet that quotes the raw axis range.
+2. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
-2. **Planned vs actual by session.** Match events to activities by date +
+3. **Planned vs actual by session.** Match events to activities by date +
    sport and compare pace distributions. The time chart and dashboard
    currently compare by week only. Power comparisons remain impossible until
    activities store power zone times; do not fake them.
-3. **Optional HR-zone variant.** The time chart is pace-only now. Add
+4. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
+5. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -133,7 +168,7 @@ Dashboard follow-ups, handed over together with the triage work:
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-5. **Session report completeness** (low priority, last). The `session` report
+6. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.
