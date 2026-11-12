@@ -237,13 +237,36 @@ tests pass, and the README documents the command. The root session then wires
 1. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
-2. **Planned vs actual by session.** Match events to activities by date +
+2. **Efficiency across the Markdown reports.** Efficiency (`m/excess beat`)
+   is already in the session report, the `eff` activities column, subT, the
+   compare tab, and the pace/HR chart; the remaining Markdown surfaces still
+   omit it. Audit every report and add it only where it carries signal.
+   - **Daily:** add a compact efficiency line to each run with a baseline
+     (after pace/HR), and keep the existing subT work-rep lines. Omit it,
+     rather than printing `-`, when there is no HR or baseline.
+   - **Period reports (`report`, `weekly`, `monthly`, `yearly`):** add a
+     weighted efficiency total to the Running block and an `Efficiency`
+     column to the category table. Period/category totals are always
+     `sum(distance) / sum(excess beats)`, never an average of ratios.
+   - **Compare reports (`compare-years`, `compare-months`):** add efficiency
+     as a metric/column, defined exactly like the compare-tab series, so the
+     text report and chart agree.
+   - **Overview:** only add it if a clean weighted weekly efficiency EWMA
+     row fits without crowding the volume table.
+   - **Where it does not fit:** planned workouts and the recovery report have
+     no actual HR/baseline — leave them alone.
+   - **Plumbing:** each report fetches wellness with a 365-day lead-in, builds
+     `resting_hr_baselines`, and passes the baseline through; `analysis/`
+     stays pure. Use the `Efficiency` header and `m/excess beat` unit.
+   - **Tests/docs:** weighted period totals, category columns, no-baseline
+     omission, compare-report/chart agreement, and README wording.
+3. **Planned vs actual by session.** Match events to activities by date +
    sport and compare pace distributions. The time chart and dashboard
    currently compare by week only. Power comparisons remain impossible until
    activities store power zone times; do not fake them.
-3. **Optional HR-zone variant.** The time chart is pace-only now. Add
+4. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
+5. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -251,7 +274,7 @@ tests pass, and the README documents the command. The root session then wires
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-5. **Session report completeness** (low priority, last). The `session` report
+6. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.
