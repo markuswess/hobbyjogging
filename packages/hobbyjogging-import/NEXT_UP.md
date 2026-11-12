@@ -83,21 +83,18 @@ on.
   raw row in `source_records.payload_json`. Start times are matched at
   minute precision; matched activities keep their precise start, and rows
   without a start create dated activities. Imports are stable and idempotent.
+- **Empty Intervals artifact.** `is_empty_interval` in `intervals.py` drops the
+  trailing 1 s / 0 m `RECOVERY` row Intervals appends when building the stored
+  interval list; genuine short segments (2 s or any distance) survive. The raw
+  payload keeps the original rows. The maintenance `drop_empty_intervals_v1`
+  backfill reuses the predicate for existing data.
 - Full FIT archive import, VO2max backfill, and the historical spreadsheet
   import have been run against the real DB.
 
 ## Next
 
-- **Skip the empty Intervals artifact.** Intervals appends a 1 s, 0 m
-  `RECOVERY` interval at the end of an activity. In the DB: 239 such rows
-  (233 trailing `RECOVERY`, 6 `WORK` inside the activity), across ~235
-  activities. Drop intervals with `duration_s <= 1` and `distance_m < 1` when
-  building the list at the `_to_interval` call site, and expose the predicate
-  (e.g. `is_empty_interval`) so the maintenance `drop_empty_intervals_v1`
-  backfill reuses it. Test a payload with the trailing recovery plus a genuine
-  2 s / 5 m segment that must survive.
-
-**Runalyze enrichment** is still waiting on the API details (below).
+Nothing package-local is queued; **Runalyze enrichment** is still waiting on
+the API details (below).
 
 ## Waiting on
 

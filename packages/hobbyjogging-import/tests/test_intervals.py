@@ -8,8 +8,9 @@ from hobbyjogging_core import (
     connect,
     migrate,
 )
+from hobbyjogging_core.model import Interval
 from hobbyjogging_import.cli import build_parser, resolve_event_range
-from hobbyjogging_import.intervals import IntervalsImporter
+from hobbyjogging_import.intervals import IntervalsImporter, is_empty_interval
 
 
 class FakeIntervalsClient:
@@ -199,6 +200,61 @@ class IntervalsImporterTests(unittest.TestCase):
         self.assertEqual(1, len(intervals))
         self.assertEqual("WORK", intervals[0].type)
         self.assertEqual(150, intervals[0].avg_hr)
+
+    def test_drops_the_empty_intervals_artifact_but_keeps_short_segments(self):
+        self.client.interval_payloads["i1"] += [
+            {
+                "group_id": "g1",
+                "type": "RECOVERY",
+                "start_time": "01:00:00",
+                "moving_time": 1,
+                "distance": 0,
+                "average_heartrate": 120,
+                "max_heartrate": 121,
+            },
+            {
+                "group_id": "g1",
+                "type": "WORK",
+                "start_time": "01:00:01",
+                "moving_time": 2,
+                "distance": 5,
+                "average_heartrate": 150,
+                "max_heartrate": 152,
+            },
+        ]
+
+        summary = self._import()
+
+        self.assertEqual(2, summary.intervals_imported)
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )[0]
+        intervals = self.repository.activity_intervals(activity.id)
+        self.assertEqual(
+            [(60.0, 200.0), (2.0, 5.0)],
+            [(item.duration_s, item.distance_m) for item in intervals],
+        )
+
+    def test_an_activity_with_only_the_artifact_stores_no_intervals(self):
+        self.client.interval_payloads["i1"] = [
+            {
+                "group_id": "g1",
+                "type": "RECOVERY",
+                "start_time": "01:00:00",
+                "moving_time": 1,
+                "distance": 0,
+            }
+        ]
+
+        summary = self._import()
+
+        self.assertEqual(0, summary.intervals_imported)
+        activity = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+        )[0]
+        self.assertEqual([], self.repository.activity_intervals(activity.id))
 
     def test_imports_planned_event_zone_times(self):
         self.client.event_payloads[0]["workout_doc"] = {
@@ -1191,6 +1247,31 @@ class IntervalsCliTests(unittest.TestCase):
                 182,
                 today=date(2026, 11, 6),
             )
+
+
+class EmptyIntervalTests(unittest.TestCase):
+
+    def test_the_trailing_artifact_is_empty(self):
+        self.assertTrue(
+            is_empty_interval(Interval(duration_s=1, distance_m=0))
+        )
+        self.assertTrue(
+            is_empty_interval(Interval(duration_s=0.5, distance_m=0.4))
+        )
+        self.assertTrue(
+            is_empty_interval(Interval(duration_s=0, distance_m=0))
+        )
+
+    def test_genuine_short_segments_survive(self):
+        self.assertFalse(
+            is_empty_interval(Interval(duration_s=2, distance_m=0))
+        )
+        self.assertFalse(
+            is_empty_interval(Interval(duration_s=1, distance_m=5))
+        )
+        self.assertFalse(
+            is_empty_interval(Interval(duration_s=10, distance_m=0.5))
+        )
 
 
 if __name__ == "__main__":

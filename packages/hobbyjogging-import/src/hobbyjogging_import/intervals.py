@@ -470,7 +470,13 @@ class IntervalsImporter:
             payload_json=interval_payload_json,
             import_run_id=summary.run_id,
         )
-        intervals = [_to_interval(item) for item in interval_payload]
+        intervals = [
+            interval
+            for interval in (
+                _to_interval(item) for item in interval_payload
+            )
+            if not is_empty_interval(interval)
+        ]
         self.writer.replace_activity_intervals(
             activity_id,
             intervals,
@@ -779,6 +785,20 @@ def _to_interval(raw: dict) -> Interval:
         distance_m=_float(raw.get("distance")) or 0.0,
         avg_hr=_float(raw.get("average_heartrate")),
         max_hr=_float(raw.get("max_heartrate")),
+    )
+
+
+def is_empty_interval(interval: Interval) -> bool:
+    """True for the 1 s / 0 m artifact Intervals appends to an activity.
+
+    Intervals adds a trailing ``RECOVERY`` interval with one second and no
+    distance. It carries no training information; the raw payload keeps it as
+    provenance, but the stored interval set drops it. Genuine short segments
+    (2 s or more, or any distance) survive.
+    """
+    return (
+        (interval.duration_s or 0) <= 1
+        and (interval.distance_m or 0) < 1
     )
 
 
