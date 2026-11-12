@@ -1,6 +1,6 @@
 # Status and next steps
 
-Updated 2026-11-10.
+Updated 2026-11-12.
 
 ## Done
 
@@ -114,18 +114,30 @@ Updated 2026-11-10.
    in `packages/hobbyjogging-reports/NEXT_UP.md`. Workout sets, race cards, and
    the review-queue `DataSource` API are done; the open piece is rendering the
    queue on the health page.
-2. **Runalyze enrichment** when the API auth/endpoint details are settled:
+2. **Public demo dashboard on GitHub Pages** — split across two sessions.
+   - **Reports session:** build the synthetic demo-DB generator, the `demo-db`
+     command, the `--demo-label` synthetic-data badge, and tests. Full spec in
+     `packages/hobbyjogging-reports/NEXT_UP.md` (“Handoff: synthetic demo
+     database”).
+   - **Root session:** add `demo.sh`, the Pages workflow
+     (`.github/workflows/pages.yml`: weekly schedule + manual dispatch,
+     generate DB → build dashboard → upload/deploy artifact), the README
+     preview section, and enable Pages with “GitHub Actions” as the source.
+   - Constraints: no real data or `data/laufen.ods`; the `.db` is a build
+     artifact and stays out of git (`data/` and `*.db` are already ignored);
+     publish only the static site.
+3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-3. **Homelab cutover**: DB + importer + dashboard generator + static server,
+4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-4. **Classifier into core** (hygiene): move the heuristic out of
+5. **Classifier into core** (hygiene): move the heuristic out of
    `hobbyjogging-reports` so `hobbyjogging-maintenance` stops depending on the
    renderer. No behavior change.
-5. **Gear mileage and the event race-method backfill** — handed to the
+6. **Gear mileage and the event race-method backfill** — handed to the
    reports and maintenance packages; specs in their `NEXT_UP.md` files.
-6. **Session report completeness** (low priority). `reports.sh session` shows
+7. **Session report completeness** (low priority). `reports.sh session` shows
    the core metrics but not laps (needs `DataSource.activity_laps`), tags,
    VO2max, the day's planned workout and wellness, or the review status. Laps
    are the only structural gap (core); the rest are renderer additions in the
