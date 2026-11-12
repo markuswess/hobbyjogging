@@ -17,6 +17,9 @@ load.png
 time.png
 recovery.png
 
+# Build artifacts (demo database and site)
+build/
+
 # Local training data and exports
 data/
 *.db

@@ -2,6 +2,19 @@
 
 Training data, imports, and reports.
 
+## Live demo
+
+A public demo built from a synthetic athlete is published at
+<https://markuswess.github.io/hobbyjogging/>. It contains no personal data:
+the database is generated from scratch by `demo-db`, and the site is rebuilt
+weekly by GitHub Actions.
+
+Build it locally:
+
+```bash
+./demo.sh          # -> build/demo.db and build/site
+```
+
 ## Packages
 
 - `packages/hobbyjogging-core` — canonical training model, database schema,
