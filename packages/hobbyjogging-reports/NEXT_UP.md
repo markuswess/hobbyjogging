@@ -126,7 +126,20 @@ Dashboard follow-ups, handed over together with the triage work:
   data). A 365-day baseline is deliberate: a 42-day window read +8% high
   after the Feb-Mar 2026 illness; see the module docstring.
 
+- **Synthetic demo database.** `demo-db --out PATH` writes a deterministic
+  invented 18-month athlete (seed, periodized plan, intervals, zone times,
+  wellness with an illness and a travel week, planned events, two future
+  races, four shoes) through `TrainingWriter`, with no `source_records` or
+  personal data. `dashboard --demo-label TEXT` adds an opt-in banner on every
+  page. Same seed gives identical content; tests cover counts, complete
+  zones, future races, review opt-in, size, and a full dashboard build.
+  Spec and root-session follow-ups remain in the handoff below.
+
 ## Handoff: synthetic demo database
+
+> **Done (reports side).** `demo-db`, the `--demo-label` badge, tests, and
+> README docs are implemented. The root session still owns `demo.sh`, the
+> Pages workflow, and the repo docs.
 
 Root session asked for a public, representative dashboard on GitHub Pages
 without any personal data. Build the generator and badge here; the root session

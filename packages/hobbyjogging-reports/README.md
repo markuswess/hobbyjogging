@@ -54,6 +54,9 @@ HTML dashboard:
   links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
+- **demo-db** — Write a deterministic synthetic database for the public
+  demo. No personal data and no `source_records`; see
+  “Synthetic demo database” below.
 - **overview-chart** — the main training chart (`./charts.sh overview`):
   daily running minutes on a 0–90 minute axis, stacked hard (Z3+Z4) /
   easy (Z1+Z2) / unzoned, with hard and total 7/42/182-day EWMAs and
@@ -567,6 +570,34 @@ separately. The scale is reversed compared with some watches:
 | 4 | Poor |
 | 5 | Weak |
 
+## Synthetic demo database
+
+`demo-db` writes a complete, deterministic training database with an
+invented athlete: 18 months of periodized activities, intervals, zone
+times, wellness, planned workouts, two future races, and four shoes. It
+never reads the canonical database or any personal data.
+
+    python -m hobbyjogging_report demo-db --out build/demo.db
+
+    # optional: smaller/larger, reproducible seed, fixed build date,
+    # a couple of review items for screenshots, or overwrite
+    python -m hobbyjogging_report demo-db --out build/demo.db \
+        --months 12 --seed 7 --today 2026-11-12 \
+        --with-review-items --force
+
+`--out` is required and an existing file is refused without `--force`;
+the canonical `HOBBYJOGGING_DB` is never used. The file is normally about
+2 MB and contains no raw source payloads.
+
+Build the demo site from it with an explicit database path and the
+synthetic-data badge:
+
+    HOBBYJOGGING_DB=build/demo.db ./dashboard.sh \
+        --demo-label "Synthetic demo data — not a real athlete"
+
+`--demo-label` is opt-in and prints a banner on every page; normal
+dashboard builds are unchanged.
+
 ## Static dashboard
 
 `dashboard` writes a self-contained static HTML site to
@@ -580,6 +611,7 @@ separately. The scale is reversed compared with some watches:
     ./dashboard.sh --chart-days 90 --future-days 21
     ./dashboard.sh --reports overview,daily,planned
     ./dashboard.sh --output /tmp/dashboard
+    ./dashboard.sh --demo-label "Synthetic demo data"
 
 Pages:
 

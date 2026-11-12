@@ -138,6 +138,15 @@ nav a {
 }
 nav a.active, nav a:hover { color: #fff; }
 main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+.demo-banner {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid #e0a800;
+  border-radius: 6px;
+  background: #fff3cd;
+  color: #664d03;
+  font-weight: 600;
+}
 h1 { margin: 0 0 18px; font-size: 1.7rem; }
 h2 { margin: 0 0 12px; font-size: 1.2rem; }
 h3 { margin: 18px 0 8px; font-size: 1rem; }
@@ -254,6 +263,7 @@ def page(
     active: str,
     root: str = "",
     plotly: bool = False,
+    demo_label: str | None = None,
 ) -> str:
     """Render a complete dashboard page.
 
@@ -271,6 +281,11 @@ def page(
     plotly_script = (
         f'<script src="{root}plotly.min.js"></script>' if plotly else ""
     )
+    demo_banner = (
+        f'<div class="demo-banner">{esc(demo_label)}</div>'
+        if demo_label
+        else ""
+    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -286,6 +301,7 @@ def page(
   <nav><span class="brand">hobbyjogging</span>{nav}</nav>
 </header>
 <main>
+{demo_banner}
 {health_html}
 <h1>{esc(title)}</h1>
 {body}

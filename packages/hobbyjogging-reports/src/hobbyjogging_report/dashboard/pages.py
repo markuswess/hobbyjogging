@@ -86,6 +86,7 @@ def overview_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     end: date,
     overview_html: str,
     daily_html: str,
@@ -145,6 +146,7 @@ def overview_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="overview",
         plotly=True,
     )
@@ -155,6 +157,7 @@ def activities_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     activities: list[Activity],
     excluded: int,
 ) -> str:
@@ -201,6 +204,7 @@ def activities_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="activities",
     )
 
@@ -210,6 +214,7 @@ def activity_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     activity: Activity,
     report_html: str,
 ) -> str:
@@ -228,6 +233,7 @@ def activity_page(
             root="../",
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="activities",
         root="../",
     )
@@ -238,6 +244,7 @@ def recovery_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     points: list[RecoveryPoint],
     report_html: str,
     start: date,
@@ -286,6 +293,7 @@ def recovery_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="recovery",
         plotly=True,
     )
@@ -296,6 +304,7 @@ def nsa_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     section: NsaSection,
     start: date,
     end: date,
@@ -321,6 +330,7 @@ def nsa_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="nsa",
         plotly=True,
     )
@@ -331,6 +341,7 @@ def compare_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     section: CompareSection,
 ) -> str:
     """Render the compare tab: year chart plus the year/month reports."""
@@ -356,6 +367,7 @@ def compare_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="compare",
         plotly=True,
     )
@@ -366,6 +378,7 @@ def analysis_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     section: AnalysisSection,
     start: date,
     end: date,
@@ -386,6 +399,7 @@ def analysis_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="analysis",
         plotly=True,
     )
@@ -396,6 +410,7 @@ def health_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     detail_ids: set[str],
     review_items: list[ReviewItem],
 ) -> str:
@@ -489,6 +504,7 @@ def health_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="health",
     )
 
@@ -498,6 +514,7 @@ def reports_page(
     generated_at: str,
     health: DataHealth,
     include_review: bool,
+    demo_label: str | None = None,
     sections: list[str],
 ) -> str:
     """Render the selected Markdown reports as HTML sections."""
@@ -521,5 +538,6 @@ def reports_page(
             health,
             include_review=include_review,
         ),
+        demo_label=demo_label,
         active="reports",
     )

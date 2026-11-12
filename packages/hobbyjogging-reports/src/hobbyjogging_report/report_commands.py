@@ -15,6 +15,38 @@ from .subt_report import subt_report
 from .sessions import session_report
 
 
+def run_demo_command(parsed, source, include_review):
+    from .demo import generate_demo_database
+
+    out, months, seed, today, with_review_items, force = parsed
+    summary = generate_demo_database(
+        out,
+        months=months,
+        seed=seed,
+        today=today,
+        with_review_items=with_review_items,
+        force=force,
+    )
+    review_note = "2 demo review items" if with_review_items else "none"
+    return "\n".join(
+        [
+            "# Demo database",
+            "",
+            f"- Path: `{summary.path}`",
+            f"- Activities: {summary.activities}",
+            f"- Wellness days: {summary.wellness_days}",
+            f"- Planned events: {summary.events}",
+            f"- Equipment: {summary.equipment}",
+            f"- Open review items: {review_note}",
+            "",
+            "Build the demo dashboard with:",
+            "",
+            "    python -m hobbyjogging_report dashboard --demo-label "
+            '"Synthetic demo data — not a real athlete"',
+        ]
+    )
+
+
 def run_daily_command(parsed, source, include_review):
     return daily(source, include_review=include_review)
 
@@ -92,6 +124,7 @@ def run_dashboard_command(parsed, source, include_review):
         analysis_days,
         compare_window,
         reports,
+        demo_label,
     ) = parsed
     path = build_dashboard(
         source,
@@ -105,6 +138,7 @@ def run_dashboard_command(parsed, source, include_review):
         compare_window=compare_window,
         reports=reports,
         include_review=include_review,
+        demo_label=demo_label,
     )
     print(path)
     return None

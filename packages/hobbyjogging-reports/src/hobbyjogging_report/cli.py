@@ -204,7 +204,18 @@ def parse_compare_args(
 
 def parse_dashboard_args(
     argv: list[str],
-) -> tuple[str | None, int, int, int, int, int, int, int, tuple[str, ...]]:
+) -> tuple[
+    str | None,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    tuple[str, ...],
+    str | None,
+]:
     """Parse dashboard output, windows, chart ranges, and reports."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
@@ -216,6 +227,7 @@ def parse_dashboard_args(
     parser.add_argument("--analysis-days", type=int, default=731)
     parser.add_argument("--compare-window", type=int, default=182)
     parser.add_argument("--reports")
+    parser.add_argument("--demo-label")
     args = parser.parse_args(argv)
 
     if args.days <= 0:
@@ -258,6 +270,37 @@ def parse_dashboard_args(
         args.analysis_days,
         args.compare_window,
         reports,
+        args.demo_label,
+    )
+
+
+def parse_demo_args(
+    argv: list[str],
+) -> tuple[str, int, int, date | None, bool, bool]:
+    """Parse output, size, seed, build date, review, and overwrite flags."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--out")
+    parser.add_argument("--months", type=int, default=18)
+    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--today", type=date_arg)
+    parser.add_argument("--with-review-items", action="store_true")
+    parser.add_argument("--force", action="store_true")
+    args = parser.parse_args(argv)
+
+    if not args.out:
+        raise ValueError("--out is required")
+    if args.months <= 0:
+        raise ValueError("--months must be positive")
+    if args.months > 60:
+        raise ValueError("--months must be 60 or less")
+
+    return (
+        args.out,
+        args.months,
+        args.seed,
+        args.today,
+        args.with_review_items,
+        args.force,
     )
 
 

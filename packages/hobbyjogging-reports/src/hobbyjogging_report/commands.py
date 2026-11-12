@@ -23,6 +23,7 @@ from .cli import (
     parse_compare_args,
     parse_compare_chart_args,
     parse_dashboard_args,
+    parse_demo_args,
     parse_load_args,
     parse_overview_args,
     parse_overview_chart_args,
@@ -43,6 +44,7 @@ from .report_commands import (
     run_compare_command,
     run_daily_command,
     run_dashboard_command,
+    run_demo_command,
     run_debug_command,
     run_overview_command,
     run_planned_command,
@@ -69,6 +71,10 @@ class Command:
     )
     needs_source: bool = True
     notes: tuple[str, ...] = ()
+    standalone_note: str = (
+        "this command manages its own files and does not open the "
+        "canonical database"
+    )
 
 
 def _parse_session(argv: list[str]):
@@ -376,6 +382,27 @@ COMMANDS = {
         parse=_parse_debug,
         run=run_debug_command,
         needs_source=False,
+        standalone_note=(
+            "requires INTERVALS_ATHLETE_ID and INTERVALS_API_KEY"
+        ),
+    ),
+    "demo-db": Command(
+        "demo-db",
+        "Write a deterministic synthetic demo database",
+        "demo-db --out PATH [--months N] [--seed N] [--today DATE] "
+        "[--with-review-items] [--force]",
+        (
+            "python -m hobbyjogging_report demo-db --out build/demo.db",
+            "python -m hobbyjogging_report demo-db --out build/demo.db "
+            "--months 12 --seed 7",
+        ),
+        parse=parse_demo_args,
+        run=run_demo_command,
+        needs_source=False,
+        standalone_note=(
+            "writes a new SQLite file; it never reads the canonical "
+            "database"
+        ),
     ),
 }
 
@@ -428,9 +455,6 @@ def command_help(command: Command) -> str:
             "  --include-review",
         ])
     else:
-        lines.extend([
-            "",
-            "requires INTERVALS_ATHLETE_ID and INTERVALS_API_KEY",
-        ])
+        lines.extend(["", command.standalone_note])
 
     return "\n".join(lines)

@@ -90,6 +90,7 @@ def build_dashboard(
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
+    demo_label: str | None = None,
 ) -> Path:
     """Build the static dashboard and return its directory."""
     if days <= 0:
@@ -287,6 +288,7 @@ def build_dashboard(
         "index.html": overview_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             end=today,
             overview_html=overview_html,
@@ -303,6 +305,7 @@ def build_dashboard(
         "activities.html": activities_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             activities=listed_activities,
             excluded=listed_excluded,
@@ -310,6 +313,7 @@ def build_dashboard(
         "analysis.html": analysis_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             section=analysis_section,
             start=analysis_start,
@@ -318,6 +322,7 @@ def build_dashboard(
         "nsa.html": nsa_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             section=nsa_section,
             start=nsa_start,
@@ -326,12 +331,14 @@ def build_dashboard(
         "compare.html": compare_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             section=compare_section,
         ),
         "recovery.html": recovery_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             points=recovery,
             baseline_points=baseline_points,
@@ -342,12 +349,14 @@ def build_dashboard(
         "reports.html": reports_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             sections=report_sections,
         ),
         "health.html": health_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             detail_ids=detail_ids,
             review_items=source.review_items(status="open"),
@@ -385,6 +394,7 @@ def build_dashboard(
         ] = activity_page(
             generated_at=generated_at,
             health=health,
+            demo_label=demo_label,
             include_review=include_review,
             activity=activity,
             report_html=markdown_to_html(report, demote=1),

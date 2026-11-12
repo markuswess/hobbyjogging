@@ -32,6 +32,7 @@ EXPECTED = {
     "subt",
     "vo2max",
     "debug",
+    "demo-db",
 }
 
 
