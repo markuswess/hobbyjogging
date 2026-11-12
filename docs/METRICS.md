@@ -56,7 +56,21 @@ dashboard. The dashboard is the last step, never the first.
 
 ## Candidates
 
-Nothing here: ideas live in `experiments/` until they pass the gate.
+### HR-speed line from one efficiency value
+
+- **Idea**: replace the free least-squares fit `HR = a + b·v` with the
+  efficiency model `HR = RHR + v·60/E`, where `E` is the weighted efficiency
+  and `RHR` the 365-day baseline. One parameter, no free intercept.
+- **Experiment**: `experiments/hr_efficiency_line.py`.
+- **Result** (1,262 steady runs, 2022-09 .. 2026-11, median RHR 51):
+  regression R² 0.676 / RMSE 7.76 bpm; efficiency line R² 0.725 / RMSE 7.14
+  (aerobic range only: 8.11 vs 7.52). Efficiency is flat across the first
+  three speed quartiles (2.41–2.44, corr(eff, speed) −0.12) and drops ~5% in
+  the top quartile.
+- **Open**: the weighted aggregate (2.33) sits 3–6% above the regression-
+  implied efficiency (2.19–2.27) because it weights by distance/excess beats
+  while the regression weights every run equally. Decide which one defines the
+  line. Yearly drift (2.24 in 2022 → 2.39 in 2026) inflates both residuals.
 
 ## Rejected
 
