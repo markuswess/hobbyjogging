@@ -587,7 +587,7 @@ separately. The scale is reversed compared with some watches:
 ## Synthetic demo database
 
 `demo-db` writes a complete, deterministic training database with an
-invented athlete: 18 months of periodized activities, intervals, zone
+invented athlete: 4 years of periodized activities, intervals, zone
 times, wellness, planned workouts, two future races, and four shoes. Easy
 and long runs stay in zones 1–2 while workouts carry the hard zones;
 Garmin-style VO2max is one smooth value per day; and the 16-week future

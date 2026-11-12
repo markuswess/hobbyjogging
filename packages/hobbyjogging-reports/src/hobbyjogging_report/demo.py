@@ -29,7 +29,7 @@ from hobbyjogging_core.db import TrainingWriter
 from hobbyjogging_core.model import EventZoneTime, Interval
 
 DEMO_SOURCE = "demo"
-DEFAULT_MONTHS = 18
+DEFAULT_MONTHS = 48
 DEFAULT_SEED = 7
 ZONE_KIND = "pace"
 

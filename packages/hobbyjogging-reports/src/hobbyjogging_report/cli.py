@@ -3,6 +3,7 @@
 import argparse
 from datetime import date, timedelta
 
+from .demo import DEFAULT_MONTHS, DEFAULT_SEED
 from .model import AverageWindows
 
 DEFAULT_PLANNED_DAYS = 28
@@ -280,8 +281,8 @@ def parse_demo_args(
     """Parse output, size, seed, build date, review, and overwrite flags."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--out")
-    parser.add_argument("--months", type=int, default=18)
-    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--months", type=int, default=DEFAULT_MONTHS)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--today", type=date_arg)
     parser.add_argument("--with-review-items", action="store_true")
     parser.add_argument("--force", action="store_true")

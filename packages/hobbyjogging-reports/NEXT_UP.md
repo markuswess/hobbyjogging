@@ -118,7 +118,7 @@ planned-vs-actual comparison remain next.
   after the Feb-Mar 2026 illness; see the module docstring.
 
 - **Synthetic demo database.** `demo-db --out PATH` writes a deterministic
-  invented 18-month athlete (seed, periodized plan, intervals, zone times,
+  invented 4-year athlete (seed, periodized plan, intervals, zone times,
   wellness with an illness and a travel week, planned events, two future
   races, four shoes) through `TrainingWriter`, with no `source_records` or
   personal data. Easy and long runs use only Z1/Z2, workouts carry Z3/Z4,

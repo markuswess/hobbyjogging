@@ -112,8 +112,8 @@ class DemoGeneratorTests(unittest.TestCase):
                 today=TODAY,
             )
 
-            self.assertGreaterEqual(summary.activities, 350)
-            self.assertLessEqual(summary.activities, 520)
+            self.assertGreaterEqual(summary.activities, 1000)
+            self.assertLessEqual(summary.activities, 1300)
             self.assertGreater(summary.wellness_days, 500)
             self.assertGreaterEqual(summary.events, 20)
             self.assertEqual(4, summary.equipment)
@@ -494,7 +494,7 @@ class DemoCommandTests(unittest.TestCase):
         parsed = parse_demo_args(["--out", "build/demo.db"])
 
         self.assertEqual(
-            ("build/demo.db", 18, 7, None, False, False),
+            ("build/demo.db", 48, 7, None, False, False),
             parsed,
         )
 
