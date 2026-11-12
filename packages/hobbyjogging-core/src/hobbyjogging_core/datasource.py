@@ -13,6 +13,7 @@ from .model import (
     Equipment,
     Event,
     Interval,
+    Lap,
     ReviewItem,
     WellnessDay,
 )
@@ -30,6 +31,9 @@ class DataSource(Protocol):
         ...
 
     def activity_intervals(self, activity_id: str) -> list[Interval]:
+        ...
+
+    def activity_laps(self, activity_id: str) -> list[Lap]:
         ...
 
     def equipment(self) -> list[Equipment]:

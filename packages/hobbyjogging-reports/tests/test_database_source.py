@@ -36,6 +36,11 @@ class DatabaseSourceTests(unittest.TestCase):
             "VALUES ('a1', 1, 'WORK', 60)"
         )
         self.conn.execute(
+            "INSERT INTO activity_laps "
+            "(activity_id, lap_index, duration_s, distance_m) "
+            "VALUES ('a1', 1, 1800, 5000)"
+        )
+        self.conn.execute(
             "INSERT INTO wellness_days (local_date, hrv) "
             "VALUES ('2026-10-01', 60)"
         )
@@ -69,11 +74,13 @@ class DatabaseSourceTests(unittest.TestCase):
             date(2026, 10, 2),
         )
         intervals = self.source.activity_intervals("a1")
+        laps = self.source.activity_laps("a1")
         equipment = self.source.equipment()
 
         self.assertEqual(60, wellness[0].hrv)
         self.assertEqual("Town race", events[0].name)
         self.assertEqual("WORK", intervals[0].type)
+        self.assertEqual(5000, laps[0].distance_m)
         self.assertEqual("Pegasus 40", equipment[0].name)
 
     def test_review_items_delegate_to_repository(self):

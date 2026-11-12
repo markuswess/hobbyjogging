@@ -51,8 +51,10 @@ dashboard. The dashboard is the last step, never the first.
   difference) — a trend signal, not a per-run score. HR lag understates short
   reps, so compare same rep lengths and prefer ≥5 min. Heat, terrain and
   fatigue move it.
-- **Rendered**: session report, `eff` activities column, subT work reps and
-  summary tables, subT EWMA report, subT chart panel, compare tab.
+- **Rendered**: session report, `eff` activities column, daily compact line,
+  period/category reports, compare text report and tab, overview trailing
+  table, subT work reps and summary tables, subT EWMA report, subT chart
+  panel.
 
 ### HR-speed efficiency line
 

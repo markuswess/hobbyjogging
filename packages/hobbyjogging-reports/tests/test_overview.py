@@ -1,7 +1,7 @@
 import unittest
 from datetime import date, timedelta
 
-from hobbyjogging_core.model import Event, EventZoneTime
+from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
 from hobbyjogging_report.overview import overview_report
 from support import FakeSource, activity_factory
 
@@ -17,6 +17,7 @@ def _source():
                 date=TODAY,
                 duration_s=3600,
                 distance_m=10000,
+                avg_hr=150,
                 training_load=50,
                 pace_zone_times=[600, 600, 600, 600],
             ),
@@ -27,6 +28,9 @@ def _source():
                 duration_s=1800,
                 training_load=20,
             ),
+        ],
+        wellness=[
+            WellnessDay(date=TODAY, resting_hr=50),
         ],
         events=[
             Event(
@@ -85,6 +89,9 @@ class OverviewReportTests(unittest.TestCase):
         self.assertEqual("5.0", _row(report, "Run km / week")[-1])
         self.assertEqual("30", _row(report, "Load / week")[-1])
         self.assertEqual("5min", _row(report, "Z3+4 / week")[-1])
+        self.assertIn("## Efficiency", report)
+        self.assertEqual("1.67", _row(report, "7-day")[-1])
+        self.assertIn("sum(excess beats)", report)
 
     def test_no_future_column_when_horizon_is_zero(self):
         report = overview_report(

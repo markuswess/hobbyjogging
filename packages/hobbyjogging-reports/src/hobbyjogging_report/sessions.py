@@ -132,6 +132,10 @@ def session_report(
         return "\n".join(lines)
 
     baseline = resting_hr_lookup(source, day or activities[0].date, day)
+    day_events = source.events(day, day) if day else []
+    day_wellness = source.wellness(day, day) if day else []
+    wellness_day = day_wellness[0] if day_wellness else None
+    open_review = source.review_items(status="open") if activities else []
 
     for activity in activities:
         try:
@@ -148,6 +152,14 @@ def session_report(
                 category=category.path,
                 links=resolve_activity_links(source, activity.id),
                 resting_hr=baseline(activity.date),
+                planned_events=day_events,
+                wellness=wellness_day,
+                review_items=[
+                    item
+                    for item in open_review
+                    if item.activity_id == activity.id
+                ],
+                laps=source.activity_laps(activity.id),
             )
         )
 

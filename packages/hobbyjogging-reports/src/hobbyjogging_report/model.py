@@ -161,6 +161,7 @@ class ComparePeriod:
     run_distance_m: float = 0
     pace_s_per_km: float | None = None
     avg_hr: float | None = None
+    efficiency: float | None = None
 
 
 @dataclass

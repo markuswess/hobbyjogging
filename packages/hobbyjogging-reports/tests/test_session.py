@@ -1,7 +1,14 @@
 import unittest
 from datetime import date
 
-from hobbyjogging_core.model import Interval
+from hobbyjogging_core.model import (
+    Event,
+    EventZoneTime,
+    Interval,
+    Lap,
+    ReviewItem,
+    WellnessDay,
+)
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.sessions import select_session, session_report
 from support import FakeSource, activity_factory
@@ -170,6 +177,97 @@ class SessionReportTests(unittest.TestCase):
             "5x5:00 subT-medium: 5:00/km, 160 avg / 170 max bpm",
             report,
         )
+
+    def test_report_includes_context_details(self):
+        source = FakeSource(
+            [
+                activity(
+                    id="a",
+                    date=D1,
+                    duration_s=3600,
+                    distance_m=10000,
+                    avg_hr=150,
+                    tags=["commute", "demo"],
+                    vo2max_garmin=54.2,
+                    vo2max_runalyze=53.8,
+                )
+            ],
+            wellness=[
+                WellnessDay(
+                    date=D1,
+                    hrv=55,
+                    resting_hr=46,
+                    sleep_s=7.5 * 3600,
+                )
+            ],
+            events=[
+                Event(
+                    date=D1,
+                    name="Planned 5x5 subT",
+                    type="run",
+                    duration_s=3000,
+                    distance_m=10000,
+                    workout_methods=["intervals"],
+                    workout_targets=["subthreshold"],
+                    zone_kind="pace",
+                    zone_times=[
+                        EventZoneTime("Z1", 900, 1),
+                        EventZoneTime("Z3", 1800, 3),
+                    ],
+                )
+            ],
+            laps={
+                "a": [
+                    Lap(
+                        index=1,
+                        duration_s=1800,
+                        distance_m=5000,
+                        avg_hr=145,
+                        max_hr=160,
+                        elevation_gain_m=20,
+                    )
+                ]
+            },
+            review_items=[
+                ReviewItem(
+                    id=1,
+                    category="field_conflict",
+                    detail="HR differs between devices",
+                    severity="warn",
+                    status="open",
+                    activity_id="a",
+                )
+            ],
+        )
+
+        report = session_report("a", source)
+
+        self.assertIn("- Tags: commute, demo", report)
+        self.assertIn(
+            "- VO2max: 54.2 (Garmin), 53.8 (Runalyze)",
+            report,
+        )
+        self.assertIn("- Review: open", report)
+        self.assertIn("### Review", report)
+        self.assertIn(
+            "- **Warn · field conflict**: HR differs between devices",
+            report,
+        )
+        self.assertIn("### Planned — Planned 5x5 subT", report)
+        self.assertIn("- Planned pace times: Z1 15:00 | Z3 30:00", report)
+        self.assertIn("### Wellness", report)
+        self.assertIn("- HRV 55 ms, RHR 46 bpm, Sleep 7h30", report)
+        self.assertIn("### Laps", report)
+        self.assertIn(
+            "| 1 | 30:00 | 5.00 km | 6:00/km | 145 | 160 | 20 m |",
+            report,
+        )
+
+    def test_report_shows_clear_review_status(self):
+        report = session_report("a", FakeSource([activity(id="a", date=D1)]))
+
+        self.assertIn("- Review: clear", report)
+        self.assertNotIn("### Review", report)
 
     def test_report_includes_source_links(self):
         source = FakeSource(

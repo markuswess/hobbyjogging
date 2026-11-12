@@ -23,9 +23,10 @@ HTML dashboard:
   and recovery (HRV / RHR / sleep) from the last nights.
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
   km, load, and Z3+4, plus the planned weekly average for the next 14
-  days.
+  days and a trailing 7/42/182-day weighted efficiency table.
 - **weekly** — Aggregated running and cross-training stats,
-  quality sessions and recovery over the last 7 days.
+  quality sessions and recovery over the last 7 days, including weighted
+  efficiency in the running block and category table.
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
@@ -33,7 +34,8 @@ HTML dashboard:
   recovery and health, activity list, activity detail pages, data health);
   writes a directory and prints its path.
 - **report** — A summary report for an arbitrary inclusive date range
-  (`--days`, `--from`, `--to`).
+  (`--days`, `--from`, `--to`), with the same weighted efficiency total and
+  category column.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
@@ -49,9 +51,10 @@ HTML dashboard:
   Next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, workout methods and
-  targets, totals including efficiency (m/excess beat), zones, description,
-  the full interval table, subT/LT1 work reps, and Intervals/Garmin Connect
-  links when the source knows them.
+  targets, tags, VO2max, review status and open items, totals including
+  efficiency (m/excess beat), zones, description, the day's planned workout
+  and wellness, the full interval and lap tables, subT/LT1 work reps, and
+  Intervals/Garmin Connect links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **demo-db** — Write a deterministic synthetic database for the public
@@ -341,10 +344,13 @@ stay actual-only.
     ./reports.sh session 2026-10-22      # all sessions on that day
     ./reports.sh session <activity-id>   # one exact activity
 
-The report includes the activity id and date, category, duration/elapsed
-time, distance and pace, HR/load/RPE/feel/intensity, equipment, pace and
-HR zones, a fenced description block, a table of every recorded interval,
-and the subT/LT1 work-rep summary when applicable.
+The report includes the activity id and date, category, review status,
+duration/elapsed time, distance and pace, efficiency, HR/load/RPE/feel/
+intensity, tags, VO2max, equipment, pace and HR zones, a fenced description
+block, the day's planned workout and wellness, a table of every recorded
+interval, the stored lap table when present, and the subT/LT1 work-rep
+summary when applicable. Open review items for the session are listed with
+their severity and detail.
 
 Id lookup scans recent history and expands up to about 20 years. If an
 activity is hidden by an open import review item, add `--include-review`.
@@ -636,7 +642,8 @@ Pages:
   `subT Report` over the last year.
 - `compare.html` — volume, time, and efficiency EWMA lines per calendar
   year over a fixed Jan–Dec axis (`--compare-window`, default 182) plus the
-  year and month comparison reports. The efficiency chart drops years with
+  year and month comparison reports (which now include a weighted efficiency
+  column). The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and

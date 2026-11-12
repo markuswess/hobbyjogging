@@ -5,6 +5,7 @@ from datetime import date
 from hobbyjogging_core.datasource import DataSource
 
 from .analysis import COMPARE_MODES, compare_periods
+from .command_support import resting_hr_lookup
 from .format import fmt_time, format_pace
 from .review import exclude_review, review_note
 
@@ -27,6 +28,10 @@ def _pace_cell(seconds: float | None) -> str:
 
 def _hr_cell(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f}"
+
+
+def _efficiency_cell(value: float | None) -> str:
+    return "-" if value is None else f"{value:.2f}"
 
 
 def _all_years_start(source: DataSource, end: date) -> date:
@@ -66,7 +71,13 @@ def compare_report(
         source.activities(start, end),
         include_review=include_review,
     )
-    periods = compare_periods(activities, mode, start, end)
+    periods = compare_periods(
+        activities,
+        mode,
+        start,
+        end,
+        resting_hr_baseline=resting_hr_lookup(source, start, end),
+    )
     title = "Training Comparison by Year" if mode == "years" else (
         "Training Comparison by Month"
     )
@@ -87,8 +98,8 @@ def compare_report(
     lines.extend([
         "",
         "| Period | Runs | Cross | Run time | Cross time | Run km | "
-        "Avg pace | Avg HR |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "Avg pace | Avg HR | Efficiency |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
 
     for period in periods:
@@ -98,7 +109,8 @@ def compare_report(
             f"{_time_cell(period.cross_time_s)} | "
             f"{_km_cell(period.run_distance_m)} | "
             f"{_pace_cell(period.pace_s_per_km)} | "
-            f"{_hr_cell(period.avg_hr)} |"
+            f"{_hr_cell(period.avg_hr)} | "
+            f"{_efficiency_cell(period.efficiency)} |"
         )
 
     return "\n".join(lines)

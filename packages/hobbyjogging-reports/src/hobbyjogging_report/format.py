@@ -5,7 +5,14 @@ reports work with any ``DataSource`` implementation.
 """
 
 from hobbyjogging_core.datasource import DataSource
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import (
+    Activity,
+    Event,
+    Interval,
+    Lap,
+    ReviewItem,
+    WellnessDay,
+)
 from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 
 from .analysis import (
@@ -170,14 +177,16 @@ def format_category_table(stats):
         return ["- No activities"]
 
     lines = [
-        "| Category | Sessions | Time | Load | Time % | Load % |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Category | Sessions | Time | Load | "
+        "Efficiency (m/excess beat) | Time % | Load % |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
 
     for stat in stats:
         lines.append(
             f"| {stat.path} | {stat.sessions} | {fmt_time(stat.time_s)} | "
-            f"{stat.load:.0f} | {fmt_share(stat.time_share)} | "
+            f"{stat.load:.0f} | {_efficiency_cell(stat.efficiency)} | "
+            f"{fmt_share(stat.time_share)} | "
             f"{fmt_share(stat.load_share)} |"
         )
 
@@ -187,9 +196,16 @@ def format_category_table(stats):
 
     load_share = "100%" if total_load else "-"
 
+    total_distance = sum(stat.distance_m for stat in stats)
+    total_beats = sum(stat.excess_beats for stat in stats)
+    total_efficiency = (
+        total_distance / total_beats if total_beats > 0 else None
+    )
+
     lines.append(
         f"| **Total** | {total_sessions} | {fmt_time(total_time)} | "
-        f"{total_load:.0f} | 100% | {load_share} |"
+        f"{total_load:.0f} | {_efficiency_cell(total_efficiency)} | "
+        f"100% | {load_share} |"
     )
 
     return lines
@@ -336,6 +352,20 @@ def get_work_summary(
     )
 
 
+def _vo2max_line(activity: Activity) -> str | None:
+    parts = []
+
+    if activity.vo2max_garmin is not None:
+        parts.append(f"{activity.vo2max_garmin:.1f} (Garmin)")
+    if activity.vo2max_runalyze is not None:
+        parts.append(f"{activity.vo2max_runalyze:.1f} (Runalyze)")
+
+    if not parts:
+        return None
+
+    return "- VO2max: " + ", ".join(parts)
+
+
 def _activity_metric_lines(
     activity: Activity,
     *,
@@ -366,7 +396,7 @@ def _activity_metric_lines(
 
     efficiency = activity_efficiency(activity, resting_hr)
 
-    if detailed and efficiency is not None:
+    if efficiency is not None:
         lines.append(
             f"- Efficiency: {efficiency:.2f} {EFFICIENCY_UNIT}"
         )
@@ -385,6 +415,14 @@ def _activity_metric_lines(
 
     if detailed and activity.intensity is not None:
         lines.append(f"- Intensity: {activity.intensity:.0%}")
+
+    if detailed and activity.tags:
+        lines.append(f"- Tags: {', '.join(activity.tags)}")
+
+    if detailed:
+        vo2max = _vo2max_line(activity)
+        if vo2max:
+            lines.append(vo2max)
 
     if detailed and activity.equipment:
         names = ", ".join(
@@ -508,6 +546,100 @@ def _link(url: str) -> str:
     return f"[{label}]({url})"
 
 
+def format_wellness_summary(day: WellnessDay) -> str:
+    """One-line wellness summary for a session's day."""
+    parts = [
+        f"HRV {day.hrv:.0f} ms" if day.hrv is not None else "HRV N/A",
+        (
+            f"RHR {day.resting_hr:.0f} bpm"
+            if day.resting_hr is not None
+            else "RHR N/A"
+        ),
+        f"Sleep {fmt_time(day.sleep_s)}" if day.sleep_s else "Sleep N/A",
+    ]
+
+    return "- " + ", ".join(parts)
+
+
+def format_planned_event(event: Event) -> list[str]:
+    """Render the day's planned workout under a session report."""
+    lines = [f"\n### Planned — {event.name or sport_label(event)}"]
+
+    if event.type:
+        lines.append(f"- Type: {sport_label(event)}")
+    if event.duration_s:
+        lines.append(f"- Duration: {fmt_time(event.duration_s)}")
+    if event.distance_m:
+        lines.append(f"- Distance: {event.distance_m / 1000:.1f} km")
+    if event.workout_methods:
+        lines.append(f"- Methods: {format_methods(event)}")
+    if event.workout_targets:
+        lines.append(f"- Targets: {format_targets(event)}")
+    if event.zone_times:
+        label = event.zone_kind or "zone"
+        zones = " | ".join(
+            f"{zone.zone_label} {fmt_clock(zone.seconds)}"
+            for zone in event.zone_times
+            if zone.seconds
+        )
+        if zones:
+            lines.append(f"- Planned {label} times: {zones}")
+
+    description = event.description.strip("\n") if event.description else ""
+
+    if description:
+        lines.append("")
+        lines.extend(format_fenced_block(description))
+
+    return lines
+
+
+def format_laps_table(laps: list[Lap]) -> list[str]:
+    """Render stored laps as a Markdown table."""
+    if not laps:
+        return []
+
+    lines = [
+        "\n### Laps",
+        "| # | Time | Distance | Pace | Avg HR | Max HR | Elev gain |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    for lap in laps:
+        lap_pace = pace_s_per_km(lap.duration_s, lap.distance_m)
+        avg_hr = "-" if lap.avg_hr is None else f"{lap.avg_hr:.0f}"
+        max_hr = "-" if lap.max_hr is None else f"{lap.max_hr:.0f}"
+        elevation = (
+            "-"
+            if lap.elevation_gain_m is None
+            else f"{lap.elevation_gain_m:.0f} m"
+        )
+        lines.append(
+            f"| {lap.index} | {fmt_clock(lap.duration_s)} | "
+            f"{lap.distance_m / 1000:.2f} km | "
+            f"{format_pace(lap_pace)}/km | {avg_hr} | {max_hr} | "
+            f"{elevation} |"
+        )
+
+    return lines
+
+
+def format_review_items(items: list[ReviewItem]) -> list[str]:
+    """Render open review items attached to one session."""
+    if not items:
+        return []
+
+    lines = ["\n### Review"]
+
+    for item in items:
+        label = item.category.replace("_", " ")
+        lines.append(
+            f"- **{item.severity.title()} · {label}**: {item.detail}"
+        )
+
+    return lines
+
+
 def format_session_activity(
     activity: Activity,
     intervals: list[Interval],
@@ -515,6 +647,10 @@ def format_session_activity(
     *,
     links=None,
     resting_hr: float | None = None,
+    planned_events: list[Event] | None = None,
+    wellness: WellnessDay | None = None,
+    review_items: list[ReviewItem] | None = None,
+    laps: list[Lap] | None = None,
 ):
     """Render one activity as a detailed, standalone session report."""
     title = sport_label(activity)
@@ -540,6 +676,11 @@ def format_session_activity(
     if category:
         lines.append(f"- Category: {category}")
 
+    if review_items is not None:
+        lines.append(
+            f"- Review: {'open' if review_items else 'clear'}"
+        )
+
     lines.append(f"- Methods: {format_methods(activity)}")
     lines.append(f"- Targets: {format_targets(activity)}")
 
@@ -551,10 +692,20 @@ def format_session_activity(
         )
     )
     lines.extend(_activity_description_lines(activity, detailed=True))
+    lines.extend(format_review_items(review_items or []))
+
+    for event in planned_events or []:
+        lines.extend(format_planned_event(event))
+
+    if wellness is not None:
+        lines.append("\n### Wellness")
+        lines.append(format_wellness_summary(wellness))
 
     if intervals:
         lines.append("\n### Intervals")
         lines.extend(format_interval_table(intervals))
+
+    lines.extend(format_laps_table(laps or []))
 
     points = []
 

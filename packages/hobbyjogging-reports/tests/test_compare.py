@@ -6,6 +6,7 @@ from hobbyjogging_report.analysis import compare_periods, compare_year_ewma
 from hobbyjogging_report.analysis.compare import EFFICIENCY_MIN_RUNS
 from hobbyjogging_report.compare import compare_report
 from support import FakeSource, activity_factory
+from hobbyjogging_core.model import WellnessDay
 
 D = date(2026, 10, 1)
 activity = activity_factory()
@@ -186,15 +187,15 @@ class CompareReportTests(unittest.TestCase):
         self.assertIn("2025-01-01 → 2026-12-31", report)
         self.assertIn(
             "| Period | Runs | Cross | Run time | Cross time | Run km | "
-            "Avg pace | Avg HR |",
+            "Avg pace | Avg HR | Efficiency |",
             report,
         )
         self.assertIn(
-            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 |",
+            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | - |",
             report,
         )
         self.assertIn(
-            "| 2026 | 0 | 1 | - | 30min | - | - | - |",
+            "| 2026 | 0 | 1 | - | 30min | - | - | - | - |",
             report,
         )
 
@@ -218,9 +219,9 @@ class CompareReportTests(unittest.TestCase):
         )
 
         self.assertIn("# Training Comparison by Month", report)
-        self.assertIn("| 2025-12 | 0 | 0 | - | - | - | - | - |", report)
+        self.assertIn("| 2025-12 | 0 | 0 | - | - | - | - | - | - |", report)
         self.assertIn(
-            "| 2026-01 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - |",
+            "| 2026-01 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - |",
             report,
         )
 
@@ -241,7 +242,34 @@ class CompareReportTests(unittest.TestCase):
 
         self.assertIn("1 activity excluded (import review)", report)
         self.assertIn(
-            "| 2026 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - |",
+            "| 2026 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - |",
+            report,
+        )
+
+    def test_report_adds_weighted_efficiency(self):
+        source = FakeSource(
+            [
+                activity(
+                    id="a",
+                    date=date(2025, 6, 1),
+                    duration_s=3600,
+                    distance_m=10000,
+                    avg_hr=140,
+                )
+            ],
+            wellness=[WellnessDay(date=date(2025, 6, 1), resting_hr=50)],
+        )
+
+        report = compare_report(
+            "years",
+            None,
+            date(2025, 12, 31),
+            source,
+        )
+
+        # 10 km / ((140 - 50) * 60) excess beats.
+        self.assertIn(
+            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | 1.85 |",
             report,
         )
 

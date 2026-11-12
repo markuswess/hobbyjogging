@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from hobbyjogging_core.datasource import DataSource
+from hobbyjogging_core.model import Event, WellnessDay
 
 from ..activity_list import select_activities
 from ..analysis import (
@@ -284,6 +285,7 @@ def build_dashboard(
         "%Y-%m-%d %H:%M %Z"
     )
 
+    open_review = source.review_items(status="open")
     pages = {
         "index.html": overview_page(
             generated_at=generated_at,
@@ -359,7 +361,7 @@ def build_dashboard(
             demo_label=demo_label,
             include_review=include_review,
             detail_ids=detail_ids,
-            review_items=source.review_items(status="open"),
+            review_items=open_review,
         ),
     }
 
@@ -374,11 +376,27 @@ def build_dashboard(
         else (lambda _day: None)
     )
 
+    day_context: dict[date, tuple[list[Event], WellnessDay | None]] = {}
+
     for activity in detail_activities.values():
         try:
             intervals = source.activity_intervals(activity.id)
         except Exception:
             intervals = []
+
+        if activity.date not in day_context:
+            day_wellness = source.wellness(activity.date, activity.date)
+            day_context[activity.date] = (
+                source.events(activity.date, activity.date),
+                day_wellness[0] if day_wellness else None,
+            )
+
+        day_events, wellness_day = day_context[activity.date]
+
+        try:
+            laps = source.activity_laps(activity.id)
+        except Exception:
+            laps = []
 
         report = "\n".join(
             format_session_activity(
@@ -387,6 +405,14 @@ def build_dashboard(
                 category=classify(activity, intervals).path,
                 links=resolve_activity_links(source, activity.id),
                 resting_hr=baseline(activity.date),
+                planned_events=day_events,
+                wellness=wellness_day,
+                review_items=[
+                    item
+                    for item in open_review
+                    if item.activity_id == activity.id
+                ],
+                laps=laps,
             )
         )
         detail_pages[

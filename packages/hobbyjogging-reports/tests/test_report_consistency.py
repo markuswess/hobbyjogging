@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
+from hobbyjogging_core.model import WellnessDay
 from hobbyjogging_report.mdpretty import render_markdown
 from hobbyjogging_report.daily import daily
 from hobbyjogging_report.period_report import period_report
@@ -48,6 +49,55 @@ class DailyDescriptionTests(unittest.TestCase):
         self.assertNotIn("▌ Warm up", pretty)
         self.assertNotIn("▌ Main", pretty)
         self.assertIn("│ # Warm up", pretty)
+
+
+class EfficiencyReportTests(unittest.TestCase):
+
+    def _source(self):
+        return FakeSource(
+            [
+                activity(
+                    name="Easy",
+                    duration_s=2400,
+                    distance_m=8000,
+                    avg_hr=140,
+                    rpe=2,
+                    training_load=32,
+                )
+            ],
+            wellness=[
+                WellnessDay(
+                    date=D1,
+                    resting_hr=50,
+                    hrv=55,
+                    sleep_s=7.5 * 3600,
+                )
+            ],
+        )
+
+    def test_daily_compact_line_includes_efficiency(self):
+        with patch("hobbyjogging_report.daily.date", FixedDate):
+            report = daily(self._source())
+
+        # 8 km / ((140 - 50) * 40) excess beats.
+        self.assertIn(
+            "- Efficiency: 2.22 m/excess beat",
+            report,
+        )
+
+    def test_period_report_has_weighted_total_and_category_cell(self):
+        report = period_report(
+            D1,
+            D1,
+            "Test Report",
+            self._source(),
+        )
+
+        self.assertIn("- Efficiency: 2.22 m/excess beat", report)
+        self.assertIn(
+            "| non-quality/easy | 1 | 40min | 32 | 2.22 | 100% | 100% |",
+            report,
+        )
 
 
 class PeriodDescriptionTests(unittest.TestCase):

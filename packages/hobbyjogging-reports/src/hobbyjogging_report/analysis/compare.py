@@ -60,6 +60,8 @@ def compare_periods(
     mode: str,
     start: date,
     end: date,
+    *,
+    resting_hr_baseline=None,
 ) -> list[ComparePeriod]:
     """Aggregate basic run and cross-training data by year or month."""
     rows = {
@@ -73,6 +75,8 @@ def compare_periods(
             "pace_distance_m": 0.0,
             "hr_sum": 0.0,
             "hr_count": 0,
+            "efficiency_distance_m": 0.0,
+            "efficiency_beats": 0.0,
         }
         for period in _period_starts(mode, start, end)
     }
@@ -102,6 +106,20 @@ def compare_periods(
             if activity.avg_hr is not None:
                 row["hr_sum"] += activity.avg_hr
                 row["hr_count"] += 1
+
+            beats = excess_beats(
+                activity.duration_s,
+                activity.avg_hr,
+                (
+                    resting_hr_baseline(activity.date)
+                    if resting_hr_baseline is not None
+                    else None
+                ),
+            )
+
+            if beats is not None and activity.distance_m:
+                row["efficiency_distance_m"] += activity.distance_m
+                row["efficiency_beats"] += beats
         else:
             row["cross_sessions"] += 1
             row["cross_time_s"] += duration
@@ -121,6 +139,12 @@ def compare_periods(
             else None
         )
 
+        efficiency = (
+            row["efficiency_distance_m"] / row["efficiency_beats"]
+            if row["efficiency_beats"] > 0
+            else None
+        )
+
         result.append(
             ComparePeriod(
                 label=_label(period, mode),
@@ -131,6 +155,7 @@ def compare_periods(
                 run_distance_m=row["run_distance_m"],
                 pace_s_per_km=pace,
                 avg_hr=avg_hr,
+                efficiency=efficiency,
             )
         )
 

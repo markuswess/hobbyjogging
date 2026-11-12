@@ -242,19 +242,20 @@ class FormattingTests(unittest.TestCase):
         lines = format_category_table(stats)
 
         self.assertEqual(
-            "| Category | Sessions | Time | Load | Time % | Load % |",
+            "| Category | Sessions | Time | Load | "
+            "Efficiency (m/excess beat) | Time % | Load % |",
             lines[0],
         )
         self.assertIn(
-            "| quality/intervals/other | 1 | 50min | 50 | 45% | 56% |",
+            "| quality/intervals/other | 1 | 50min | 50 | - | 45% | 56% |",
             lines,
         )
         self.assertIn(
-            "| cross-training | 1 | 1h00 | 40 | 55% | 44% |",
+            "| cross-training | 1 | 1h00 | 40 | - | 55% | 44% |",
             lines,
         )
         self.assertIn(
-            "| **Total** | 2 | 1h50 | 90 | 100% | 100% |",
+            "| **Total** | 2 | 1h50 | 90 | - | 100% | 100% |",
             lines,
         )
 

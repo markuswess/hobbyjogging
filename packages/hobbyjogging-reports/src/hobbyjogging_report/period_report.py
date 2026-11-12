@@ -6,7 +6,9 @@ from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
     RESTING_HR_WINDOW_DAYS,
+    RUN_TYPES,
     activity_sort_key,
+    aggregate_efficiency,
     is_lt1_activity,
     is_subt_activity,
     resting_hr_baselines,
@@ -76,15 +78,28 @@ def period_report(
         except Exception:
             continue
 
-    breakdown = category_breakdown(activities, intervals_by_id)
-
     wellness = source.wellness(
         start - timedelta(days=RESTING_HR_WINDOW_DAYS),
         end,
     )
     baseline = resting_hr_baselines(wellness)
+    breakdown = category_breakdown(
+        activities,
+        intervals_by_id,
+        resting_hr_baseline=baseline,
+    )
     recovery = recovery_summary(
         [entry for entry in wellness if start <= entry.date <= end]
+    )
+    run_efficiency = aggregate_efficiency(
+        (
+            activity.distance_m,
+            activity.duration_s,
+            activity.avg_hr,
+            baseline(activity.date),
+        )
+        for activity in activities
+        if activity.type in RUN_TYPES
     )
 
     lines = []
@@ -126,6 +141,11 @@ def period_report(
         lines.append(
             f"- Feel: "
             f"{training['run_feel']/training['run_feel_count']:.1f} avg"
+        )
+
+    if run_efficiency is not None:
+        lines.append(
+            f"- Efficiency: {run_efficiency:.2f} m/excess beat"
         )
 
     lines.append(

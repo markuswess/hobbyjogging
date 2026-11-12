@@ -10,13 +10,17 @@ from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Activity, Event
 
 from .analysis import (
+    EFFICIENCY_UNIT,
+    RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
+    aggregate_efficiency,
     average_warmup_days,
     daily_run_distance,
     daily_run_time,
     daily_training_load,
     daily_zone_time,
     event_zone_time,
+    resting_hr_baselines,
 )
 from .format import fmt_time
 from .model import AverageWindows
@@ -107,6 +111,44 @@ def overview_ewma(
         EwmaRow("load", "Load / week", "load", weekly(load)),
         EwmaRow("z3_z4_s", "Z3+4 / week", "time", weekly(z3_z4)),
     ]
+
+
+def efficiency_averages(
+    activities: list[Activity],
+    today: date,
+    baseline,
+    windows: tuple[int, ...] = (7, 42, 182),
+) -> dict[int, float | None]:
+    """Trailing weighted efficiency for each overview window."""
+    samples = [
+        (
+            activity.date,
+            activity.distance_m,
+            activity.duration_s,
+            activity.avg_hr,
+            baseline(activity.date),
+        )
+        for activity in activities
+        if activity.type in RUN_TYPES
+    ]
+
+    return {
+        window: aggregate_efficiency(
+            (
+                distance_m,
+                duration_s,
+                avg_hr,
+                resting_hr,
+            )
+            for day, distance_m, duration_s, avg_hr, resting_hr in samples
+            if today - timedelta(days=window - 1) <= day <= today
+        )
+        for window in windows
+    }
+
+
+def _efficiency_cell(value: float | None) -> str:
+    return "-" if value is None else f"{value:.2f}"
 
 
 def planned_overview(
@@ -202,6 +244,13 @@ def overview_report(
         today,
         windows=windows,
     )
+    baseline = resting_hr_baselines(
+        source.wellness(
+            today - timedelta(days=RESTING_HR_WINDOW_DAYS + 182),
+            today,
+        )
+    )
+    efficiency = efficiency_averages(activities, today, baseline)
     planned_start = today + timedelta(days=1)
     planned_end = today + timedelta(days=future_days)
     events = [
@@ -249,5 +298,24 @@ def overview_report(
         "Weekly equivalents of the daily EWMA ending today; the last column "
         f"is {planned_note}.",
     ])
+
+    if any(value is not None for value in efficiency.values()):
+        lines.extend([
+            "",
+            "## Efficiency",
+            "",
+            "| Window | Efficiency |",
+            "|---|---:|",
+        ])
+        for window, value in efficiency.items():
+            lines.append(
+                f"| {window}-day | {_efficiency_cell(value)} "
+                f"|"
+            )
+        lines.extend([
+            "",
+            "Trailing weighted efficiency: sum(distance) / "
+            f"sum(excess beats), in {EFFICIENCY_UNIT}.",
+        ])
 
     return "\n".join(lines)

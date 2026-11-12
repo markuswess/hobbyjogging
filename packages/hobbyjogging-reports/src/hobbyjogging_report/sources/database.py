@@ -12,6 +12,7 @@ from hobbyjogging_core.model import (
     Equipment,
     Event,
     Interval,
+    Lap,
     ReviewItem,
     WellnessDay,
 )
@@ -88,6 +89,9 @@ class DatabaseSource:
 
     def activity_intervals(self, activity_id: str) -> list[Interval]:
         return self.repository.activity_intervals(activity_id)
+
+    def activity_laps(self, activity_id: str) -> list[Lap]:
+        return self.repository.activity_laps(activity_id)
 
     def equipment(self) -> list[Equipment]:
         return self.repository.equipment()
