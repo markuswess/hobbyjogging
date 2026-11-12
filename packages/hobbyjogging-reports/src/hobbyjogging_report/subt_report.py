@@ -10,6 +10,7 @@ from .analysis import (
     subt_report_blocks,
     subt_report_summary,
 )
+from .command_support import resting_hr_lookup
 from .format import (
     format_subt_block_table,
     format_subt_summary_table,
@@ -62,7 +63,11 @@ def subt_report(
         except Exception:
             intervals_by_id[activity.id] = []
 
-    blocks = subt_report_blocks(activities, intervals_by_id)
+    blocks = subt_report_blocks(
+        activities,
+        intervals_by_id,
+        resting_hr=resting_hr_lookup(source, start, end),
+    )
 
     lines = [f"# {title}", f"{start} → {end}"]
 

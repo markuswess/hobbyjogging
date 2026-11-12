@@ -48,7 +48,7 @@ def _daily_efficiency(
     start: date,
     end: date,
 ) -> dict[date, float]:
-    """Weighted metres per beat per day: sum(distance) / sum(beats)."""
+    """Weighted metres per excess beat per day: distance / excess beats."""
     by_day: dict[date, tuple[float, float]] = {}
 
     for point in points:

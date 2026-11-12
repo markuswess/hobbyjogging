@@ -17,6 +17,7 @@ from ..analysis import (
     vo2max_points,
 )
 from ..classify import classify
+from ..command_support import resting_hr_lookup
 from ..format import format_session_activity
 from ..html import markdown_to_html
 from ..links import resolve_activity_links
@@ -347,6 +348,15 @@ def build_dashboard(
     }
 
     detail_pages = {}
+    baseline = (
+        resting_hr_lookup(
+            source,
+            min(activity.date for activity in detail_activities.values()),
+            today,
+        )
+        if detail_activities
+        else (lambda _day: None)
+    )
 
     for activity in detail_activities.values():
         try:
@@ -360,6 +370,7 @@ def build_dashboard(
                 intervals,
                 category=classify(activity, intervals).path,
                 links=resolve_activity_links(source, activity.id),
+                resting_hr=baseline(activity.date),
             )
         )
         detail_pages[

@@ -589,6 +589,7 @@ def run_compare_chart(
     """Render the year-over-year EWMA comparison chart."""
     from .analysis import compare_year_ewma
     from .charts import plot_compare
+    from .command_support import resting_hr_lookup
 
     start = activity_start(source, today)
     activities = reviewed_range(source, start, today, include_review)
@@ -597,6 +598,7 @@ def run_compare_chart(
         metric,
         window,
         today=today,
+        resting_hr=resting_hr_lookup(source, start, today),
     )
 
     path = plot_compare(

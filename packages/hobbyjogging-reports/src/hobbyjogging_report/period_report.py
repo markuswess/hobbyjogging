@@ -4,7 +4,13 @@ from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
 
-from .analysis import activity_sort_key, is_lt1_activity, is_subt_activity
+from .analysis import (
+    RESTING_HR_WINDOW_DAYS,
+    activity_sort_key,
+    is_lt1_activity,
+    is_subt_activity,
+    resting_hr_baselines,
+)
 from .classify import category_breakdown
 from .format import (
     fmt_time,
@@ -72,8 +78,13 @@ def period_report(
 
     breakdown = category_breakdown(activities, intervals_by_id)
 
+    wellness = source.wellness(
+        start - timedelta(days=RESTING_HR_WINDOW_DAYS),
+        end,
+    )
+    baseline = resting_hr_baselines(wellness)
     recovery = recovery_summary(
-        source.wellness(start, end)
+        [entry for entry in wellness if start <= entry.date <= end]
     )
 
     lines = []
@@ -155,7 +166,11 @@ def period_report(
             if intervals is None:
                 intervals = source.activity_intervals(q.id)
 
-            work = work_summary_for_activity(q, intervals)
+            work = work_summary_for_activity(
+                q,
+                intervals,
+                resting_hr=baseline(q.date),
+            )
 
             hr = f"{q.avg_hr:.0f}" if q.avg_hr is not None else "-"
 

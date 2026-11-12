@@ -9,6 +9,7 @@ from hobbyjogging_core.model import Activity, Interval
 from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 
 from .analysis import (
+    EFFICIENCY_UNIT,
     RUN_TYPES,
     activity_efficiency,
     is_lt1_activity,
@@ -221,7 +222,7 @@ def format_work_result(point: SubtPoint, label: str | None = None):
         hr = f"{point.avg_hr:.0f} avg / {point.max_hr:.0f} max bpm"
 
     efficiency = (
-        f", {point.efficiency:.2f} m/beat"
+        f", {point.efficiency:.2f} {EFFICIENCY_UNIT}"
         if point.efficiency is not None
         else ""
     )
@@ -287,6 +288,7 @@ def format_pace(seconds):
 def work_summary_for_activity(
     activity: Activity,
     intervals: list[Interval],
+    resting_hr: float | None = None,
 ):
     """Return work-interval report lines for subT or LT1 activities."""
 
@@ -297,7 +299,11 @@ def work_summary_for_activity(
     else:
         return None
 
-    points = subt_work_points(activity, intervals)
+    points = subt_work_points(
+        activity,
+        intervals,
+        resting_hr=resting_hr,
+    )
 
     if not points:
         return None
@@ -311,6 +317,7 @@ def work_summary_for_activity(
 def get_work_summary(
     source: DataSource,
     activity: Activity,
+    resting_hr: float | None = None,
 ):
     """Return compact work-interval summary for subT or LT1 activities."""
 
@@ -322,13 +329,18 @@ def get_work_summary(
     except Exception:
         return None
 
-    return work_summary_for_activity(activity, intervals)
+    return work_summary_for_activity(
+        activity,
+        intervals,
+        resting_hr=resting_hr,
+    )
 
 
 def _activity_metric_lines(
     activity: Activity,
     *,
     detailed: bool = False,
+    resting_hr: float | None = None,
 ):
     """Shared metric lines for compact and detailed activity renderers."""
     lines = [f"- Duration: {fmt_time(activity.duration_s)}"]
@@ -352,10 +364,12 @@ def _activity_metric_lines(
         else:
             lines.append(f"- HR: {activity.avg_hr:.0f} avg")
 
-    efficiency = activity_efficiency(activity)
+    efficiency = activity_efficiency(activity, resting_hr)
 
     if detailed and efficiency is not None:
-        lines.append(f"- Efficiency: {efficiency:.2f} m/beat")
+        lines.append(
+            f"- Efficiency: {efficiency:.2f} {EFFICIENCY_UNIT}"
+        )
 
     if activity.training_load:
         lines.append(f"- Load: {activity.training_load:.0f}")
@@ -414,6 +428,7 @@ def format_activity(
     heading: str,
     category: str | None = None,
     intervals: list[Interval] | None = None,
+    resting_hr: float | None = None,
 ):
 
     lines = [f"\n### {heading}"]
@@ -421,13 +436,19 @@ def format_activity(
     if category:
         lines.append(f"- Category: {category}")
 
-    lines.extend(_activity_metric_lines(activity))
+    lines.extend(
+        _activity_metric_lines(activity, resting_hr=resting_hr)
+    )
     lines.extend(_activity_description_lines(activity))
 
     if intervals is None:
-        work = get_work_summary(source, activity)
+        work = get_work_summary(source, activity, resting_hr=resting_hr)
     else:
-        work = work_summary_for_activity(activity, intervals)
+        work = work_summary_for_activity(
+            activity,
+            intervals,
+            resting_hr=resting_hr,
+        )
 
     if work:
         label = "LT1 report" if is_lt1_activity(activity) else "subT report"
@@ -493,6 +514,7 @@ def format_session_activity(
     category: str | None = None,
     *,
     links=None,
+    resting_hr: float | None = None,
 ):
     """Render one activity as a detailed, standalone session report."""
     title = sport_label(activity)
@@ -521,7 +543,13 @@ def format_session_activity(
     lines.append(f"- Methods: {format_methods(activity)}")
     lines.append(f"- Targets: {format_targets(activity)}")
 
-    lines.extend(_activity_metric_lines(activity, detailed=True))
+    lines.extend(
+        _activity_metric_lines(
+            activity,
+            detailed=True,
+            resting_hr=resting_hr,
+        )
+    )
     lines.extend(_activity_description_lines(activity, detailed=True))
 
     if intervals:
@@ -533,7 +561,11 @@ def format_session_activity(
     if intervals and (
         is_lt1_activity(activity) or is_subt_activity(activity)
     ):
-        points = subt_work_points(activity, intervals)
+        points = subt_work_points(
+            activity,
+            intervals,
+            resting_hr=resting_hr,
+        )
 
     if points:
         label = "LT1" if is_lt1_activity(activity) else None
@@ -588,7 +620,7 @@ def format_subt_summary_table(
 
     lines = [
         "| Category | Sessions | Reps | Work time / week | "
-        "Work km / week | Avg pace | Avg HR | Max HR | Efficiency |",
+        "Work km / week | Avg pace | Avg HR | Max HR | Efficiency (m/excess beat) |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
@@ -619,7 +651,8 @@ def format_subt_block_table(blocks: list[SubtBlock]):
     """Render one category's work blocks as a Markdown table."""
     lines = [
         "| Date | Session | Reps | Work time | Work km | Pace | "
-        "Fastest | Slowest | Avg HR | Max HR | Efficiency |",
+        "Fastest | Slowest | Avg HR | Max HR | "
+        "Efficiency (m/excess beat) |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 

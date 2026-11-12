@@ -21,7 +21,7 @@ class SubtPoint:
     fastest_pace_s_per_km: float | None = None
     slowest_pace_s_per_km: float | None = None
     distance_m: float = 0
-    beats: float = 0
+    beats: float = 0  # excess heartbeats, above the resting baseline
     efficiency: float | None = None
 
 
@@ -42,6 +42,8 @@ class SubtBlock:
     slowest_pace_s_per_km: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
+    distance_m: float = 0
+    beats: float = 0  # excess heartbeats, above the resting baseline
     efficiency: float | None = None
 
 

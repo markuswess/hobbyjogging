@@ -15,6 +15,7 @@ from .analysis import (
 )
 from .classify import classify
 from .cli import range_parser, resolve_range
+from .command_support import resting_hr_lookup
 from .format import (
     fmt_time,
     format_feel,
@@ -88,10 +89,8 @@ COLUMNS = {
         lambda a: _optional(a.intensity, lambda v: f"{v:.0%}"),
         True,
     ),
-    "eff": _plain(
-        "eff",
-        lambda a: _optional(activity_efficiency(a), lambda v: f"{v:.2f}"),
-    ),
+    # The real value needs a resting-HR baseline, filled in per report.
+    "eff": _plain("eff (m/excess beat)", lambda a: "-"),
     "category": Column(
         "category",
         lambda _activity, category: category or "-",
@@ -258,6 +257,26 @@ def activities_report(
         if query.limit:
             scope += f", at most {query.limit}"
 
+    baseline = (
+        resting_hr_lookup(
+            source,
+            min(activity.date for activity in activities),
+            max(activity.date for activity in activities),
+        )
+        if activities
+        else (lambda _day: None)
+    )
+    columns = dict(COLUMNS)
+
+    if "eff" in query.columns:
+        columns["eff"] = _plain(
+            "eff (m/excess beat)",
+            lambda activity: _optional(
+                activity_efficiency(activity, baseline(activity.date)),
+                lambda value: f"{value:.2f}",
+            ),
+        )
+
     lines = ["# Activities", scope]
 
     note = review_note(excluded)
@@ -268,9 +287,9 @@ def activities_report(
         lines.append("\n- No activities")
         return "\n".join(lines)
 
-    headers = [COLUMNS[name].header for name in query.columns]
+    headers = [columns[name].header for name in query.columns]
     alignment = [
-        "---:" if COLUMNS[name].numeric else "---"
+        "---:" if columns[name].numeric else "---"
         for name in query.columns
     ]
 
@@ -285,7 +304,7 @@ def activities_report(
             else ""
         )
         cells = [
-            table_text(COLUMNS[name].value(activity, category))
+            table_text(columns[name].value(activity, category))
             for name in query.columns
         ]
         lines.append("| " + " | ".join(cells) + " |")

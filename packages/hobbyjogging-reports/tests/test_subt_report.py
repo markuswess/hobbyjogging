@@ -190,7 +190,8 @@ class SubtReportRenderingTests(unittest.TestCase):
         self.assertIn("## Summary", report)
         self.assertIn(
             "| Category | Sessions | Reps | Work time / week | "
-            "Work km / week | Avg pace | Avg HR | Max HR | Efficiency |",
+            "Work km / week | Avg pace | Avg HR | Max HR | "
+            "Efficiency (m/excess beat) |",
             report,
         )
         self.assertIn("## Short", report)
@@ -199,7 +200,8 @@ class SubtReportRenderingTests(unittest.TestCase):
         self.assertNotIn("## LT1", report)
         self.assertIn(
             "| Date | Session | Reps | Work time | Work km | Pace | "
-            "Fastest | Slowest | Avg HR | Max HR | Efficiency |",
+            "Fastest | Slowest | Avg HR | Max HR | "
+            "Efficiency (m/excess beat) |",
             report,
         )
         self.assertIn("5 × 5:00", report)

@@ -6,6 +6,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from .analysis import activity_sort_key
 from .classify import classify
+from .command_support import resting_hr_lookup
 from .format import format_session_activity
 from .links import resolve_activity_links
 from .recent import search_recent
@@ -130,6 +131,8 @@ def session_report(
             lines.append("\n- No activity")
         return "\n".join(lines)
 
+    baseline = resting_hr_lookup(source, day or activities[0].date, day)
+
     for activity in activities:
         try:
             intervals = source.activity_intervals(activity.id)
@@ -144,6 +147,7 @@ def session_report(
                 intervals,
                 category=category.path,
                 links=resolve_activity_links(source, activity.id),
+                resting_hr=baseline(activity.date),
             )
         )
 

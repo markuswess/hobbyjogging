@@ -36,22 +36,21 @@ HTML dashboard:
   (`--days`, `--from`, `--to`).
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
-- **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace and
-  session heart rate for short, medium, long, and LT1, ending today.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the last four nights' values in the
   same layout as the daily report. Missing days are skipped.
 - **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace,
-  session heart rate, and efficiency (m/beat) for short, medium, long, and
-  LT1, ending today.
+  session heart rate, and efficiency (m/excess beat) for short, medium,
+  long, and LT1, ending today.
 - **planned** — Upcoming planned workouts starting tomorrow, as a compact
   key-facts table (date, weekday, workout, sport, distance, time, planned
   Z3+4 time, load); ends with weekly-average total time and Z3+4 time.
   Next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, workout methods and
-  targets, totals, zones, description, the full interval table, subT/LT1 work
-  reps, and Intervals/Garmin Connect links when the source knows them.
+  targets, totals including efficiency (m/excess beat), zones, description,
+  the full interval table, subT/LT1 work reps, and Intervals/Garmin Connect
+  links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
@@ -79,13 +78,14 @@ HTML dashboard:
   standard deviation below, red below; resting HR mirrored; sleep green
   7–9 h, amber 6–7 h or 9–10 h, red outside.
 - **subt** — subT and LT1 work intervals over the last 365 days by
-  default, with pace, average HR, and efficiency (m/beat) as three stacked
-  panels sharing a date axis. Dots are color-coded by rep length
+  default, with pace, average HR, and efficiency (m/excess beat) as three
+  stacked panels sharing a date axis. Dots are color-coded by rep length
   (short/medium/long) or LT1; pace ranges show fastest–slowest, HR ranges
   show average–max, and the pace/HR lines are 42-day EWMAs while the
-  efficiency line is a 42-day *weighted* mean (sum(distance)/sum(beats)).
-  The pace axis is fixed at 4:20–3:15 min/km (faster up) and HR at
-  140–180 bpm; efficiency uses auto-ranging until the data settles.
+  efficiency line is a 42-day *weighted* mean
+  (sum(distance)/sum(excess beats)). The pace axis is fixed at 4:20–3:15
+  min/km (faster up) and HR at 140–180 bpm; efficiency auto-ranges (about
+  1.8–2.8 in the current data).
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
@@ -95,8 +95,8 @@ HTML dashboard:
   to the older and newer half of the runs (parameters on the chart and
   printed by the CLI).
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
-  `--metric volume|time|load|runs` and `--window N` (default 182) choose the
-  metric and smoothing. The EWMA is computed over the whole history, so
+  `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
+  choose the metric and smoothing. The EWMA is computed over the whole history, so
   each year starts on the previous year's closing value. The current year
   is partial and marks today.
 - **classify** — Print the workout category for each activity over
@@ -380,14 +380,52 @@ and efficiency over the last 7, 42, and 182 days:
 ```
 
 A second table repeats the shape for average heart rate, and a third for
-efficiency (sum(distance) / sum(beats)). Days between sessions keep the
-last measured value, so the tables describe the standing level of each
+efficiency (sum(distance) / sum(excess beats)). Days between sessions keep
+the last measured value, so the tables describe the standing level of each
 category. The report also tops the NSA dashboard tab.
 
 The report starts with a summary table (sessions, reps, weekly work time
 and distance, weighted pace, average/max HR) and then shows one table
 per non-empty category. Work pace, fastest/slowest rep pace, and HR are
 derived from the same work reps used by the classification and charts.
+
+## Efficiency (m/excess beat)
+
+Efficiency is metres covered per heartbeat above rest:
+
+    distance_m / ((avg_hr - resting_hr) * duration_min)
+
+Higher is better and the metric is linear. Subtracting the resting baseline
+removes the heart-rate offset: a fit on the real data gives
+`HR ≈ 52.5 + 26.2 * v` (R² = 0.54), with the intercept matching the median
+resting HR. Raw `v / HR` spreads 11.3% across speed quartiles, while
+`v / (HR - RHR)` spreads only 3.3%, so paces become comparable.
+
+The baseline is the median resting HR over the trailing 365 days, with an
+expanding median when there is less history and no value when there is no
+resting-HR data at all. Do not shorten the window: the Feb–Mar 2026 illness
+moved RHR 51 → 59 → 47, and a 42-day median still read ~57 in March. That
+made March efficiency read 2.40 instead of 2.22 (+8%), larger than the 3.3%
+pace bias the baseline exists to remove. 180-day, 365-day, and fixed
+medians agree within 0.01 on the whole series.
+
+Sampling rules:
+
+- Aggregates are always `sum(distance) / sum(excess beats)`, never the mean
+  of per-sample ratios.
+- A session needs HR, distance, duration, and a baseline with
+  `avg_hr - resting_hr >= 10`; otherwise efficiency is `-`.
+- Runs only. Rest days in the compare series carry the previous value.
+- RHR noise propagates (about 5% for a 5 bpm error on a ~90 bpm difference);
+  treat it as a trend signal, not a per-run score. HR lag still understates
+  short reps.
+
+Efficiency appears in the session report, the optional `eff` activities
+column, the subT work-rep lines and summary/block tables, the subT EWMA
+report, the subT chart's third panel, and the compare tab. The subT chart
+and compare series use a weighted rolling mean, not an EWMA of ratios.
+Because resting HR starts in Sep 2022 in the current database, older years
+have no baseline and are left out of the compare efficiency chart.
 
 ## Activities table
 
@@ -408,7 +446,7 @@ Default columns: date, sport, name, duration, distance, pace, avg HR,
 load, RPE, feel, methods, targets. `--columns` replaces them (in the order
 given); `--add` appends. Available columns: id, date, started (UTC), sport,
 name, duration, elapsed, distance, pace, avg_hr, load, rpe, feel, intensity,
-category, methods, targets, eff (m/beat). The category is only computed when requested,
+category, methods, targets, eff (m/excess beat). The category is only computed when requested,
 and uses intervals for subT/LT1-named sessions. Methods and targets are the
 canonical set tokens with their display labels.
 
@@ -552,13 +590,14 @@ Pages:
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter, over the last two years
   (`--analysis-days`, default 731).
-- `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace and heart-rate
-  EWMAs per category), the subT/LT1 chart, and the `subT Report` over the
-  last year.
+- `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
+  and efficiency EWMAs per category), the subT/LT1 chart, and the
+  `subT Report` over the last year.
 - `compare.html` — volume, time, and efficiency EWMA lines per calendar
   year over a fixed Jan–Dec axis (`--compare-window`, default 182) plus the
   year and month comparison reports. The efficiency chart drops years with
-  fewer than 20 HR-backed runs (2014, 2017, and 2018 currently).
+  fewer than 20 HR-backed runs and years without a resting-HR baseline
+  (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.

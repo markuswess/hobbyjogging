@@ -73,6 +73,18 @@ def warmup_reviewed(
     return display, activities
 
 
+def resting_hr_lookup(source: DataSource, start: date, end: date):
+    """Resting-HR baseline lookup with a year of wellness lead-in."""
+    from .analysis import RESTING_HR_WINDOW_DAYS, resting_hr_baselines
+
+    wellness = source.wellness(
+        start - timedelta(days=RESTING_HR_WINDOW_DAYS),
+        end,
+    )
+
+    return resting_hr_baselines(wellness)
+
+
 def subt_session_points(
     source: DataSource,
     activities: list[Activity],
@@ -84,6 +96,15 @@ def subt_session_points(
         is_subt_activity,
         subt_session_point,
     )
+
+    if activities:
+        baseline = resting_hr_lookup(
+            source,
+            min(activity.date for activity in activities),
+            max(activity.date for activity in activities),
+        )
+    else:
+        baseline = lambda _day: None  # noqa: E731
 
     points = []
 
@@ -99,6 +120,7 @@ def subt_session_points(
             activity,
             source.activity_intervals(activity.id),
             category=category,
+            resting_hr=baseline(activity.date),
         )
 
         if point is not None:

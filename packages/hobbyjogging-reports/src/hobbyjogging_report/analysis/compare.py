@@ -7,7 +7,7 @@ from hobbyjogging_core.model import Activity
 from ..model import ComparePeriod
 from ..series import alpha_from_time_constant, ewma
 from .common import RUN_TYPES
-from .efficiency import activity_efficiency, beats
+from .efficiency import activity_efficiency, excess_beats
 
 COMPARE_MODES = ("years", "months")
 
@@ -178,8 +178,9 @@ def _daily_efficiency(
     activities: list[Activity],
     start: date,
     end: date,
+    resting_hr: Callable[[date], float | None],
 ) -> list[tuple[date, float | None]]:
-    """Daily weighted m/beat with rest days carrying the previous value."""
+    """Daily weighted m/excess beat with rest days carrying the last value."""
     by_day: dict[date, tuple[float, float]] = {}
 
     for activity in activities:
@@ -188,7 +189,11 @@ def _daily_efficiency(
         if not (start <= activity.date <= end):
             continue
 
-        total_beats = beats(activity.duration_s, activity.avg_hr)
+        total_beats = excess_beats(
+            activity.duration_s,
+            activity.avg_hr,
+            resting_hr(activity.date),
+        )
 
         if not activity.distance_m or total_beats is None:
             continue
@@ -225,6 +230,7 @@ def compare_year_ewma(
     window: int,
     *,
     today: date | None = None,
+    resting_hr: Callable[[date], float | None] | None = None,
 ) -> list[tuple[int, list[tuple[date, float]]]]:
     """One EWMA series per year, each from Jan 1 to Dec 31 (or today).
 
@@ -246,10 +252,20 @@ def compare_year_ewma(
     start = date(years[0], 1, 1)
 
     if metric == "efficiency":
-        daily = [
-            row for row in _daily_efficiency(activities, start, today)
-            if row[1] is not None
-        ]
+        daily = (
+            [
+                row
+                for row in _daily_efficiency(
+                    activities,
+                    start,
+                    today,
+                    resting_hr,
+                )
+                if row[1] is not None
+            ]
+            if resting_hr is not None
+            else []
+        )
     else:
         daily = _daily_metric(activities, metric, start, today)
 
@@ -281,7 +297,7 @@ def compare_year_ewma(
         close = points[-1][1]
 
     if metric == "efficiency":
-        eligible = _efficiency_run_counts(activities)
+        eligible = _efficiency_run_counts(activities, resting_hr)
         series = [
             (year, points)
             for year, points in series
@@ -291,12 +307,18 @@ def compare_year_ewma(
     return series
 
 
-def _efficiency_run_counts(activities: list[Activity]) -> dict[int, int]:
+def _efficiency_run_counts(
+    activities: list[Activity],
+    resting_hr: Callable[[date], float | None],
+) -> dict[int, int]:
     """Runs per year with the distance, duration, and HR efficiency needs."""
     counts: dict[int, int] = {}
 
     for activity in activities:
-        if activity_efficiency(activity) is None:
+        if activity_efficiency(
+            activity,
+            resting_hr(activity.date),
+        ) is None:
             continue
 
         counts[activity.date.year] = counts.get(activity.date.year, 0) + 1

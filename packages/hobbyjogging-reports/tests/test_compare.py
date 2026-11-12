@@ -354,14 +354,19 @@ class CompareYearEwmaTests(unittest.TestCase):
             "efficiency",
             42,
             today=date(2025, 3, 10),
+            resting_hr=lambda _day: 50,
         )
         points = dict(series[0][1])
 
-        self.assertAlmostEqual(1.1111, points[date(2025, 3, 1)], places=4)
+        first = 10000 / ((150 - 50) * 60)
+        self.assertAlmostEqual(first, points[date(2025, 3, 1)], places=4)
         # Rest days carry the previous value instead of dropping to zero.
-        self.assertAlmostEqual(1.1111, points[date(2025, 3, 4)], places=4)
+        self.assertAlmostEqual(first, points[date(2025, 3, 4)], places=4)
         alpha = 1 - math.exp(-1 / 42)
-        expected = alpha * (10000 / (160 * 60)) + (1 - alpha) * 1.111111
+        expected = (
+            alpha * (10000 / ((160 - 50) * 60))
+            + (1 - alpha) * first
+        )
         self.assertAlmostEqual(expected, points[date(2025, 3, 5)], places=4)
         self.assertLess(points[date(2025, 3, 5)], points[date(2025, 3, 4)])
         self.assertEqual(date(2025, 3, 10), series[0][1][-1][0])
@@ -404,6 +409,7 @@ class CompareYearEwmaTests(unittest.TestCase):
             "efficiency",
             42,
             today=date(2026, 2, 1),
+            resting_hr=lambda _day: 50,
         )
 
         self.assertEqual([2025], [year for year, _ in series])

@@ -126,8 +126,11 @@ class FormattingTests(unittest.TestCase):
         ]
 
         self.assertEqual(
-            ["5x5:00 subT-medium: 5:00/km, 160 avg / 172 max bpm, 1.25 m/beat"],
-            work_summary_for_activity(a, intervals),
+            [
+                "5x5:00 subT-medium: 5:00/km, 160 avg / 172 max bpm, "
+                "1.82 m/excess beat"
+            ],
+            work_summary_for_activity(a, intervals, resting_hr=50),
         )
 
     def test_subt_summary_name_only(self):
@@ -146,8 +149,11 @@ class FormattingTests(unittest.TestCase):
         ]
 
         self.assertEqual(
-            ["3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm, 1.94 m/beat"],
-            work_summary_for_activity(a, intervals),
+            [
+                "3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm, "
+                "2.86 m/excess beat"
+            ],
+            work_summary_for_activity(a, intervals, resting_hr=50),
         )
 
     def test_format_activity_lt1_heading(self):
@@ -167,12 +173,14 @@ class FormattingTests(unittest.TestCase):
             "Run — 3x10' LT1",
             category="quality/intervals/lt1",
             intervals=intervals,
+            resting_hr=50,
         )
 
         self.assertIn("- Category: quality/intervals/lt1", lines)
         self.assertIn("\n### LT1 report", lines)
         self.assertIn(
-            "- 3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm, 1.94 m/beat",
+            "- 3x10:00 LT1: 3:20/km, 155 avg / 168 max bpm, "
+            "2.86 m/excess beat",
             lines,
         )
 

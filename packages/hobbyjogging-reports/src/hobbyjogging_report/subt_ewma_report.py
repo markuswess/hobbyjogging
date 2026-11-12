@@ -34,7 +34,7 @@ def _hr_cell(value: float | None) -> str:
 
 
 def _efficiency_cell(value: float | None) -> str:
-    return "-" if value is None else f"{value:.2f} m/beat"
+    return "-" if value is None else f"{value:.2f} m/excess beat"
 
 
 def subt_ewma_markdown(
@@ -105,7 +105,7 @@ def subt_ewma_markdown(
     lines.extend([
         "",
         "EWMAs of the work-interval pace, the session average heart rate, and "
-        "efficiency (sum(distance) / sum(beats)) per category; days between "
+        "efficiency (sum(distance) / sum(excess beats)) per category; days between "
         "sessions keep the last measured value.",
     ])
 

@@ -4,7 +4,11 @@ from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
 
-from .analysis import activity_sort_key
+from .analysis import (
+    RESTING_HR_WINDOW_DAYS,
+    activity_sort_key,
+    resting_hr_baselines,
+)
 from .format import (
     fmt_time,
     format_activity,
@@ -42,12 +46,28 @@ def format_event(event) -> list[str]:
     return lines
 
 
-def _activity_lines(source, activities, prefix: str = ""):
+def _activity_lines(
+    source,
+    activities,
+    prefix: str = "",
+    resting_hr=None,
+):
     lines = []
 
     for activity in sorted(activities, key=activity_sort_key):
         heading = f"{prefix}{sport_label(activity)} {activity.name}"
-        lines.extend(format_activity(source, activity, heading))
+        lines.extend(
+            format_activity(
+                source,
+                activity,
+                heading,
+                resting_hr=(
+                    resting_hr(activity.date)
+                    if callable(resting_hr)
+                    else resting_hr
+                ),
+            )
+        )
 
     return lines
 
@@ -94,9 +114,10 @@ def daily(
     excluded_total = excluded + excluded_today
 
     wellness = source.wellness(
-        today - timedelta(days=4),
+        today - timedelta(days=RESTING_HR_WINDOW_DAYS),
         today
     )
+    baseline = resting_hr_baselines(wellness)
 
     events = source.events(
         today,
@@ -117,7 +138,9 @@ def daily(
     lines.append("\n## Yesterday")
 
     if activities:
-        lines.extend(_activity_lines(source, activities))
+        lines.extend(
+            _activity_lines(source, activities, resting_hr=baseline)
+        )
     else:
         lines.append("- No activity")
 
@@ -129,6 +152,7 @@ def daily(
                 source,
                 activities_today,
                 prefix="Today:  ",
+                resting_hr=baseline,
             )
         )
         # Today already has a session; show what is planned for tomorrow.

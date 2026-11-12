@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import date
+
 from hobbyjogging_core.model import Activity, Interval
 
 from .common import (
@@ -12,6 +15,7 @@ from .common import (
     pace_s_per_km,
     work_intervals,
 )
+from .efficiency import excess_beats
 from ..model import SubtBlock, SubtPoint, SubtSummary
 
 
@@ -19,6 +23,7 @@ def _subt_point(
     activity: Activity,
     intervals: list[Interval],
     category: str | None = None,
+    resting_hr: float | None = None,
 ) -> SubtPoint | None:
     """Aggregate a list of work reps into one pace point."""
     total_time = sum(i.duration_s for i in intervals)
@@ -47,15 +52,23 @@ def _subt_point(
         default=None,
     )
 
-    # Efficiency only counts reps with both a heart rate and a distance.
-    efficiency_distance = sum(
-        i.distance_m for i in intervals if i.avg_hr is not None
-    )
-    efficiency_beats = sum(
-        i.avg_hr * i.duration_s / 60
-        for i in intervals
-        if i.avg_hr is not None
-    )
+    # Efficiency only counts reps with a usable excess heart rate.
+    efficiency_distance = 0.0
+    efficiency_beats = 0.0
+
+    for interval in intervals:
+        sample_beats = excess_beats(
+            interval.duration_s,
+            interval.avg_hr,
+            resting_hr,
+        )
+
+        if sample_beats is None or not interval.distance_m:
+            continue
+
+        efficiency_distance += interval.distance_m
+        efficiency_beats += sample_beats
+
     efficiency = (
         efficiency_distance / efficiency_beats
         if efficiency_beats > 0
@@ -94,6 +107,7 @@ def _paced_work(intervals: list[Interval]) -> list[Interval]:
 def subt_work_points(
     activity: Activity,
     intervals: list[Interval],
+    resting_hr: float | None = None,
 ) -> list[SubtPoint]:
     """One point per WORK interval group (set of reps) in an activity."""
     work = _paced_work(intervals)
@@ -107,7 +121,11 @@ def subt_work_points(
     points = []
 
     for group in groups.values():
-        point = _subt_point(activity, group)
+        point = _subt_point(
+            activity,
+            group,
+            resting_hr=resting_hr,
+        )
         if point is not None:
             points.append(point)
 
@@ -118,6 +136,7 @@ def subt_session_point(
     activity: Activity,
     intervals: list[Interval],
     category: str | None = None,
+    resting_hr: float | None = None,
 ) -> SubtPoint | None:
     """One point per activity, aggregating all of its work reps.
 
@@ -128,7 +147,12 @@ def subt_session_point(
     if not work:
         return None
 
-    return _subt_point(activity, work, category=category)
+    return _subt_point(
+        activity,
+        work,
+        category=category,
+        resting_hr=resting_hr,
+    )
 
 
 def _combine_points(
@@ -184,6 +208,9 @@ def _combine_points(
         if point.slowest_pace_s_per_km is not None
     ]
 
+    efficiency_distance = sum(point.distance_m for point in points)
+    efficiency_beats = sum(point.beats for point in points)
+
     return SubtBlock(
         date=activity.date,
         activity_id=activity.id,
@@ -198,10 +225,11 @@ def _combine_points(
         slowest_pace_s_per_km=max(slowest) if slowest else None,
         avg_hr=avg_hr,
         max_hr=max(max_hrs) if max_hrs else None,
+        distance_m=efficiency_distance,
+        beats=efficiency_beats,
         efficiency=(
-            sum(point.distance_m for point in points)
-            / sum(point.beats for point in points)
-            if sum(point.beats for point in points) > 0
+            efficiency_distance / efficiency_beats
+            if efficiency_beats > 0
             else None
         ),
     )
@@ -210,12 +238,17 @@ def _combine_points(
 def subt_blocks(
     activity: Activity,
     intervals: list[Interval],
+    resting_hr: float | None = None,
 ) -> list[SubtBlock]:
     """Return one block per work category within a subT or LT1 session."""
     if not (is_subt_activity(activity) or is_lt1_activity(activity)):
         return []
 
-    points = subt_work_points(activity, intervals)
+    points = subt_work_points(
+        activity,
+        intervals,
+        resting_hr=resting_hr,
+    )
 
     if not points:
         return []
@@ -239,6 +272,7 @@ def subt_blocks(
 def subt_report_blocks(
     activities: list[Activity],
     intervals_by_id: dict[str, list[Interval]],
+    resting_hr: Callable[[date], float | None] | float | None = None,
 ) -> list[SubtBlock]:
     """Collect report blocks for subT/LT1 sessions, grouped and sorted."""
     blocks = []
@@ -248,6 +282,11 @@ def subt_report_blocks(
             subt_blocks(
                 activity,
                 intervals_by_id.get(activity.id, []),
+                resting_hr=(
+                    resting_hr(activity.date)
+                    if callable(resting_hr)
+                    else resting_hr
+                ),
             )
         )
 
@@ -292,6 +331,9 @@ def _summary_from_blocks(
         else None
     )
 
+    efficiency_distance = sum(block.distance_m for block in blocks)
+    efficiency_beats = sum(block.beats for block in blocks)
+
     return SubtSummary(
         category=category,
         sessions=len({block.activity_id for block in blocks}),
@@ -302,8 +344,8 @@ def _summary_from_blocks(
         avg_hr=avg_hr,
         max_hr=max(max_hrs) if max_hrs else None,
         efficiency=(
-            total_distance / (avg_hr * total_time / 60)
-            if avg_hr is not None and total_time > 0
+            efficiency_distance / efficiency_beats
+            if efficiency_beats > 0
             else None
         ),
     )

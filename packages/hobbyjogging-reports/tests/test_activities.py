@@ -1,6 +1,8 @@
 import unittest
 from datetime import date
 
+from hobbyjogging_core.model import WellnessDay
+
 from hobbyjogging_report.activity_list import (
     DEFAULT_COLUMNS,
     ActivityQuery,
@@ -152,13 +154,17 @@ class ActivitiesReportTests(unittest.TestCase):
                     duration_s=3600,
                     avg_hr=150,
                 )
-            ]
+            ],
+            wellness=[
+                WellnessDay(date=date(2026, 10, 1), resting_hr=50),
+            ],
         )
         query = ActivityQuery(columns=(*DEFAULT_COLUMNS, "eff"))
 
         report = activities_report(source, query, today=TODAY)
 
-        self.assertIn("1.11", report)
+        # 10 km / ((150 - 50) * 60) excess beats.
+        self.assertIn("1.67", report)
 
     def test_added_id_column_is_shown(self):
         source = FakeSource([make_activity(id="abc-123", name="Easy")])

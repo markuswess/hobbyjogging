@@ -799,7 +799,7 @@ def _time_ewma(dates, values, window_days: int):
 
 
 def _weighted_efficiency(points, window_days: int):
-    """Trailing weighted metres per beat: sum(distance) / sum(beats)."""
+    """Trailing weighted efficiency: sum(distance) / sum(excess beats)."""
     curve = []
 
     for point in points:
@@ -1042,7 +1042,7 @@ def plot_subt(
         col=1,
     )
     figure.update_yaxes(
-        title_text="efficiency (m/beat)",
+        title_text="efficiency (m/excess beat)",
         row=3,
         col=1,
     )
@@ -1366,7 +1366,7 @@ def plot_compare(
         "time": "hours / day",
         "load": "load / day",
         "runs": "runs / day",
-        "efficiency": "m / beat",
+        "efficiency": "m / excess beat",
     }
     figure = go.Figure()
 

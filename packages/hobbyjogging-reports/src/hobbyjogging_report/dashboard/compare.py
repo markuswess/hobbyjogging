@@ -9,7 +9,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import compare_year_ewma
 from ..charts import plot_compare
-from ..command_support import activity_start
+from ..command_support import activity_start, resting_hr_lookup
 from ..compare import compare_report
 from ..html import markdown_to_html
 from ..review import exclude_review
@@ -43,12 +43,15 @@ def build_compare_section(
         include_review=include_review,
     )
 
+    baseline = resting_hr_lookup(source, start, today)
+
     def chart(metric: str) -> str:
         series = compare_year_ewma(
             activities,
             metric,
             window,
             today=today,
+            resting_hr=baseline,
         )
 
         if not series:
