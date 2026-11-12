@@ -17,22 +17,16 @@ This file records what the package is still waiting on.
   `RACE_A/B/C` and removing a stale non-manual row otherwise; manual rows win.
   Applied to the real DB: 2 events gained the method (Baden Stadtlauf, Linz
   Marathon 2026), 648 unchanged.
+- **`drop_empty_intervals_v1`.** Drops the 1 s / 0 m `RECOVERY` artifact
+  Intervals appends (and the rare `WORK` one) from every stored interval set,
+  reusing `hobbyjogging_import.intervals.is_empty_interval` so it cannot drift
+  from the import filter. It keeps the set's existing interval source record,
+  is idempotent, and leaves excluded activities and activities without
+  intervals alone. Validated on a copy and applied to the real DB: 239 rows
+  dropped across 235 of 2,836 activities with intervals, no activity cleared,
+  and a forced rerun changed nothing.
 
 ## Next
-
-- **`drop_empty_intervals_v1`** (backfill). Once the import filter lands,
-  rewrite the stored interval set for activities that still carry the empty
-  artifacts. Read the rows per activity, drop those where `duration_s <= 1`
-  and `distance_m < 1` (reuse `hobbyjogging_import.intervals.is_empty_interval`
-  once it exists), and write the rest back with
-  `replace_activity_intervals(activity_id, kept, source_record_id=...)` using
-  the activity's existing interval source record. Expected: ~239 rows across
-  ~235 activities; 220 of those then match their lap count.
-  - Idempotent; `--dry-run`; scope by `--from`/`--to`/`--entity`/`--limit`.
-  - Tests: the trailing recovery is removed, a genuine 2 s / 5 m segment
-    survives, an activity whose only interval is empty ends with no rows, a
-    rerun is a no-op, dry-run writes nothing.
-  - Docs: package README table, root `NEXT_UP.md` when it lands.
 
 Nothing else queued. New data work registers a task here instead of a script.
 

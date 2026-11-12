@@ -201,6 +201,7 @@ changes.
 - `backfills/event_race_method_v1.py` — `event_race_method_v1`.
 - `backfills/event_zones.py` — `event_zones_v1`.
 - `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
+- `backfills/drop_empty_intervals_v1.py` — `drop_empty_intervals_v1`.
 - `backfills/workout_classification.py` — `workout_classification_v1`.
 - `recompute/workout_sets_current.py` — `workout_sets_current`.
 - `recompute/workout_classification_queue.py` —

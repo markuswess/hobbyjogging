@@ -125,6 +125,11 @@ Updated 2026-11-12.
 - **Race method backfill.** `event_race_method_v1` applied the
   `RACE_A/B/C → race` mapping to existing events: 2 gained the method (Baden
   Stadtlauf, Linz Marathon 2026), 648 unchanged, manual rows untouched.
+- **Empty interval artifact.** The Intervals importer no longer stores the
+  1 s / 0 m trailing `RECOVERY` interval, and `drop_empty_intervals_v1` removed
+  the rows left by earlier imports: 239 rows across 235 of 2,836 activities
+  with intervals, none cleared; the set's interval source record is kept and a
+  forced rerun is a no-op.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (4,143 activities, 2,805 with a Garmin VO2max;
   650 events with 2,812 planned zone rows). The historical spreadsheet import
