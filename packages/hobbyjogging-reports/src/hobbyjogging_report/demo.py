@@ -328,7 +328,14 @@ def _make_session(
             for _ in range(reps - 1)
         ]
         cooldown = _interval("COOLDOWN", cooldown_s, rng.uniform(340, 365), 128, group)
-        intervals = [warmup, *work, *recoveries, cooldown]
+        intervals = [warmup]
+
+        for rep in range(reps):
+            intervals.append(work[rep])
+            if rep < reps - 1:
+                intervals.append(recoveries[rep])
+
+        intervals.append(cooldown)
         duration = sum(item.duration_s for item in intervals)
         distance_m = sum(item.distance_m for item in intervals)
         pace = duration / distance_m * 1000

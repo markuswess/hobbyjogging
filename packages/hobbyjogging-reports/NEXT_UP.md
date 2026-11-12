@@ -121,8 +121,8 @@ comparison.
   wellness with an illness and a travel week, planned events, two future
   races, four shoes) through `TrainingWriter`, with no `source_records` or
   personal data. Easy and long runs use only Z1/Z2, workouts carry Z3/Z4,
-  VO2max is one smooth daily value, and the future plan copies the last four
-  complete weeks. `dashboard --demo-label TEXT` adds an opt-in banner on
+  VO2max is one smooth daily value, interval sets alternate work/recovery,
+  and the future plan copies the last four complete weeks. `dashboard --demo-label TEXT` adds an opt-in banner on
   every page. Same seed gives identical content; tests cover counts, complete
   zones, smooth VO2max, easy/vs-workout zones, future-plan similarity, future
   races, review opt-in, size, and a full dashboard build.

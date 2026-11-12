@@ -172,6 +172,45 @@ class DemoGeneratorTests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_work_and_recovery_intervals_alternate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                rows = connection.execute(
+                    """
+                    SELECT activity_id, type
+                    FROM activity_intervals
+                    ORDER BY activity_id, interval_index
+                    """
+                ).fetchall()
+            finally:
+                connection.close()
+
+            by_activity: dict[str, list[str]] = {}
+
+            for row in rows:
+                by_activity.setdefault(row["activity_id"], []).append(
+                    row["type"]
+                )
+
+            self.assertTrue(by_activity)
+
+            for types in by_activity.values():
+                self.assertEqual("WARMUP", types[0])
+                self.assertEqual("COOLDOWN", types[-1])
+
+                middle = types[1:-1]
+                self.assertTrue(middle)
+                self.assertEqual("WORK", middle[0])
+                self.assertEqual("WORK", middle[-1])
+
+                for left, right in zip(middle, middle[1:]):
+                    self.assertNotEqual(left, right)
+
     def test_vo2max_is_a_smooth_daily_value(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(
