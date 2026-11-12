@@ -103,64 +103,53 @@ Dashboard follow-ups, handed over together with the triage work:
   bands. A small colored key sits at the top right of the chart and the
   dashboard note explains the thresholds.
 
-- **Efficiency (m/beat).** Runs report meters per heartbeat in the session
-  report, the optional `eff` activities column, every subT work-rep line,
-  the subT summary/block tables, the subT EWMA report (pace/HR/efficiency
-  tables), the subT chart's third panel, and the compare tab. Aggregates are
-  always sum(distance)/sum(beats); the subT chart and compare series use a
+- **Efficiency (m/excess beat).** Runs report meters per heartbeat above
+  rest in the session report, the optional `eff` activities column, every
+  subT work-rep line, the subT summary/block tables, the subT EWMA report
+  (pace/HR/efficiency tables), the subT chart's third panel, and the
+  compare tab. The metric is `distance / ((avg_hr - rhr) * minutes)` with
+  `rhr` = rolling 365-day median resting HR, expanding when history is
+  shorter and `None` when there is none; the guard is
+  `avg_hr - rhr < 10`. Aggregates are always
+  sum(distance)/sum(excess beats); the subT chart and compare series use a
   weighted rolling mean rather than an EWMA of ratios, and rest days carry
   the previous value in the compare series. The compare efficiency chart
-  drops years with fewer than 20 HR-backed runs (2014, 2017, 2018). The
-  subT efficiency axis auto-ranges for now (roughly 1.5-1.9 m/beat in the
-  current data).
+  drops years with fewer than 20 HR-backed runs and years without a
+  baseline (resting HR starts in Sep 2022, so it currently shows 2022-2026).
+  The subT efficiency axis auto-ranges (roughly 1.8-2.8 in the current
+  data). A 365-day baseline is deliberate: a 42-day window read +8% high
+  after the Feb-Mar 2026 illness; see the module docstring.
 
 ## Next
 
-1. **Efficiency: subtract the resting baseline (`m/excess beat`).** The
-   shipped metric is raw `distance / (HR × min)`, which is biased by the HR
-   offset. A fit on the real data gives `HR ≈ 52.5 + 26.2·v` (R² = 0.54) with
-   the intercept matching the median resting HR (51 bpm), and `v/HR` spreads
-   11.3% across speed quartiles while `v/(HR − RHR)` spreads only 3.3%.
-   Subtracting the baseline makes the number comparable across paces — which
-   is what the subT categories, the compare page and the activity level need.
-   - **Metric**: `distance_m / ((avg_hr − rhr) × duration_min)`, still called
-     efficiency, label **`m/excess beat`**; `EFFICIENCY_UNIT` changes.
-   - **Baseline**: rolling **365-day median** of `wellness_days.resting_hr`,
-     falling back to an expanding median when there is less than a year of
-     history, and `None` when there is none at all. Guard `avg_hr − rhr < 10`
-     → `None`. Keep it a pure helper, e.g.
-     `resting_hr_baseline(wellness, day, window_days=365)`.
-   - **Why not 42 days**: a short window lags a real excursion and inflates
-     efficiency afterwards. The Feb–Mar 2026 illness moved RHR 51 → 59 → 47.
-     A 42-day median still read ~57 in March while the true RHR was ~50, so
-     March efficiency came out **2.40 vs 2.22** for 180/365/fixed baselines —
-     **+8%**, larger than the 3.3% pace bias this change exists to remove.
-     During February itself it read 2.30 instead of 2.24 (+3%). The 180-day,
-     365-day and fixed medians agree to within 0.01 on the whole series;
-     365 days is ~6× the episode. Do not reintroduce a short window.
-   - **Plumbing**: every caller fetches wellness with a **365-day lead-in**
-     and passes the baseline through — `format_session_activity`,
-     `sessions.session_report`, `activity_list`, `analysis/subt`
-     (`SubtPoint`), `subt_ewma`, `charts.plot_subt`,
-     `compare.compare_year_ewma`, and the dashboard pages. `analysis/` stays
-     pure: the baseline is an argument, never a query.
-   - **Aggregates stay weighted**: Σdistance / Σexcess beats. Keep the raw
-     distance/excess-beat sums on `SubtPoint`.
-   - **Labels/ranges**: "Efficiency (m/excess beat)" in the session line, the
-     `eff` column, the subT panel title and the compare axis; subT axis
-     roughly 1.8–2.8 (the raw metric sat at 1.5–1.9).
-   - **Caveats**: RHR noise propagates (~5% for a 5 bpm error on a ~90 bpm
-     difference) — this is a trend signal, not a per-run score; HR lag still
-     understates short reps; runs only.
-   - **Tests**: known value (10 000 m / 3 600 s / 150 bpm / rhr 50 → 1.667),
-     the 365-day → expanding fallback chain, the `hr − rhr < 10` guard,
-     weighted aggregate vs naive mean, a regression test that the metric is
-     flat across speed bands under a synthetic linear HR model, a test that a
-     temporary RHR excursion does not move the baseline more than a couple of
-     bpm, and `-` in the renderers when absent.
-   - **Docs**: the module docstring gets the fitted model, the 11.3% → 3.3%
-     spread and the window rationale; update the Done bullet that quotes the
-     raw axis range.
+1. **Wellness bands: 365-day median + MAD.** `analysis/recovery.py` derives
+   the readiness bands from the last **42 days** with mean ± SD. That window
+   *becomes* a long illness, so the bands go blind exactly when they matter,
+   and it over-reacts when the athlete is stable.
+   - **Evidence**: on 2026-03-15 the 42-day RHR baseline was 58.4 ± 2.0, so
+     RHR 58 read **green**; the 365-day median (51.0 ± 3.0) flags it **red**.
+     HRV 32 read normal against a 32.9 mean, amber against a 43 median. In a
+     stable period (Nov 2026) the 42-day SD collapses (48.0 ± 1.5 → red above
+     49.5), so a 2 bpm rise reads as red; the 365-day band (50 ± 3.0) calls
+     it amber.
+   - **Change**: center = **365-day median** (expanding fallback), spread =
+     **1.4826 × MAD**, thresholds unchanged in direction (HRV green ≥
+     center, amber down to center − σ, red below; RHR mirrored). Sleep stays
+     absolute (7–9 h green) with no baseline.
+   - **Both metrics**: the same robust baseline applies to HRV and resting
+     HR — one helper, not two policies.
+   - **Shared helper**: a generic `robust_baseline(values, day,
+     window_days=365)` used by HRV, resting HR, and the efficiency baseline,
+     so the concept lives in one place.
+   - **Behaviour kept**: one band set per chart, computed at the end of the
+     displayed range — the window defines "current normal".
+   - **Trade-off**: a year-long window adapts slowly to a genuinely new
+     normal. That is the right bias for a readiness flag: a false "all clear"
+     is worse than a slow adjustment.
+   - **Tests**: an illness-sized excursion moves the center by at most ~2 bpm;
+     a stable period does not produce a hair-trigger band (a 2 bpm rise is
+     amber, not red); the expanding fallback; sleep bands unchanged.
+   - **Docs**: the recovery docstring and README get both failure modes.
 2. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
