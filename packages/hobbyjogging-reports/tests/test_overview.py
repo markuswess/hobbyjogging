@@ -89,8 +89,17 @@ class OverviewReportTests(unittest.TestCase):
         self.assertEqual("5.0", _row(report, "Run km / week")[-1])
         self.assertEqual("30", _row(report, "Load / week")[-1])
         self.assertEqual("5min", _row(report, "Z3+4 / week")[-1])
-        self.assertIn("## Efficiency", report)
-        self.assertEqual("1.67", _row(report, "7-day")[-1])
+        self.assertEqual(
+            [
+                "Efficiency (m/excess beat)",
+                "1.67",
+                "1.67",
+                "1.67",
+                "-",
+            ],
+            _row(report, "Efficiency (m/excess beat)"),
+        )
+        self.assertNotIn("## Efficiency", report)
         self.assertIn("sum(excess beats)", report)
 
     def test_no_future_column_when_horizon_is_zero(self):

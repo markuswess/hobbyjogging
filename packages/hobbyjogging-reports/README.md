@@ -23,7 +23,8 @@ HTML dashboard:
   and recovery (HRV / RHR / sleep) from the last nights.
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
   km, load, and Z3+4, plus the planned weekly average for the next 14
-  days and a trailing 7/42/182-day weighted efficiency table.
+  days, plus an Efficiency row in the same table using the trailing
+  7/42/182-day weighted efficiency (no planned value).
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days, including weighted
   efficiency in the running block and category table.

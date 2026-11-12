@@ -33,7 +33,7 @@ class EwmaRow:
     key: str
     label: str
     kind: str
-    values: dict[int, float]
+    values: dict[int, float | None]
 
 
 @dataclass(frozen=True)
@@ -147,10 +147,6 @@ def efficiency_averages(
     }
 
 
-def _efficiency_cell(value: float | None) -> str:
-    return "-" if value is None else f"{value:.2f}"
-
-
 def planned_overview(
     events: list[Event],
     start: date,
@@ -185,6 +181,8 @@ def _duration(seconds: float) -> str:
 def _ewma_cell(row: EwmaRow, tau: int) -> str:
     value = row.values[tau]
 
+    if value is None:
+        return "-"
     if row.kind == "count":
         return f"{value:.1f}"
     if row.kind == "time":
@@ -193,6 +191,8 @@ def _ewma_cell(row: EwmaRow, tau: int) -> str:
         return f"{value:,.1f}"
     if row.kind == "load":
         return f"{value:.0f}"
+    if row.kind == "efficiency":
+        return f"{value:.2f}"
 
     return f"{value:g}"
 
@@ -202,7 +202,7 @@ def _planned_cell(
     planned: PlannedOverview,
     weeks: float,
 ) -> str:
-    if weeks <= 0:
+    if row.kind == "efficiency" or weeks <= 0:
         return "-"
 
     value = getattr(planned, row.key) / weeks
@@ -215,6 +215,8 @@ def _planned_cell(
         return f"{value / 1000:,.1f}"
     if row.kind == "load":
         return f"{value:.0f}"
+    if row.kind == "efficiency":
+        return f"{value:.2f}"
 
     return f"{value:g}"
 
@@ -251,6 +253,17 @@ def overview_report(
         )
     )
     efficiency = efficiency_averages(activities, today, baseline)
+
+    if any(value is not None for value in efficiency.values()):
+        rows.append(
+            EwmaRow(
+                "efficiency",
+                f"Efficiency ({EFFICIENCY_UNIT})",
+                "efficiency",
+                efficiency,
+            )
+        )
+
     planned_start = today + timedelta(days=1)
     planned_end = today + timedelta(days=future_days)
     events = [
@@ -297,25 +310,9 @@ def overview_report(
         "",
         "Weekly equivalents of the daily EWMA ending today; the last column "
         f"is {planned_note}.",
+        "",
+        "Efficiency is the trailing weighted sum(distance) / "
+        f"sum(excess beats), in {EFFICIENCY_UNIT}; it has no planned value.",
     ])
-
-    if any(value is not None for value in efficiency.values()):
-        lines.extend([
-            "",
-            "## Efficiency",
-            "",
-            "| Window | Efficiency |",
-            "|---|---:|",
-        ])
-        for window, value in efficiency.items():
-            lines.append(
-                f"| {window}-day | {_efficiency_cell(value)} "
-                f"|"
-            )
-        lines.extend([
-            "",
-            "Trailing weighted efficiency: sum(distance) / "
-            f"sum(excess beats), in {EFFICIENCY_UNIT}.",
-        ])
 
     return "\n".join(lines)

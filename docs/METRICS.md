@@ -52,9 +52,8 @@ dashboard. The dashboard is the last step, never the first.
   reps, so compare same rep lengths and prefer ≥5 min. Heat, terrain and
   fatigue move it.
 - **Rendered**: session report, `eff` activities column, daily compact line,
-  period/category reports, compare text report and tab, overview trailing
-  table, subT work reps and summary tables, subT EWMA report, subT chart
-  panel.
+  period/category reports, compare text report and tab, overview EWMA row,
+  subT work reps and summary tables, subT EWMA report, subT chart panel.
 
 ### HR-speed efficiency line
 

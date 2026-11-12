@@ -135,7 +135,8 @@ comparison.
   efficiency line; `report`/`weekly`/`monthly`/`yearly` show a weighted
   efficiency total and an `Efficiency (m/excess beat)` category column;
   `compare-years`/`compare-months` show a weighted efficiency column; and
-  `overview` ends with a trailing 7/42/182-day weighted efficiency table.
+  `overview` adds an Efficiency row to the existing EWMA table, using the
+  7/42/182-day weighted efficiency and leaving the planned column empty.
   All aggregates are sum(distance)/sum(excess beats) and use the 365-day
   baseline; no baseline means an omitted line or a dash.
 - **Session report completeness.** The session report now shows tags, both
