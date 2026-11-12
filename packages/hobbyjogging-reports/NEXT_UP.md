@@ -125,13 +125,21 @@ Dashboard follow-ups, handed over together with the triage work:
    is what the subT categories, the compare page and the activity level need.
    - **Metric**: `distance_m / ((avg_hr − rhr) × duration_min)`, still called
      efficiency, label **`m/excess beat`**; `EFFICIENCY_UNIT` changes.
-   - **Baseline**: rolling **42-day median** of `wellness_days.resting_hr`;
-     when the window has no values, the all-time median of the supplied
-     wellness; `None` when there is none at all. Guard `avg_hr − rhr < 10` →
-     `None`. Keep it a pure helper, e.g.
-     `resting_hr_baseline(wellness, day, window_days=42)`.
-   - **Plumbing**: every caller fetches wellness with a 42-day lead-in and
-     passes the baseline through — `format_session_activity`,
+   - **Baseline**: rolling **365-day median** of `wellness_days.resting_hr`,
+     falling back to an expanding median when there is less than a year of
+     history, and `None` when there is none at all. Guard `avg_hr − rhr < 10`
+     → `None`. Keep it a pure helper, e.g.
+     `resting_hr_baseline(wellness, day, window_days=365)`.
+   - **Why not 42 days**: a short window lags a real excursion and inflates
+     efficiency afterwards. The Feb–Mar 2026 illness moved RHR 51 → 59 → 47.
+     A 42-day median still read ~57 in March while the true RHR was ~50, so
+     March efficiency came out **2.40 vs 2.22** for 180/365/fixed baselines —
+     **+8%**, larger than the 3.3% pace bias this change exists to remove.
+     During February itself it read 2.30 instead of 2.24 (+3%). The 180-day,
+     365-day and fixed medians agree to within 0.01 on the whole series;
+     365 days is ~6× the episode. Do not reintroduce a short window.
+   - **Plumbing**: every caller fetches wellness with a **365-day lead-in**
+     and passes the baseline through — `format_session_activity`,
      `sessions.session_report`, `activity_list`, `analysis/subt`
      (`SubtPoint`), `subt_ewma`, `charts.plot_subt`,
      `compare.compare_year_ewma`, and the dashboard pages. `analysis/` stays
@@ -145,12 +153,14 @@ Dashboard follow-ups, handed over together with the triage work:
      difference) — this is a trend signal, not a per-run score; HR lag still
      understates short reps; runs only.
    - **Tests**: known value (10 000 m / 3 600 s / 150 bpm / rhr 50 → 1.667),
-     the baseline fallback chain, the `hr − rhr < 10` guard, weighted
-     aggregate vs naive mean, a regression test that the metric is flat
-     across speed bands under a synthetic linear HR model, and `-` in the
-     renderers when absent.
-   - **Docs**: the module docstring gets the fitted model and the 11.3% → 3.3%
-     spread; update the Done bullet that quotes the raw axis range.
+     the 365-day → expanding fallback chain, the `hr − rhr < 10` guard,
+     weighted aggregate vs naive mean, a regression test that the metric is
+     flat across speed bands under a synthetic linear HR model, a test that a
+     temporary RHR excursion does not move the baseline more than a couple of
+     bpm, and `-` in the renderers when absent.
+   - **Docs**: the module docstring gets the fitted model, the 11.3% → 3.3%
+     spread and the window rationale; update the Done bullet that quotes the
+     raw axis range.
 2. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
