@@ -84,3 +84,11 @@ Cross-package changes must leave all four suites green.
   quality; strides never make a session quality by itself. A tempo run is
   `continuous` with a `threshold` target (there is no `tempo` method).
 - Reports use plotly for charts and never pandas.
+
+## Metrics
+
+- New metrics start in the lab (`./lab.sh`, `experiments/`) and are promoted
+  only through the gate in `docs/METRICS.md`.
+- Every promoted metric keeps a card there; definition, baseline and caveats
+  stay in sync with the code.
+- The dashboard is the last place a metric lands, never the first.

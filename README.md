@@ -15,7 +15,15 @@ Training data, imports, and reports.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, data
 flow, and the planned homelab/static-dashboard deployment. Source-specific
-field differences are documented in [docs/SOURCE_NOTES.md](docs/SOURCE_NOTES.md).
+field differences are documented in [docs/SOURCE_NOTES.md](docs/SOURCE_NOTES.md),
+and metric definitions in [docs/METRICS.md](docs/METRICS.md).
+
+Explore a metric before it becomes a report:
+
+```bash
+./lab.sh                                   # interactive, read-only
+uv run --env-file .env python experiments/<name>.py
+```
 
 ## Setup
 

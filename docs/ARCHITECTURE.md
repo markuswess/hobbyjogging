@@ -484,6 +484,11 @@ Charts consume prepared series and return figures; they never read the
 database or parse report text. Adding a report means adding analysis plus a
 renderer, not a new data path.
 
+New metrics start in the lab — `./lab.sh` for an interactive session and
+`experiments/` for a runnable script — and are promoted through the gate in
+[METRICS.md](METRICS.md): cheap exploration, then a card, then `analysis/`
+plus a renderer, and only then the dashboard.
+
 ### Dashboard
 
 Static-first, generated on the homelab:
