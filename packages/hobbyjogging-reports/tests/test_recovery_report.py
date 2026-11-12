@@ -2,7 +2,10 @@ import unittest
 from datetime import date, timedelta
 
 from hobbyjogging_core.model import WellnessDay
-from hobbyjogging_report.recovery_report import recovery_averages, recovery_report
+from hobbyjogging_report.recovery_report import (
+    recovery_averages,
+    recovery_report,
+)
 from support import FakeSource
 
 TODAY = date(2026, 11, 10)
@@ -71,18 +74,46 @@ class RecoveryReportTests(unittest.TestCase):
         self.assertIn("# Recovery Report — Moving Averages", report)
         self.assertIn(f"7/42/182-day averages ending {TODAY}", report)
         self.assertEqual(
-            ["HRV", "56 ms", "79 ms", "79 ms"],
+            ["HRV", "56 ms", "79 ms", "79 ms", "79 ± 22.2 ms"],
             _row(report, "HRV"),
         )
         self.assertEqual(
-            ["Resting HR", "52 bpm", "75 bpm", "75 bpm"],
+            ["Resting HR", "52 bpm", "75 bpm", "75 bpm", "75 ± 22.2 bpm"],
             _row(report, "Resting HR"),
         )
         self.assertEqual(
-            ["Sleep", "7.5 h", "9.4 h", "9.4 h"],
+            ["Sleep", "7.5 h", "9.4 h", "9.4 h", "7–9 h (absolute)"],
             _row(report, "Sleep"),
         )
         self.assertIn("missing days are skipped", report)
+        self.assertIn("robust 365-day median", report)
+
+    def test_baseline_column_uses_a_year_not_just_182_days(self):
+        # Older 183 days centre on 60, recent 182 days on 50: a 182-day
+        # baseline would read 50, a one-year baseline reads 60.
+        old = [
+            WellnessDay(
+                date=TODAY - timedelta(days=182 + offset),
+                hrv=60 + (offset % 3),
+            )
+            for offset in range(183)
+        ]
+        recent = [
+            WellnessDay(
+                date=TODAY - timedelta(days=offset),
+                hrv=48 + (offset % 3),
+            )
+            for offset in range(182)
+        ]
+
+        report = recovery_report(
+            FakeSource(wellness=old + recent),
+            today=TODAY,
+        )
+
+        self.assertTrue(
+            _row(report, "HRV")[-1].startswith("60 ± "),
+        )
 
     def test_report_lists_the_last_four_nights(self):
         source = FakeSource(wellness=_wellness(10))

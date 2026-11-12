@@ -106,7 +106,8 @@ Dashboard follow-ups, handed over together with the triage work:
   adapts slowly: March 2026 RHR 58 now reads red instead of green, while a
   2 bpm rise in a stable period reads amber instead of red. A small colored
   key sits at the top right of the chart and the dashboard note explains
-  the thresholds.
+  the thresholds. The recovery report's moving-average table also shows the
+  365-day baseline column for HRV and resting HR (sleep is absolute).
 
 - **Efficiency (m/excess beat).** Runs report meters per heartbeat above
   rest in the session report, the optional `eff` activities column, every
@@ -124,6 +125,92 @@ Dashboard follow-ups, handed over together with the triage work:
   The subT efficiency axis auto-ranges (roughly 1.8-2.8 in the current
   data). A 365-day baseline is deliberate: a 42-day window read +8% high
   after the Feb-Mar 2026 illness; see the module docstring.
+
+## Handoff: synthetic demo database
+
+Root session asked for a public, representative dashboard on GitHub Pages
+without any personal data. Build the generator and badge here; the root session
+owns `demo.sh`, the Pages workflow, and the repo docs.
+
+### Goal
+
+A deterministic synthetic athlete (no real rows, no `data/laufen.ods`, no real
+DB access) that produces a demo DB rich enough for every dashboard page,
+roughly 18 months ending at the build date, 4–6 sessions per week, ~400
+activities, 1–3 MB without raw payloads.
+
+### Files
+
+- `src/hobbyjogging_report/demo.py` — generator (seed, persona, plan, write).
+- `src/hobbyjogging_report/report_commands.py` — `run_demo_command`.
+- `src/hobbyjogging_report/cli.py` — `parse_demo_args`.
+- `src/hobbyjogging_report/commands.py` — register `demo-db` with
+  `needs_source=False`.
+- `tests/test_demo.py` — generator tests.
+- `README.md` — section with the command and the synthetic-data note.
+
+### CLI
+
+```bash
+python -m hobbyjogging_report demo-db --out build/demo.db \
+  [--months 18] [--seed 7] [--today YYYY-MM-DD] [--with-review-items]
+```
+
+- `--out` is required; refuse to overwrite unless `--force`.
+- Never default to `HOBBYJOGGING_DB`; open `--out` explicitly with
+  `open_database()` and write through `TrainingWriter`.
+- `--today` defaults to the build date so the site stays current.
+
+### Data to generate
+
+- Activities with sport, dates, start times, names/descriptions from an
+  invented vocabulary, duration/elapsed/moving, distance, avg HR, load,
+  RPE/feel/intensity, VO2max trend.
+- Workout methods/targets per session; quality is derived on read. Use
+  `continuous` + `threshold` for sustained work (no `tempo` method).
+- Pace and HR zone times whose seconds sum to the session duration.
+- `activity_intervals` for quality sessions (4–8 reps with recoveries).
+- Wellness every day (HRV, resting HR, sleep), correlated with 7-day load,
+  plus one short illness dip and a travel week.
+- Planned events for 12–16 weeks ahead plus 2 races inside the 180-day race
+  window, with zone times and methods/targets.
+- 4–6 fictional shoes linked to activities.
+- No `source_records` (the database source then has no external links).
+- Review state: none open by default; `--with-review-items` adds a couple for
+  health-page screenshots.
+
+### Realism model
+
+Periodized blocks (3 build weeks + recovery week, base/build/peak/taper),
+easy runs, long runs, intervals, sustained threshold, cross-training, and
+strides. Threshold pace improves slowly and HR at pace declines; load follows
+duration × intensity. Session mix and weekly volume should look plausible in
+the overview, time-by-zone, load, recovery, and compare views.
+
+### Dashboard badge
+
+Add `--demo-label TEXT` to the dashboard parser and `build_dashboard`, rendered
+as a small banner on every page (e.g. “Synthetic demo data — not a real
+athlete”). Keep it opt-in so normal builds are unchanged. `dashboard.sh`
+forwards the flag automatically.
+
+### Tests
+
+- Fixed seed → identical DB (ids, rows, counts).
+- Activity/wellness/event/equipment counts in the expected ranges.
+- Every run has distance, HR, load, and pace zones; zone seconds sum to the
+  session duration.
+- Races are in the future; planned events extend the horizon.
+- No `source_records`; no open review items by default.
+- DB size under a small cap (e.g. 5 MB).
+- A generated DB builds a dashboard without errors and with a clean health
+  banner.
+
+### Done when
+
+`demo-db` + `dashboard --demo-label ...` produce a complete site locally, the
+tests pass, and the README documents the command. The root session then wires
+`demo.sh` and GitHub Actions.
 
 ## Next
 

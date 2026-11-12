@@ -37,8 +37,9 @@ HTML dashboard:
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
-  moving averages ending today, plus the last four nights' values in the
-  same layout as the daily report. Missing days are skipped.
+  moving averages ending today, plus the robust 365-day baseline used by the
+  recovery chart bands, and the last four nights' values in the same layout
+  as the daily report. Missing days are skipped.
 - **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace,
   session heart rate, and efficiency (m/excess beat) for short, medium,
   long, and LT1, ending today.
@@ -605,10 +606,11 @@ Pages:
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, interval table, and subT/LT1 work reps),
   exactly as `reports.sh session` renders it.
-- `recovery.html` — the `recovery-report` (7/42/182-day moving averages and
-  the last four nights), then HRV, resting HR, and sleep as interactive
-  plotly panels over the last 186 days (`--recovery-days`) with 7-day
-  averages, readiness bands, and a data-completeness note.
+- `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
+  the 365-day baseline column, and the last four nights), then HRV, resting
+  HR, and sleep as interactive plotly panels over the last 186 days
+  (`--recovery-days`) with 7-day averages, readiness bands, and a
+  data-completeness note.
 - `reports.html` — the Markdown reports selected with `--reports`, rendered
   as HTML with the same content as `reports.sh`.
 - `health.html` (Data Health) — the open review queue (severity, category,
