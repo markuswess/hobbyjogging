@@ -1,6 +1,6 @@
 # Next up: reports package
 
-Updated 2026-11-09.
+Updated 2026-11-12.
 
 Current focus: daily planned-zone display and session-level planned-vs-actual
 comparison.
@@ -52,26 +52,16 @@ comparison.
   `ReviewItem` rows (severity, category, detail, linked activity, reported
   date), counts them in the stat grid, and keeps the separate list of
   activities hidden by review.
-
-## Handoff from the root session
-
-Dashboard follow-ups, handed over together with the triage work:
-
-- **Workout methods/targets on the session detail.** Done. The dashboard
+- **Workout methods/targets on the session detail.** The dashboard
   session page and the Markdown `session` report list methods and targets;
   the activities table and the `activities` CLI report gained `methods` and
   `targets` columns (in the default set).
-- **Race cards.** Done. The overview lists races in the next 180 days from
+- **Race cards.** The overview lists races in the next 180 days from
   `Event` (date, name, distance, planned load, zone kind), selecting events
   whose methods or targets contain `race`. The Intervals importer now maps
   the API's `RACE_A`/`RACE_B`/`RACE_C` event categories onto the `race`
   method during event sync, so an existing database needs a fresh event
   sync before its races show up.
-- **Review queue rendering.** Done. `DataSource.review_items(status="open",
-  category=...)` feeds the health page: one row per open item with severity,
-  category, detail, linked activity, and reported date; the count is in the
-  stat grid. Category filters exist in the API for a later per-category view.
-
 - **Fixed chart axes.** Charts no longer autoscale: volume 0–130 km, time
   0–10 h (both panels), load 0–150 with the RPE axis on the right at 0–6 so
   one RPE point lines up with 25 load units, subT pace 3:15–4:20 min/km
@@ -79,7 +69,6 @@ Dashboard follow-ups, handed over together with the triage work:
   marked with a "clipped above …" triangle instead of being hidden. The RPE
   axis extends in whole points (and the load axis with it) if a session-RPE
   EWMA ever passes 6.
-
 - **Compare tab and chart.** `compare.html` renders one EWMA line per
   calendar year over a fixed Jan–Dec axis (metric and window chosen with
   `--compare-metric volume|time|load|runs` and `--compare-window N`,
@@ -133,7 +122,8 @@ Dashboard follow-ups, handed over together with the triage work:
   personal data. `dashboard --demo-label TEXT` adds an opt-in banner on every
   page. Same seed gives identical content; tests cover counts, complete
   zones, future races, review opt-in, size, and a full dashboard build.
-  Spec and root-session follow-ups remain in the handoff below.
+  `./demo.sh` builds the site locally and GitHub Actions publishes it
+  weekly to <https://markuswess.github.io/hobbyjogging/>.
 - **Pace/HR efficiency lines.** The scatter keeps the two free regression
   halves and adds a dashed efficiency line per half,
   `HR = RHR + v * 60 / E`, with `E` = that half's weighted efficiency
@@ -155,96 +145,6 @@ Dashboard follow-ups, handed over together with the triage work:
   existing repository query, and dashboard detail pages pass the same context
   (including per-day events and wellness) as the CLI.
 
-## Handoff: synthetic demo database
-
-> **Done (reports side).** `demo-db`, the `--demo-label` badge, tests, and
-> README docs are implemented. The root session still owns `demo.sh`, the
-> Pages workflow, and the repo docs.
-
-Root session asked for a public, representative dashboard on GitHub Pages
-without any personal data. Build the generator and badge here; the root session
-owns `demo.sh`, the Pages workflow, and the repo docs.
-
-### Goal
-
-A deterministic synthetic athlete (no real rows, no `data/laufen.ods`, no real
-DB access) that produces a demo DB rich enough for every dashboard page,
-roughly 18 months ending at the build date, 4–6 sessions per week, ~400
-activities, 1–3 MB without raw payloads.
-
-### Files
-
-- `src/hobbyjogging_report/demo.py` — generator (seed, persona, plan, write).
-- `src/hobbyjogging_report/report_commands.py` — `run_demo_command`.
-- `src/hobbyjogging_report/cli.py` — `parse_demo_args`.
-- `src/hobbyjogging_report/commands.py` — register `demo-db` with
-  `needs_source=False`.
-- `tests/test_demo.py` — generator tests.
-- `README.md` — section with the command and the synthetic-data note.
-
-### CLI
-
-```bash
-python -m hobbyjogging_report demo-db --out build/demo.db \
-  [--months 18] [--seed 7] [--today YYYY-MM-DD] [--with-review-items]
-```
-
-- `--out` is required; refuse to overwrite unless `--force`.
-- Never default to `HOBBYJOGGING_DB`; open `--out` explicitly with
-  `open_database()` and write through `TrainingWriter`.
-- `--today` defaults to the build date so the site stays current.
-
-### Data to generate
-
-- Activities with sport, dates, start times, names/descriptions from an
-  invented vocabulary, duration/elapsed/moving, distance, avg HR, load,
-  RPE/feel/intensity, VO2max trend.
-- Workout methods/targets per session; quality is derived on read. Use
-  `continuous` + `threshold` for sustained work (no `tempo` method).
-- Pace and HR zone times whose seconds sum to the session duration.
-- `activity_intervals` for quality sessions (4–8 reps with recoveries).
-- Wellness every day (HRV, resting HR, sleep), correlated with 7-day load,
-  plus one short illness dip and a travel week.
-- Planned events for 12–16 weeks ahead plus 2 races inside the 180-day race
-  window, with zone times and methods/targets.
-- 4–6 fictional shoes linked to activities.
-- No `source_records` (the database source then has no external links).
-- Review state: none open by default; `--with-review-items` adds a couple for
-  health-page screenshots.
-
-### Realism model
-
-Periodized blocks (3 build weeks + recovery week, base/build/peak/taper),
-easy runs, long runs, intervals, sustained threshold, cross-training, and
-strides. Threshold pace improves slowly and HR at pace declines; load follows
-duration × intensity. Session mix and weekly volume should look plausible in
-the overview, time-by-zone, load, recovery, and compare views.
-
-### Dashboard badge
-
-Add `--demo-label TEXT` to the dashboard parser and `build_dashboard`, rendered
-as a small banner on every page (e.g. “Synthetic demo data — not a real
-athlete”). Keep it opt-in so normal builds are unchanged. `dashboard.sh`
-forwards the flag automatically.
-
-### Tests
-
-- Fixed seed → identical DB (ids, rows, counts).
-- Activity/wellness/event/equipment counts in the expected ranges.
-- Every run has distance, HR, load, and pace zones; zone seconds sum to the
-  session duration.
-- Races are in the future; planned events extend the horizon.
-- No `source_records`; no open review items by default.
-- DB size under a small cap (e.g. 5 MB).
-- A generated DB builds a dashboard without errors and with a clean health
-  banner.
-
-### Done when
-
-`demo-db` + `dashboard --demo-label ...` produce a complete site locally, the
-tests pass, and the README documents the command. The root session then wires
-`demo.sh` and GitHub Actions.
-
 ## Next
 
 1. **Daily planned session.** Show the upcoming/current workout's planned
@@ -264,6 +164,7 @@ tests pass, and the README documents the command. The root session then wires
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
+
 ## Tests and docs
 
 Covered now:

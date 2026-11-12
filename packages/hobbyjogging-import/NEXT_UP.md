@@ -73,6 +73,10 @@ on.
   decision. `review causes`, `review classify [--dry-run]`, `--cause` filters
   on `list`/`triage`, and `review resolve --cause <cause> [--dry-run]` support
   the workflow.
+- **Race categories.** `event_methods` maps Intervals `RACE_A`/`RACE_B`/
+  `RACE_C` onto the canonical `race` method during event sync. It is public so
+  the maintenance `event_race_method_v1` backfill can re-derive the method for
+  events that predate the mapping.
 - **Spreadsheet import.** `sheet` reads the hand-maintained `.ods` log with a
   standard-library ODS reader (`ods.py`), maps the German columns
   (`Rohdaten`, `Alternativtraining`, `Material`), links shoes, and keeps the

@@ -102,6 +102,21 @@ Updated 2026-11-12.
   both after a successful sync (`--no-classify` skips them); a full-DB run
   takes about half a second. The 2026-11-10 "Easy" run is now
   `continuous`/`recovery`.
+- **Public demo on GitHub Pages.** `./demo.sh` builds the synthetic database
+  and the site; `.github/workflows/pages.yml` rebuilds and deploys it weekly
+  and on demand. Live at
+  <https://markuswess.github.io/hobbyjogging/>, verified.
+- **Dashboard review queue.** The health page lists the open `ReviewItem`
+  rows (severity, category, detail, activity, date) through
+  `DataSource.review_items`.
+- **Session report completeness.** The session report and the dashboard detail
+  page show tags, both VO2max owners, review status and open items, the day's
+  planned workout, the day's wellness, and the lap table;
+  `DataSource.activity_laps` exposes the repository query.
+- **Efficiency (m/excess beat).** Meters per heartbeat above the 365-day
+  resting baseline: session, activities column, subT work reps/tables/panel,
+  subT EWMA, compare tab, and the Markdown reports; the pace/HR scatter draws
+  it beside the regression. See `docs/METRICS.md`.
 - **Classifier in core.** The workout-category heuristic moved to
   `hobbyjogging_core.classify` (Category, classify, work_intervals, rep-length
   buckets); the reports package keeps only the display aggregation
@@ -111,46 +126,25 @@ Updated 2026-11-12.
   `RACE_A/B/C → race` mapping to existing events: 2 gained the method (Baden
   Stadtlauf, Linz Marathon 2026), 648 unchanged, manual rows untouched.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
-  against the real database (4,140 activities, 2,802 with a Garmin VO2max;
-  668 events with 2,808 planned zone rows). The historical spreadsheet import
+  against the real database (4,143 activities, 2,805 with a Garmin VO2max;
+  650 events with 2,812 planned zone rows). The historical spreadsheet import
   added the 2009–2021 log (1,292 activities, 10 equipment items, 1,842 shoe
   links). The review queue is empty.
 
 ## Next
 
-1. **Dashboard follow-ups** — handed to the reports session; the list lives
-   in `packages/hobbyjogging-reports/NEXT_UP.md`. Workout sets, race cards, and
-   the review-queue `DataSource` API are done; the open piece is rendering the
-   queue on the health page.
-2. **Public demo dashboard on GitHub Pages** — implemented; verify the first
-   deploy.
-   - Reports: `demo-db --out PATH` (deterministic synthetic database) and
-     `--demo-label` (banner on every page); usage in the reports README.
-   - Root: `./demo.sh` builds `build/demo.db` and `build/site` without reading
-     `.env` or the canonical database; `build/` is ignored;
-     `.github/workflows/pages.yml` runs weekly (Mondays 05:00 UTC) and on
-     manual dispatch, then deploys the artifact; the README has a "Live demo"
-     section; Pages is enabled with "GitHub Actions" as the source.
-   - Live at <https://markuswess.github.io/hobbyjogging/>. First check: push,
-     then run the workflow once manually (Actions → Demo dashboard → Run
-     workflow).
-   - If the repository is private, Pages requires a paid plan.
-
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+1. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-4. **Homelab cutover**: DB + importer + dashboard generator + static server,
+2. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-5. **Gear mileage** — handed to the reports session; the spec is in
-   `packages/hobbyjogging-reports/NEXT_UP.md`.
-6. **Session report completeness** (low priority). `reports.sh session` shows
-   the core metrics but not laps (needs `DataSource.activity_laps`), tags,
-   VO2max, the day's planned workout and wellness, or the review status. Laps
-   are the only structural gap (core); the rest are renderer additions in the
-   reports package.
+3. **Reports backlog** — handed to the reports session; the list lives in
+   `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
+   vs actual by session, optional HR-zone variant, shoe mileage.
 
-Triage is currently empty (0 open items).
+Triage is empty (0 open items), all four suites are green, and the demo
+deploys from GitHub Actions.
 
 ## Notes
 
