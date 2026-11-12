@@ -227,16 +227,37 @@ tests pass, and the README documents the command. The root session then wires
 
 ## Next
 
-1. **Daily planned session.** Show the upcoming/current workout's planned
+1. **Pace/HR chart: draw the efficiency line beside the regression.** The
+   chart fits `HR = a + b·v` for the first and second half of the runs; keep
+   both and add the efficiency model `HR = RHR + v·60/E` as one line over the
+   whole period (decision recorded in `docs/METRICS.md`).
+   - `analysis/pace_hr.py`: `PaceHrPoint` gains `resting_hr`, `distance_m` and
+     `excess_beats`; `pace_hr_points(..., resting_hr_baseline=...)` fills
+     them; a new `efficiency_line(points)` returns a small dataclass (label,
+     points, speed range, slope = `60/E`, intercept = median RHR, `E`) using
+     the weighted aggregate Σdistance / Σexcess beats.
+   - `charts.plot_pace_hr`: draw it as a dashed line named "efficiency line",
+     annotated with `E` and the median RHR; omit it when no point has a
+     baseline.
+   - Plumbing: the chart callers fetch wellness with a 365-day lead-in and
+     pass the baseline (the same pattern as the efficiency metric).
+   - Decision: use the **weighted aggregate** `E`, not the regression-implied
+     value, so the line agrees with the efficiency shown elsewhere; the
+     regression's own implied efficiency stays visible through its slope.
+   - Tests: `efficiency_line` on a synthetic constant-efficiency set returns
+     the expected slope/intercept; no baseline → no line; chart smoke test.
+   - Docs: the reports README chart section, and move the `docs/METRICS.md`
+     card from Candidates to Promoted once it ships.
+2. **Daily planned session.** Show the upcoming/current workout's planned
    distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
    with `zone_kind`. Omit the section when the event has no zone times.
-2. **Planned vs actual by session.** Match events to activities by date +
+3. **Planned vs actual by session.** Match events to activities by date +
    sport and compare pace distributions. The time chart and dashboard
    currently compare by week only. Power comparisons remain impossible until
    activities store power zone times; do not fake them.
-3. **Optional HR-zone variant.** The time chart is pace-only now. Add
+4. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
+5. **Shoe mileage.** Distance per equipment item from canonical data:
    `equipment` → `activity_equipment` → `activities.distance_m`. No schema
    change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
    3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
@@ -244,7 +265,7 @@ tests pass, and the README documents the command. The root session then wires
    set (currently NULL for every shoe), and retirement candidates
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
-5. **Session report completeness** (low priority, last). The `session` report
+6. **Session report completeness** (low priority, last). The `session` report
    omits tags, VO2max, the day's planned workout and wellness, and review
    status; laps need a core `DataSource.activity_laps` first. See the root
    `docs/NEXT_UP.md` for the full gap list.

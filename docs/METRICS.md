@@ -67,10 +67,16 @@ dashboard. The dashboard is the last step, never the first.
   (aerobic range only: 8.11 vs 7.52). Efficiency is flat across the first
   three speed quartiles (2.41–2.44, corr(eff, speed) −0.12) and drops ~5% in
   the top quartile.
+- **Decision (2026-11-12)**: keep **both** lines in the pace/HR chart — the
+  two regression halves and one efficiency line for the whole period. The
+  efficiency line uses the **weighted aggregate** (Σdistance / Σexcess beats),
+  not the regression-implied value, so it matches the efficiency reported
+  everywhere else; the regression's implied efficiency stays visible through
+  its slope.
 - **Open**: the weighted aggregate (2.33) sits 3–6% above the regression-
   implied efficiency (2.19–2.27) because it weights by distance/excess beats
-  while the regression weights every run equally. Decide which one defines the
-  line. Yearly drift (2.24 in 2022 → 2.39 in 2026) inflates both residuals.
+  while the regression weights every run equally. Yearly drift (2.24 in 2022
+  → 2.39 in 2026) inflates both residuals.
 
 ## Rejected
 
