@@ -2,8 +2,9 @@
 
 Updated 2026-11-12.
 
-Current focus: daily planned-zone display and session-level planned-vs-actual
-comparison.
+Current focus: the synthetic demo database for the public GitHub Pages
+dashboard (handoff below); daily planned-zone display and session-level
+planned-vs-actual comparison remain next.
 
 ## Done
 

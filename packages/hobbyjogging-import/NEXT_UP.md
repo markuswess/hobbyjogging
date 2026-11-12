@@ -87,7 +87,8 @@ on.
   trailing 1 s / 0 m `RECOVERY` row Intervals appends when building the stored
   interval list; genuine short segments (2 s or any distance) survive. The raw
   payload keeps the original rows. The maintenance `drop_empty_intervals_v1`
-  backfill reuses the predicate for existing data.
+  backfill reused the predicate and removed the existing rows (239 across 235
+  activities).
 - Full FIT archive import, VO2max backfill, and the historical spreadsheet
   import have been run against the real DB.
 
