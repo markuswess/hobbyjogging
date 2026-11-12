@@ -75,8 +75,9 @@ comparison.
   default volume/42d; the current year stops at today and is marked) plus
   the year and month comparison reports. The EWMA runs across the whole
   history, so each year line starts on the previous year's close. The tab
-  shows volume and time charts (182-day EWMA by default). Also
-  `charts.sh compare`.
+  shows volume, time, and efficiency charts (182-day EWMA by default).
+  Only the five most recent years are visible by default; older years stay
+  in the legend and can be re-enabled. Also `charts.sh compare`.
 - **Pace vs HR scatter.** `charts.sh pace-hr` and the Analysis tab plot one
   point per run: linear speed (m/s, labelled in min/km ticks) against
   average HR, coloured by date from blue (oldest) to red (newest) with a
@@ -133,7 +134,8 @@ comparison.
   `charts.sh pace-hr` fetch wellness with a 365-day lead-in.
 - **Compare tab pace/HR scatter.** The compare page adds the same
   speed-vs-HR scatter as the Analysis tab, but one categorical colour per
-  calendar year, with the same fixed pace/HR axes and hover text.
+  calendar year, with the same fixed pace/HR axes and hover text. The five
+  most recent years are visible by default; older years stay in the legend.
 - **Efficiency in the Markdown reports.** Daily runs show a compact
   efficiency line; `report`/`weekly`/`monthly`/`yearly` show a weighted
   efficiency total and an `Efficiency (m/excess beat)` category column;

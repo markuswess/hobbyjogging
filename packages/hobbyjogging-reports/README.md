@@ -112,8 +112,9 @@ HTML dashboard:
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
   choose the metric and smoothing. The EWMA is computed over the whole history, so
-  each year starts on the previous year's closing value. The current year
-  is partial and marks today.
+  each year starts on the previous year's closing value. Only the five most
+  recent years are visible by default; older years stay in the legend and can
+  be enabled there. The current year is partial and marks today.
 - **classify** — Print the workout category for each activity over
   the last N days (default 30).
 - **activities** — Table of recent activities (default: last 20), with
@@ -644,7 +645,9 @@ Pages:
 - `compare.html` — volume, time, and efficiency EWMA lines per calendar
   year over a fixed Jan–Dec axis (`--compare-window`, default 182), a
   pace-vs-heart-rate scatter coloured by year, plus the year and month
-  comparison reports (which now include a weighted efficiency column). The efficiency chart drops years with
+  comparison reports (which now include a weighted efficiency column). All
+  four charts show only the five most recent years by default; older years
+  remain available from the legend. The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and

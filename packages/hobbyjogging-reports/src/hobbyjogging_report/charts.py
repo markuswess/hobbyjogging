@@ -98,6 +98,8 @@ SUBT_COLORS = {
 }
 CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
 WEEK_MS = 7 * 24 * 60 * 60 * 1000
+COMPARE_VISIBLE_YEARS = 5
+
 COMPARE_COLORS = (
     "#1f77b4",
     "#ff7f0e",
@@ -1397,8 +1399,11 @@ def plot_compare_pace_hr(
     figure = go.Figure()
     years = sorted({point.date.year for point in points})
 
+    visible_from = max(years) - COMPARE_VISIBLE_YEARS + 1
+
     for index, year in enumerate(years):
         chunk = [point for point in points if point.date.year == year]
+        visible = True if year >= visible_from else "legendonly"
 
         figure.add_trace(
             go.Scatter(
@@ -1406,6 +1411,7 @@ def plot_compare_pace_hr(
                 y=[point.avg_hr for point in chunk],
                 mode="markers",
                 name=str(year),
+                visible=visible,
                 marker={
                     "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
                     "size": 6,
@@ -1463,6 +1469,9 @@ def plot_compare(
         "efficiency": "m / excess beat",
     }
     figure = go.Figure()
+    visible_from = max(year for year, _ in series) - (
+        COMPARE_VISIBLE_YEARS - 1
+    )
 
     for index, (year, points) in enumerate(series):
         year_start = date(year, 1, 1)
@@ -1476,6 +1485,7 @@ def plot_compare(
                 y=[value for _, value in points],
                 mode="lines",
                 name=str(year),
+                visible=True if year >= visible_from else "legendonly",
                 line={
                     "color": COMPARE_COLORS[
                         index % len(COMPARE_COLORS)

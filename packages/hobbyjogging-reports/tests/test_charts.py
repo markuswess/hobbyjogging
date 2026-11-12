@@ -474,6 +474,19 @@ class ComparePaceHrChartTests(unittest.TestCase):
         self.assertIn('"name":"2025"', html)
         self.assertIn('"range":[2.0,5.2]', html)
         self.assertIn("Pace vs heart rate by year", html)
+        self.assertEqual(0, html.count('"visible":"legendonly"'))
+
+    def test_only_the_last_five_years_are_visible_by_default(self):
+        points = [
+            PaceHrPoint(date(year, 6, 1), 300.0, 150.0)
+            for year in range(2018, 2027)
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertEqual(4, html.count('"visible":"legendonly"'))
+        for year in range(2018, 2027):
+            self.assertIn(f'"name":"{year}"', html)
 
     def test_empty_points_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -507,6 +520,25 @@ class CompareChartTests(unittest.TestCase):
         self.assertIn("2001-12-31", html)
         self.assertIn("2001-11-11", html)
         self.assertIn("today", html)
+
+    def test_compare_chart_hides_older_years_in_the_legend(self):
+        series = [
+            (year, [(date(year, 1, 1), float(year - 2000))])
+            for year in range(2018, 2027)
+        ]
+
+        html = plot_compare(
+            series,
+            "",
+            metric="volume",
+            window=42,
+            today=date(2026, 11, 11),
+            as_html=True,
+        )
+
+        self.assertEqual(4, html.count('"visible":"legendonly"'))
+        for year in range(2018, 2027):
+            self.assertIn(f'"name":"{year}"', html)
 
     def test_compare_chart_writes_file(self):
         series = [(2026, [(date(2026, 1, 1), 20.0)])]
