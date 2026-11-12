@@ -114,18 +114,40 @@ Updated 2026-11-12.
    in `packages/hobbyjogging-reports/NEXT_UP.md`. Workout sets, race cards, and
    the review-queue `DataSource` API are done; the open piece is rendering the
    queue on the health page.
-2. **Public demo dashboard on GitHub Pages** — split across two sessions.
-   - **Reports session:** build the synthetic demo-DB generator, the `demo-db`
-     command, the `--demo-label` synthetic-data badge, and tests. Full spec in
-     `packages/hobbyjogging-reports/NEXT_UP.md` (“Handoff: synthetic demo
-     database”).
-   - **Root session:** add `demo.sh`, the Pages workflow
-     (`.github/workflows/pages.yml`: weekly schedule + manual dispatch,
-     generate DB → build dashboard → upload/deploy artifact), the README
-     preview section, and enable Pages with “GitHub Actions” as the source.
-   - Constraints: no real data or `data/laufen.ods`; the `.db` is a build
-     artifact and stays out of git (`data/` and `*.db` are already ignored);
-     publish only the static site.
+2. **Public demo dashboard on GitHub Pages** — handoff; the reports half is
+   done, the root half is not.
+   - **Reports (done).** `demo-db --out PATH` writes a deterministic synthetic
+     database: an invented athlete, 18 months of periodized activities,
+     intervals, zone times, wellness, planned workouts, two future races and
+     four shoes; ~2 MB, no raw payloads, and it never reads the canonical DB.
+     `--demo-label TEXT` prints a synthetic-data banner on every page. Usage is
+     documented in `packages/hobbyjogging-reports/README.md` →
+     "Synthetic demo database".
+   - **Root (todo).**
+     - `demo.sh`: build the DB into `build/demo.db` and the site into
+       `build/site`, then print the path. It must **not** use
+       `--env-file .env` (there is no `.env` in CI): call
+       `uv run python -m hobbyjogging_report demo-db --out build/demo.db
+       --force` and `HOBBYJOGGING_DB=build/demo.db uv run python -m
+       hobbyjogging_report dashboard --output build/site --demo-label
+       "Synthetic demo data — not a real athlete" --no-open` directly.
+     - `.gitignore`: add `build/` (the DB and the site are artifacts; `data/`
+       and `*.db` already cover most of it).
+     - `.github/workflows/pages.yml`: `schedule` (weekly) and
+       `workflow_dispatch`; `permissions: contents: read, pages: write,
+       id-token: write`; `concurrency: group: pages`; steps: checkout →
+       `astral-sh/setup-uv` (cache, Python 3.14) → `uv sync --frozen` →
+       `./demo.sh` → `actions/upload-pages-artifact` on `build/site` →
+       `actions/deploy-pages`. No secrets: the demo never touches `.env`, the
+       real DB or the FIT archive.
+     - Root README: a short "Live demo" section with the Pages URL, a note that
+       the data is synthetic and rebuilt weekly, and the local `./demo.sh`
+       command.
+     - One-time: enable Pages with "GitHub Actions" as the source (repo
+       settings; user action).
+   - **Acceptance.** A fresh clone runs `./demo.sh` and gets a working site in
+     `build/site` with the banner on every page; the workflow deploys it on
+     schedule and on demand; nothing personal is committed or published.
 3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
