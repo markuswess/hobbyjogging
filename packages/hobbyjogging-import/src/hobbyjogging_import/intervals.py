@@ -639,7 +639,7 @@ class IntervalsImporter:
             )
             self.writer.replace_event_workout_methods(
                 values["event_id"],
-                _event_methods(raw),
+                event_methods(raw),
                 source=SOURCE,
                 source_record_id=source_record_id,
             )
@@ -670,8 +670,12 @@ def _event_external_id(raw: dict) -> str:
 RACE_CATEGORIES = {"RACE_A", "RACE_B", "RACE_C"}
 
 
-def _event_methods(raw: dict) -> list[str]:
-    """Map Intervals' race categories onto the canonical ``race`` method."""
+def event_methods(raw: dict) -> list[str]:
+    """Map Intervals' race categories onto the canonical ``race`` method.
+
+    Public because the maintenance backfill re-derives the method set for
+    events that predate the mapping.
+    """
     category = str(raw.get("category") or "").upper()
     return ["race"] if category in RACE_CATEGORIES else []
 

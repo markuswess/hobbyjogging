@@ -102,6 +102,14 @@ Updated 2026-11-12.
   both after a successful sync (`--no-classify` skips them); a full-DB run
   takes about half a second. The 2026-11-10 "Easy" run is now
   `continuous`/`recovery`.
+- **Classifier in core.** The workout-category heuristic moved to
+  `hobbyjogging_core.classify` (Category, classify, work_intervals, rep-length
+  buckets); the reports package keeps only the display aggregation
+  (`category_breakdown`). `hobbyjogging-maintenance` now depends on core and
+  the importers, not on the renderer.
+- **Race method backfill.** `event_race_method_v1` applied the
+  `RACE_A/B/C → race` mapping to existing events: 2 gained the method (Baden
+  Stadtlauf, Linz Marathon 2026), 648 unchanged, manual rows untouched.
 - **Real data.** Full FIT archive import and Garmin VO2max backfill have run
   against the real database (4,140 activities, 2,802 with a Garmin VO2max;
   668 events with 2,808 planned zone rows). The historical spreadsheet import
@@ -134,12 +142,9 @@ Updated 2026-11-12.
    activities.
 4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-5. **Classifier into core** (hygiene): move the heuristic out of
-   `hobbyjogging-reports` so `hobbyjogging-maintenance` stops depending on the
-   renderer. No behavior change.
-6. **Gear mileage and the event race-method backfill** — handed to the
-   reports and maintenance packages; specs in their `NEXT_UP.md` files.
-7. **Session report completeness** (low priority). `reports.sh session` shows
+5. **Gear mileage** — handed to the reports session; the spec is in
+   `packages/hobbyjogging-reports/NEXT_UP.md`.
+6. **Session report completeness** (low priority). `reports.sh session` shows
    the core metrics but not laps (needs `DataSource.activity_laps`), tags,
    VO2max, the day's planned workout and wellness, or the review status. Laps
    are the only structural gap (core); the rest are renderer additions in the

@@ -1,96 +1,22 @@
-"""Workout categorization.
+"""Workout categorization for display.
 
-Categories
-----------
-quality
-├── intervals
-│   ├── subt-short   (avg rep <= 4:00)
-│   ├── subt-medium  (avg rep 4:01-7:00)
-│   ├── subt-long    (avg rep > 7:00)
-│   ├── lt1
-│   └── other
-├── longrun          (> 90 min)
-├── race
-├── race-support     (warmup / cooldown)
-└── tempo
-non-quality
-├── easy
-└── recovery
-cross-training
-unknown
-
-Rules
------
-- quality: RPE > 3. RPE exactly 3 can also be quality when the session
-  has explicit quality content (race/subT/LT1/tempo) or intensity/zones
-  indicate quality. If RPE is missing, infer from intensity
-  (IF >= 0.85 or >= 25% of time in Z3+); if impossible -> unknown.
-- A session > 90 min is a longrun even with low RPE, unless its content
-  (race/subt/lt1/tempo) says otherwise.
-- recovery: RPE = 1 and shorter than 40 min.
-- Sub-type keywords come from the activity name only. Descriptions often
-  mention alternatives ("did 3x10@LT1 instead of subT") and would mislead.
-- LT1 wins over subT when both appear (subT was sometimes added to a name
-  only to include a session in the subT report).
-- Rep length ignores work intervals shorter than 60 s (strides).
-- Race warm-ups and cool-downs are quality/race-support, identified by
-  name; this overrides the RPE rule (they are usually RPE 1-3).
-- Non-run activities are cross-training.
+The heuristic itself lives in :mod:`hobbyjogging_core.classify`; this module
+keeps the report-facing aggregation (category stats and their ordering) and
+re-exports the classifier so existing imports keep working.
 """
 
 from dataclasses import dataclass
 
+from hobbyjogging_core.classify import (
+    CROSS_TRAINING,
+    UNKNOWN,
+    Category,
+    classify,
+)
 from hobbyjogging_core.model import Activity, Interval
 
-from .analysis import (
-    LT1_WORDS,
-    RUN_TYPES,
-    classify_interval,
-    work_intervals,
-)
-
-# --- thresholds -----------------------------------------------------------
-
-QUALITY_RPE = 3              # above this is always quality
-LONGRUN_S = 90 * 60
-
-INTENSITY_QUALITY = 0.85      # IF at/above this implies quality
-QUALITY_ZONE_SHARE = 0.25     # share of time in Z3+
-
-RECOVERY_RPE = 1
-RECOVERY_MAX_DURATION_S = 40 * 60
-
-TEMPO_BLOCK_S = 10 * 60
-SUBT_MIN_REP_S = 60           # ignore strides when measuring subT reps
-
-# --- keywords -------------------------------------------------------------
-
-RACE_WORDS = ("race", "wettkampf")
-WARMUP_WORDS = ("warm up", "warm-up", "warmup")
-COOLDOWN_WORDS = ("cool down", "cool-down", "cooldown")
-SUBT_WORDS = ("subt","subthreshold","sub-threshold")
-TEMPO_WORDS = ("tempo", "threshold", "schwelle")
-
-
-@dataclass(frozen=True)
-class Category:
-
-    group: str                  # "quality" | "non-quality" | "cross-training" | "unknown"
-    kind: str = ""              # "intervals" | "longrun" | "race" | "race-support" | "tempo" | "easy" | "recovery"
-    detail: str | None = None   # "subt-short" | "subt-medium" | "subt-long" | "lt1" | "other"
-
-    @property
-    def path(self) -> str:
-        parts = (self.group, self.kind, self.detail)
-        return "/".join(part for part in parts if part)
-
-    @property
-    def quality(self) -> bool:
-        return self.group == "quality"
-
-
-UNKNOWN = Category("unknown")
-CROSS_TRAINING = Category("cross-training")
+from .analysis.common import RUN_TYPES
+from .analysis.efficiency import excess_beats
 
 GROUP_ORDER = {
     "quality": 0,
@@ -110,217 +36,25 @@ class CategoryStat:
     load: float = 0
     time_share: float = 0
     load_share: float = 0
+    distance_m: float = 0
+    excess_beats: float = 0
 
     @property
     def path(self) -> str:
         return self.category.path
 
+    @property
+    def efficiency(self) -> float | None:
+        if self.excess_beats <= 0 or self.distance_m <= 0:
+            return None
+        return self.distance_m / self.excess_beats
 
-def classify(
-    activity: Activity,
-    intervals: list[Interval] | None = None,
-    *,
-    use_stored: bool = True,
-) -> Category:
-    """Classify one activity, optionally using its interval structure.
-
-    With ``use_stored`` (the default for reports) a stored workout
-    classification wins: its quality flag decides quality vs non-quality and
-    its methods refine the category when the name says nothing. Activities
-    without a stored classification fall back to the heuristic below.
-
-    ``use_stored=False`` is the pure heuristic. The workout-classification
-    backfill must use it, otherwise it would read back its own output.
-    """
-    if activity.type not in RUN_TYPES:
-        return CROSS_TRAINING
-
-    intervals = intervals or []
-    text = activity.name.lower()
-    work = work_intervals(intervals)
-
-    support = _race_support(text)
-    if support is not None:
-        return Category("quality", "race-support", support)
-
-    stored = activity.quality if use_stored else None
-
-    if stored is not None:
-        if stored:
-            return _quality_category(activity, text, work)
-
-        if "recovery" in activity.workout_targets or _is_recovery(activity):
-            return Category("non-quality", "recovery")
-
-        return Category("non-quality", "easy")
-
-    quality = _is_quality(activity, text, work)
-
-    if quality is True:
-        return _quality_category(activity, text, work)
-
-    # Duration wins over non-quality: a long run stays a longrun.
-    if activity.duration_s > LONGRUN_S:
-        return Category("quality", "longrun")
-
-    if quality is None:
-        return UNKNOWN
-
-    if _is_recovery(activity):
-        return Category("non-quality", "recovery")
-
-    return Category("non-quality", "easy")
-
-
-# --- quality --------------------------------------------------------------
-
-def _is_quality(
-    activity: Activity,
-    text: str,
-    work: list[Interval],
-) -> bool | None:
-    """Quality decision from RPE, falling back to intensity signals."""
-    if activity.rpe is None:
-        return _intensity_quality(activity)
-
-    if activity.rpe > QUALITY_RPE:
-        return True
-
-    if activity.rpe == QUALITY_RPE:
-        return _maybe_quality(activity, text, work)
-
-    return False
-
-
-def _maybe_quality(
-    activity: Activity,
-    text: str,
-    work: list[Interval],
-) -> bool:
-    """RPE 3 sessions are quality only when something else backs it up."""
-    if _has_quality_content(text, work):
-        return True
-
-    return _intensity_quality(activity) is True
-
-
-def _has_quality_content(text: str, work: list[Interval]) -> bool:
-    return (
-        _has(text, RACE_WORDS)
-        or _has(text, LT1_WORDS)
-        or _has(text, SUBT_WORDS)
-        or _has(text, TEMPO_WORDS)
-        or _has_sustained_block(work)
-    )
-
-
-def _intensity_quality(activity: Activity) -> bool | None:
-    if (
-        activity.intensity is not None
-        and activity.intensity >= INTENSITY_QUALITY
-    ):
-        return True
-
-    zones = activity.pace_zone_times or activity.hr_zone_times
-    total = sum(zones)
-
-    if total > 0:
-        return sum(zones[2:]) / total >= QUALITY_ZONE_SHARE
-
-    if activity.intensity is not None:
-        return False
-
-    return None
-
-
-def _quality_category(
-    activity: Activity,
-    text: str,
-    work: list[Interval],
-) -> Category:
-    # Content wins over duration: explicit types first, longrun last.
-    if _has(text, RACE_WORDS):
-        return Category("quality", "race")
-
-    if _has(text, LT1_WORDS):
-        return Category("quality", "intervals", "lt1")
-
-    subt = _subt_detail(text, work)
-    if subt is not None:
-        return Category("quality", "intervals", subt)
-
-    if _has(text, TEMPO_WORDS) or _has_sustained_block(work):
-        return Category("quality", "tempo")
-
-    if activity.duration_s > LONGRUN_S:
-        return Category("quality", "longrun")
-
-    # A stored method is more specific than an uninformative name.
-    stored = _stored_quality_category(activity)
-    if stored is not None:
-        return stored
-
-    return Category("quality", "intervals", "other")
-
-
-def _stored_quality_category(activity: Activity) -> Category | None:
-    """Category from stored workout methods, when the name says nothing."""
-    methods = set(activity.workout_methods)
-
-    if "long_run" in methods:
-        return Category("quality", "longrun")
-    if "race" in methods:
-        return Category("quality", "race")
-    if "intervals" in methods or "progression" in methods:
-        return Category("quality", "intervals", "other")
-
-    return None
-
-
-def _subt_detail(text: str, work: list[Interval]) -> str | None:
-    if not _has(text, SUBT_WORDS):
-        return None
-
-    reps = [i.duration_s for i in work if i.duration_s >= SUBT_MIN_REP_S]
-    if not reps:
-        return "subt"
-
-    return f"subt-{classify_interval(sum(reps) / len(reps))}"
-
-
-def _has_sustained_block(work: list[Interval]) -> bool:
-    return any(i.duration_s >= TEMPO_BLOCK_S for i in work)
-
-
-def _race_support(text: str) -> str | None:
-    """Warmup/cooldown label, matched by name before the RPE rule."""
-    if _has(text, WARMUP_WORDS):
-        return "warmup"
-    if _has(text, COOLDOWN_WORDS):
-        return "cooldown"
-    return None
-
-
-# --- non-quality ----------------------------------------------------------
-
-def _is_recovery(activity: Activity) -> bool:
-    return (
-        activity.rpe == RECOVERY_RPE
-        and activity.duration_s < RECOVERY_MAX_DURATION_S
-    )
-
-
-# --- helpers --------------------------------------------------------------
-
-def _has(text: str, words: tuple[str, ...]) -> bool:
-    return any(word in text for word in words)
-
-
-# --- aggregation ----------------------------------------------------------
 
 def category_breakdown(
     activities: list[Activity],
     intervals_by_id: dict[str, list[Interval]] | None = None,
+    *,
+    resting_hr_baseline=None,
 ) -> list[CategoryStat]:
     """Aggregate activities by category, grouped and sorted by time.
 
@@ -340,6 +74,21 @@ def category_breakdown(
         stat.sessions += 1
         stat.time_s += activity.duration_s or 0
         stat.load += activity.training_load or 0
+
+        if activity.type in RUN_TYPES:
+            beats = excess_beats(
+                activity.duration_s,
+                activity.avg_hr,
+                (
+                    resting_hr_baseline(activity.date)
+                    if resting_hr_baseline is not None
+                    else None
+                ),
+            )
+
+            if beats is not None and activity.distance_m:
+                stat.distance_m += activity.distance_m
+                stat.excess_beats += beats
 
     total_time = sum(stat.time_s for stat in stats.values())
     total_load = sum(stat.load for stat in stats.values())

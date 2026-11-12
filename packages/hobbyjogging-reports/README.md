@@ -532,7 +532,7 @@ Weekly, monthly and yearly reports include a **category breakdown**
 table: sessions, time, load, and each category's share of the period.
 SubT sessions are refined by rep length when interval data is available.
 
-Rules (`classify.py`):
+Rules (`hobbyjogging_core.classify`):
 
 - **quality**: RPE > 3. RPE exactly 3 can also be quality when the
   session has explicit quality content (race/subT/LT1/tempo) or its
@@ -712,10 +712,11 @@ analysis or chart code:
   `recovery` modules.
 - `series.py` — pure daily-series, moving-average, and EWMA helpers.
 - `summary.py` — period totals, quality-session lists, and recovery averages.
-- `classify.py` — workout categorization (quality / non-quality /
-  cross-training / unknown). It prefers the stored workout classification
-  (`activity_workout_methods/targets`) and falls back to the heuristic for
-  unclassified activities.
+- `classify.py` — category aggregation for display (`CategoryStat`,
+  `category_breakdown`). The heuristic lives in
+  `hobbyjogging_core.classify` and prefers the stored workout classification
+  (`activity_workout_methods/targets`), falling back to name/RPE/intensity
+  when an activity is unclassified.
 - `charts.py` — plotly chart builders shared by the CLI and dashboard.
 - `format.py` — model-based report formatting helpers.
 - `links.py` — Intervals and Garmin Connect URLs for canonical activities.

@@ -12,6 +12,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import date
 
+from hobbyjogging_core.classify import classify
 from hobbyjogging_core.model import Activity
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
@@ -22,7 +23,6 @@ from hobbyjogging_import.quality import (
     WORKOUT_CLASSIFICATION,
     review_fingerprint,
 )
-from hobbyjogging_report.classify import classify
 
 from .context import TaskContext
 

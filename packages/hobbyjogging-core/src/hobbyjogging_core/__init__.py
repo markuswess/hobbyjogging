@@ -1,5 +1,11 @@
 """Canonical training model and shared database helpers."""
 
+from .classify import (
+    CROSS_TRAINING,
+    UNKNOWN,
+    Category,
+    classify,
+)
 from .datasource import DataSource
 from .db import (
     SCHEMA_VERSION,
@@ -49,6 +55,8 @@ __all__ = [
     "Activity",
     "ActivityEquipment",
     "CANONICAL_SPORTS",
+    "CROSS_TRAINING",
+    "Category",
     "DataSource",
     "Equipment",
     "Event",
@@ -66,10 +74,12 @@ __all__ = [
     "SPORT_LABELS",
     "TrainingRepository",
     "TrainingWriter",
+    "UNKNOWN",
     "WORKOUT_METHODS",
     "WORKOUT_TARGETS",
     "WellnessDay",
     "canonical_method",
+    "classify",
     "canonical_sport",
     "canonical_target",
     "classification_for_category",

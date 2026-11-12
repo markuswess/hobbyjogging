@@ -6,7 +6,6 @@ requires-python = ">=3.14"
 dependencies = [
     "hobbyjogging-core",
     "hobbyjogging-import",
-    "hobbyjogging-reports",
 ]
 
 [project.scripts]
@@ -15,7 +14,6 @@ hobbyjogging-maintenance = "hobbyjogging_maintenance.cli:main"
 [tool.uv.sources]
 hobbyjogging-core = { workspace = true }
 hobbyjogging-import = { workspace = true }
-hobbyjogging-reports = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

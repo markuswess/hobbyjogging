@@ -112,14 +112,12 @@ source = { editable = "packages/hobbyjogging-maintenance" }
 dependencies = [
     { name = "hobbyjogging-core" },
     { name = "hobbyjogging-import" },
-    { name = "hobbyjogging-reports" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "hobbyjogging-core", editable = "packages/hobbyjogging-core" },
     { name = "hobbyjogging-import", editable = "packages/hobbyjogging-import" },
-    { name = "hobbyjogging-reports", editable = "packages/hobbyjogging-reports" },
 ]
 
 [[package]]

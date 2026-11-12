@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
-from hobbyjogging_report.classify import Category
+from hobbyjogging_core.classify import Category
 
 from hobbyjogging_maintenance.registry import get_task
 from hobbyjogging_maintenance.runner import run_task

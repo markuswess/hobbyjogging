@@ -111,6 +111,11 @@ Canonical model, schema, and read/write access.
   `Equipment`, zone models; activities carry both VO2max values and tags.
 - `sports.py` — canonical sport names, labels, groups, and the shared alias
   table for FIT/Intervals/manual entry.
+- `classify.py` — the workout-category heuristic (quality/non-quality,
+  intervals/longrun/race/tempo, subT rep length), plus `work_intervals` and
+  the rep-length buckets. It prefers the stored classification and falls back
+  to the heuristic; the classification tasks call it with
+  `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
   (`SCHEMA_VERSION`, currently 10).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
@@ -161,9 +166,9 @@ Analysis, views, and rendering.
   intervals, and wellness; derived metrics such as load, zone distribution,
   pace/HR trends, recovery.
 - `model.py` — typed view models and analysis result types.
-- `classify.py` — workout taxonomy for display. It prefers the stored
-  classification and falls back to the heuristic for unclassified activities;
-  the classification tasks call it with `use_stored=False`.
+- `classify.py` — category aggregation for display (`CategoryStat`,
+  `category_breakdown`). The heuristic itself lives in
+  `hobbyjogging_core.classify`.
 - `daily.py`, `period_report.py`, `subt_report.py`, `overview.py`,
   `recovery_report.py` — one Markdown report per file; `report_commands.py`
   dispatches them.
@@ -181,8 +186,8 @@ implementation.
 
 ### `hobbyjogging-maintenance`
 
-Schema evolution and registered data work. This is the only package allowed to
-depend on all three others; it is the composition root for one-off data
+Schema evolution and registered data work. It depends on core and the
+importers, never on the renderer, and is the composition root for one-off data
 changes.
 
 - `registry.py` — task ids, kinds (`backfill` / `recompute`), registration.
@@ -193,6 +198,7 @@ changes.
 - `store.py` — reads and writes for `data_migrations` and `maintenance_runs`.
 - `workouts.py` — classifier/sheet proposals shared by the classification
   tasks.
+- `backfills/event_race_method_v1.py` — `event_race_method_v1`.
 - `backfills/event_zones.py` — `event_zones_v1`.
 - `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
 - `backfills/workout_classification.py` — `workout_classification_v1`.

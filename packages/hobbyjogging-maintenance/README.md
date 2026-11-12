@@ -48,6 +48,7 @@ with `--no-classify`; backfills stay deliberate.
 
 | id | kind | what |
 |---|---|---|
+| `event_race_method_v1` | backfill | Re-derive the `race` method for existing Intervals events from their payload category. |
 | `event_zones_v1` | backfill | Re-derive planned-event zone kinds/times from the saved Intervals payloads. |
 | `remove_tempo_method_v1` | backfill | Convert the retired `tempo` method to `continuous` (targets unchanged). |
 | `workout_classification_v1` | backfill | Classify activities from the reports classifier and the sheet `Trainigstyp` code; disagreements are left unclassified and listed. |
