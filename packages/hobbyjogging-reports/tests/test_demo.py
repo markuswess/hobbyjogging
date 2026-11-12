@@ -172,6 +172,133 @@ class DemoGeneratorTests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_vo2max_is_a_smooth_daily_value(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                rows = connection.execute(
+                    """
+                    SELECT local_date, MIN(vo2max_garmin), MAX(vo2max_garmin)
+                    FROM activities
+                    WHERE vo2max_garmin IS NOT NULL
+                    GROUP BY local_date
+                    ORDER BY local_date
+                    """
+                ).fetchall()
+
+                self.assertTrue(rows)
+                self.assertTrue(
+                    all(row[1] == row[2] for row in rows)
+                )
+
+                values = [row[1] for row in rows]
+                self.assertLessEqual(
+                    max(
+                        abs(values[index + 1] - values[index])
+                        for index in range(len(values) - 1)
+                    ),
+                    0.2,
+                )
+            finally:
+                connection.close()
+
+    def test_easy_runs_use_only_z1_and_z2(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        a.id,
+                        GROUP_CONCAT(DISTINCT m.method) AS methods,
+                        SUM(
+                            CASE WHEN z.zone_index > 2
+                                 THEN z.seconds ELSE 0 END
+                        ) AS hard
+                    FROM activities a
+                    JOIN activity_zone_times z
+                      ON z.activity_id = a.id AND z.kind = 'pace'
+                    LEFT JOIN activity_workout_methods m
+                      ON m.activity_id = a.id
+                    WHERE a.sport IN ('run', 'trail_run')
+                    GROUP BY a.id
+                    """
+                ).fetchall()
+
+                easy = 0
+                quality = 0
+
+                for row in rows:
+                    methods = (row["methods"] or "").split(",")
+
+                    if "intervals" in methods:
+                        self.assertGreater(row["hard"], 0)
+                        quality += 1
+                    else:
+                        self.assertEqual(0, row["hard"])
+                        easy += 1
+
+                self.assertGreater(easy, 100)
+                self.assertGreater(quality, 50)
+            finally:
+                connection.close()
+
+    def test_future_plan_mirrors_the_recent_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                recent_names = {
+                    row[0]
+                    for row in connection.execute(
+                        """
+                        SELECT DISTINCT name
+                        FROM activities
+                        WHERE local_date BETWEEN ? AND ?
+                        """,
+                        (
+                            (TODAY - timedelta(days=28)).isoformat(),
+                            TODAY.isoformat(),
+                        ),
+                    )
+                }
+                future = connection.execute(
+                    """
+                    SELECT e.name
+                    FROM events e
+                    WHERE e.local_date > ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM event_workout_methods m
+                          WHERE m.event_id = e.id AND m.method = 'race'
+                      )
+                    """,
+                    (TODAY.isoformat(),),
+                ).fetchall()
+
+                self.assertGreaterEqual(len(future), 40)
+                self.assertTrue(
+                    {row[0] for row in future} <= recent_names
+                )
+                self.assertTrue(
+                    any(
+                        "subT" in row[0] or "LT1" in row[0]
+                        for row in future
+                    )
+                )
+            finally:
+                connection.close()
+
     def test_races_are_in_the_future_and_events_extend_the_horizon(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(

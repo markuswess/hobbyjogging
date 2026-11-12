@@ -588,8 +588,11 @@ separately. The scale is reversed compared with some watches:
 
 `demo-db` writes a complete, deterministic training database with an
 invented athlete: 18 months of periodized activities, intervals, zone
-times, wellness, planned workouts, two future races, and four shoes. It
-never reads the canonical database or any personal data.
+times, wellness, planned workouts, two future races, and four shoes. Easy
+and long runs stay in zones 1–2 while workouts carry the hard zones;
+Garmin-style VO2max is one smooth value per day; and the 16-week future
+plan mirrors the last four complete weeks. It never reads the canonical
+database or any personal data.
 
     python -m hobbyjogging_report demo-db --out build/demo.db
 

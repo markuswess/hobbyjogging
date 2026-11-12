@@ -9,12 +9,16 @@ The athlete is invented: a periodized 18-month block (base, build, peak,
 taper), 4-6 sessions per week, easy runs, long runs, subT/LT1 intervals,
 VO2max reps, sustained threshold work, cross-training, and strides. Threshold
 pace improves slowly and average HR at pace declines, so the compare and
-efficiency views have a plausible trend rather than flat noise.
+efficiency views have a plausible trend rather than flat noise. Easy and
+long runs stay in zones 1-2, workouts carry the hard zones, VO2max is a slow
+Garmin-like daily value, and the future plan copies the last four complete
+weeks.
 """
 
 from __future__ import annotations
 
 import calendar
+import math
 import random
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -147,7 +151,7 @@ def _write_demo(
     equipment = _write_equipment(writer, start, today)
     activities = _write_activities(writer, rng, start, today, months=months)
     _write_wellness(writer, activities, start, today, rng)
-    events = _write_events(writer, rng, today)
+    events = _write_events(writer, activities, today)
 
     if with_review_items:
         _write_review_items(writer, activities)
@@ -230,6 +234,7 @@ def _write_activities(
                 phase=phase,
                 recovery_week=recovery_week,
                 progress=progress,
+                vo2max_value=_vo2max_value(day, start, today),
                 index=len(generated),
                 shoe_periods=shoe_periods,
             )
@@ -240,6 +245,14 @@ def _write_activities(
         week_index += 1
 
     return generated
+
+
+def _vo2max_value(day: date, start: date, today: date) -> float:
+    """Slow, Garmin-like VO2max trend; the same value all day."""
+    progress = (day - start).days / max((today - start).days, 1)
+    wave = 0.3 * math.sin(progress * math.tau)
+
+    return round(50.2 + 4.2 * progress + wave, 1)
 
 
 def _phase(progress: float) -> str:
@@ -260,6 +273,7 @@ def _make_session(
     phase: str,
     recovery_week: bool,
     progress: float,
+    vo2max_value: float,
     index: int,
     shoe_periods: list[tuple[date, date, str]],
 ) -> dict:
@@ -286,9 +300,9 @@ def _make_session(
         avg_hr = rng.randint(137, 146) - 2 * progress
         methods = ["long_run"]
         targets = ["marathon"] if phase == "peak" else ["base"]
-        zone_shares = (0.15, 0.55, 0.25, 0.05)
+        zone_shares = (0.2, 0.8, 0.0, 0.0)
         distance_m = duration / pace * 1000
-        vo2max = 51.0 + 4.0 * progress + rng.uniform(-0.4, 0.4)
+        vo2max = vo2max_value
         if "Trail" in name and rng.random() < 0.5:
             sport = "trail_run"
     elif kind == "quality":
@@ -321,8 +335,8 @@ def _make_session(
         avg_hr = rep_hr - 4 - 6 * progress
         methods = [method]
         targets = [target]
-        zone_shares = (0.22, 0.28, 0.32, 0.18)
-        vo2max = 51.5 + 4.0 * progress + rng.uniform(-0.4, 0.4)
+        zone_shares = (0.18, 0.22, 0.35, 0.25)
+        vo2max = vo2max_value
     elif kind == "recovery":
         name = "Recovery jog"
         duration = rng.randint(30, 45) * 60
@@ -330,9 +344,9 @@ def _make_session(
         avg_hr = rng.randint(112, 124) - 2 * progress
         methods = ["continuous"]
         targets = ["recovery"]
-        zone_shares = (0.45, 0.5, 0.05, 0.0)
+        zone_shares = (0.45, 0.55, 0.0, 0.0)
         distance_m = duration / pace * 1000
-        vo2max = 51.0 + 4.0 * progress + rng.uniform(-0.4, 0.4)
+        vo2max = vo2max_value
     else:
         name = rng.choice(_EASY_NAMES)
         duration = rng.randint(38, 58) * 60
@@ -340,9 +354,9 @@ def _make_session(
         avg_hr = rng.randint(128, 140) - 2 * progress
         methods = ["continuous", "strides"] if "strides" in name else ["continuous"]
         targets = ["base"]
-        zone_shares = (0.3, 0.55, 0.13, 0.02)
+        zone_shares = (0.35, 0.65, 0.0, 0.0)
         distance_m = duration / pace * 1000
-        vo2max = 50.5 + 4.0 * progress + rng.uniform(-0.4, 0.4)
+        vo2max = vo2max_value
 
     load = _training_load(kind, duration, phase)
     rpe = _rpe(kind, rng)
@@ -607,7 +621,34 @@ def _write_wellness(
         day += timedelta(days=1)
 
 
-def _write_events(writer: TrainingWriter, rng, today: date) -> int:
+def _plan_templates(activities: list[dict], today: date) -> list[list[dict]]:
+    """The last four complete weeks, used as future-plan templates."""
+    last_monday = _monday(today) - timedelta(weeks=1)
+    weeks = [
+        last_monday - timedelta(weeks=offset)
+        for offset in range(3, -1, -1)
+    ]
+    by_week: dict[date, list[dict]] = {week: [] for week in weeks}
+
+    for activity in activities:
+        week = _monday(activity["day"])
+        if week in by_week:
+            by_week[week].append(activity)
+
+    templates = [
+        sorted(by_week[week], key=lambda activity: activity["day"])
+        for week in weeks
+        if by_week[week]
+    ]
+
+    return templates or [activities[-5:]]
+
+
+def _write_events(
+    writer: TrainingWriter,
+    activities: list[dict],
+    today: date,
+) -> int:
     count = 0
     race_days = {
         today + timedelta(weeks=4): (
@@ -624,56 +665,60 @@ def _write_events(writer: TrainingWriter, rng, today: date) -> int:
         ),
     }
     race_offsets = sorted(race_days)
+    templates = _plan_templates(activities, today)
     monday = _monday(today + timedelta(days=1))
     end = today + timedelta(weeks=16)
+    week_index = 0
 
     while monday <= end:
-        for weekday, kind in ((1, "quality"), (5, "long")):
-            day = monday + timedelta(days=weekday)
+        template = templates[week_index % len(templates)]
+        race_week = any(
+            monday <= race <= monday + timedelta(days=6)
+            for race in race_offsets
+        )
+
+        for index, activity in enumerate(template):
+            day = monday + timedelta(days=activity["day"].weekday())
 
             if day <= today or day > end:
                 continue
 
-            if any(abs((day - race).days) <= 2 for race in race_offsets):
+            if any(
+                abs((day - race).days) <= 2
+                for race in race_offsets
+            ):
                 continue
 
-            if kind == "quality":
-                _, reps, rep_s, rep_pace, rep_hr, recovery_s, method, target = (
-                    _choose_quality(rng, "build", False)
-                )
-                name = "Planned intervals"
-                duration = 900 + reps * rep_s + (reps - 1) * recovery_s + 600
-                distance = duration / rep_pace * 1000
-                description = (
-                    f"{reps} x {rep_s // 60}:{rep_s % 60:02d} at "
-                    f"{_pace_text(rep_pace)}, easy recoveries."
-                )
-                methods = [method]
-                targets = [target]
-            else:
-                name = "Planned long run"
-                duration = 100 * 60
-                distance = duration / 335 * 1000
-                description = "Steady long run, last third at easy tempo."
-                methods = ["long_run"]
-                targets = ["base"]
+            # Race week keeps the easy sessions and drops the hard/long work.
+            if race_week and activity["kind"] in ("quality", "long"):
+                continue
 
             _write_event(
                 writer,
-                f"demo-event-{day.isoformat()}-{kind}",
+                f"demo-event-{day.isoformat()}-{index}",
                 day,
-                name,
-                description,
-                duration,
-                distance,
-                duration / 60 * 0.85,
-                methods,
-                targets,
-                (0.18, 0.52, 0.25, 0.05),
+                activity["name"],
+                (
+                    f"Planned {activity['name']}: the same shape as the "
+                    "recent training block."
+                ),
+                activity["values"]["duration_s"],
+                activity["values"]["distance_m"],
+                activity["load"],
+                activity["methods"],
+                activity["targets"],
+                activity["zone_times"],
+                sport=activity["sport"],
+                zone_kind=(
+                    ZONE_KIND
+                    if activity["sport"] in _RUN_SPORTS
+                    else "hr"
+                ),
             )
             count += 1
 
         monday += timedelta(days=7)
+        week_index += 1
 
     for day, (name, distance_m, duration_s, load) in race_days.items():
         _write_event(
@@ -687,7 +732,7 @@ def _write_events(writer: TrainingWriter, rng, today: date) -> int:
             load,
             ["race"],
             ["marathon"] if distance_m > 15000 else ["speed"],
-            (0.1, 0.15, 0.4, 0.35),
+            _zone_times(duration_s, (0.1, 0.15, 0.4, 0.35)),
         )
         count += 1
 
@@ -705,13 +750,16 @@ def _write_event(
     load: float,
     methods: list[str],
     targets: list[str],
-    zone_shares: tuple[float, ...],
+    zone_times: list[float],
+    *,
+    sport: str = "run",
+    zone_kind: str = ZONE_KIND,
 ) -> None:
     writer.upsert_event(
         event_id=event_id,
         local_date=day.isoformat(),
         name=name,
-        type="run",
+        type=sport,
         source_record_id=None,
         description=description,
         duration_s=round(duration_s),
@@ -728,25 +776,19 @@ def _write_event(
         targets,
         source=DEMO_SOURCE,
     )
-    zones = _zone_times(duration_s, zone_shares)
     writer.set_event_zone_times(
         event_id,
-        ZONE_KIND,
+        zone_kind,
         [
             EventZoneTime(
                 zone_label=f"Z{index}",
                 seconds=seconds,
                 zone_index=index,
             )
-            for index, seconds in enumerate(zones, start=1)
+            for index, seconds in enumerate(zone_times, start=1)
             if seconds
         ],
     )
-
-
-def _pace_text(seconds: float) -> str:
-    seconds = round(seconds)
-    return f"{seconds // 60}:{seconds % 60:02d}/km"
 
 
 def _write_equipment(
