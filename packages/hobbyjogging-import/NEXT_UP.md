@@ -88,8 +88,16 @@ on.
 
 ## Next
 
-Nothing package-local is queued; **Runalyze enrichment** is still waiting on
-the API details (below).
+- **Skip the empty Intervals artifact.** Intervals appends a 1 s, 0 m
+  `RECOVERY` interval at the end of an activity. In the DB: 239 such rows
+  (233 trailing `RECOVERY`, 6 `WORK` inside the activity), across ~235
+  activities. Drop intervals with `duration_s <= 1` and `distance_m < 1` when
+  building the list at the `_to_interval` call site, and expose the predicate
+  (e.g. `is_empty_interval`) so the maintenance `drop_empty_intervals_v1`
+  backfill reuses it. Test a payload with the trailing recovery plus a genuine
+  2 s / 5 m segment that must survive.
+
+**Runalyze enrichment** is still waiting on the API details (below).
 
 ## Waiting on
 
