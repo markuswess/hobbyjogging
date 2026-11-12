@@ -429,6 +429,26 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn("second half trend", html)
         self.assertIn("HR = ", html)
 
+    def test_pace_hr_chart_draws_efficiency_lines_for_both_halves(self):
+        points = [
+            PaceHrPoint(
+                D + timedelta(days=index),
+                1000 / (2.5 + 0.1 * index),
+                125 + 3 * index,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+            )
+            for index in range(8)
+        ]
+
+        html = plot_pace_hr(points, "", as_html=True)
+
+        self.assertIn("first half efficiency", html)
+        self.assertIn("second half efficiency", html)
+        self.assertIn("excess beat", html)
+        self.assertIn("RHR 50 bpm", html)
+
     def test_pace_hr_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

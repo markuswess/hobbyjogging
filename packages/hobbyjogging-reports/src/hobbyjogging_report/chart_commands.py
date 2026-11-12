@@ -567,17 +567,40 @@ def run_pace_hr_chart(
     include_review: bool = False,
 ) -> None:
     """Render the per-run pace vs heart-rate scatter."""
-    from .analysis import pace_hr_points, pace_hr_trends
+    from .analysis import (
+        EFFICIENCY_UNIT,
+        RESTING_HR_WINDOW_DAYS,
+        pace_hr_efficiency_lines,
+        pace_hr_points,
+        pace_hr_trends,
+        resting_hr_baselines,
+    )
     from .charts import plot_pace_hr
 
     activities = reviewed_range(source, start, end, include_review)
-    points = pace_hr_points(activities, start, end)
+    wellness = source.wellness(
+        start - timedelta(days=RESTING_HR_WINDOW_DAYS),
+        end,
+    )
+    points = pace_hr_points(
+        activities,
+        start,
+        end,
+        resting_hr_baseline=resting_hr_baselines(wellness),
+    )
 
     for trend in pace_hr_trends(points):
         print(
             f"note: {trend.label}: HR = {trend.intercept:.1f} + "
             f"{trend.slope:.2f}*speed, r={trend.correlation:.2f} "
             f"(n={trend.points})"
+        )
+
+    for line in pace_hr_efficiency_lines(points):
+        print(
+            f"note: {line.label} efficiency: E = {line.efficiency:.2f} "
+            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm "
+            f"(n={line.points})"
         )
 
     path = plot_pace_hr(points, output=output)

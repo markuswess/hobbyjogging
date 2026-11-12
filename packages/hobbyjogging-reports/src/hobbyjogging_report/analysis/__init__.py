@@ -62,7 +62,13 @@ from .load import (
     load_metrics,
     weekly_run_distance,
 )
-from .pace_hr import PaceHrTrend, pace_hr_points, pace_hr_trends
+from .pace_hr import (
+    PaceHrEfficiencyLine,
+    PaceHrTrend,
+    pace_hr_efficiency_lines,
+    pace_hr_points,
+    pace_hr_trends,
+)
 from .planned import (
     daily_planned_distance,
     daily_planned_load,
@@ -146,7 +152,9 @@ __all__ = [
     "m_per_excess_beat",
     "resting_hr_baseline",
     "resting_hr_baselines",
+    "PaceHrEfficiencyLine",
     "PaceHrTrend",
+    "pace_hr_efficiency_lines",
     "pace_hr_points",
     "pace_hr_trends",
     "pace_s_per_km",

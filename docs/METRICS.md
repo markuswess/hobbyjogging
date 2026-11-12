@@ -54,29 +54,34 @@ dashboard. The dashboard is the last step, never the first.
 - **Rendered**: session report, `eff` activities column, subT work reps and
   summary tables, subT EWMA report, subT chart panel, compare tab.
 
+### HR-speed efficiency line
+
+- **Definition**: for each half of the runs, `HR = RHR + v·60/E`, where `v`
+  is speed in m/s, `RHR` is the half's median 365-day resting-HR baseline, and
+  `E` is the half's weighted efficiency (`Σdistance / Σexcess beats`) in
+  **m/excess beat**. One parameter, no free intercept.
+- **Baseline / thresholds**: resting HR from the same rolling 365-day median
+  (expanding, `None` when absent) used by the efficiency metric; points
+  without a baseline are left out of the line but stay in the scatter.
+- **Informs**: whether the pace/HR cloud behaves like a single efficiency
+  value, and whether aerobic efficiency moved between the two periods.
+- **Validation**: `experiments/hr_efficiency_line.py`, 1,262 steady runs
+  (2022-09 .. 2026-11, median RHR 51): regression R² 0.676 / RMSE 7.76 bpm;
+  efficiency line R² 0.725 / RMSE 7.14 (aerobic range only: 8.11 vs 7.52).
+  Efficiency is flat across the first three speed quartiles (2.41–2.44,
+  corr(eff, speed) −0.12) and drops ~5% in the top quartile.
+- **Caveats**: the weighted aggregate (2.33) sits 3–6% above the
+  regression-implied efficiency (2.19–2.27) because it weights by
+  distance/excess beats while the regression weights every run equally;
+  yearly drift (2.24 in 2022 → 2.39 in 2026) inflates both residuals. HR lag
+  understates short reps, so compare same rep lengths.
+- **Rendered**: pace/HR chart — the two free regression halves plus two dashed
+  efficiency lines, annotated with `E` and median RHR; the CLI prints the same
+  parameters.
+
 ## Candidates
 
-### HR-speed line from one efficiency value
-
-- **Idea**: replace the free least-squares fit `HR = a + b·v` with the
-  efficiency model `HR = RHR + v·60/E`, where `E` is the weighted efficiency
-  and `RHR` the 365-day baseline. One parameter, no free intercept.
-- **Experiment**: `experiments/hr_efficiency_line.py`.
-- **Result** (1,262 steady runs, 2022-09 .. 2026-11, median RHR 51):
-  regression R² 0.676 / RMSE 7.76 bpm; efficiency line R² 0.725 / RMSE 7.14
-  (aerobic range only: 8.11 vs 7.52). Efficiency is flat across the first
-  three speed quartiles (2.41–2.44, corr(eff, speed) −0.12) and drops ~5% in
-  the top quartile.
-- **Decision (2026-11-12)**: keep **both** lines in the pace/HR chart — the
-  two regression halves and one efficiency line for the whole period. The
-  efficiency line uses the **weighted aggregate** (Σdistance / Σexcess beats),
-  not the regression-implied value, so it matches the efficiency reported
-  everywhere else; the regression's implied efficiency stays visible through
-  its slope.
-- **Open**: the weighted aggregate (2.33) sits 3–6% above the regression-
-  implied efficiency (2.19–2.27) because it weights by distance/excess beats
-  while the regression weights every run equally. Yearly drift (2.24 in 2022
-  → 2.39 in 2026) inflates both residuals.
+_None._
 
 ## Rejected
 

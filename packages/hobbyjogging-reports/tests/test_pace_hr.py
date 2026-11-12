@@ -1,7 +1,12 @@
 import unittest
+from dataclasses import replace
 from datetime import date, timedelta
 
-from hobbyjogging_report.analysis import pace_hr_points, pace_hr_trends
+from hobbyjogging_report.analysis import (
+    pace_hr_efficiency_lines,
+    pace_hr_points,
+    pace_hr_trends,
+)
 from hobbyjogging_report.model import PaceHrPoint
 from support import activity_factory
 
@@ -98,6 +103,36 @@ class PaceHrTests(unittest.TestCase):
 
         self.assertEqual([], pace_hr_trends(points))
 
+    def test_points_carry_the_resting_baseline_and_excess_beats(self):
+        points = pace_hr_points(
+            [
+                activity(
+                    id="a",
+                    date=D,
+                    duration_s=3600,
+                    distance_m=10000,
+                    avg_hr=150,
+                )
+            ],
+            D,
+            D,
+            resting_hr_baseline=lambda _day: 50,
+        )
+
+        self.assertEqual(50, points[0].resting_hr)
+        self.assertEqual(10000, points[0].distance_m)
+        self.assertEqual(6000, points[0].excess_beats)
+
+    def test_points_without_a_baseline_are_still_scattered(self):
+        points = pace_hr_points(
+            [activity(id="a", date=D, distance_m=10000, avg_hr=150)],
+            D,
+            D,
+        )
+
+        self.assertIsNone(points[0].resting_hr)
+        self.assertEqual(0, points[0].excess_beats)
+
     def test_speed_is_reciprocal_pace(self):
         points = pace_hr_points(
             [activity(id="a", date=D, distance_m=10000, avg_hr=140)],
@@ -110,3 +145,62 @@ class PaceHrTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PaceHrEfficiencyLineTests(unittest.TestCase):
+
+    def _points(self, efficiency=2.0, resting_hr=50, count=8):
+        points = []
+
+        for index in range(count):
+            speed = 2.5 + 0.1 * index
+            points.append(
+                PaceHrPoint(
+                    D + timedelta(days=index),
+                    pace_s_per_km=1000 / speed,
+                    avg_hr=resting_hr + speed * 60 / efficiency,
+                    resting_hr=resting_hr,
+                    distance_m=10000,
+                    excess_beats=5000,
+                )
+            )
+
+        return points
+
+    def test_constant_efficiency_gives_the_expected_line(self):
+        lines = pace_hr_efficiency_lines(self._points())
+
+        self.assertEqual(["first half", "second half"], [l.label for l in lines])
+
+        for line in lines:
+            self.assertAlmostEqual(50.0, line.intercept)
+            self.assertAlmostEqual(30.0, line.slope)
+            self.assertAlmostEqual(2.0, line.efficiency)
+
+        self.assertAlmostEqual(2.5, lines[0].speed_low)
+        self.assertAlmostEqual(2.8, lines[0].speed_high)
+        self.assertAlmostEqual(125.0, lines[0].at(2.5))
+
+    def test_points_without_a_baseline_have_no_line(self):
+        points = self._points(count=8)
+
+        points = [
+            replace(point, resting_hr=None, excess_beats=0)
+            for point in points
+        ]
+
+        self.assertEqual([], pace_hr_efficiency_lines(points))
+
+    def test_needs_at_least_two_usable_points_per_half(self):
+        points = [
+            replace(point, excess_beats=0) if index < 2 else point
+            for index, point in enumerate(self._points(count=4))
+        ]
+
+        lines = pace_hr_efficiency_lines(points)
+
+        self.assertEqual(1, len(lines))
+        self.assertEqual("second half", lines[0].label)
+
+    def test_too_few_points_have_no_lines(self):
+        self.assertEqual([], pace_hr_efficiency_lines(self._points(count=3)))

@@ -15,7 +15,13 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
-from .analysis import SUBT_CATEGORIES, pace_hr_trends, recovery_bands
+from .analysis import (
+    EFFICIENCY_UNIT,
+    SUBT_CATEGORIES,
+    pace_hr_efficiency_lines,
+    pace_hr_trends,
+    recovery_bands,
+)
 from .format import format_pace
 from .model import (
     AverageWindows,
@@ -1302,6 +1308,34 @@ def plot_pace_hr(
         notes.append(
             f"{trend.label}: HR = {trend.intercept:.1f} "
             f"+ {trend.slope:.2f}\u00b7v, r = {trend.correlation:.2f}"
+        )
+
+    color_for = {
+        "first half": colors[0],
+        "second half": colors[1],
+    }
+
+    for line in pace_hr_efficiency_lines(points):
+        figure.add_trace(
+            go.Scatter(
+                x=[line.speed_low, line.speed_high],
+                y=[
+                    line.at(line.speed_low),
+                    line.at(line.speed_high),
+                ],
+                mode="lines",
+                name=f"{line.label} efficiency",
+                line={
+                    "color": color_for[line.label],
+                    "width": 1.6,
+                    "dash": "dash",
+                },
+                hoverinfo="skip",
+            )
+        )
+        notes.append(
+            f"{line.label} efficiency: E = {line.efficiency:.2f} "
+            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm"
         )
 
     if notes:

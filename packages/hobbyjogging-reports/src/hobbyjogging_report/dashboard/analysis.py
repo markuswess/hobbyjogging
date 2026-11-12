@@ -8,11 +8,13 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
     average_warmup_days,
     distance_averages,
     load_metrics,
     pace_hr_points,
+    resting_hr_baselines,
     rpe_metrics,
     time_averages,
     week_bounds,
@@ -154,7 +156,18 @@ def build_analysis_section(
         else NO_LOAD
     )
 
-    points = pace_hr_points(display, start, end)
+    baseline = resting_hr_baselines(
+        source.wellness(
+            start - timedelta(days=RESTING_HR_WINDOW_DAYS),
+            end,
+        )
+    )
+    points = pace_hr_points(
+        display,
+        start,
+        end,
+        resting_hr_baseline=baseline,
+    )
     pace_hr_html = (
         plot_pace_hr(points, "", as_html=True)
         if points

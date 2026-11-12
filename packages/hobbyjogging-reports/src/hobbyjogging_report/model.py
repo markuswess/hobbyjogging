@@ -181,6 +181,9 @@ class PaceHrPoint:
     pace_s_per_km: float
     avg_hr: float
     name: str = ""
+    resting_hr: float | None = None
+    distance_m: float = 0
+    excess_beats: float = 0
 
     @property
     def speed_m_s(self) -> float:

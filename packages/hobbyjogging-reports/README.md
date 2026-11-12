@@ -101,7 +101,10 @@ HTML dashboard:
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
   to red (newest) with a year colour bar, and a least-squares line is fitted
   to the older and newer half of the runs (parameters on the chart and
-  printed by the CLI).
+  printed by the CLI). Each half also gets a dashed efficiency line,
+  `HR = RHR + v·60/E`, where `E` is that half's weighted efficiency
+  (`Σdistance / Σexcess beats`, in **m/excess beat**) and `RHR` is its median
+  resting-HR baseline; the label shows both values.
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
   choose the metric and smoothing. The EWMA is computed over the whole history, so
@@ -625,7 +628,8 @@ Pages:
 - `activities.html` — the recent activity table (default 50) with workout
   methods and targets, linked to per-activity pages.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
-  charts, plus the pace-vs-heart-rate scatter, over the last two years
+  charts, plus the pace-vs-heart-rate scatter with its two regression halves
+  and two dashed efficiency lines, over the last two years
   (`--analysis-days`, default 731).
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
