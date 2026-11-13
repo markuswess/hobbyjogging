@@ -21,7 +21,7 @@ import calendar
 import math
 import random
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 from hobbyjogging_core import open_database
@@ -244,7 +244,87 @@ def _write_activities(
         monday += timedelta(days=7)
         week_index += 1
 
+    races = (
+        ("Spring 5k", 5000.0, 1290.0, 154),
+        ("Autumn 5k", 5000.0, 1230.0, 56),
+        ("Spring 10k", 10000.0, 2640.0, 126),
+        ("Autumn 10k", 10000.0, 2550.0, 35),
+        ("City Half", 21097.5, 5760.0, 210),
+    )
+
+    for name, distance_m, duration_s, days_ago in races:
+        day = today - timedelta(days=days_ago)
+
+        if day < start:
+            continue
+
+        activity = _make_race(
+            day,
+            name,
+            distance_m,
+            duration_s,
+            index=len(generated),
+            shoe_periods=shoe_periods,
+            vo2max_value=_vo2max_value(day, start, today),
+        )
+        _write_activity(writer, activity)
+        generated.append(activity)
+
     return generated
+
+
+def _make_race(
+    day: date,
+    name: str,
+    distance_m: float,
+    duration_s: float,
+    *,
+    index: int,
+    shoe_periods: list[tuple[date, date, str]],
+    vo2max_value: float,
+) -> dict:
+    """Build one completed race so the demo has results and PBs."""
+    activity_id = f"demo-{day.isoformat()}-race-{index:04d}"
+    pace = duration_s / distance_m * 1000
+    load = round(duration_s / 60 * 1.05, 1)
+    started = datetime.combine(
+        day,
+        time(9, 30),
+        tzinfo=timezone(timedelta(minutes=60)),
+    ).astimezone(timezone.utc)
+    target = "marathon" if distance_m > 15000 else "speed"
+
+    return {
+        "id": activity_id,
+        "day": day,
+        "sport": "run",
+        "name": name,
+        "values": {
+            "local_date": day.isoformat(),
+            "started_at_utc": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "tz_offset_min": 60,
+            "sport": "run",
+            "name": name,
+            "description": "Demo race. Even effort, controlled finish.",
+            "duration_s": duration_s,
+            "elapsed_s": duration_s,
+            "moving_s": duration_s,
+            "distance_m": distance_m,
+            "avg_hr": 176,
+            "training_load": load,
+            "rpe": 5,
+            "feel": 1,
+            "intensity": 0.95,
+            "vo2max_garmin": round(vo2max_value, 1),
+        },
+        "methods": ["race"],
+        "targets": [target],
+        "intervals": [],
+        "zone_times": _zone_times(duration_s, (0.05, 0.1, 0.5, 0.35)),
+        "equipment_id": _shoe_for(day, "run", shoe_periods),
+        "kind": "quality",
+        "load": load,
+    }
 
 
 def _vo2max_value(day: date, start: date, today: date) -> float:

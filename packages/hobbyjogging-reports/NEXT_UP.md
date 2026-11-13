@@ -249,6 +249,13 @@ Current focus: the dashboard's gear/devices and race work.
   prints per-phase seconds and miss counts, and the demo build test bounds
   the misses.
 
+- **Demo coverage check.** A test builds the synthetic database and asserts
+  every embedded report plus the races, equipment, subT EWMA, session and
+  race-day reports render their key sections; the dashboard test checks all
+  eleven tabs and their markers. The demo now includes five completed
+  5k/10k/half races with PB improvements, so the Performance tab has
+  results, PBs, a PB progression and a Riegel fit instead of empty states.
+
 ## Bugs
 
 _None._
@@ -319,13 +326,6 @@ _None._
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
-
-13. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
-   database and asserts every report and dashboard tab renders non-empty
-   content, so a feature that adds a field without demo data fails loudly.
-   Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
-   weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
-   Coaching and Metrics tabs once they exist. See root item 26.
 
 ## Tests and docs
 

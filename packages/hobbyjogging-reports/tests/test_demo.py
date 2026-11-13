@@ -279,7 +279,7 @@ class DemoGeneratorTests(unittest.TestCase):
                 for row in rows:
                     methods = (row["methods"] or "").split(",")
 
-                    if "intervals" in methods:
+                    if "intervals" in methods or "race" in methods:
                         self.assertGreater(row["hard"], 0)
                         quality += 1
                     else:
@@ -494,9 +494,38 @@ class DemoGeneratorTests(unittest.TestCase):
                 "nsa.html",
                 "compare.html",
                 "recovery.html",
+                "performance.html",
+                "gear.html",
+                "docs.html",
+                "lab.html",
                 "health.html",
             ):
                 self.assertTrue((site / name).exists(), name)
+
+            markers = {
+                "index.html": ("Training overview", "Daily Training Report"),
+                "activities.html": ("Activities", "Easy"),
+                "analysis.html": ("Analysis", "Pace vs heart rate"),
+                "nsa.html": ("NSA", "subT"),
+                "compare.html": ("Compare", "Year comparison"),
+                "recovery.html": ("Recovery Report", "Data completeness"),
+                "performance.html": (
+                    "Upcoming races",
+                    "Personal bests",
+                    "PB progression",
+                    "Equivalent times",
+                ),
+                "gear.html": ("Gear", "Coverage"),
+                "docs.html": ("Reports guide", "hobbyjogging-reports"),
+                "lab.html": ("Experiment scripts", "Metrics"),
+                "health.html": ("Data Health", "Open review items"),
+            }
+
+            for name, required in markers.items():
+                page = (site / name).read_text()
+                self.assertGreater(len(page), 1000, name)
+                for marker in required:
+                    self.assertIn(marker, page, name)
 
             index = (site / "index.html").read_text()
             self.assertIn("Synthetic demo data", index)
