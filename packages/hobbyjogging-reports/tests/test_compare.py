@@ -505,11 +505,12 @@ class CompareYearEwmaTests(unittest.TestCase):
         points = dict(series[0][1])
         alpha = 1 - math.exp(-1 / 7)
 
-        self.assertEqual(0.0, points[date(2026, 1, 1)])
-        self.assertAlmostEqual(
-            15.0 * alpha,
-            points[date(2026, 1, 2)],
-        )
+        seed = 15.0 / 3
+        jan1 = (1 - alpha) * seed
+        jan2 = alpha * 15.0 + (1 - alpha) * jan1
+
+        self.assertAlmostEqual(jan1, points[date(2026, 1, 1)])
+        self.assertAlmostEqual(jan2, points[date(2026, 1, 2)])
 
     def test_each_year_starts_where_the_previous_one_ended(self):
         activities = [
@@ -559,24 +560,62 @@ class CompareYearEwmaTests(unittest.TestCase):
         series = compare_year_ewma(
             activities,
             "efficiency",
-            42,
+            1,
             today=date(2025, 3, 10),
             resting_hr=lambda _day: 50,
         )
         points = dict(series[0][1])
 
         first = 10000 / ((150 - 50) * 60)
+        second = 10000 / ((160 - 50) * 60)
+        alpha = 1 - math.exp(-1 / 1)
         self.assertAlmostEqual(first, points[date(2025, 3, 1)], places=4)
         # Rest days carry the previous value instead of dropping to zero.
         self.assertAlmostEqual(first, points[date(2025, 3, 4)], places=4)
-        alpha = 1 - math.exp(-1 / 42)
-        expected = (
-            alpha * (10000 / ((160 - 50) * 60))
-            + (1 - alpha) * first
+        self.assertAlmostEqual(
+            alpha * second + (1 - alpha) * first,
+            points[date(2025, 3, 5)],
+            places=4,
         )
-        self.assertAlmostEqual(expected, points[date(2025, 3, 5)], places=4)
         self.assertLess(points[date(2025, 3, 5)], points[date(2025, 3, 4)])
         self.assertEqual(date(2025, 3, 10), series[0][1][-1][0])
+
+    def test_efficiency_line_starts_near_its_steady_state(self):
+        start = date(2025, 1, 1)
+        normal = 10000 / ((125 - 50) * 60)
+        activities = [
+            activity(
+                id="spike",
+                date=start,
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=105.56,
+                workout_methods=["continuous"],
+                workout_targets=["base"],
+            )
+        ] + [
+            activity(
+                id=f"n{index}",
+                date=start + timedelta(days=index),
+                distance_m=10000,
+                duration_s=3600,
+                avg_hr=125,
+                workout_methods=["continuous"],
+                workout_targets=["base"],
+            )
+            for index in range(1, 60)
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "efficiency",
+            42,
+            today=start + timedelta(days=59),
+            resting_hr=lambda _day: 50,
+        )
+        first = dict(series[0][1])[start]
+
+        self.assertLess(abs(first - normal) / normal, 0.05)
 
     def test_efficiency_drops_years_with_too_little_hr_data(self):
         activities = [

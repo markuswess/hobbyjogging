@@ -180,6 +180,19 @@ def compare_periods(
     return result
 
 
+def _ewma_seed(values: list[float], window: int) -> float:
+    """Seed an EWMA with the mean of its first time constant of data.
+
+    Starting from ``values[0]`` makes the first plotted point a single day's
+    carry-forward value, which can sit far from the steady state (the 2022
+    efficiency line started ~10% high). The first window is a cheap burn-in
+    estimate that works for zero-filled volume/load series too.
+    """
+    sample = values[:window]
+
+    return sum(sample) / len(sample)
+
+
 def compare_year_planned_ewma(
     activities: list[Activity],
     events: list[Event],
@@ -266,10 +279,14 @@ def compare_year_planned_ewma(
 
     daily = actual_daily + planned_daily
     values = [value for _, value in daily]
+    # Match compare_year_ewma's actual-only seed so the two lines agree
+    # through today, even when today itself is carried as a zero.
+    seed_daily = _daily_metric(activities, metric, start, today)
+    seed_values = [value for _, value in seed_daily] or values
     smoothed = ewma(
         values,
         alpha_from_time_constant(window),
-        initial=values[0],
+        initial=_ewma_seed(seed_values, window),
     )
     by_year: dict[int, list[tuple[date, float]]] = {}
 
@@ -460,7 +477,7 @@ def compare_year_ewma(
     smoothed = ewma(
         values,
         alpha_from_time_constant(window),
-        initial=values[0],
+        initial=_ewma_seed(values, window),
     )
     by_year: dict[int, list[tuple[date, float]]] = {}
 

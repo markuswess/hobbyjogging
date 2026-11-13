@@ -205,6 +205,12 @@ Current focus: the dashboard's gear/devices and race work.
   from `recovery_report.WINDOWS[-1]` (182), matching the embedded report's
   7/42/182-day label and the page range and completeness line. Tests cover
   the default title, the denominator, and the `--recovery-days` override.
+- **Compare EWMA burn-in.** `compare_year_ewma` and the planned variant seed
+  the EWMA with the mean of the first time constant of data instead of the
+  first day's value. The 2022 efficiency line now starts at 2.38 instead of
+  2.72 and agrees with the year table's 2.47; volume, time and load use the
+  same burn-in. The planned line keeps the actual-only seed, so it still
+  meets the actual line through today.
 - **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
@@ -225,21 +231,6 @@ Current focus: the dashboard's gear/devices and race work.
   are Intervals.icu's typed reps.
 
 ## Bugs
-
-- **Compare efficiency line starts ~10% high.** The 2022 efficiency line begins
-  at **2.715** on 2022-09-08 — the first day with a steady run and a resting-HR
-  baseline — while the year table reports **2.472** for 2022, so the line
-  starts at the top of the y-axis and slides down through 2023. Cause:
-  `compare_year_ewma` seeds the EWMA with `initial=values[0]`, one day's
-  carry-forward efficiency, and the 182-day alpha decays that error over
-  roughly six months. Volume, time and load have the same seeding but start
-  from zero-filled days, so their start is low and barely visible.
-  - Fix: burn in the EWMA. Initialise with the mean of the first window (or the
-    first few values) and/or drop the first time constant from the plotted
-    series, consistently for every compare metric.
-  - Test: the first plotted point of a synthetic series lands within a few
-    percent of its steady-state mean, and the 2022 line start agrees with the
-    year table.
 
 - **Bucket PBs compare unequal distances.** `personal_bests()` takes the
   fastest raw `duration_s` inside a bucket, and the buckets are wide: 5k is
