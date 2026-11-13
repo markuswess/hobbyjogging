@@ -55,7 +55,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Efficiency vs duration (start-up + drift) | Is session efficiency duration-dependent, and do a start-up term and drift explain it? | parked | `efficiency_duration.py` | 2026-11-13 |
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? | candidate | — | 2026-11-13 |
-| Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? | candidate | — | 2026-11-13 |
+| Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? | experimenting | `aerobic_threshold.py` | 2026-11-13 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
 | Garmin VO2max jumps | Why do the readings jump — sport-specific values, terrain, or device history? (revisit with canonical elevation data) | parked | `vo2max_jumps.py` | 2026-11-13 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
