@@ -209,14 +209,13 @@ Updated 2026-11-12.
      resolved item id so the history explains the closure.
    - **Prompt table**: move `_VALUE_PROMPTS` from `triage.py` to `values.py`
      so the interactive edit mode and triage share one prompt/parser table.
-   - **Notes and comments — settle the home first.** Three designs exist for
-     user-authored text: Runalyze merges comments into `description`, Strava
-     gets its own table (item 16), and the independence item plans an
-     append-only `activity_notes`. Pick one before any of them ships:
-     `description` (one editable blob per activity, no history) or a notes
-     table (multiple timestamped notes, per source, the audit trail the edit
-     log already argues for). The edit CLI and the reports line depend on the
-     answer.
+   - **Text fields (decided).** One training-notes text per activity, not a
+     list. `activities.description` is the training notes — Intervals
+     description, the sheet's `Beschreibung`, Runalyze as a blank-fill fallback
+     — and the edit CLI edits it with `--description`. **No `activity_notes`
+     table**: the field inventory shows one training text and one social text
+     per activity, so a notes table would be the speculative abstraction the
+     rules warn about. The social text lives in `activity_strava` (item 16).
    - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
      new_json, source, note, created_at)`, append-only, written in the same
      transaction as the edit. `activity_field_sources` is a snapshot, not a
@@ -506,8 +505,9 @@ Updated 2026-11-12.
     - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
       same personal token — relevant to the coaching workflow (item 25), not to
       bulk import.
-    - **Dependencies**: the notes/description decision (item 1) for comments,
-      official race results (item 18), and the equipment identity work below.
+    - **Dependencies**: official race results (item 18) and the equipment
+      identity work below. Comments need no decision — they fill
+      `activities.description` only when it is blank (item 1).
     - **Phases**: (1) export/API client with a dry run that reports what is
       available per field and per year; (2) comments and tags into the chosen
       text home; (3) gear with cross-source identity; (4) race results;
@@ -521,6 +521,11 @@ Updated 2026-11-12.
       an `ambiguous_equipment` review item — never guess (the two
       "Lunge C-Dur" pairs differ only by colour and date). 2022+ gear has no
       sheet counterpart and simply creates new rows.
+    - **Import rules**: Runalyze never writes `name` — its title is a Garmin
+      auto-title, and an unmatched row that creates the activity would own the
+      name and block the Intervals session name the classifier reads. Its
+      description fills `description` only when blank; comments go there, not
+      into a separate table.
     - **Matching**: temporal plus distance, since Runalyze exposes no Garmin
       activity id; unmatched rows create activities so the history stays
       complete. Enrichment only — never timing or distance.
@@ -538,13 +543,16 @@ Updated 2026-11-12.
       local equivalent, and a reimport cannot undo it.
     - **What is missing**: events are Intervals-authoritative (`upsert_event`
       replaces every field including NULLs, removal soft-excludes), wellness has
-      no owner tracking, there is no notes/comments table, and planned workouts
-      carry methods/targets/zones but no step list.
+      no owner tracking, and planned workouts carry methods/targets/zones but no
+      step list.
     - **Phases**, in order: owner-tracked events (`event_field_sources`, manual
-      wins, a new `AGENTS.md` rule) → notes/comments (`activity_notes`,
-      append-only) → planned-workout steps and authoring → subjective wellness
-      ownership → thresholds/zones (item 8) → the front end from item 1 →
-      Garmin/FIT ingest so Intervals becomes optional.
+      wins, a new `AGENTS.md` rule) → planned-workout steps and authoring →
+      subjective wellness ownership → thresholds/zones (item 8) → the front end
+      from item 1 → Garmin/FIT ingest so Intervals becomes optional.
+    - **Not needed**: a notes/comments table. The field inventory shows one
+      training-notes text per activity (`description`) plus a social text on
+      Strava, so this work reuses `description` rather than adding
+      `activity_notes`.
     - **Parked decisions**: whether programmed workouts are followed on the
       watch (which would need a `.fit` workout export and upload) or the lap
       button is enough — the 370 intervals activities with ≥3 WORK reps suggest
@@ -567,6 +575,9 @@ Updated 2026-11-12.
       tables, not columns on `activities`: source-specific metadata, not a
       canonical metric. `external_id` is the Strava activity id, from which
       `https://www.strava.com/activities/<id>` is derived for the link.
+    - **Writes only `activity_strava`**: the pun title and its description
+      never touch `activities.name`, `activities.description` or `classify()`.
+      The training notes stay canonical (item 1); Strava is social text.
     - **Classifier isolation**: the Strava title never enters `classify()` — a
       pun ("Race you to the bakery") must not match the `race`/`tempo`/`lt1`
       keywords. Keeping it out of `activities.name` makes that structural.

@@ -284,6 +284,20 @@ Workout classification is set-based and orthogonal:
   base/recovery only is non-quality; no values is unknown. Strides never make
   a session quality by themselves.
 
+Text fields have fixed roles:
+
+- `name` — the session name ("easy", "3x9' subT long"), owned by the source
+  that records the training intent. An auto-generated platform title
+  ("Vienna Running") is a fallback, never a preferred value.
+- `description` — the training notes: how the session went, the feeling, the
+  intervals and paces. Intervals and the historical sheet fill it, Runalyze may
+  only fill a blank, and a manual edit outranks both.
+- `activity_strava` (planned) — the social text: the pun title and its
+  continuation. It never enters `description` and never reaches `classify()`.
+
+There is one training-notes text per activity, not a list; a notes table is
+added only if per-note timestamps ever become a need.
+
 Two invariants are enforced by the writer:
 
 - A manual field (`is_manual = 1`) is never overwritten by an import.
