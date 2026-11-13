@@ -153,7 +153,10 @@ Updated 2026-11-12.
    - **Provenance**: every field goes through `TrainingWriter.set_manual_field`
      (`is_manual=1`, `source='manual'`), so a reimport cannot undo it; `sport`
      still normalizes through `core.sports`; the sets go through
-     `set_manual_activity_workout_methods` / `_targets`.
+     `set_manual_activity_workout_methods` / `_targets`. **`MANUAL_FIELDS`
+     currently rejects `name`, `description`, `rpe`, `feel` and `sub_sport`**,
+     so that tuple has to grow first — `set_manual_field` raises for every one
+     of those flags today.
    - **Quality**: reuse `apply_manual_edit`, which re-runs the quality rules and
      prints the findings that still stand.
    - **Relationship to triage**: both surfaces share one write path —
@@ -474,7 +477,38 @@ Updated 2026-11-12.
 15. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
    than duplicated here.
-16. **Raw vs derived: document the tiers and add a check** (low priority). The
+16. **Strava titles, descriptions and links** (core + import + reports; low
+    priority). Strava is the social layer: the title is a pun, the description
+    sometimes a note, while the Intervals title is the workout name. Both are
+    worth keeping, and they must not compete — `name` is deliberately not a
+    conflict field, so a Strava import writing it would be ignored (Intervals
+    names are never blank) or open thousands of review items.
+    - **Schema**: `activity_strava(activity_id PRIMARY KEY, external_id,
+      title, description, source, source_record_id, is_manual, updated_at)` —
+      a table like `activity_equipment` and the planned device/weather/route
+      tables, not columns on `activities`: source-specific metadata, not a
+      canonical metric. `external_id` is the Strava activity id, from which
+      `https://www.strava.com/activities/<id>` is derived for the link.
+    - **Classifier isolation**: the Strava title never enters `classify()` — a
+      pun ("Race you to the bakery") must not match the `race`/`tempo`/`lt1`
+      keywords. Keeping it out of `activities.name` makes that structural.
+    - **Import, CSV first**: the Strava bulk export (`activities.csv`) matched
+      on start time (±2 min) and distance (±2%), unmatched rows left alone,
+      checksum-idempotent. Titles and descriptions only: Strava
+      distance/time/HR would add a third source competing for ownership with no
+      benefit.
+    - **API, deferred**: OAuth with a client secret and refresh token, 100
+      requests per 15 min and 1,000/day — only if the CSV proves the titles are
+      wanted continuously.
+    - **Reports**: a `Strava: …` line under the workout name in the session
+      report, the description as an annotation, and the link to the activity —
+      the same pattern as the triage `(ci)`/`(cg)` links. Not in the activities
+      table, where a second line costs row height.
+    - **Tests**: CSV parsing, the ±2 min / 2% match, an unmatched row writing
+      nothing, a pun never affecting the classification, the URL derived from
+      the id, and a reimport not duplicating the row.
+
+17. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable
@@ -484,7 +518,7 @@ Updated 2026-11-12.
    recomputes, and a recompute reproduces the same sets. No schema change; a
    `computed_by` column only if a queryable need appears.
 
-17. **Official race results** (core + import + reports). Race results, PBs,
+18. **Official race results** (core + import + reports). Race results, PBs,
    and the Riegel fit currently use GPS distance/time because there is no
    official race metadata. `events.distance_m` is a planned/announced
    distance, not a result, and `activities.distance_m` is the measured
