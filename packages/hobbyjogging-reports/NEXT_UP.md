@@ -184,6 +184,22 @@ Current focus: the dashboard's gear/devices and race work.
   `docs/ARCHITECTURE.md` records that laps are device splits and intervals
   are Intervals.icu's typed reps.
 
+## Bugs
+
+- **Recovery tab window mismatch (182 vs 186).** The tab queries and labels a
+  186-day window — `RECOVERY_DAYS = 186`, the `--recovery-days` default, the
+  `dashboard.sh` help, the page title `start → end` and the "N of 186 days"
+  completeness line — while the embedded recovery report states 7/42/**182**-day
+  averages, so one tab shows two windows. The 186 arrived in `703c4d0` with no
+  recorded reason.
+  - Fix: one source of truth. Derive the window from
+    `recovery_report.WINDOWS[-1]` (182) instead of a separate constant, default
+    `--recovery-days` to it, and update `dashboard.sh` and the README. If the
+    extra 4 days are intentional slack, say so in the help text and on the
+    page instead of leaving two numbers.
+  - Tests: the page title, the completeness denominator and the report's
+    window label agree; `--recovery-days` still overrides.
+
 ## Next
 
 1. **Device timeline.** Depends on the root device registry. Add a device
