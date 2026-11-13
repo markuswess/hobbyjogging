@@ -33,6 +33,7 @@ from .model import (
     SubtPoint,
     TimePoint,
     TimeZoneWeek,
+    Vo2maxMeasurement,
     Vo2maxPoint,
     ZoneAveragePoint,
 )
@@ -1466,6 +1467,76 @@ def plot_compare_pace_hr(
         as_html=as_html,
         width=1650,
         height=1500,
+    )
+
+
+def plot_compare_vo2max(
+    measurements: list[Vo2maxMeasurement],
+    output: str,
+    title: str = "Garmin VO2max by year",
+    as_html: bool = False,
+) -> str:
+    """Raw Garmin VO2max readings, one marker per activity, by year."""
+    _require_data(measurements)
+    reference_year = 2001
+    reference_start = date(reference_year, 1, 1)
+    years = sorted({measurement.date.year for measurement in measurements})
+    visible_from = max(years) - (COMPARE_VISIBLE_YEARS - 1)
+    figure = go.Figure()
+
+    for index, year in enumerate(years):
+        chunk = [
+            measurement
+            for measurement in measurements
+            if measurement.date.year == year
+        ]
+        year_start = date(year, 1, 1)
+
+        figure.add_trace(
+            go.Scatter(
+                x=[
+                    reference_start
+                    + timedelta(days=(measurement.date - year_start).days)
+                    for measurement in chunk
+                ],
+                y=[measurement.value for measurement in chunk],
+                mode="markers",
+                name=str(year),
+                visible=(
+                    True if year >= visible_from else "legendonly"
+                ),
+                marker={
+                    "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
+                    "size": 6,
+                    "opacity": 0.7,
+                },
+            )
+        )
+
+    figure.update_xaxes(
+        title_text="month",
+        range=[
+            reference_start,
+            date(reference_year, 12, 31),
+        ],
+        dtick="M1",
+        tickformat="%b",
+    )
+    figure.update_yaxes(title_text="Garmin VO2max")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=700,
+        margin={"l": 60, "r": 30, "t": 70, "b": 100},
+        legend=_legend_below(),
+        hovermode="closest",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1200,
     )
 
 

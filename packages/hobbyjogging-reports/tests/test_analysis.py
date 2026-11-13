@@ -19,6 +19,7 @@ from hobbyjogging_report.analysis import (
     subt_session_point,
     subt_work_points,
     time_averages,
+    vo2max_measurements,
     vo2max_points,
     week_bounds,
     week_start,
@@ -1152,6 +1153,39 @@ class RecoveryTrendTests(unittest.TestCase):
 
 
 class Vo2maxTests(unittest.TestCase):
+
+    def test_raw_measurements_are_not_averaged(self):
+        activities = [
+            Activity(id="a", date=D, type="run", vo2max_garmin=60),
+            Activity(id="b", date=D, type="run", vo2max_garmin=58),
+            Activity(
+                id="c",
+                date=D,
+                type="ride",
+                vo2max_garmin=50,
+            ),
+            Activity(
+                id="d",
+                date=D + timedelta(days=1),
+                type="trail_run",
+                vo2max_garmin=62,
+            ),
+        ]
+
+        measurements = vo2max_measurements(
+            activities,
+            D,
+            D + timedelta(days=1),
+        )
+
+        self.assertEqual(
+            [58, 60, 62],
+            [measurement.value for measurement in measurements],
+        )
+        self.assertEqual(
+            [D, D, D + timedelta(days=1)],
+            [measurement.date for measurement in measurements],
+        )
 
     def test_uses_running_garmin_values_and_daily_mean(self):
         activities = [

@@ -11,8 +11,13 @@ from ..analysis import (
     compare_year_ewma,
     compare_year_planned_ewma,
     pace_hr_points,
+    vo2max_measurements,
 )
-from ..charts import plot_compare, plot_compare_pace_hr
+from ..charts import (
+    plot_compare,
+    plot_compare_pace_hr,
+    plot_compare_vo2max,
+)
 from ..command_support import activity_start, resting_hr_lookup
 from ..compare import compare_report
 from ..html import markdown_to_html
@@ -23,6 +28,7 @@ NO_CHART = '<p class="muted">No activities to compare.</p>'
 NO_PACE_HR = (
     '<p class="muted">No runs with pace and heart rate to compare.</p>'
 )
+NO_VO2MAX = '<p class="muted">No Garmin VO2max readings to compare.</p>'
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,7 @@ class CompareSection:
     volume_html: str
     time_html: str
     efficiency_html: str
+    vo2max_html: str
     pace_hr_html: str
     years_report_html: str
     months_report_html: str
@@ -59,6 +66,7 @@ def build_compare_section(
         today,
         resting_hr_baseline=baseline,
     )
+    vo2max = vo2max_measurements(activities, start, today)
 
     def chart(metric: str) -> str:
         series = compare_year_ewma(
@@ -93,6 +101,11 @@ def build_compare_section(
         volume_html=chart("volume"),
         time_html=chart("time"),
         efficiency_html=chart("efficiency"),
+        vo2max_html=(
+            plot_compare_vo2max(vo2max, "", as_html=True)
+            if vo2max
+            else NO_VO2MAX
+        ),
         pace_hr_html=(
             plot_compare_pace_hr(pace_hr, "", as_html=True)
             if pace_hr

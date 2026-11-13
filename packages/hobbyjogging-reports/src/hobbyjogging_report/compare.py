@@ -34,6 +34,10 @@ def _efficiency_cell(value: float | None) -> str:
     return "-" if value is None else f"{value:.2f}"
 
 
+def _vo2max_cell(value: float | None) -> str:
+    return "-" if value is None else f"{value:.1f}"
+
+
 def _all_years_start(source: DataSource, end: date) -> date:
     """First Jan 1 covered by the source, falling back to 2000."""
     getter = getattr(source, "earliest_activity_date", None)
@@ -98,8 +102,8 @@ def compare_report(
     lines.extend([
         "",
         "| Period | Runs | Cross | Run time | Cross time | Run km | "
-        "Avg pace | Avg HR | Efficiency |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "Avg pace | Avg HR | Garmin VO2max | Efficiency |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
 
     for period in periods:
@@ -110,6 +114,7 @@ def compare_report(
             f"{_km_cell(period.run_distance_m)} | "
             f"{_pace_cell(period.pace_s_per_km)} | "
             f"{_hr_cell(period.avg_hr)} | "
+            f"{_vo2max_cell(period.vo2max_garmin)} | "
             f"{_efficiency_cell(period.efficiency)} |"
         )
 

@@ -92,6 +92,7 @@ from .vo2max import (
     VO2MAX_LONG_DAYS,
     VO2MAX_SHORT_DAYS,
     VO2MAX_WARMUP_DAYS,
+    vo2max_measurements,
     vo2max_points,
 )
 from .zones import (
@@ -176,6 +177,7 @@ __all__ = [
     "subt_work_points",
     "subt_ewma",
     "time_averages",
+    "vo2max_measurements",
     "vo2max_points",
     "week_bounds",
     "week_end",

@@ -7,13 +7,35 @@ from datetime import date
 
 from hobbyjogging_core.model import Activity
 
-from ..model import Vo2maxPoint
+from ..model import Vo2maxMeasurement, Vo2maxPoint
 from ..series import alpha_from_time_constant, date_range, ewma
 from .common import RUN_TYPES
 
 VO2MAX_SHORT_DAYS = 7
 VO2MAX_LONG_DAYS = 42
 VO2MAX_WARMUP_DAYS = 5 * VO2MAX_LONG_DAYS
+
+
+def vo2max_measurements(
+    activities: list[Activity],
+    start: date,
+    end: date,
+) -> list[Vo2maxMeasurement]:
+    """Raw Garmin VO2max readings, one per activity, without averaging."""
+    return sorted(
+        (
+            Vo2maxMeasurement(
+                date=activity.date,
+                value=activity.vo2max_garmin,
+            )
+            for activity in activities
+            if activity.type in RUN_TYPES
+            and activity.vo2max_garmin is not None
+            and activity.vo2max_garmin > 0
+            and start <= activity.date <= end
+        ),
+        key=lambda measurement: (measurement.date, measurement.value),
+    )
 
 
 def vo2max_points(

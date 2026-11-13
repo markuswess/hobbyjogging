@@ -7,6 +7,7 @@ from pathlib import Path
 from hobbyjogging_report.charts import (
     plot_compare,
     plot_compare_pace_hr,
+    plot_compare_vo2max,
     plot_load,
     plot_pace_hr,
     plot_overview,
@@ -25,6 +26,7 @@ from hobbyjogging_report.model import (
     RpePoint,
     SubtPoint,
     TimePoint,
+    Vo2maxMeasurement,
     TimeZoneWeek,
     Vo2maxPoint,
     ZoneAveragePoint,
@@ -455,6 +457,33 @@ class PaceHrChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+
+class CompareVo2maxChartTests(unittest.TestCase):
+
+    def test_raw_values_are_grouped_by_year_without_averaging(self):
+        measurements = [
+            Vo2maxMeasurement(date(2025, 6, 1), 54.2),
+            Vo2maxMeasurement(date(2025, 6, 2), 54.2),
+            Vo2maxMeasurement(date(2026, 6, 1), 55.1),
+        ]
+
+        html = plot_compare_vo2max(measurements, "", as_html=True)
+
+        self.assertIn('"name":"2025"', html)
+        self.assertIn('"name":"2026"', html)
+        self.assertIn("Garmin VO2max by year", html)
+        self.assertIn('"y":[54.2,54.2]', html)
+        self.assertIn('"y":[55.1]', html)
+        self.assertIn('"mode":"markers"', html)
+
+    def test_empty_measurements_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_compare_vo2max(
+                    [],
+                    str(Path(tmp) / "compare-vo2max.png"),
+                )
 
 
 class ComparePaceHrChartTests(unittest.TestCase):

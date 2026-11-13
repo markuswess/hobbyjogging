@@ -336,11 +336,11 @@ class CompareReportTests(unittest.TestCase):
         self.assertIn("2025-01-01 → 2026-12-31", report)
         self.assertIn(
             "| Period | Runs | Cross | Run time | Cross time | Run km | "
-            "Avg pace | Avg HR | Efficiency |",
+            "Avg pace | Avg HR | Garmin VO2max | Efficiency |",
             report,
         )
         self.assertIn(
-            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | - |",
+            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | - | - |",
             report,
         )
         self.assertIn(
@@ -370,7 +370,7 @@ class CompareReportTests(unittest.TestCase):
         self.assertIn("# Training Comparison by Month", report)
         self.assertIn("| 2025-12 | 0 | 0 | - | - | - | - | - | - |", report)
         self.assertIn(
-            "| 2026-01 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - |",
+            "| 2026-01 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - | - |",
             report,
         )
 
@@ -391,7 +391,7 @@ class CompareReportTests(unittest.TestCase):
 
         self.assertIn("1 activity excluded (import review)", report)
         self.assertIn(
-            "| 2026 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - |",
+            "| 2026 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | - | - | - |",
             report,
         )
 
@@ -418,7 +418,37 @@ class CompareReportTests(unittest.TestCase):
 
         # 10 km / ((140 - 50) * 60) excess beats.
         self.assertIn(
-            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | 1.85 |",
+            "| 2025 | 1 | 0 | 1h00 | - | 10.0 | 6:00/km | 140 | - | 1.85 |",
+            report,
+        )
+
+    def test_report_shows_latest_raw_garmin_vo2max(self):
+        source = FakeSource(
+            [
+                activity(
+                    id="a",
+                    date=date(2025, 6, 1),
+                    distance_m=10000,
+                    vo2max_garmin=54.2,
+                ),
+                activity(
+                    id="b",
+                    date=date(2025, 6, 3),
+                    distance_m=10000,
+                    vo2max_garmin=55.1,
+                ),
+            ]
+        )
+
+        report = compare_report(
+            "years",
+            date(2025, 1, 1),
+            date(2025, 12, 31),
+            source,
+        )
+
+        self.assertIn(
+            "| 2025 | 2 | 0 | 2h00 | - | 20.0 | 6:00/km | - | 55.1 | - |",
             report,
         )
 

@@ -116,8 +116,9 @@ HTML dashboard:
   hours/week, matching the dedicated volume and time charts.
   Volume and time also draw dashed projection lines for the current and
   future years: actual values through today, then the planned events. If
-  today has no run yet, today's planned value is used. The EWMA is computed
-  over the whole history, so
+  today has no run yet, today's planned value is used. The textual
+  year/month comparison reports include the latest raw Garmin VO2max reading
+  for each period. The EWMA is computed over the whole history, so
   each year starts on the previous year's closing value. Only the five most
   recent years are visible by default; older years stay in the legend and can
   be enabled there. The current year is partial and marks today.
@@ -303,8 +304,10 @@ wellness data does not pull an average down.
 ### VO2max chart
 
 `vo2max` plots Garmin's running VO2max as one dot per day, with 7-day
-and 42-day exponentially weighted averages. It uses running activities
-only and ignores Runalyze estimates and cycling/swimming VO2max values.
+and 42-day exponentially weighted averages. The Compare tab has a separate
+raw version: one dot per activity, no daily averaging or EWMA. Both use
+running activities only and ignore Runalyze estimates and cycling/swimming
+VO2max values.
 
 Same-day Garmin values are averaged. Days without a measurement carry
 the last value forward, so the averages track the metric's standing
@@ -656,11 +659,12 @@ Pages:
 - `compare.html` — volume (km/week), time (hours/week), and efficiency EWMA lines
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
   182), with dashed projected volume/time lines that follow actual values
-  through today and then the plan, a
-  pace-vs-heart-rate scatter coloured by year, plus the year and month
-  comparison reports (which now include a weighted efficiency column). All
-  four charts show only the five most recent years by default; older years
-  remain available from the legend. The efficiency chart drops years with
+  through today and then the plan, a Garmin VO2max dot plot with one raw
+  value per activity, a pace-vs-heart-rate scatter coloured by year, plus the
+  year and month comparison reports (which include the latest raw Garmin
+  VO2max reading and a weighted efficiency column). All charts show only the
+  five most recent years by default; older years remain available from the
+  legend. The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, workout methods and

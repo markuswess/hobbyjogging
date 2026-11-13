@@ -162,6 +162,15 @@ class ComparePeriod:
     pace_s_per_km: float | None = None
     avg_hr: float | None = None
     efficiency: float | None = None
+    vo2max_garmin: float | None = None
+
+
+@dataclass(frozen=True)
+class Vo2maxMeasurement:
+    """One raw Garmin VO2max reading from one activity."""
+
+    date: date
+    value: float
 
 
 @dataclass
