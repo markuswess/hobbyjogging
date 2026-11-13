@@ -217,6 +217,13 @@ Current focus: the dashboard's gear/devices and race work.
    efficiency charts with temperature and wind; add a per-year data-coverage
    line for both.
 
+4. **Route grouping.** Group activities by route so pace, HR and efficiency
+   compare like-for-like, with a route page listing its best efforts. Depends
+   on the root route item.
+
+5. **Wellness extras.** A readiness view (readiness, sleep score, stress,
+   respiration, spO2) plus a weight trend, once the columns land.
+
 ## Tests and docs
 
 Covered now:

@@ -94,12 +94,39 @@ on.
 
 ## Next
 
+- **Consistency audit** (`review scan --rules consistency`). A dataset-wide
+  scan for contradictions between the stored classification and the evidence,
+  producing `consistency` review items (info, non-hiding) with a suggestion in
+  `context_json` and a triage `(a)ccept` action that writes the suggestion as
+  manual. Evidence-gated and conservative — measured yields:
+  - `intervals` but the WORK reps cover >90% of the activity → suggest
+    `continuous` (38).
+  - `run` with ≥40 m/km lap elevation → suggest `trail_run` (9); also use
+    `sub_sport` (`trail`, `mountain`, `treadmill`) as evidence.
+  - `race` but no event within ±1 day, inside calendar coverage → suggest
+    dropping `race` (1); `sub_sport='RACE'` is supporting evidence.
+  - `vo2max` but no WORK rep ≤5 min → suggest `threshold` (6).
+  - `recovery` target with avg HR ≥150 → suggest `base` (3).
+  - `long_run` under 90 min → suggest dropping it (2).
+  - `intervals`+`threshold` without a sustained WORK block → suggest `tempo`
+    (1).
+  Rules fire only when the evidence exists; ungated, the counts explode with
+  history artefacts (162 / 45 / 69). A changed suggestion supersedes the old
+  item.
+- **Duplicate/overlap detection.** Flag two activities that are the same
+  session: same sport, overlapping start (±15 min) or same day, distance
+  within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
+  item carrying both activity ids; resolve by excluding one. Runs in the
+  quality scan, idempotent by a fingerprint over the sorted pair.
 - **Max HR and weather capture.** Write the FIT session max HR, Intervals
   `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
   (`average_temp`, `average_feels_like`, `average_wind_speed`,
   `average_wind_gust`, `average_clouds`) plus the sheet's `Temperatur in °C`.
   Depends on the core `activities.max_hr` column and the `activity_weather`
   table.
+- **Wellness extras and routes.** Map the selected wellness keys into the new
+  columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
+  migrations land.
 - **Device capture.** Parse FIT `file_id` (manufacturer, product, serial) into
   the core device registry and link the activity as `recorder`; normalize
   Intervals `device_name` (`GARMIN ENDURO` / `Garmin Enduro`, `EDGE_540` /

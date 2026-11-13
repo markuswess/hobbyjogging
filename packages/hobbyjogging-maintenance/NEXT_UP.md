@@ -28,6 +28,10 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`wellness_extras_v1`** (backfill). Fill the new wellness columns from
+  the stored Intervals wellness payloads (3,022 days), idempotent, dry-run.
+- **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
+  `Streckennummer` to routes and link the activities.
 - **`activity_max_hr_v1`** (backfill). Fill `activities.max_hr` from the
   stored payloads (FIT session, Intervals `max_heartrate`, sheet `max. Hf`),
   owner-based with a 2 bpm tolerance, manual untouched. Idempotent, dry-run,

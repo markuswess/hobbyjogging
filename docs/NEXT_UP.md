@@ -250,7 +250,36 @@ Updated 2026-11-12.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
-6. **Device registry and per-activity device** (core + import + maintenance +
+6. **Wellness beyond HRV, resting HR and sleep** (core + import +
+   maintenance + reports). Intervals wellness carries 47 keys; we store three.
+   The useful extras: `readiness`, `sleepScore`/`sleepQuality`, `stress`,
+   `respiration`, `spO2`, `mood`, `soreness`/`fatigue`, `steps`,
+   `floorsClimbed`, `weight`, and Intervals' `ctl`/`atl`.
+   - **Next migration**: `wellness_days` gains the selected nullable columns.
+   - **Import**: map the Intervals wellness payload; Runalyze later.
+   - **Backfill `wellness_extras_v1`** from the stored payloads (3,022 days).
+   - **Reports**: a readiness view (readiness, sleep score, stress,
+     respiration, spO2), a weight trend, and steps/floors as non-training
+     activity.
+   - Start with the four with the best signal-to-noise — readiness,
+     sleepScore, stress, respiration — and leave the rest behind a flag.
+
+7. **Route identity and grouping** (core + import + maintenance + reports).
+   The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
+   (993), but the canonical model has no route. FIT payloads carry no GPS
+   streams, so historical route identity can only come from the sheet.
+   - **Next migration**: `routes(id, name, external_ref, notes)` and
+     `activity_routes(activity_id, route_id, source, source_record_id,
+     is_manual)` — a table, since one run can cover several routes.
+   - **Import/maintenance**: map `Strecke` (with `Streckennummer` as the
+     stable key) to routes and link the activity; `activity_routes_v1`
+     backfills from the sheet payloads.
+   - **Reports**: group activities by route so pace, HR and efficiency compare
+     like-for-like; a route page with its best efforts.
+   - **Open**: GPS-derived routes for the FIT era would need stored streams,
+     which do not exist today.
+
+8. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
    `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
    2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
@@ -279,19 +308,19 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-7. **Runalyze enrichment** when the API auth/endpoint details are settled:
+9. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-8. **Homelab cutover**: DB + importer + dashboard generator + static server,
+10. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-9. **Reports backlog** — handed to the reports session; the list lives in
+11. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: the equipment report and tab
    (including devices), the race report plus Performance tab, and the Docs
    tab.
-10. **Raw vs derived: document the tiers and add a check** (low priority). The
+12. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable
