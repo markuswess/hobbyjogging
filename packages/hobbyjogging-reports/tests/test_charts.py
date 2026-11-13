@@ -696,7 +696,9 @@ class PbProgressionChartTests(unittest.TestCase):
         )
 
         self.assertIn("PB progression", html)
-        self.assertIn('"shape":"hv"', html)
+        # Points connect directly, not with step lines.
+        self.assertNotIn('"shape":"hv"', html)
+        self.assertIn('"mode":"lines+markers"', html)
         self.assertIn('"name":"5k"', html)
         self.assertIn('"name":"10k"', html)
         self.assertNotIn('"name":"Trail"', html)

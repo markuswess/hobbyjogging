@@ -91,11 +91,11 @@ this list keeps the recent decisions only.
   race as well. The estimator itself is unchanged — age weighting and a
   shape/level split are lab questions.
 
-- **PB progression in pace, standard buckets only.** The step chart plots
+- **PB progression in pace, standard buckets only.** The chart plots
   average pace (min/km) on a `M:SS` axis instead of raw times, so a 15 s 5k
   gain is visible beside a marathon line, and only 5k/10k/HM/M get a line:
-  Trail and Other have no standard distance, so a step there is a distance
-  change, not a PB. Their fastest times stay in the tables as
+  Trail and Other have no standard distance, so a level there is a
+  distance change, not a PB. Their fastest times stay in the tables as
   `Trail (raw)` / `Other (raw)`. Equal times do not advance a line; tests
   cover strict improvements, ties, bucket separation and short-course
   rejection. The 2% tolerance inside a bucket waits for official race

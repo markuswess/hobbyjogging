@@ -1695,7 +1695,7 @@ def plot_pb_progressions(
     title: str = "PB progression",
     as_html: bool = False,
 ) -> str:
-    """Step lines of PB improvements in pace, one per standard bucket."""
+    """PB improvements in pace, one connected line per standard bucket."""
     _require_data(progressions)
     paces = [
         pace
@@ -1728,7 +1728,7 @@ def plot_pb_progressions(
                 y=step_paces,
                 mode="lines+markers",
                 name=progression.bucket,
-                line={"shape": "hv", "width": 2, "color": color},
+                line={"width": 2, "color": color},
                 marker={"size": 7, "color": color},
                 text=[
                     (
