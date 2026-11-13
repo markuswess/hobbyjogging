@@ -118,3 +118,13 @@ dashboard. The dashboard is the last step, never the first.
 ## Rejected
 
 One line per rejected idea — name, reason, date — so it is not re-litigated.
+
+- **Efficiency frontier (best-run envelope)**, rejected 2026-11-13. The
+  top-quartile quarterly envelope is a smoother level (SD 0.073 vs 0.086) but
+  less reliable (split-half 0.60 vs 0.75) and tracks the trend worse (slope
+  0.024 vs 0.042 per year, R² 0.18 vs 0.39); no top-share from 10 % to 50 %
+  beats the average, and the sample-size bias was absent (raw-frontier
+  correlation with quarter n was −0.19, not positive). It is a level shift,
+  not extra signal. Evidence:
+  `git show 143267d:experiments/efficiency_frontier.py` and
+  `experiments/README.md`.
