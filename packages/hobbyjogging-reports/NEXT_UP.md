@@ -278,6 +278,15 @@ on a core or root change.
   VO2max" and the compare chart is "Garmin running VO2max by year". The
   cycling series waits on the core sport column in root's VO2max bug.
 
+- **The race chart draws the prediction line.** `plot_races()` draws
+  `t = t_ref · (d/d_ref)^β` through the reference race instead of the free
+  least-squares line, rings that race, and labels the line with the fitted
+  exponent, n, and the anchor's bucket and date. `riegel_time()` is the one
+  formula behind both the drawn line and `equivalent_times()`, so the chart
+  and the table can no longer disagree; the `races` report names the anchor
+  race as well. The estimator itself is unchanged — age weighting and a
+  shape/level split are lab questions.
+
 ## Bugs
 
 _None._
@@ -285,7 +294,7 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first; 9 and 10 need root
-items 24 and 25. Only **12** and **13** can be done in this package today.
+items 24 and 25. Only **12** can be done in this package today.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -371,24 +380,6 @@ items 24 and 25. Only **12** and **13** can be done in this package today.
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
-13. **Race plot: draw the prediction line, not the free fit.** The Performance
-    tab's log-log chart draws `fit_riegel()`'s free least-squares line, while the
-    equivalent-time table is anchored at the most recent 10k. Two different
-    lines, so the chart contradicts the table. Draw the line the predictions
-    actually use — through the reference race with the fitted exponent,
-    `t = t_ref · (d/d_ref)^β` — and label it with that race and its date. One
-    line on the chart, not two.
-    - Mark the reference race in the scatter so it is visible which point the
-      line passes through.
-    - The estimator stays as it is for now. The open questions — age-weighting
-      the exponent, splitting shape from level, and the measured collapse of a
-      hard recent window (the last 24 months hold only 5k/10k/trail, n=9, which
-      puts a marathon at 2:27 from a 2× span) — go to the lab as an experiment,
-      not into the report.
-    - Tests: the plotted line passes through the reference race; the line and
-      the equivalent-time table agree at every standard distance; the CLI
-      `races` report and the Performance tab agree.
-
 ## Tests and docs
 
 Covered now:
@@ -399,10 +390,11 @@ Covered now:
 - zone EWMA points past the requested end are marked projected;
 - PB selection per distance bucket (tolerance and short-course rejection)
   and the race-day report;
-- the Docs page render (README content present, nav marks Docs active).
+- the Docs page render (README content present, nav marks Docs active);
+- the race chart line passes through the reference race and matches the
+  equivalent-time table at every standard distance, and the CLI `races`
+  report and the Performance tab print the same predictions.
 
 New work should add:
 
-- device-timeline coverage, once the field lands;
-- the Riegel weighting: an old outlier moves the fit less, the label
-  carries the weighting and n, and PBs stay unweighted.
+- device-timeline coverage, once the field lands.

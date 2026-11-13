@@ -13,6 +13,7 @@ from .analysis import (
     pace_s_per_km,
     personal_bests,
     race_results,
+    riegel_reference,
     upcoming_races,
 )
 from .classify import classify
@@ -191,6 +192,14 @@ def races_report(
                 f"{fit.points} races (R² = {fit.r2:.2f})."
             ),
         ])
+        reference = riegel_reference(results)
+
+        if reference is not None:
+            lines.extend([
+                "",
+                f"Predictions are anchored to the {reference.bucket} on "
+                f"{reference.activity.date}.",
+            ])
 
     if predictions:
         lines.extend([

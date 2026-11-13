@@ -1,4 +1,5 @@
 import json
+import math
 import tempfile
 import unittest
 from datetime import date, timedelta
@@ -25,9 +26,12 @@ from hobbyjogging_report.charts import (
 )
 from hobbyjogging_report.analysis import (
     EquipmentStat,
+    equivalent_times,
     fit_riegel,
     pb_progressions,
     race_results,
+    riegel_reference,
+    riegel_time,
 )
 from hobbyjogging_core.model import Activity, Equipment
 from hobbyjogging_report.model import (
@@ -739,6 +743,78 @@ class RaceChartTests(unittest.TestCase):
         html = plot_races(results, fit, "", as_html=True)
         self.assertIn("Riegel", html)
         self.assertIn('"type":"log"', html)
+
+    def test_race_chart_draws_the_prediction_line_through_the_reference(self):
+        activities = [
+            Activity(
+                id=label,
+                date=D + timedelta(days=index),
+                type="run",
+                distance_m=distance,
+                duration_s=duration,
+                workout_methods=["race"],
+                workout_targets=["speed"],
+            )
+            for index, (label, distance, duration) in enumerate(
+                (
+                    ("5k", 5000, 1200),
+                    ("10k", 10000, 2500),
+                    ("HM", 21097, 5600),
+                )
+            )
+        ]
+        results = race_results(activities)
+        fit = fit_riegel(results)
+        reference = riegel_reference(results)
+
+        html = plot_races(results, fit, "", as_html=True)
+        index = html.find("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.find("[", index):]
+        )
+        line = next(
+            trace
+            for trace in data
+            if trace.get("name")
+            == f"Riegel from {reference.activity.date}"
+        )
+        marker = next(
+            trace for trace in data if trace.get("name") == "reference race"
+        )
+
+        self.assertEqual(
+            [reference.activity.distance_m / 1000],
+            marker["x"],
+        )
+        self.assertAlmostEqual(
+            reference.activity.duration_s / 60,
+            marker["y"][0],
+        )
+
+        low = min(result.activity.distance_m for result in results)
+        high = max(result.activity.distance_m for result in results)
+        self.assertEqual([low / 1000, high / 1000], line["x"])
+        self.assertAlmostEqual(
+            riegel_time(reference, fit, low) / 60,
+            line["y"][0],
+        )
+
+        # The drawn line is the table: same value at every standard distance.
+        slope = math.log(line["y"][1] / line["y"][0]) / math.log(
+            line["x"][1] / line["x"][0]
+        )
+
+        for label, predicted, _pb in equivalent_times(results, fit):
+            distance_km = {
+                "5k": 5.0,
+                "10k": 10.0,
+                "HM": 21.0975,
+                "M": 42.195,
+            }[label]
+            on_line = line["y"][0] * (
+                distance_km / line["x"][0]
+            ) ** slope
+            self.assertAlmostEqual(predicted / 60, on_line)
 
 
 class EquipmentChartTests(unittest.TestCase):

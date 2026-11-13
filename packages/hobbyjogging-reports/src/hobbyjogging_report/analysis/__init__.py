@@ -108,6 +108,8 @@ from .races import (
     personal_bests,
     race_bucket,
     race_results,
+    riegel_reference,
+    riegel_time,
     upcoming_races,
 )
 from .recovery import RecoveryBand, RecoveryBands, recovery_bands, recovery_trends
@@ -204,6 +206,8 @@ __all__ = [
     "personal_bests",
     "race_bucket",
     "race_results",
+    "riegel_reference",
+    "riegel_time",
     "upcoming_races",
     "interval_efficiency",
     "is_lt1_activity",

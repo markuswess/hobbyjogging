@@ -11,8 +11,11 @@ from hobbyjogging_report.analysis import (
     personal_bests,
     race_bucket,
     race_results,
+    riegel_reference,
+    riegel_time,
     upcoming_races,
 )
+from hobbyjogging_report.format import fmt_clock
 from hobbyjogging_report.race_report import race_report, races_report
 from support import FakeSource, activity_factory
 
@@ -116,9 +119,17 @@ class RaceAnalysisTests(unittest.TestCase):
         self.assertIsNotNone(fit)
         self.assertAlmostEqual(1.06, fit.exponent, places=2)
         self.assertAlmostEqual(1.0, fit.r2, places=3)
+
+        # Every synthetic race lies on the line, so the anchored prediction
+        # through any of them reproduces the others.
+        reference = next(
+            result
+            for result in results
+            if result.activity.id == "5000"
+        )
         self.assertAlmostEqual(
-            60 * (10 ** 1.06) * 4,
-            fit.duration_s(10000),
+            60 * (21.097 ** 1.06) * 4,
+            riegel_time(reference, fit, 21097),
             places=4,
         )
 
@@ -267,6 +278,71 @@ class RaceAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(24, split.delta_s_per_km)
 
 
+class RiegelLineTests(unittest.TestCase):
+
+    def _results(self):
+        return race_results(
+            [
+                _race(id="5k", date=D, distance_m=5000, duration_s=1200),
+                _race(
+                    id="10k",
+                    date=D - timedelta(days=10),
+                    distance_m=10000,
+                    duration_s=2500,
+                ),
+                _race(
+                    id="hm",
+                    date=D - timedelta(days=20),
+                    distance_m=21097,
+                    duration_s=5600,
+                ),
+                _race(
+                    id="trail",
+                    date=D - timedelta(days=30),
+                    type="trail_run",
+                    distance_m=25000,
+                    duration_s=9000,
+                ),
+            ]
+        )
+
+    def test_reference_is_the_latest_road_10k(self):
+        reference = riegel_reference(self._results())
+
+        self.assertEqual("10k", reference.activity.id)
+
+    def test_line_passes_through_the_reference_race(self):
+        results = self._results()
+        fit = fit_riegel(results)
+        reference = riegel_reference(results)
+
+        self.assertAlmostEqual(
+            reference.activity.duration_s,
+            riegel_time(
+                reference,
+                fit,
+                reference.activity.distance_m,
+            ),
+        )
+
+    def test_equivalent_times_are_the_reference_line(self):
+        results = self._results()
+        fit = fit_riegel(results)
+        reference = riegel_reference(results)
+        distances = {
+            "5k": 5000.0,
+            "10k": 10000.0,
+            "HM": 21097.5,
+            "M": 42195.0,
+        }
+
+        for label, predicted, _pb in equivalent_times(results, fit):
+            self.assertAlmostEqual(
+                riegel_time(reference, fit, distances[label]),
+                predicted,
+            )
+
+
 class RaceReportTests(unittest.TestCase):
 
     def _source(self):
@@ -331,6 +407,34 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("20:00", report)
         self.assertIn("## Personal bests", report)
         self.assertIn("Riegel estimate", report)
+
+    def test_report_predictions_match_the_table(self):
+        source = self._source()
+        report = races_report(source, today=D)
+        results = race_results(source.activities(date(2000, 1, 1), D))
+        fit = fit_riegel(results)
+
+        for label, predicted, _pb in equivalent_times(results, fit):
+            self.assertIn(
+                f"| {label} | {fmt_clock(predicted)} |",
+                report,
+            )
+
+    def test_report_and_performance_tab_show_the_same_predictions(self):
+        from hobbyjogging_report.dashboard.performance import (
+            build_performance_section,
+        )
+
+        source = self._source()
+        report = races_report(source, today=D)
+        section = build_performance_section(source, today=D)
+        results = race_results(source.activities(date(2000, 1, 1), D))
+        fit = fit_riegel(results)
+
+        for label, predicted, _pb in equivalent_times(results, fit):
+            text = fmt_clock(predicted)
+            self.assertIn(f"| {label} | {text} |", report)
+            self.assertIn(text, section.equivalent_html)
 
     def test_bucket_filter_applies_to_results_and_pbs(self):
         report = races_report(self._source(), bucket="10k", today=D)

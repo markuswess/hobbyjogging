@@ -182,11 +182,6 @@ class RiegelFit:
     r2: float
     points: int
 
-    def duration_s(self, distance_m: float) -> float:
-        return 60 * math.exp(
-            self.intercept + self.exponent * math.log(distance_m / 1000)
-        )
-
 
 def fit_riegel(results: list[RaceResult]) -> RiegelFit | None:
     """Fit log(time) against log(distance) over the race results."""
@@ -226,21 +221,32 @@ def fit_riegel(results: list[RaceResult]) -> RiegelFit | None:
     )
 
 
-def equivalent_times(
-    results: list[RaceResult],
-    fit: RiegelFit | None,
-) -> list[tuple[str, float, float | None]]:
-    """Predicted standard-distance times plus the current PB in each bucket.
+def riegel_time(
+    reference: RaceResult,
+    fit: RiegelFit,
+    distance_m: float,
+) -> float:
+    """Predicted time at a distance, anchored on the reference race.
 
-    The reference is the most recent road 10k, falling back to the most
-    recent road race. Trail results are not used as the reference.
+    This is the line the equivalent times and the race chart share: it always
+    passes through the reference result, which a free least-squares line does
+    not.
+    """
+    activity = reference.activity
+
+    return activity.duration_s * (
+        distance_m / activity.distance_m
+    ) ** fit.exponent
+
+
+def riegel_reference(results: list[RaceResult]) -> RaceResult | None:
+    """The race the predictions and their line are anchored to.
+
+    The most recent road 10k, falling back to the most recent road race.
+    Trail results are not used as the reference.
     """
     race = next(
-        (
-            result
-            for result in results
-            if result.bucket == "10k"
-        ),
+        (result for result in results if result.bucket == "10k"),
         None,
     )
 
@@ -254,16 +260,27 @@ def equivalent_times(
             None,
         )
 
+    return race
+
+
+def equivalent_times(
+    results: list[RaceResult],
+    fit: RiegelFit | None,
+) -> list[tuple[str, float, float | None]]:
+    """Predicted standard-distance times plus the current PB in each bucket.
+
+    The predictions scale :func:`riegel_reference` by the fitted exponent;
+    the PB column is all-time.
+    """
+    race = riegel_reference(results)
+
     if race is None or fit is None:
         return []
 
-    reference = race.activity
     rows = []
 
     for label, distance_m in STANDARD_DISTANCES.items():
-        predicted = reference.duration_s * (
-            distance_m / reference.distance_m
-        ) ** fit.exponent
+        predicted = riegel_time(race, fit, distance_m)
         pb = next(
             (
                 result.activity.duration_s

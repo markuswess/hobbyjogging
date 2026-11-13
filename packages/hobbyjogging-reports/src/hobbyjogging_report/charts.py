@@ -25,6 +25,8 @@ from .analysis import (
     pace_hr_efficiency_lines,
     pace_hr_trends,
     recovery_bands,
+    riegel_reference,
+    riegel_time,
 )
 from .format import fmt_clock, fmt_time, format_pace
 from .model import (
@@ -1812,29 +1814,60 @@ def plot_races(
         )
 
     if fit is not None and points:
+        reference = riegel_reference(results)
         low = min(point.activity.distance_m for point in points)
         high = max(point.activity.distance_m for point in points)
-        figure.add_trace(
-            go.Scatter(
-                x=[low / 1000, high / 1000],
-                y=[fit.duration_s(low) / 60, fit.duration_s(high) / 60],
-                mode="lines",
-                name=f"Riegel (n={fit.points})",
-                line={"color": "#111111", "width": 2, "dash": "dash"},
-                hoverinfo="skip",
+
+        # One line: the one the equivalent-time table uses, anchored on the
+        # reference race rather than a free fit that can miss every point.
+        if reference is not None:
+            race = reference.activity
+            figure.add_trace(
+                go.Scatter(
+                    x=[low / 1000, high / 1000],
+                    y=[
+                        riegel_time(reference, fit, low) / 60,
+                        riegel_time(reference, fit, high) / 60,
+                    ],
+                    mode="lines",
+                    name=f"Riegel from {race.date}",
+                    line={"color": "#111111", "width": 2, "dash": "dash"},
+                    hoverinfo="skip",
+                )
             )
-        )
-        figure.add_annotation(
-            text=f"time ∝ distance^{fit.exponent:.2f} · R² = {fit.r2:.2f}",
-            xref="paper",
-            yref="paper",
-            x=0.01,
-            y=0.99,
-            xanchor="left",
-            yanchor="top",
-            showarrow=False,
-            font={"size": 11},
-        )
+            figure.add_trace(
+                go.Scatter(
+                    x=[race.distance_m / 1000],
+                    y=[race.duration_s / 60],
+                    mode="markers",
+                    name="reference race",
+                    marker={
+                        "symbol": "circle-open",
+                        "size": 17,
+                        "line": {"color": "#111111", "width": 2},
+                    },
+                    text=[
+                        f"{race.date} {race.name or reference.bucket}"
+                        f"<br>{race.distance_m / 1000:.2f} km, "
+                        f"{fmt_clock(race.duration_s)}"
+                    ],
+                    hoverinfo="text",
+                )
+            )
+            figure.add_annotation(
+                text=(
+                    f"time ∝ distance^{fit.exponent:.2f} · n={fit.points}"
+                    f"<br>through the {reference.bucket} on {race.date}"
+                ),
+                xref="paper",
+                yref="paper",
+                x=0.01,
+                y=0.99,
+                xanchor="left",
+                yanchor="top",
+                showarrow=False,
+                font={"size": 11},
+            )
 
     figure.update_xaxes(title_text="distance (km)", type="log")
     figure.update_yaxes(title_text="time (min)", type="log")
