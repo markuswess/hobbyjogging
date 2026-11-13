@@ -620,8 +620,8 @@ Updated 2026-11-12.
      The race report shows both the official and GPS values so a mismatch is
      visible. The computed pace uses one consistent pair, never a mix.
    - **Relationship to race links**: this does not require
-     `event_activity_links` (item 4); the row is keyed by activity. A later link can enrich it with
-     the event's planned distance/zone metadata.
+     `event_activity_links` (item 4); the row is keyed by activity. A later link
+     can enrich it with the event's planned distance/zone metadata.
    - **Tests**: writer idempotency, `race_results()` returns the stored row,
      PB/bucket/Riegel prefer official values, the GPS fallback is unchanged,
      and the race report shows both values.
