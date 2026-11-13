@@ -52,7 +52,14 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Idea | Question | Status | Experiment | Updated |
 |---|---|---|---|---|
 | Durability / decoupling | Do I fade within long runs, and is durability improving? | candidate | — | 2026-11-13 |
-| Personal Riegel exponent | What is my pace-vs-distance exponent, and what equivalent times follow? | candidate | — | 2026-11-13 |
+| Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? | candidate | — | 2026-11-13 |
+| Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? | candidate | — | 2026-11-13 |
+| Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
+| Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
+| Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? | candidate | — | 2026-11-13 |
 | Polarization index | How polarized is my zone distribution, and does it beat the Z3+4 share? | candidate | — | 2026-11-13 |
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
+| HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (needs canonical weight and max HR) | parked | — | 2026-11-13 |
+| Heat-adjusted efficiency | How much of an efficiency change is temperature? (needs canonical temperature) | parked | — | 2026-11-13 |
+| GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs canonical elevation) | parked | — | 2026-11-13 |
