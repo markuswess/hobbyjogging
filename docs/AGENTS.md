@@ -35,6 +35,9 @@ Rules:
 
 ## Working the todo lists
 
+- **Bugs first.** A reported bug outranks new work: fix it before starting a
+  feature, and a bug that blocks other items jumps the queue regardless of
+  size. What already exists must be correct before more is added to it.
 - Pick by **impact per unit of effort**, not by list order: the highest-impact,
   lowest-workload item first. The numbering is not a schedule.
 - **Stay inside the package as long as possible.** If an item can be solved
