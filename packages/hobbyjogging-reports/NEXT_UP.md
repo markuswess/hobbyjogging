@@ -256,6 +256,15 @@ Current focus: the dashboard's gear/devices and race work.
   5k/10k/half races with PB improvements, so the Performance tab has
   results, PBs, a PB progression and a Riegel fit instead of empty states.
 
+- **Data-driven chart ceilings.** `_axis_ceiling` drops the top few percent
+  of the plotted values (so one ultra cannot set the axis), adds headroom and
+  rounds up to the chart's step; `VOLUME_Y_MAX`, `TIME_Y_MAX`, `LOAD_Y_MAX`
+  are gone. The 42/182-day averages are included, the 7-day average is not.
+  On the real build the overview axis is 75 min instead of 90 with five long
+  days marked, volume 120 km/week (was 130), time 10 h, load 150 with nine
+  marked days. The RPE overlay now has its own scale instead of pinning the
+  load axis to 0–150.
+
 ## Bugs
 
 - **The demo publishes the lab and a private path.** `build_lab_section()`
@@ -314,26 +323,25 @@ Current focus: the dashboard's gear/devices and race work.
    series; add the cycling series when it exists. Depends on the root VO2max
    bug fix.
 
-10. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
-   `LOAD_Y_MAX` are fixed to this athlete's peak (a 130 km/week volume axis),
-   so another user's charts are mostly empty and this one's are cramped when
-   it grows. Compute a "nice max" from the data (round up to a sensible step)
-   and keep the fixed values only as a fallback. Same for
-   `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
-   See root item 23.
-
-11. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+10. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
    races, wellness, tools), one anchor per entry, formulas as plain text or
    code so the site stays self-contained. If the catalogue is generated, the
    tab renders the same source the Markdown does.
 
-12. **Coaching tab.** Render the latest coaching note and an index of past
+11. **Coaching tab.** Render the latest coaching note and an index of past
    ones, through the same Markdown-to-HTML path as Docs, with front matter
    turned into a header (date, period, focus) and the decision sections
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
+
+17. **Season and illness bands.** Once `training_periods` exists (root item
+    30), shade seasons on the volume, load and compare charts and illness on
+    recovery and efficiency, with the label on the band. Add a seasons table to
+    the period report, and decide per metric whether an illness period is
+    excluded or only flagged. See the efficiency card's note on the Feb–Mar
+    2026 baseline shift.
 
 ## Tests and docs
 

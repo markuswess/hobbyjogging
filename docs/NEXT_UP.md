@@ -874,6 +874,39 @@ Updated 2026-11-12.
       item 25 — the coaching notes will live in the same private repo, so the
       dashboard reads both from there.
 
+30. **Training periods: seasons, plans and illness** (core + import +
+    reports). The raw data already carries them and nothing interprets them:
+    Intervals events have `category` = `SEASON_START` (3 — "VCM 23/24/25", each
+    December, the season ending at the Vienna City Marathon), `SICK` (25
+    single-day "krank" / "leicht verkühlt" markers), `NOTE` (4 — travel, wisdom
+    tooth recovery), `TARGET` (9) and `FITNESS_DAYS` (1). The importer stores
+    them as events with `type=''` — 34 rows — so they appear nowhere.
+    - **Schema**: `training_periods(id, kind, label, start_date, end_date,
+      source, source_record_id, notes, excluded_at)`. A period is a range, which
+      an event is not; kinds `season`, `plan`, `illness`, `travel`, `recovery`,
+      `other`. Overlaps are allowed (an illness inside a season).
+    - **Import**: `SEASON_START` → a season beginning on that date and ending
+      before the next one (or at the goal race); `SICK` → an illness marker;
+      `NOTE` → `other` with the label. Store `category` on the period rather
+      than guessing from names, and keep the raw event link.
+    - **Ranges from markers**: a season's end is derivable; an illness's is not
+      — 25 single-day markers say "sick today", not how long. Start with the
+      marker, allow a manual end, and never infer a duration.
+    - **Manual entry**: `period add|edit|remove` (manual wins), and the future
+      edit CLI from item 1.
+    - **Reports**: shade seasons and illness on volume, load, recovery and
+      compare charts; a seasons table in the period report; flag or exclude
+      illness from efficiency and trend aggregates — the efficiency card
+      already records that the Feb–Mar 2026 illness moved the resting baseline
+      8%.
+    - **Lab**: the experiments split by illness by hand; canonical periods make
+      that reproducible.
+    - **Open**: `plan_name` / `plan_folder_id` are in every event payload but
+      null today, so Intervals training plans are not in use; store them anyway
+      if plans return.
+    - **Tests**: SEASON_START maps to a season range, SICK to a day marker, a
+      manual end survives a reimport, overlapping periods are allowed.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
