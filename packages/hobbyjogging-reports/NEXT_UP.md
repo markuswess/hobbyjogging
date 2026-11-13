@@ -157,7 +157,9 @@ Current focus: the dashboard's gear/devices and race work.
   and pace/HR efficiency lines all use that band and print it next to the
   number, so no two aggregates are compared across bands. Raw session and
   daily efficiency stay unbanded; subT keeps work-rep efficiency and labels
-  it. Tests cover the duration filter, quality exclusion and labels.
+  it. The pace/HR scatter outlines the steady points that feed the dashed
+  efficiency lines and notes that all runs are shown. Tests cover the
+  duration filter, quality exclusion and labels.
 - **Category symbols on the pace/HR charts.** `PaceHrPoint.category` is
   filled from `classify(activity, intervals)`. The Analysis scatter splits
   into one trace per category with a fixed symbol map (easy, recovery,

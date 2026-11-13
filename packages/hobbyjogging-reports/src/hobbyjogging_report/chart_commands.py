@@ -571,6 +571,7 @@ def run_pace_hr_chart(
         EFFICIENCY_UNIT,
         RESTING_HR_WINDOW_DAYS,
         RUN_TYPES,
+        STEADY_BAND_LABEL,
         pace_hr_efficiency_lines,
         pace_hr_points,
         pace_hr_trends,
@@ -602,11 +603,20 @@ def run_pace_hr_chart(
             f"(n={trend.points})"
         )
 
-    for line in pace_hr_efficiency_lines(points):
+    efficiency_lines = pace_hr_efficiency_lines(points)
+
+    for line in efficiency_lines:
         print(
-            f"note: {line.label} efficiency: E = {line.efficiency:.2f} "
+            f"note: {line.label} efficiency (steady {STEADY_BAND_LABEL}): "
+            f"E = {line.efficiency:.2f} "
             f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm "
             f"(n={line.points})"
+        )
+
+    if efficiency_lines:
+        print(
+            "note: efficiency lines use steady 45–75 min non-quality runs; "
+            "all runs are plotted"
         )
 
     path = plot_pace_hr(points, output=output)

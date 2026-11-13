@@ -80,7 +80,9 @@ dashboard. The dashboard is the last step, never the first.
   `eff` activities column, period/category reports (steady 45–75 min),
   compare text report and tab (steady 45–75 min), overview EWMA row,
   pace/HR efficiency lines, subT work reps and summary tables (work-rep
-  efficiency, labelled as such), subT EWMA report, subT chart panel.
+  efficiency, labelled as such), subT EWMA report, subT chart panel. The
+  pace/HR scatter shows all runs; the steady 45–75 min points that feed the
+  dashed efficiency lines carry a dark outline and the chart note says so.
 
 ### HR-speed efficiency line
 
@@ -106,8 +108,9 @@ dashboard. The dashboard is the last step, never the first.
   yearly drift (2.24 in 2022 → 2.39 in 2026) inflates both residuals. HR lag
   understates short reps, so compare same rep lengths.
 - **Rendered**: pace/HR chart — the two free regression halves plus two dashed
-  efficiency lines, annotated with `E` and median RHR; the CLI prints the same
-  parameters.
+  efficiency lines, annotated with `E`, median RHR and the steady band; the
+  scatter still shows every run, and outlined points mark the steady-band
+  inputs to the lines. The CLI prints the same parameters and the band.
 
 ## Candidates
 

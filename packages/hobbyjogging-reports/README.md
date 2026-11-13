@@ -123,8 +123,10 @@ HTML dashboard:
   dashed efficiency line, `HR = RHR + v·60/E`, where `E` is that half's
   weighted efficiency over steady runs in the 45–75 min band
   (`Σdistance / Σexcess beats`, in **m/excess beat**) and `RHR` is its median
-  resting-HR baseline; the label shows both values and the band. The compare
-  page keeps the year colours and uses the same category symbols per point.
+  resting-HR baseline; the label shows both values and the band. The scatter
+  keeps every run, but the steady-band points that feed those dashed lines
+  carry a dark outline, and the chart note says so. The compare page keeps
+  the year colours and uses the same category symbols per point.
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
   choose the metric and smoothing. Volume is in km/week and time in
@@ -470,6 +472,16 @@ Sampling rules:
 - RHR noise propagates (about 5% for a 5 bpm error on a ~90 bpm difference);
   treat it as a trend signal, not a per-run score. HR lag still understates
   short reps.
+
+Which number uses which runs:
+
+- Session report, daily compact line, `eff` activities column: one raw
+  per-activity value, no band.
+- Period/category, overview and compare aggregates: steady non-quality runs
+  in the 45–75 min band, with the band printed next to the number.
+- Pace/HR chart: the scatter shows every run; only the dashed efficiency
+  lines use steady 45–75 min runs, whose points carry a dark outline.
+- subT chart and summary tables: work-rep efficiency, not steady runs.
 
 Efficiency appears in the session report, the optional `eff` activities
 column, the steady totals in the period/category reports and overview, the

@@ -1363,6 +1363,13 @@ def plot_pace_hr(
                     "size": 6,
                     "opacity": 0.75,
                     "symbol": PACE_HR_SYMBOLS[category],
+                    "line": {
+                        "color": "#222222",
+                        "width": [
+                            1.2 if point.steady else 0
+                            for point in chunk
+                        ],
+                    },
                     "showscale": index == 0,
                     "colorbar": {
                         "title": {"text": "year"},
@@ -1415,7 +1422,9 @@ def plot_pace_hr(
         "second half": colors[1],
     }
 
-    for line in pace_hr_efficiency_lines(points):
+    efficiency_lines = pace_hr_efficiency_lines(points)
+
+    for line in efficiency_lines:
         figure.add_trace(
             go.Scatter(
                 x=[line.speed_low, line.speed_high],
@@ -1437,6 +1446,12 @@ def plot_pace_hr(
             f"{line.label} efficiency (steady {STEADY_BAND_LABEL}): "
             f"E = {line.efficiency:.2f} {EFFICIENCY_UNIT}, "
             f"RHR {line.resting_hr:.2f} bpm"
+        )
+
+    if efficiency_lines:
+        notes.append(
+            "dashed efficiency lines use steady 45–75 min non-quality "
+            "runs; outlined points are their inputs — all runs are shown"
         )
 
     if notes:
@@ -1529,10 +1544,13 @@ def plot_compare_pace_hr(
     ]
     if symbols:
         figure.add_annotation(
-            text="   ".join(
-                f"{PACE_HR_SYMBOL_TEXT[category]} "
-                f"{_pace_hr_label(category)}"
-                for category in symbols
+            text=(
+                "   ".join(
+                    f"{PACE_HR_SYMBOL_TEXT[category]} "
+                    f"{_pace_hr_label(category)}"
+                    for category in symbols
+                )
+                + "<br>all runs; colour = calendar year"
             ),
             xref="paper",
             yref="paper",
@@ -1809,7 +1827,7 @@ def plot_compare(
         "time": "hours / week",
         "load": "load / day",
         "runs": "runs / day",
-        "efficiency": "m / excess beat (steady)",
+        "efficiency": f"m / excess beat (steady {STEADY_BAND_LABEL})",
     }
     scale = 7.0 if metric in ("volume", "time") else 1.0
     planned_series = planned_series or []

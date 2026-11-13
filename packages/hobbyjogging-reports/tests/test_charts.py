@@ -462,6 +462,24 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn("second half efficiency", html)
         self.assertIn("excess beat", html)
         self.assertIn("RHR 50.00 bpm", html)
+        self.assertIn("outlined points", html)
+        self.assertIn("all runs are shown", html)
+
+    def test_pace_hr_chart_outlines_only_steady_band_points(self):
+        points = [
+            PaceHrPoint(
+                D + timedelta(days=index),
+                300.0 - index,
+                150.0 + index,
+                category="easy",
+                steady=index % 2 == 0,
+            )
+            for index in range(4)
+        ]
+
+        html = plot_pace_hr(points, "", as_html=True)
+
+        self.assertIn('"width":[1.2,0,1.2,0]', html)
 
     def test_pace_hr_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -668,6 +686,7 @@ class ComparePaceHrChartTests(unittest.TestCase):
 
         self.assertIn('"symbol":["circle","cross","x"]', html)
         self.assertIn('"symbol":["star"]', html)
+        self.assertIn("all runs; colour = calendar year", html)
 
 
 class CompareChartTests(unittest.TestCase):
@@ -736,6 +755,19 @@ class CompareChartTests(unittest.TestCase):
         self.assertEqual(4, html.count('"visible":"legendonly"'))
         for year in range(2018, 2027):
             self.assertIn(f'"name":"{year}"', html)
+
+    def test_compare_chart_efficiency_axis_names_the_steady_band(self):
+        html = plot_compare(
+            [(2026, [(date(2026, 1, 1), 2.0)])],
+            "",
+            metric="efficiency",
+            window=42,
+            today=date(2026, 11, 11),
+            as_html=True,
+        )
+
+        self.assertIn("excess beat", html)
+        self.assertIn("steady 45", html)
 
     def test_compare_chart_time_axis_is_weekly_hours(self):
         series = [
