@@ -57,8 +57,10 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? | candidate | — | 2026-11-13 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? | candidate | — | 2026-11-13 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
+| Garmin VO2max jumps | Why do the readings jump — sport-specific values, terrain, or device history? | candidate | — | 2026-11-13 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? | candidate | — | 2026-11-13 |
+| Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (needs 2022+ gear) | parked | — | 2026-11-13 |
 | Polarization index | How polarized is my zone distribution, and does it beat the Z3+4 share? | candidate | — | 2026-11-13 |
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
