@@ -221,6 +221,12 @@ Current focus: the dashboard's gear/devices and race work.
    threshold pace. If the race-derived series lands, show it against the
    stamped values so a divergence is visible.
 
+7. **Fartlek as its own category.** Show `quality/fartlek` in the breakdown
+   and the category column, and keep it out of the subT rep-length buckets and
+   every rep-count/duration analysis — a fartlek has no reps to measure. The
+   read-time `tempo` fallback must not turn it into `intervals`. Depends on
+   the root fartlek item.
+
 ## Tests and docs
 
 Covered now:

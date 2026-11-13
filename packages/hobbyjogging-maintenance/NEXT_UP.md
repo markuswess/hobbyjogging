@@ -28,6 +28,9 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`fartlek_from_fs_v1`** (backfill). Rewrite the sheet-`fs` activities from
+  `intervals` to `fartlek` (54 today, 38 of them with no WORK reps), skipping
+  manual rows and filling a missing target with `vo2max`. Idempotent, dry-run.
 - **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
   (backfills). Create threshold snapshots and zone configs from the stored
   payloads and set the activity FK columns; idempotent, dry-run.

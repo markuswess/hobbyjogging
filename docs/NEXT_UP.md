@@ -147,9 +147,11 @@ Updated 2026-11-12.
    `intervals` as `longrun` (10), warmups as `race-support` (13).
    - **Core**: add `category_for_sets(methods, targets)` next to
      `classification_for_category` — the inverse mapping, with a fixed
-     priority: `race` → race, `long_run` → longrun, `intervals`/`progression`
-     → intervals, `continuous`+`threshold` → tempo, `continuous`+`recovery` →
-     recovery, `continuous` → easy, empty → unknown. It must round-trip
+     priority: `race` → race, `long_run` → longrun, `fartlek` → fartlek,
+     `intervals`/`progression` → intervals, `continuous`+`threshold` → tempo,
+     `continuous`+`recovery` → recovery, `continuous` → easy, empty → unknown.
+     `quality/fartlek` is a **new display kind** (item 2), deliberately not
+     folded into `intervals/other`, so rep-based analyses stay clean. It must round-trip
      with `classification_for_category` for every mapped pair; the only
      intentional ambiguity is `{continuous}, {base}`, which is `easy` (the
      name-based race-support override handles warmups).
@@ -170,11 +172,42 @@ Updated 2026-11-12.
    - **Tests**: round-trip mapping for every `classification_for_category`
      case; the 142 mismatches resolve to the stored kind; a marathon-length
      race stays `race`; a `continuous`+`threshold` session shows `tempo`; a
-     warmup still shows `race-support`.
+     `fartlek` session shows `quality/fartlek` and never enters the subT or
+     rep-length buckets; a warmup still shows `race-support`.
    - **Docs**: the reports README taxonomy section and the ARCHITECTURE
      `classify.py` bullet.
 
-2. **Link planned races to activities and propagate the `race` method**
+2. **Bring back `fartlek` for unstructured quality** (core + import +
+   maintenance + reports). `intervals` has become a mixed bucket: of the 561
+   activities carrying it, **170 have zero WORK reps** and 22 have 1–2, 47
+   have no target, and 40 spend >75% of the session in WORK. The sheet code
+   `fs` (Fahrtspiel) is the proof: **60 activities, 54 now `intervals`, 38 of
+   them with zero WORK reps**.
+   - **The distinction to preserve**: `fartlek` means *never structured*;
+     `intervals` means *structured reps intended*, even when the device data
+     is missing. Relabelling the latter would lie about the session, so
+     missing reps stay `intervals` and become an audit data-gap item instead.
+   - **Core**: add `fartlek` to `WORKOUT_METHODS` and `QUALITY_METHODS`; it is
+     mutually exclusive with `intervals` and never quality by itself only —
+     it always is. Map `fs` to `fartlek` + a `vo2max` target in
+     `SHEET_TYPE_CODES`, and add the aliases (`fahrtspiel`, `fartlek_run`).
+     `category_for_sets` returns the new `quality/fartlek` kind (item 1).
+   - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
+     `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
+     their targets alone except for filling a missing one with `vo2max`.
+     Idempotent and dry-run.
+   - **Reports**: a `fartlek` label in the breakdown and the category column;
+     exclude it from the subT rep-length buckets and every rep-count/duration
+     analysis by construction (it has no reps to measure). The `tempo`-style
+     read-time fallback must not turn a fartlek into `intervals`.
+   - **Why this does not contradict the `tempo` retirement**: `tempo`
+     duplicated the target (continuous + threshold); `fartlek` expresses
+     structure, which the target axis cannot say.
+   - **Tests**: `fs` maps to fartlek+vo2max; fartlek is quality; fartlek never
+     round-trips to `intervals`; the 54 fs rows convert and manual rows do not;
+     the subT buckets ignore fartlek.
+
+3. **Link planned races to activities and propagate the `race` method**
    (core + maintenance). The classifier only reads the name, so the two past
    planned races are misclassified: the 2026 Linz Marathon (42.45 km, 2:37:49)
    is `long_run` and the 2025 Baden Stadtlauf 10k is `intervals`, although both
@@ -198,7 +231,7 @@ Updated 2026-11-12.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
 
-3. **Elevation gain and loss on activities** (core + import + maintenance).
+4. **Elevation gain and loss on activities** (core + import + maintenance).
    Per-lap FIT elevation is stored (`activity_laps.elevation_gain_m`, 2,800
    activities), but `activities` has no elevation column. The payloads cover
    81% of activities: Intervals `total_elevation_gain` / `_loss` (2,846), the
@@ -223,7 +256,7 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
      backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
 
-4. **Maximum HR per activity** (core + import + maintenance). There is no
+5. **Maximum HR per activity** (core + import + maintenance). There is no
    canonical column today, though Intervals `max_heartrate`, the FIT session
    and the sheet's `max. Hf` (1,233 rows) all carry it.
    - **Next migration**: `activities.max_hr`, nullable, owner-based with a
@@ -236,7 +269,7 @@ Updated 2026-11-12.
    - **Coverage**: report how many activities gain it, per source and year,
      before deciding whether the column earns its place.
 
-5. **Per-activity weather** (core + import + maintenance + reports).
+6. **Per-activity weather** (core + import + maintenance + reports).
    Intervals carries `average_temp`, `average_weather_temp`,
    `average_feels_like`, `average_wind_speed`, `average_wind_gust` and
    `average_clouds` (2,847 activities); the sheet has `Temperatur in °C`
@@ -250,7 +283,7 @@ Updated 2026-11-12.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
-6. **Athlete thresholds and zone configs** (core + import + maintenance +
+7. **Athlete thresholds and zone configs** (core + import + maintenance +
    reports). The Intervals payloads carry the athlete's settings per activity:
    `athlete_max_hr` (192), `lthr` (174, drifting 172–180), `LTHRdetected`,
    `threshold_pace` (**4.59 → 4.85 m/s = 3:38 → 3:26/km** across 2019–2026),
@@ -271,7 +304,7 @@ Updated 2026-11-12.
    - **Reports**: a threshold trend chart (LTHR, threshold pace, max HR) beside
      VO2max, era-correct zone normalization, and subT work-rep pace compared
      with the period's threshold pace.
-   - **Races as threshold evidence** (idea, depends on item 2's race links).
+   - **Races as threshold evidence** (idea, depends on item 3's race links).
      Intervals' stamped values are athlete settings, not measurements, and
      `threshold_pace` is missing on ~1,400 activities. A race is the best
      observed evidence we have: a 10k–half marathon result gives a defensible
@@ -287,7 +320,7 @@ Updated 2026-11-12.
    - **Validation**: Intervals' threshold pace and the subT-derived pace should
      agree; report the delta.
 
-7. **Wellness beyond HRV, resting HR and sleep** (core + import +
+8. **Wellness beyond HRV, resting HR and sleep** (core + import +
    maintenance + reports). Intervals wellness carries 47 keys; we store three.
    The useful extras: `readiness`, `sleepScore`/`sleepQuality`, `stress`,
    `respiration`, `spO2`, `mood`, `soreness`/`fatigue`, `steps`,
@@ -301,7 +334,7 @@ Updated 2026-11-12.
    - Start with the four with the best signal-to-noise — readiness,
      sleepScore, stress, respiration — and leave the rest behind a flag.
 
-8. **Route identity and grouping** (core + import + maintenance + reports).
+9. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
    (993), but the canonical model has no route. FIT payloads carry no GPS
    streams, so historical route identity can only come from the sheet.
@@ -316,7 +349,7 @@ Updated 2026-11-12.
    - **Open**: GPS-derived routes for the FIT era would need stored streams,
      which do not exist today.
 
-9. **Device registry and per-activity device** (core + import + maintenance +
+10. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
    `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
    2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
@@ -345,19 +378,19 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-10. **Runalyze enrichment** when the API auth/endpoint details are settled:
+11. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-11. **Homelab cutover**: DB + importer + dashboard generator + static server,
+12. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-12. **Reports backlog** — handed to the reports session; the list lives in
+13. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: the equipment report and tab
    (including devices), the race report plus Performance tab, and the Docs
    tab.
-13. **Raw vs derived: document the tiers and add a check** (low priority). The
+14. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable

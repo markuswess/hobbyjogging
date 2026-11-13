@@ -104,7 +104,11 @@ on.
   90% / 40 m/km / 5 min / 150 bpm / 90 min thresholds) before implementing.
   Measured yields:
   - `intervals` but the WORK reps cover >90% of the activity → suggest
-    `continuous` (38).
+    `continuous` (38), or `fartlek` when the reps are irregular.
+  - `intervals` with **no usable WORK reps** (170) → a `missing_reps`
+    data-gap item (info), **not** a reclassification: the session was
+    structured, the device data is absent. Only suggest `fartlek` when the
+    name or the sheet `fs` code says so.
   - `run` with ≥40 m/km lap elevation → suggest `trail_run` (9); also use
     `sub_sport` (`trail`, `mountain`, `treadmill`) as evidence.
   - `race` but no event within ±1 day, inside calendar coverage → suggest
@@ -122,6 +126,11 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
+- **Fartlek instead of intervals for the sheet `fs` code.** `SHEET_TYPE_CODES`
+  maps `fs` to `intervals` with no target today, which is how 54 historical
+  fartleks ended up in the intervals bucket (38 with zero WORK reps). Map it to
+  `fartlek` + `vo2max` once the core method exists, and add the
+  `fahrtspiel` / `fartlek_run` aliases.
 - **Athlete thresholds and zone configs.** Write `athlete_thresholds`
   snapshots and `zone_configs` rows (reusing identical boundaries) and set the
   activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,
