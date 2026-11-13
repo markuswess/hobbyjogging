@@ -521,6 +521,8 @@ class CompareChartTests(unittest.TestCase):
         self.assertIn("2001-12-31", html)
         self.assertIn("2001-11-11", html)
         self.assertIn("today", html)
+        self.assertIn('"y":-0.07', html)
+        self.assertIn('"yanchor":"top"', html)
 
     def test_compare_chart_draws_dashed_planned_lines(self):
         series = [

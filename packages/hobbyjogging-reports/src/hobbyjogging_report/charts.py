@@ -166,6 +166,20 @@ def _add(figure, trace, *, row: int | None = None, col: int | None = None):
         figure.add_trace(trace, row=row, col=col)
 
 
+def _legend_below(*, font_size: int | None = None) -> dict:
+    legend = {
+        "orientation": "h",
+        "y": -0.07,
+        "yanchor": "top",
+        "x": 0,
+    }
+
+    if font_size is not None:
+        legend["font"] = {"size": font_size}
+
+    return legend
+
+
 def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
     figure.update_layout(
         template="plotly_white",
@@ -173,8 +187,8 @@ def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
         xaxis_title=xlabel,
         yaxis_title=ylabel,
         height=800,
-        margin={"l": 60, "r": 30, "t": 60, "b": 60},
-        legend={"orientation": "h", "y": 1.12, "x": 0},
+        margin={"l": 60, "r": 30, "t": 60, "b": 100},
+        legend=_legend_below(),
         hovermode="x unified",
     )
 
@@ -770,8 +784,8 @@ def plot_time(
         title=title,
         barmode="overlay",
         height=1500,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.08, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="x unified",
     )
 
@@ -1067,8 +1081,8 @@ def plot_subt(
         template="plotly_white",
         title=title,
         height=1200,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.08, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="x unified",
     )
     return _render(
@@ -1383,8 +1397,8 @@ def plot_pace_hr(
         template="plotly_white",
         title=title,
         height=900,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.08, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="closest",
     )
     return _render(
@@ -1442,8 +1456,8 @@ def plot_compare_pace_hr(
         template="plotly_white",
         title=title,
         height=900,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.08, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="closest",
     )
     return _render(
@@ -1558,8 +1572,8 @@ def plot_compare(
         template="plotly_white",
         title=title,
         height=900,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.12, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="x unified",
     )
     return _render(
@@ -1723,8 +1737,8 @@ def plot_recovery(
         template="plotly_white",
         title=title,
         height=900,
-        margin={"l": 60, "r": 30, "t": 70, "b": 60},
-        legend={"orientation": "h", "y": 1.08, "x": 0},
+        margin={"l": 60, "r": 30, "t": 70, "b": 110},
+        legend=_legend_below(),
         hovermode="x unified",
     )
     return _render(
@@ -1893,7 +1907,7 @@ def plot_overview(
         "template": "plotly_white",
         "title": title,
         "height": 520,
-        "margin": {"l": 50, "r": 20, "t": 95, "b": 40},
+        "margin": {"l": 50, "r": 20, "t": 95, "b": 100},
         "barmode": "stack",
         "bargap": 0.1,
         "hovermode": "x unified",
@@ -1903,12 +1917,7 @@ def plot_overview(
             "dtick": 15,
         },
         "xaxis": {"range": [start.isoformat(), end.isoformat()]},
-        "legend": {
-            "orientation": "h",
-            "y": 1.18,
-            "x": 0,
-            "font": {"size": 9},
-        },
+        "legend": _legend_below(font_size=9),
     }
 
     if vo2max:
