@@ -156,6 +156,26 @@ Updated 2026-11-12.
      `set_manual_activity_workout_methods` / `_targets`.
    - **Quality**: reuse `apply_manual_edit`, which re-runs the quality rules and
      prints the findings that still stand.
+   - **Relationship to triage**: both surfaces share one write path —
+     `apply_manual_edit` → `set_manual_field` + `refresh_activity_quality` — so
+     provenance and the quality re-check never diverge. Triage stays the
+     contextual surface (sources, `(v)` pick value, `(t)` trust Intervals,
+     `(ci)`/`(cg)` links, `(d)` exclude, `(k)` classification proposals); edit
+     is the direct surface and must not grow those actions. Only
+     `duration_s`/`distance_m`/`sport` and the classification sets genuinely
+     duplicate, which is intended: `_VALUE_PROMPTS` covers exactly three
+     fields, and `(k)` adds the proposals the raw `--method`/`--target` cannot.
+   - **Item lifecycle fix**: `refresh_activity_quality` only closes
+     `category=quality` items, and `prune_field_conflicts` only closes a
+     conflict whose *recorded* current/incoming values agree — it knows nothing
+     about a manual override. An item-less edit therefore leaves the matching
+     `field_conflict` open forever. `apply_manual_edit` must also resolve open
+     `field_conflict` items for the touched `(activity, field)` and open
+     `workout_classification` items when methods/targets are written; `--item`
+     then becomes a convenience, not a requirement. `edit_log` records the
+     resolved item id so the history explains the closure.
+   - **Prompt table**: move `_VALUE_PROMPTS` from `triage.py` to `values.py`
+     so the interactive edit mode and triage share one prompt/parser table.
    - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
      new_json, source, note, created_at)`, append-only, written in the same
      transaction as the edit. `activity_field_sources` is a snapshot, not a
@@ -173,7 +193,10 @@ Updated 2026-11-12.
    - **Tests**: a manual edit survives a reimport; `--clear` removes the value
      and its manual ownership; `--history` shows the prior value; `--dry-run`
      writes nothing; quality findings print; an empty interactive answer keeps
-     the current value; tags/methods/targets replace as sets.
+     the current value; tags/methods/targets replace as sets; an item-less edit
+     closes the matching `field_conflict` and leaves other fields' items open;
+     a classification edit closes the `workout_classification` item; `--item`
+     still resolves explicitly.
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
 
@@ -190,10 +213,10 @@ Updated 2026-11-12.
      `intervals`/`progression` → intervals, `continuous`+`threshold` → tempo,
      `continuous`+`recovery` → recovery, `continuous` → easy, empty → unknown.
      `quality/fartlek` is a **new display kind** (item 3), deliberately not
-     folded into `intervals/other`, so rep-based analyses stay clean. It must round-trip
-     with `classification_for_category` for every mapped pair; the only
-     intentional ambiguity is `{continuous}, {base}`, which is `easy` (the
-     name-based race-support override handles warmups).
+     folded into `intervals/other`, so rep-based analyses stay clean. It must
+     round-trip with `classification_for_category` for every mapped pair; the
+     only intentional ambiguity is `{continuous}, {base}`, which is `easy`
+     (the name-based race-support override handles warmups).
    - **Reports**: `classify()` uses `category_for_sets` whenever
      `activity.quality is not None`; the heuristic runs only for unclassified
      activities (488 `unknown` + 743 cross-training today). Keep exactly two
@@ -227,9 +250,9 @@ Updated 2026-11-12.
      is missing. Relabelling the latter would lie about the session, so
      missing reps stay `intervals` and become an audit data-gap item instead.
    - **Core**: add `fartlek` to `WORKOUT_METHODS` and `QUALITY_METHODS`; it is
-     mutually exclusive with `intervals` and never quality by itself only —
-     it always is. Map `fs` to `fartlek` + a `vo2max` target in
-     `SHEET_TYPE_CODES`, and add the aliases (`fahrtspiel`, `fartlek_run`).
+     mutually exclusive with `intervals`, and it always makes a session
+     quality. Map `fs` to `fartlek` + a `vo2max` target in `SHEET_TYPE_CODES`,
+     and add the aliases (`fahrtspiel`, `fartlek_run`).
      `category_for_sets` returns the new `quality/fartlek` kind (item 2).
    - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
      `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
