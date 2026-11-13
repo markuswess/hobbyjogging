@@ -258,7 +258,15 @@ Current focus: the dashboard's gear/devices and race work.
 
 ## Bugs
 
-_None._
+- **The demo publishes the lab and a private path.** `build_lab_section()`
+  reads `experiments/README.md` and `docs/METRICS.md` straight from the repo,
+  so the public Lab tab shows the candidate table, the rejected findings and
+  the personal validation numbers ("the Feb–Mar 2026 illness", "RHR 51 → 59").
+  The Docs tab renders the reports README, whose setup example contains
+  `~/projects/laufen_private/...`. Demo builds must render the bench guide only
+  — never the notebook or the registry — and the README example must use a
+  neutral path. Root item 29 detaches the notebook entirely, which removes the
+  first half for good.
 
 ## Next
 

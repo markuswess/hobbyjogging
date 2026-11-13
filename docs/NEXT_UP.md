@@ -844,6 +844,36 @@ Updated 2026-11-12.
     - **Acceptance**: no dead exports, no duplicated doc sections, no file that
       has outgrown its purpose without being split or trimmed.
 
+29. **Detach the lab into `laufen_private`, keep the bench** (root + reports;
+    future). The lab's scripts and notebook carry personal research and
+    findings and should not live in the project repo — but the bench must stay
+    so another user can run their own.
+    - **Split**: the bench ships (the rules, `experiments/template.py`,
+      `lab.sh`, the gate in `docs/METRICS.md`, the Lab tab); the log moves to
+      `laufen_private/lab/` (the scripts, the candidate table, the statuses and
+      the rejected findings).
+    - **Env var rename**: `HOBBYJOGGING_LAB_DIR` currently means the output
+      directory (`data/lab`) in `shell.py`; rename that to
+      `HOBBYJOGGING_LAB_OUTPUT_DIR` and give `HOBBYJOGGING_LAB_DIR` the lab
+      itself, defaulting to `experiments/` so a fresh clone works out of the
+      box.
+    - **Dashboard**: read `$HOBBYJOGGING_LAB_DIR` for local builds; demo builds
+      never read it and render the bench guide only (see the reports bug).
+    - **Evidence split**: `docs/METRICS.md` keeps the contract (definition,
+      baseline, thresholds) and the aggregate statistics; the personal
+      narrative — illness dates, resting-HR values, run counts tied to events —
+      moves to the lab repo and is referenced by name.
+    - **Move checklist**: create `laufen_private/lab/`, move the scripts and the
+      candidate table, split `experiments/README.md` into bench rules and
+      notebook, then update `lab.sh`, the lab section of `AGENTS.md`, the
+      dashboard and the `.env` example.
+    - **Risks**: two repos to clone on a new machine; `lab.sh` must fail
+      clearly when the lab dir is missing; CI must never need the private repo;
+      the moved scripts lose their in-repo history.
+    - **Related**: item 23 (this is its lab case), item 26 (demo upkeep) and
+      item 25 — the coaching notes will live in the same private repo, so the
+      dashboard reads both from there.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

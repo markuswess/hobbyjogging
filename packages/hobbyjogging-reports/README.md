@@ -299,8 +299,8 @@ Install dependencies:
 
 Create environment (`.env`):
 
-    export HOBBYJOGGING_DB=~/projects/laufen_private/data/db/hobbyjogging.db
-    export HOBBYJOGGING_DASHBOARD_DIR=~/projects/laufen_private/reports
+    export HOBBYJOGGING_DB=<your/path/databasefile.db>
+    export HOBBYJOGGING_DASHBOARD_DIR=<your/path/dashboard-parent>
 
 The dashboard is written to
 `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, and to
