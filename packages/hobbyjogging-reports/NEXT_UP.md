@@ -161,7 +161,8 @@ Current focus: the dashboard's gear/devices and race work.
   and prefixed heading anchors. The nav order is Overview, Activities,
   Recovery and Health, NSA, Analysis, Compare, Docs, Data Health. Embedded
   reports already live on their pages; `--reports` remains a compatibility
-  no-op.
+  no-op. A **Lab** tab follows Docs and renders `experiments/README.md` plus
+  the experiment script index and one-line summaries.
 - **One segment table in the session report.** The report now prints typed
   intervals when there is more than one, otherwise device laps when there is
   more than one, and nothing when there is a single segment on each side.
@@ -223,6 +224,11 @@ Current focus: the dashboard's gear/devices and race work.
 
 5. **Wellness extras.** A readiness view (readiness, sleep score, stress,
    respiration, spO2) plus a weight trend, once the columns land.
+
+6. **Threshold trend and era-correct zones.** A chart of LTHR, threshold pace
+   and max HR over the years beside VO2max; normalize activity zones with each
+   activity's zone config; compare subT work-rep pace with the period's
+   threshold pace.
 
 ## Tests and docs
 

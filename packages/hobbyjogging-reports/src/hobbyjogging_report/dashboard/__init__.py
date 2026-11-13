@@ -44,8 +44,10 @@ from .pages import (
     overview_page,
     recovery_page,
     docs_page,
+    lab_page,
 )
 from .docs import build_docs_section
+from .lab import build_lab_section
 from .reports import REPORT_NAMES, build_report
 from ..zone_groups import (
     daily_zone_groups,
@@ -342,6 +344,13 @@ def build_dashboard(
             demo_label=demo_label,
             include_review=include_review,
             section=build_docs_section(),
+        ),
+        "lab.html": lab_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            section=build_lab_section(),
         ),
         "health.html": health_page(
             generated_at=generated_at,

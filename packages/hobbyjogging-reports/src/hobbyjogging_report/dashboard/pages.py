@@ -22,6 +22,7 @@ from ..model import RecoveryPoint, Vo2maxPoint
 from .analysis import AnalysisSection
 from .compare import CompareSection
 from .docs import DocsSection
+from .lab import LabSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
 from ..zone_groups import ZoneGroupSeries
@@ -509,6 +510,34 @@ def health_page(
         ),
         demo_label=demo_label,
         active="health",
+    )
+
+
+def lab_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    demo_label: str | None = None,
+    section: LabSection,
+) -> str:
+    """Render the experiments notebook and script index."""
+    body = (
+        card(None, f'<div class="report">{section.intro_html}</div>')
+        + card(None, f'<div class="report">{section.readme_html}</div>')
+        + card("Experiment scripts", section.scripts_html)
+    )
+
+    return page(
+        title="Lab",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="lab",
     )
 
 

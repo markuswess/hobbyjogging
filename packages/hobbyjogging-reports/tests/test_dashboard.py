@@ -234,6 +234,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Recovery and Health", index)
             self.assertIn(">Data Health</a>", index)
             self.assertIn(">Docs</a>", index)
+            self.assertIn(">Lab</a>", index)
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
@@ -339,6 +340,12 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Metric registry", docs)
             self.assertIn("Efficiency (m/excess beat)", docs)
             self.assertIn("class=\"toc\"", docs)
+
+            lab = (target / "lab.html").read_text()
+            self.assertIn(">Lab</a>", lab)
+            self.assertIn("Lab session ground rules", lab)
+            self.assertIn("hr_efficiency_line.py", lab)
+            self.assertIn("Experiment scripts", lab)
 
     def test_reports_flag_is_a_compatibility_noop(self):
         with tempfile.TemporaryDirectory() as tmp:

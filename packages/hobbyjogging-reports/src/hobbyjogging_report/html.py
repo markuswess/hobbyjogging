@@ -254,6 +254,7 @@ NAV = (
     ("analysis", "analysis.html", "Analysis"),
     ("compare", "compare.html", "Compare"),
     ("docs", "docs.html", "Docs"),
+    ("lab", "lab.html", "Lab"),
     ("health", "health.html", "Data Health"),
 )
 

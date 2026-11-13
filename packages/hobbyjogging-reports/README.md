@@ -679,6 +679,8 @@ Pages:
   registry from `docs/METRICS.md`, rendered as HTML with a table of contents.
   The overview, daily, planned, recovery, NSA, and compare reports are embedded
   on their own pages, so there is no separate Reports tab.
+- `lab.html` (Lab) — the experiments notebook from `experiments/README.md`
+  plus a list of the current experiment scripts and their one-line summaries.
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, linked activity, reported date), the activities hidden by review,
   and missing-data counts.
