@@ -200,6 +200,19 @@ Current focus: the dashboard's gear/devices and race work.
   - Tests: the page title, the completeness denominator and the report's
     window label agree; `--recovery-days` still overrides.
 
+- **Compare plot colors shift between charts.** All three compare charts pick
+  `COMPARE_COLORS[index % len]` from the *index in that chart's own sorted year
+  list* (`plot_compare_pace_hr`, `plot_compare_vo2max`, `plot_compare`), so a
+  year's color depends on which other years happen to be present: 2023 is one
+  color in the volume chart and another in the VO2max chart because their year
+  sets differ, and the colors shuffle again when the data range or
+  `--compare-window` changes.
+  - Fix: one `compare_color(year)` helper anchored on a fixed year —
+    `COMPARE_COLORS[(year - 2009) % len(COMPARE_COLORS)]` — used by all three.
+    The 18 colors then cover 2009–2026 with no collision.
+  - Tests: a year gets the same color in all three charts, and a year outside
+    the current data range still maps deterministically.
+
 ## Next
 
 1. **Device timeline.** Depends on the root device registry. Add a device
