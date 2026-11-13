@@ -144,12 +144,28 @@ Current focus: the dashboard's gear/devices and race work.
   most recent years are visible by default; older years stay in the legend.
 - **Efficiency in the Markdown reports.** Daily runs show a compact
   efficiency line; `report`/`weekly`/`monthly`/`yearly` show a weighted
-  efficiency total and an `Efficiency (m/excess beat)` category column;
-  `compare-years`/`compare-months` show a weighted efficiency column; and
-  `overview` adds an Efficiency row to the existing EWMA table, using the
-  7/42/182-day weighted efficiency and leaving the planned column empty.
-  All aggregates are sum(distance)/sum(excess beats) and use the 365-day
-  baseline; no baseline means an omitted line or a dash.
+  steady efficiency total and a `Steady efficiency (45–75 min)` category
+  column; `compare-years`/`compare-months` show a weighted steady efficiency
+  column; and `overview` adds an Efficiency row to the existing EWMA table,
+  using the 7/42/182-day weighted steady efficiency and leaving the planned
+  column empty. All aggregates are sum(distance)/sum(excess beats) and use
+  the 365-day baseline; no baseline means an omitted line or a dash.
+- **Efficiency duration bands.** Report aggregates are now steady:
+  non-quality runs in a fixed 45–75 min band (`is_steady_run`,
+  `steady_efficiency`, and an `aggregate_efficiency(duration_band=...)`
+  filter). Period/category reports, the overview EWMA row, compare series
+  and pace/HR efficiency lines all use that band and print it next to the
+  number, so no two aggregates are compared across bands. Raw session and
+  daily efficiency stay unbanded; subT keeps work-rep efficiency and labels
+  it. Tests cover the duration filter, quality exclusion and labels.
+- **Category symbols on the pace/HR charts.** `PaceHrPoint.category` is
+  filled from `classify(activity, intervals)`. The Analysis scatter splits
+  into one trace per category with a fixed symbol map (easy, recovery,
+  intervals, long run, race, tempo, fartlek, race support, other) while
+  keeping a shared date gradient and colour bar; the compare scatter keeps
+  year colours and applies per-point category symbols with a key
+  annotation. Regression and efficiency lines are unchanged. Tests pin the
+  map, the unknown fallback, the trace split and the compare symbol arrays.
 - **Session report completeness.** The session report now shows tags, both
   VO2max owners, review status and open-item details, the day's planned
   workout (with planned zone times), the day's wellness, the lap table, and
@@ -244,42 +260,7 @@ Current focus: the dashboard's gear/devices and race work.
    read-time `tempo` fallback must not turn it into `intervals`. Depends on
    the root fartlek item.
 
-7. **Efficiency duration bands.** Efficiency is duration-dependent (~1.8%
-   lower at 90 min, 4% at 120 and 8.5% at 180 than at 60), so no
-   cross-duration comparison without qualification. The aggregates in
-   `period_report` and `overview` currently take **every run** — no steady
-   filter and no duration band, despite the card's "steady runs" wording.
-   - Filter the steady aggregate to non-quality runs (exclude intervals,
-     fartlek, races, progressions and long runs) and to a duration band; add a
-     `duration_band` argument to `aggregate_efficiency` or filter at each call
-     site, and audit `_weighted_efficiency` in the pace/HR chart the same way.
-   - Show the band next to every aggregate and refuse a comparison across
-     bands in the compare tab and the period report.
-   - Label the provisional +4%/h beyond 60 min as an estimate where long runs
-     are shown; never correct silently.
-   - Tests: an interval session never enters the steady aggregate; two
-     aggregates in different bands are not compared; the band label renders.
-   - Card: `docs/METRICS.md` Efficiency "Duration" and "Comparability".
-
-8. **Category symbols on the pace/HR chart.** The scatter draws every run in
-   one trace, so a long run, an interval session and a recovery jog are
-   indistinguishable and the aerobic cloud mixes protocols. Give each run
-   category its own marker symbol.
-   - `PaceHrPoint` has no category today; add it and fill it in
-     `pace_hr_points` from `classify(activity, intervals)` (the display kind,
-     `quality/fartlek` included). `pace_hr_points` needs the intervals to do
-     that, so check the three call sites.
-   - Split the scatter into one trace per category with a fixed symbol map
-     (easy, recovery, intervals, longrun, race, tempo, fartlek), keeping
-     **color = date** so the year gradient survives: each trace carries the
-     same colorscale and a shared colorbar, and the legend lists the symbols.
-   - Use the same symbol map in the compare pace/HR chart so two periods stay
-     readable, and keep the regression and efficiency lines unchanged.
-   - Tests: the symbol map is stable and covers every category; a fartlek and
-     an interval session get different symbols; the date colorbar stays
-     shared.
-
-9. **Race PB progression chart.** Add a per-bucket PB trajectory to the
+7. **Race PB progression chart.** Add a per-bucket PB trajectory to the
    Performance tab (and optionally the `races` report): one step line per
    distance bucket connecting improvements over time, with race points on
    top and the current PB annotated. Use the bucket tolerance and, once the
@@ -289,12 +270,12 @@ Current focus: the dashboard's gear/devices and race work.
    - Tests: only improvements advance the step line; ties do not; buckets stay
      separate; official values win when present.
 
-10. **Race report filters.** Add `--bucket`, `--year` (or `--from`/`--to`),
-    and `--limit` to `reports.sh races`, applying them to the results and PB
-    tables while leaving the upcoming-race list unfiltered unless explicitly
-    requested. Derive the filter metadata from the existing race buckets; no
-    schema change. Add a short usage note to the README and tests for combined
-    filters and empty results.
+8. **Race report filters.** Add `--bucket`, `--year` (or `--from`/`--to`),
+   and `--limit` to `reports.sh races`, applying them to the results and PB
+   tables while leaving the upcoming-race list unfiltered unless explicitly
+   requested. Derive the filter metadata from the existing race buckets; no
+   schema change. Add a short usage note to the README and tests for combined
+   filters and empty results.
 
 ## Tests and docs
 

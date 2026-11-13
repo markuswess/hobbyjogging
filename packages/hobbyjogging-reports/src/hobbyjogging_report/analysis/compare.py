@@ -7,7 +7,7 @@ from hobbyjogging_core.model import Activity, Event
 from ..model import ComparePeriod
 from ..series import alpha_from_time_constant, ewma
 from .common import RUN_TYPES
-from .efficiency import activity_efficiency, excess_beats
+from .efficiency import activity_efficiency, excess_beats, is_steady_run
 
 COMPARE_MODES = ("years", "months")
 
@@ -119,7 +119,11 @@ def compare_periods(
                 ),
             )
 
-            if beats is not None and activity.distance_m:
+            if (
+                beats is not None
+                and activity.distance_m
+                and is_steady_run(activity)
+            ):
                 row["efficiency_distance_m"] += activity.distance_m
                 row["efficiency_beats"] += beats
 
@@ -363,6 +367,8 @@ def _daily_efficiency(
 
     for activity in activities:
         if activity.type not in RUN_TYPES:
+            continue
+        if not is_steady_run(activity):
             continue
         if not (start <= activity.date <= end):
             continue

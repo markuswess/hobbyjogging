@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from datetime import date
 from statistics import median
 
-from hobbyjogging_core.model import Activity
+from hobbyjogging_core.classify import classify as core_classify
+from hobbyjogging_core.model import Activity, Interval
 
 from .common import RUN_TYPES, pace_s_per_km
-from .efficiency import excess_beats
+from .efficiency import STEADY_BAND_LABEL, excess_beats, is_steady_run
 from ..model import PaceHrPoint
 
 
@@ -20,6 +21,7 @@ def pace_hr_points(
     end: date,
     *,
     resting_hr_baseline: Callable[[date], float | None] | None = None,
+    intervals_by_id: dict[str, list[Interval]] | None = None,
 ) -> list[PaceHrPoint]:
     """One point per run with distance, time, and average heart rate."""
     points = []
@@ -50,7 +52,11 @@ def pace_hr_points(
             activity.avg_hr,
             resting_hr,
         )
-
+        category = core_classify(
+            activity,
+            (intervals_by_id or {}).get(activity.id, []),
+        )
+        category_name = category.kind or category.group or "other"
         points.append(
             PaceHrPoint(
                 date=activity.date,
@@ -60,6 +66,11 @@ def pace_hr_points(
                 resting_hr=resting_hr,
                 distance_m=activity.distance_m or 0,
                 excess_beats=beats or 0,
+                steady=is_steady_run(
+                    activity,
+                    intervals=(intervals_by_id or {}).get(activity.id, []),
+                ),
+                category=category_name,
             )
         )
 
@@ -151,10 +162,11 @@ def pace_hr_efficiency_lines(
 ) -> list[PaceHrEfficiencyLine]:
     """Draw one efficiency line per half, beside the free regressions.
 
-    ``E`` is the weighted aggregate ``sum(distance) / sum(excess beats)``,
-    so it matches the efficiency reported elsewhere. The intercept is the
-    half's median resting-HR baseline. Points without a baseline are left
-    out of the fit but stay in the scatter.
+    ``E`` is the weighted aggregate ``sum(distance) / sum(excess beats)``
+    over steady runs in the 45–75 min band, so it matches the steady
+    efficiency reported elsewhere. The intercept is the half's median
+    resting-HR baseline. Points without a baseline or outside that band are
+    left out of the fit but stay in the scatter.
     """
     ordered = sorted(points, key=lambda point: point.date)
 
@@ -172,7 +184,8 @@ def pace_hr_efficiency_lines(
         usable = [
             point
             for point in chunk
-            if point.distance_m > 0
+            if point.steady
+            and point.distance_m > 0
             and point.excess_beats > 0
             and point.resting_hr is not None
         ]

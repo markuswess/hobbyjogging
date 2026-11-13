@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_report.charts import (
+    PACE_HR_SYMBOLS,
     plot_compare,
     plot_equipment,
     plot_races,
@@ -450,6 +451,7 @@ class PaceHrChartTests(unittest.TestCase):
                 resting_hr=50,
                 distance_m=10000,
                 excess_beats=5000,
+                steady=True,
             )
             for index in range(8)
         ]
@@ -465,6 +467,51 @@ class PaceHrChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+    def test_symbol_map_is_fixed(self):
+        self.assertEqual(
+            {
+                "easy": "circle",
+                "recovery": "diamond",
+                "intervals": "square",
+                "longrun": "triangle-up",
+                "race": "star",
+                "tempo": "cross",
+                "fartlek": "pentagon",
+                "race-support": "triangle-down",
+                "other": "x",
+            },
+            PACE_HR_SYMBOLS,
+        )
+
+    def test_category_symbols_split_the_scatter_into_traces(self):
+        points = [
+            PaceHrPoint(D, 300.0, 150.0, "Easy", category="easy"),
+            PaceHrPoint(D, 290.0, 152.0, "Recovery", category="recovery"),
+            PaceHrPoint(D, 240.0, 165.0, "Tempo", category="tempo"),
+        ]
+
+        html = plot_pace_hr(points, "", as_html=True)
+
+        self.assertIn('"name":"Easy"', html)
+        self.assertIn('"name":"Recovery"', html)
+        self.assertIn('"name":"Tempo"', html)
+        self.assertIn('"symbol":"circle"', html)
+        self.assertIn('"symbol":"diamond"', html)
+        self.assertIn('"symbol":"cross"', html)
+        # One shared year colorbar across all category traces.
+        self.assertEqual(1, html.count('"showscale":true'))
+        self.assertEqual(2, html.count('"showscale":false'))
+
+    def test_unknown_category_uses_the_other_symbol(self):
+        html = plot_pace_hr(
+            [PaceHrPoint(D, 300.0, 150.0, "Mystery", category="unknown")],
+            "",
+            as_html=True,
+        )
+
+        self.assertIn('"name":"Other"', html)
+        self.assertIn('"symbol":"x"', html)
 
 
 class RaceChartTests(unittest.TestCase):
@@ -607,6 +654,20 @@ class ComparePaceHrChartTests(unittest.TestCase):
                     [],
                     str(Path(tmp) / "compare-pace-hr.png"),
                 )
+
+    def test_marker_symbols_follow_each_point_category(self):
+        points = [
+            PaceHrPoint(D, 300.0, 150.0, "Easy", category="easy"),
+            PaceHrPoint(D, 290.0, 152.0, "Tempo", category="tempo"),
+            PaceHrPoint(D, 280.0, 155.0, "Mystery", category="unknown"),
+            PaceHrPoint(date(2025, 6, 1), 300.0, 150.0, "Race",
+                        category="race"),
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertIn('"symbol":["circle","cross","x"]', html)
+        self.assertIn('"symbol":["star"]', html)
 
 
 class CompareChartTests(unittest.TestCase):

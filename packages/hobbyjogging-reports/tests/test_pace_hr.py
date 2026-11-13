@@ -123,6 +123,35 @@ class PaceHrTests(unittest.TestCase):
         self.assertEqual(10000, points[0].distance_m)
         self.assertEqual(6000, points[0].excess_beats)
 
+    def test_points_carry_the_classified_category_and_steady_flag(self):
+        activities = [
+            activity(
+                id="a",
+                date=D,
+                duration_s=3600,
+                distance_m=10000,
+                avg_hr=150,
+                name="Easy",
+                workout_methods=["continuous"],
+                workout_targets=["base"],
+            ),
+            activity(
+                id="b",
+                date=D,
+                duration_s=3600,
+                distance_m=10000,
+                avg_hr=165,
+                name="Intervals",
+                workout_methods=["intervals"],
+                workout_targets=["threshold"],
+            ),
+        ]
+
+        points = pace_hr_points(activities, D, D)
+
+        self.assertEqual(["easy", "intervals"], [p.category for p in points])
+        self.assertEqual([True, False], [p.steady for p in points])
+
     def test_points_without_a_baseline_are_still_scattered(self):
         points = pace_hr_points(
             [activity(id="a", date=D, distance_m=10000, avg_hr=150)],
@@ -162,6 +191,7 @@ class PaceHrEfficiencyLineTests(unittest.TestCase):
                     resting_hr=resting_hr,
                     distance_m=10000,
                     excess_beats=5000,
+                    steady=True,
                 )
             )
 

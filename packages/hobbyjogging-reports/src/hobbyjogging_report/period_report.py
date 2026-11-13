@@ -6,12 +6,11 @@ from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
     RESTING_HR_WINDOW_DAYS,
-    RUN_TYPES,
     activity_sort_key,
-    aggregate_efficiency,
     is_lt1_activity,
     is_subt_activity,
     resting_hr_baselines,
+    steady_efficiency,
 )
 from .classify import category_breakdown
 from .format import (
@@ -91,16 +90,7 @@ def period_report(
     recovery = recovery_summary(
         [entry for entry in wellness if start <= entry.date <= end]
     )
-    run_efficiency = aggregate_efficiency(
-        (
-            activity.distance_m,
-            activity.duration_s,
-            activity.avg_hr,
-            baseline(activity.date),
-        )
-        for activity in activities
-        if activity.type in RUN_TYPES
-    )
+    run_efficiency = steady_efficiency(activities, baseline)
 
     lines = []
 
@@ -145,7 +135,8 @@ def period_report(
 
     if run_efficiency is not None:
         lines.append(
-            f"- Efficiency: {run_efficiency:.2f} m/excess beat"
+            f"- Steady efficiency (45–75 min): "
+            f"{run_efficiency:.2f} m/excess beat"
         )
 
     lines.append(

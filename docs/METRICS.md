@@ -64,23 +64,35 @@ dashboard. The dashboard is the last step, never the first.
   at 2 h); the model cannot separate cardiac drift from heat, dehydration and
   fatigue, so the correction factor is **parked** until streams or a
   heat/fatigue control can shrink the uncertainty below the effect.
-  `experiments/efficiency_duration.py`.
+  `experiments/efficiency_duration.py`. Reports act on this directly: the
+  steady aggregates use a fixed **45–75 min** band, and a run counts as steady
+  only when it is non-quality (unknown/unclassified runs count; intervals,
+  races, long runs, progressions and fartlek do not). The band is printed next
+  to every aggregate, so two numbers are never read as comparable when they
+  come from different bands. Session and daily efficiency stay raw
+  per-activity values and are deliberately unbanded.
 - **Comparability**: whole-session interval averages are not comparable to
   steady runs; compare intervals within a fixed protocol or through work-rep
-  efficiency.
-- **Rendered**: session report, `eff` activities column, daily compact line,
-  period/category reports, compare text report and tab, overview EWMA row,
-  subT work reps and summary tables, subT EWMA report, subT chart panel.
+  efficiency. Period, category, overview, compare and pace/HR efficiency lines
+  use the same steady 45–75 min band, so their aggregates can be compared with
+  each other but not with a raw session number or another run length.
+- **Rendered**: session report and daily compact line (raw per activity),
+  `eff` activities column, period/category reports (steady 45–75 min),
+  compare text report and tab (steady 45–75 min), overview EWMA row,
+  pace/HR efficiency lines, subT work reps and summary tables (work-rep
+  efficiency, labelled as such), subT EWMA report, subT chart panel.
 
 ### HR-speed efficiency line
 
 - **Definition**: for each half of the runs, `HR = RHR + v·60/E`, where `v`
   is speed in m/s, `RHR` is the half's median 365-day resting-HR baseline, and
-  `E` is the half's weighted efficiency (`Σdistance / Σexcess beats`) in
-  **m/excess beat**. One parameter, no free intercept.
+  `E` is the half's weighted efficiency (`Σdistance / Σexcess beats`) over
+  **steady runs in the 45–75 min band**, in **m/excess beat**. One parameter,
+  no free intercept.
 - **Baseline / thresholds**: resting HR from the same rolling 365-day median
   (expanding, `None` when absent) used by the efficiency metric; points
-  without a baseline are left out of the line but stay in the scatter.
+  without a baseline or outside the steady band are left out of the line but
+  stay in the scatter.
 - **Informs**: whether the pace/HR cloud behaves like a single efficiency
   value, and whether aerobic efficiency moved between the two periods.
 - **Validation**: `experiments/hr_efficiency_line.py`, 1,262 steady runs

@@ -13,7 +13,10 @@ from .analysis import (
     EFFICIENCY_UNIT,
     RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
+    STEADY_DURATION_BAND,
+    STEADY_EFFICIENCY_LABEL,
     aggregate_efficiency,
+    is_steady_run,
     average_warmup_days,
     daily_run_distance,
     daily_run_time,
@@ -129,7 +132,7 @@ def efficiency_averages(
             baseline(activity.date),
         )
         for activity in activities
-        if activity.type in RUN_TYPES
+        if is_steady_run(activity, duration_band=STEADY_DURATION_BAND)
     ]
 
     return {
@@ -258,7 +261,7 @@ def overview_report(
         rows.append(
             EwmaRow(
                 "efficiency",
-                f"Efficiency ({EFFICIENCY_UNIT})",
+                STEADY_EFFICIENCY_LABEL,
                 "efficiency",
                 efficiency,
             )
@@ -311,8 +314,9 @@ def overview_report(
         "Weekly equivalents of the daily EWMA ending today; the last column "
         f"is {planned_note}.",
         "",
-        "Efficiency is the trailing weighted sum(distance) / "
-        f"sum(excess beats), in {EFFICIENCY_UNIT}; it has no planned value.",
+        "Steady efficiency is the trailing weighted sum(distance) / "
+        f"sum(excess beats), in {EFFICIENCY_UNIT}, for non-quality runs "
+        "in the 45–75 min band; it has no planned value.",
     ])
 
     return "\n".join(lines)

@@ -243,7 +243,7 @@ class FormattingTests(unittest.TestCase):
 
         self.assertEqual(
             "| Category | Sessions | Time | Load | "
-            "Efficiency (m/excess beat) | Time % | Load % |",
+            "Steady efficiency (45–75 min) | Time % | Load % |",
             lines[0],
         )
         self.assertIn(

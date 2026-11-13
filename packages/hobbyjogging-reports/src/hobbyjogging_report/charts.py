@@ -19,6 +19,7 @@ from .analysis import (
     EFFICIENCY_UNIT,
     EquipmentStat,
     RaceResult,
+    STEADY_BAND_LABEL,
     SUBT_CATEGORIES,
     pace_hr_efficiency_lines,
     pace_hr_trends,
@@ -1075,7 +1076,7 @@ def plot_subt(
         col=1,
     )
     figure.update_yaxes(
-        title_text="efficiency (m/excess beat)",
+        title_text="efficiency (m/excess beat, work reps)",
         row=3,
         col=1,
     )
@@ -1268,6 +1269,42 @@ def plot_vo2max(
     )
 
 
+PACE_HR_SYMBOLS = {
+    "easy": "circle",
+    "recovery": "diamond",
+    "intervals": "square",
+    "longrun": "triangle-up",
+    "race": "star",
+    "tempo": "cross",
+    "fartlek": "pentagon",
+    "race-support": "triangle-down",
+    "other": "x",
+}
+PACE_HR_CATEGORY_ORDER = tuple(PACE_HR_SYMBOLS)
+PACE_HR_SYMBOL_TEXT = {
+    "easy": "○",
+    "recovery": "◇",
+    "intervals": "□",
+    "longrun": "△",
+    "race": "★",
+    "tempo": "+",
+    "fartlek": "⬟",
+    "race-support": "▽",
+    "other": "×",
+}
+
+
+def _pace_hr_category(category: str) -> str:
+    return category if category in PACE_HR_SYMBOLS else "other"
+
+
+def _pace_hr_label(category: str) -> str:
+    return {
+        "longrun": "long run",
+        "race-support": "race support",
+    }.get(category, category.replace("_", " ").title())
+
+
 def _style_pace_hr_axes(figure) -> None:
     """Shared linear-speed axis with pace ticks and HR bounds."""
     tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
@@ -1294,41 +1331,61 @@ def plot_pace_hr(
     _require_data(points)
     figure = go.Figure()
     years = sorted({point.date.year for point in points})
-    figure.add_trace(
-        go.Scatter(
-            x=[point.speed_m_s for point in points],
-            y=[point.avg_hr for point in points],
-            mode="markers",
-            name="runs",
-            marker={
-                "color": [point.date.toordinal() for point in points],
-                "colorscale": [
-                    [0.0, "#1f77b4"],
-                    [1.0, "#d62728"],
-                ],
-                "size": 6,
-                "opacity": 0.75,
-                "showscale": True,
-                "colorbar": {
-                    "title": {"text": "year"},
-                    "thickness": 12,
-                    "tickvals": [
-                        date(year, 1, 1).toordinal() for year in years
+    ordinals = [point.date.toordinal() for point in points]
+    categories = {
+        _pace_hr_category(point.category)
+        for point in points
+    }
+    ordered = [
+        category for category in PACE_HR_CATEGORY_ORDER
+        if category in categories
+    ]
+
+    for index, category in enumerate(ordered):
+        chunk = [
+            point for point in points
+            if _pace_hr_category(point.category) == category
+        ]
+        figure.add_trace(
+            go.Scatter(
+                x=[point.speed_m_s for point in chunk],
+                y=[point.avg_hr for point in chunk],
+                mode="markers",
+                name=_pace_hr_label(category),
+                marker={
+                    "color": [point.date.toordinal() for point in chunk],
+                    "cmin": min(ordinals),
+                    "cmax": max(ordinals),
+                    "colorscale": [
+                        [0.0, "#1f77b4"],
+                        [1.0, "#d62728"],
                     ],
-                    "ticktext": [str(year) for year in years],
+                    "size": 6,
+                    "opacity": 0.75,
+                    "symbol": PACE_HR_SYMBOLS[category],
+                    "showscale": index == 0,
+                    "colorbar": {
+                        "title": {"text": "year"},
+                        "thickness": 12,
+                        "tickvals": [
+                            date(year, 1, 1).toordinal()
+                            for year in years
+                        ],
+                        "ticktext": [str(year) for year in years],
+                    },
                 },
-            },
-            text=[
-                (
-                    f"{point.date} {point.name}".strip()
-                    + f"<br>{format_pace(point.pace_s_per_km)}/km"
-                    + f", {point.avg_hr:.0f} bpm"
-                )
-                for point in points
-            ],
-            hoverinfo="text",
+                text=[
+                    (
+                        f"{point.date} {point.name}".strip()
+                        + f"<br>{_pace_hr_label(category)}"
+                        + f"<br>{format_pace(point.pace_s_per_km)}/km"
+                        + f", {point.avg_hr:.0f} bpm"
+                    )
+                    for point in chunk
+                ],
+                hoverinfo="text",
+            )
         )
-    )
 
     trends = pace_hr_trends(points)
     colors = ("#1f77b4", "#d62728")
@@ -1377,8 +1434,9 @@ def plot_pace_hr(
             )
         )
         notes.append(
-            f"{line.label} efficiency: E = {line.efficiency:.2f} "
-            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.2f} bpm"
+            f"{line.label} efficiency (steady {STEADY_BAND_LABEL}): "
+            f"E = {line.efficiency:.2f} {EFFICIENCY_UNIT}, "
+            f"RHR {line.resting_hr:.2f} bpm"
         )
 
     if notes:
@@ -1441,6 +1499,12 @@ def plot_compare_pace_hr(
                     "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
                     "size": 6,
                     "opacity": 0.72,
+                    "symbol": [
+                        PACE_HR_SYMBOLS[
+                            _pace_hr_category(point.category)
+                        ]
+                        for point in chunk
+                    ],
                 },
                 text=[
                     (
@@ -1455,6 +1519,31 @@ def plot_compare_pace_hr(
         )
 
     _style_pace_hr_axes(figure)
+    symbols = [
+        category
+        for category in PACE_HR_CATEGORY_ORDER
+        if any(
+            _pace_hr_category(point.category) == category
+            for point in points
+        )
+    ]
+    if symbols:
+        figure.add_annotation(
+            text="   ".join(
+                f"{PACE_HR_SYMBOL_TEXT[category]} "
+                f"{_pace_hr_label(category)}"
+                for category in symbols
+            ),
+            xref="paper",
+            yref="paper",
+            x=0.01,
+            y=0.01,
+            xanchor="left",
+            yanchor="bottom",
+            showarrow=False,
+            font={"size": 10},
+        )
+
     figure.update_layout(
         template="plotly_white",
         title=title,
@@ -1720,7 +1809,7 @@ def plot_compare(
         "time": "hours / week",
         "load": "load / day",
         "runs": "runs / day",
-        "efficiency": "m / excess beat",
+        "efficiency": "m / excess beat (steady)",
     }
     scale = 7.0 if metric in ("volume", "time") else 1.0
     planned_series = planned_series or []

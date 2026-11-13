@@ -167,6 +167,11 @@ def build_analysis_section(
         start,
         end,
         resting_hr_baseline=baseline,
+        intervals_by_id={
+            activity.id: source.activity_intervals(activity.id)
+            for activity in display
+            if activity.type in RUN_TYPES
+        },
     )
     pace_hr_html = (
         plot_pace_hr(points, "", as_html=True)

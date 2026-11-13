@@ -570,6 +570,7 @@ def run_pace_hr_chart(
     from .analysis import (
         EFFICIENCY_UNIT,
         RESTING_HR_WINDOW_DAYS,
+        RUN_TYPES,
         pace_hr_efficiency_lines,
         pace_hr_points,
         pace_hr_trends,
@@ -587,6 +588,11 @@ def run_pace_hr_chart(
         start,
         end,
         resting_hr_baseline=resting_hr_baselines(wellness),
+        intervals_by_id={
+            activity.id: source.activity_intervals(activity.id)
+            for activity in activities
+            if activity.type in RUN_TYPES
+        },
     )
 
     for trend in pace_hr_trends(points):
@@ -617,7 +623,11 @@ def run_compare_chart(
     include_review: bool = False,
 ) -> None:
     """Render the year-over-year EWMA comparison chart."""
-    from .analysis import compare_year_ewma, compare_year_planned_ewma
+    from .analysis import (
+        STEADY_BAND_LABEL,
+        compare_year_ewma,
+        compare_year_planned_ewma,
+    )
     from .charts import plot_compare
     from .command_support import resting_hr_lookup
 
@@ -638,7 +648,12 @@ def run_compare_chart(
         metric=metric,
         window=window,
         today=today,
-        title=f"Year comparison — {metric}, {window}-day EWMA",
+        title=(
+            f"Year comparison — steady efficiency "
+            f"({STEADY_BAND_LABEL}), {window}-day EWMA"
+            if metric == "efficiency"
+            else f"Year comparison — {metric}, {window}-day EWMA"
+        ),
         planned_series=compare_year_planned_ewma(
             activities,
             events,

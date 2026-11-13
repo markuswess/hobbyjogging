@@ -8,9 +8,11 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    RUN_TYPES,
     compare_year_ewma,
     compare_year_planned_ewma,
     pace_hr_points,
+    STEADY_BAND_LABEL,
     vo2max_measurements,
 )
 from ..charts import (
@@ -65,6 +67,11 @@ def build_compare_section(
         start,
         today,
         resting_hr_baseline=baseline,
+        intervals_by_id={
+            activity.id: source.activity_intervals(activity.id)
+            for activity in activities
+            if activity.type in RUN_TYPES
+        },
     )
     vo2max = vo2max_measurements(activities, start, today)
 
@@ -86,7 +93,12 @@ def build_compare_section(
             metric=metric,
             window=window,
             today=today,
-            title=f"Year comparison — {metric}, {window}-day EWMA",
+            title=(
+                f"Year comparison — steady efficiency "
+                f"({STEADY_BAND_LABEL}), {window}-day EWMA"
+                if metric == "efficiency"
+                else f"Year comparison — {metric}, {window}-day EWMA"
+            ),
             planned_series=compare_year_planned_ewma(
                 activities,
                 events,

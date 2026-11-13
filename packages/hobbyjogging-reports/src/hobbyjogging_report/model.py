@@ -194,6 +194,8 @@ class PaceHrPoint:
     resting_hr: float | None = None
     distance_m: float = 0
     excess_beats: float = 0
+    steady: bool = False
+    category: str = ""
 
     @property
     def speed_m_s(self) -> float:

@@ -19,6 +19,8 @@ def _source():
                 distance_m=10000,
                 avg_hr=150,
                 training_load=50,
+                workout_methods=["continuous"],
+                workout_targets=["base"],
                 pace_zone_times=[600, 600, 600, 600],
             ),
             activity(
@@ -91,13 +93,13 @@ class OverviewReportTests(unittest.TestCase):
         self.assertEqual("5min", _row(report, "Z3+4 / week")[-1])
         self.assertEqual(
             [
-                "Efficiency (m/excess beat)",
+                "Efficiency (45–75 min steady)",
                 "1.67",
                 "1.67",
                 "1.67",
                 "-",
             ],
-            _row(report, "Efficiency (m/excess beat)"),
+            _row(report, "Efficiency (45–75 min steady)"),
         )
         self.assertNotIn("## Efficiency", report)
         self.assertIn("sum(excess beats)", report)

@@ -336,7 +336,7 @@ class CompareReportTests(unittest.TestCase):
         self.assertIn("2025-01-01 → 2026-12-31", report)
         self.assertIn(
             "| Period | Runs | Cross | Run time | Cross time | Run km | "
-            "Avg pace | Avg HR | Garmin VO2max avg | Efficiency |",
+            "Avg pace | Avg HR | Garmin VO2max avg | Steady efficiency (45–75 min) |",
             report,
         )
         self.assertIn(

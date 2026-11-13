@@ -25,6 +25,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from datetime import date
 
+from hobbyjogging_core.classify import classify as core_classify
 from hobbyjogging_core.model import Activity, Interval, WellnessDay
 
 from .baseline import robust_baselines
@@ -33,6 +34,11 @@ from .common import RUN_TYPES
 EFFICIENCY_UNIT = "m/excess beat"
 RESTING_HR_WINDOW_DAYS = 365
 MIN_EXCESS_HR = 10
+STEADY_MIN_DURATION_S = 45 * 60
+STEADY_MAX_DURATION_S = 75 * 60
+STEADY_DURATION_BAND = (STEADY_MIN_DURATION_S, STEADY_MAX_DURATION_S)
+STEADY_BAND_LABEL = "45–75 min"
+STEADY_EFFICIENCY_LABEL = "Efficiency (45–75 min steady)"
 
 
 def resting_hr_baseline(
@@ -135,16 +141,41 @@ def interval_efficiency(
     )
 
 
+def is_steady_run(
+    activity: Activity,
+    *,
+    duration_band: tuple[float, float] = STEADY_DURATION_BAND,
+    intervals: list[Interval] | None = None,
+) -> bool:
+    """True for a non-quality run inside the steady duration band."""
+    if activity.type not in RUN_TYPES:
+        return False
+    duration = activity.duration_s or 0
+    if not (duration_band[0] <= duration <= duration_band[1]):
+        return False
+
+    # Unknown/unclassified runs are still aerobic; only known quality work
+    # (intervals, races, long runs, progressions, fartlek) is excluded.
+    return not core_classify(activity, intervals or []).quality
+
+
 def aggregate_efficiency(
     samples: Iterable[
         tuple[float | None, float | None, float | None, float | None]
     ],
+    *,
+    duration_band: tuple[float, float] | None = None,
 ) -> float | None:
     """Weighted efficiency over ``(distance, duration, HR, resting HR)``."""
     total_distance = 0.0
     total_beats = 0.0
 
     for distance_m, duration_s, avg_hr, resting_hr in samples:
+        if duration_band is not None:
+            duration = duration_s or 0
+            if not (duration_band[0] <= duration <= duration_band[1]):
+                continue
+
         sample_beats = excess_beats(duration_s, avg_hr, resting_hr)
 
         if not distance_m or distance_m <= 0 or sample_beats is None:
@@ -157,3 +188,22 @@ def aggregate_efficiency(
         return None
 
     return total_distance / total_beats
+
+
+def steady_efficiency(
+    activities: Iterable[Activity],
+    resting_hr_baseline,
+    *,
+    duration_band: tuple[float, float] = STEADY_DURATION_BAND,
+) -> float | None:
+    """Weighted efficiency for steady aerobic runs in one duration band."""
+    return aggregate_efficiency(
+        (
+            activity.distance_m,
+            activity.duration_s,
+            activity.avg_hr,
+            resting_hr_baseline(activity.date),
+        )
+        for activity in activities
+        if is_steady_run(activity, duration_band=duration_band)
+    )

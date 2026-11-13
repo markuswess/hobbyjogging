@@ -24,10 +24,10 @@ HTML dashboard:
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
   km, load, and Z3+4, plus the planned weekly average for the next 14
   days, plus an Efficiency row in the same table using the trailing
-  7/42/182-day weighted efficiency (no planned value).
+  7/42/182-day weighted steady efficiency (45–75 min, no planned value).
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days, including weighted
-  efficiency in the running block and category table.
+  steady efficiency (45–75 min) in the running block and category table.
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
@@ -35,8 +35,8 @@ HTML dashboard:
   recovery and health, activity list, activity detail pages, data health);
   writes a directory and prints its path.
 - **report** — A summary report for an arbitrary inclusive date range
-  (`--days`, `--from`, `--to`), with the same weighted efficiency total and
-  category column.
+  (`--days`, `--from`, `--to`), with the same weighted steady efficiency
+  total and category column.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
@@ -114,12 +114,17 @@ HTML dashboard:
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
-  to red (newest) with a year colour bar, and a least-squares line is fitted
-  to the older and newer half of the runs (parameters on the chart and
-  printed by the CLI). Each half also gets a dashed efficiency line,
-  `HR = RHR + v·60/E`, where `E` is that half's weighted efficiency
+  to red (newest) with a shared year colour bar. Each run category gets its
+  own fixed marker symbol (easy ○, recovery ◇, intervals □, long run △,
+  race ★, tempo +, fartlek ⬟, race support ▽, other ×) so the aerobic cloud
+  does not mix protocols, and the legend/annotation spells out the key. A
+  least-squares line is fitted to the older and newer half of the runs
+  (parameters on the chart and printed by the CLI). Each half also gets a
+  dashed efficiency line, `HR = RHR + v·60/E`, where `E` is that half's
+  weighted efficiency over steady runs in the 45–75 min band
   (`Σdistance / Σexcess beats`, in **m/excess beat**) and `RHR` is its median
-  resting-HR baseline; the label shows both values.
+  resting-HR baseline; the label shows both values and the band. The compare
+  page keeps the year colours and uses the same category symbols per point.
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
   choose the metric and smoothing. Volume is in km/week and time in
@@ -456,13 +461,20 @@ Sampling rules:
 - A session needs HR, distance, duration, and a baseline with
   `avg_hr - resting_hr >= 10`; otherwise efficiency is `-`.
 - Runs only. Rest days in the compare series carry the previous value.
+- Report aggregates use a steady duration band: non-quality runs from
+  45–75 min. Unknown/unclassified runs count as steady; intervals, races,
+  long runs, progressions and fartlek do not. The band is printed next to
+  every aggregate and is never mixed with another band.
+- Session and daily efficiency stay raw per-activity numbers, not banded
+  aggregates.
 - RHR noise propagates (about 5% for a 5 bpm error on a ~90 bpm difference);
   treat it as a trend signal, not a per-run score. HR lag still understates
   short reps.
 
 Efficiency appears in the session report, the optional `eff` activities
-column, the subT work-rep lines and summary/block tables, the subT EWMA
-report, the subT chart's third panel, and the compare tab. The subT chart
+column, the steady totals in the period/category reports and overview, the
+subT work-rep lines and summary/block tables (work-rep efficiency), the subT
+EWMA report, the subT chart's third panel, and the compare tab. The subT chart
 and compare series use a weighted rolling mean, not an EWMA of ratios.
 Because resting HR starts in Sep 2022 in the current database, older years
 have no baseline and are left out of the compare efficiency chart.

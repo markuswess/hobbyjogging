@@ -16,7 +16,11 @@ from hobbyjogging_core.classify import (
 from hobbyjogging_core.model import Activity, Interval
 
 from .analysis.common import RUN_TYPES
-from .analysis.efficiency import excess_beats
+from .analysis.efficiency import (
+    STEADY_DURATION_BAND,
+    excess_beats,
+    is_steady_run,
+)
 
 GROUP_ORDER = {
     "quality": 0,
@@ -55,6 +59,7 @@ def category_breakdown(
     intervals_by_id: dict[str, list[Interval]] | None = None,
     *,
     resting_hr_baseline=None,
+    steady_duration_band: tuple[float, float] = STEADY_DURATION_BAND,
 ) -> list[CategoryStat]:
     """Aggregate activities by category, grouped and sorted by time.
 
@@ -75,7 +80,11 @@ def category_breakdown(
         stat.time_s += activity.duration_s or 0
         stat.load += activity.training_load or 0
 
-        if activity.type in RUN_TYPES:
+        if activity.type in RUN_TYPES and is_steady_run(
+            activity,
+            duration_band=steady_duration_band,
+            intervals=intervals_by_id.get(activity.id, []),
+        ):
             beats = excess_beats(
                 activity.duration_s,
                 activity.avg_hr,

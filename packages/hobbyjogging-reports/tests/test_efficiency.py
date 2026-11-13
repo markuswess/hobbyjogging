@@ -11,6 +11,8 @@ from hobbyjogging_report.analysis import (
     m_per_excess_beat,
     resting_hr_baseline,
     resting_hr_baselines,
+    is_steady_run,
+    steady_efficiency,
 )
 from hobbyjogging_report.analysis.subt import (
     subt_blocks,
@@ -86,6 +88,85 @@ class EfficiencyHelperTests(unittest.TestCase):
 
         for value in values:
             self.assertAlmostEqual(values[0], value, places=6)
+
+    def test_steady_run_requires_aerobic_band_and_non_quality(self):
+        steady = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=60 * 60,
+            workout_methods=["continuous"],
+            workout_targets=["base"],
+        )
+        short = Activity(
+            id="b",
+            date=D,
+            type="run",
+            duration_s=30 * 60,
+            workout_methods=["continuous"],
+            workout_targets=["base"],
+        )
+        quality = Activity(
+            id="c",
+            date=D,
+            type="run",
+            duration_s=60 * 60,
+            workout_methods=["intervals"],
+            workout_targets=["threshold"],
+        )
+
+        self.assertTrue(is_steady_run(steady))
+        self.assertFalse(is_steady_run(short))
+        self.assertFalse(is_steady_run(quality))
+
+    def test_steady_efficiency_ignores_quality_sessions(self):
+        steady = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=60 * 60,
+            distance_m=10000,
+            avg_hr=150,
+            workout_methods=["continuous"],
+            workout_targets=["base"],
+        )
+        quality = Activity(
+            id="b",
+            date=D,
+            type="run",
+            duration_s=60 * 60,
+            distance_m=10000,
+            avg_hr=170,
+            workout_methods=["intervals"],
+            workout_targets=["threshold"],
+        )
+
+        value = steady_efficiency([steady, quality], lambda _day: 50)
+
+        self.assertAlmostEqual(10000 / 6000, value)
+
+    def test_interval_structure_can_keep_a_run_out_of_the_steady_band(self):
+        session = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=60 * 60,
+            rpe=3,
+        )
+        work = [Interval(type="WORK", duration_s=20 * 60)]
+
+        # Without the interval structure an RPE-3 session with no quality
+        # signal reads as steady; the sustained work block makes it quality.
+        self.assertTrue(is_steady_run(session))
+        self.assertFalse(is_steady_run(session, intervals=work))
+
+    def test_aggregate_duration_band_filter(self):
+        value = aggregate_efficiency(
+            [(10000, 3600, 150, 50), (10000, 1800, 150, 50)],
+            duration_band=(45 * 60, 75 * 60),
+        )
+
+        self.assertAlmostEqual(10000 / 6000, value)
 
     def test_non_running_activity_has_no_efficiency(self):
         ride = Activity(

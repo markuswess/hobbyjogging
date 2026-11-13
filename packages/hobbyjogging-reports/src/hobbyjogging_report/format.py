@@ -178,7 +178,7 @@ def format_category_table(stats):
 
     lines = [
         "| Category | Sessions | Time | Load | "
-        "Efficiency (m/excess beat) | Time % | Load % |",
+        "Steady efficiency (45–75 min) | Time % | Load % |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
 

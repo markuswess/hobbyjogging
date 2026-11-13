@@ -58,8 +58,8 @@ class EfficiencyReportTests(unittest.TestCase):
             [
                 activity(
                     name="Easy",
-                    duration_s=2400,
-                    distance_m=8000,
+                    duration_s=3000,
+                    distance_m=10000,
                     avg_hr=140,
                     rpe=2,
                     training_load=32,
@@ -79,7 +79,7 @@ class EfficiencyReportTests(unittest.TestCase):
         with patch("hobbyjogging_report.daily.date", FixedDate):
             report = daily(self._source())
 
-        # 8 km / ((140 - 50) * 40) excess beats.
+        # 10 km / ((140 - 50) * 50) excess beats.
         self.assertIn(
             "- Efficiency: 2.22 m/excess beat",
             report,
@@ -93,9 +93,9 @@ class EfficiencyReportTests(unittest.TestCase):
             self._source(),
         )
 
-        self.assertIn("- Efficiency: 2.22 m/excess beat", report)
+        self.assertIn("- Steady efficiency (45–75 min): 2.22 m/excess beat", report)
         self.assertIn(
-            "| non-quality/easy | 1 | 40min | 32 | 2.22 | 100% | 100% |",
+            "| non-quality/easy | 1 | 50min | 32 | 2.22 | 100% | 100% |",
             report,
         )
 
