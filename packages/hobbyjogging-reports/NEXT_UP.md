@@ -215,6 +215,23 @@ Current focus: the dashboard's gear/devices and race work.
    read-time `tempo` fallback must not turn it into `intervals`. Depends on
    the root fartlek item.
 
+7. **Efficiency duration bands.** Efficiency is duration-dependent (~1.8%
+   lower at 90 min, 4% at 120 and 8.5% at 180 than at 60), so no
+   cross-duration comparison without qualification. The aggregates in
+   `period_report` and `overview` currently take **every run** — no steady
+   filter and no duration band, despite the card's "steady runs" wording.
+   - Filter the steady aggregate to non-quality runs (exclude intervals,
+     fartlek, races, progressions and long runs) and to a duration band; add a
+     `duration_band` argument to `aggregate_efficiency` or filter at each call
+     site, and audit `_weighted_efficiency` in the pace/HR chart the same way.
+   - Show the band next to every aggregate and refuse a comparison across
+     bands in the compare tab and the period report.
+   - Label the provisional +4%/h beyond 60 min as an estimate where long runs
+     are shown; never correct silently.
+   - Tests: an interval session never enters the steady aggregate; two
+     aggregates in different bands are not compared; the band label renders.
+   - Card: `docs/METRICS.md` Efficiency "Duration" and "Comparability".
+
 ## Tests and docs
 
 Covered now:

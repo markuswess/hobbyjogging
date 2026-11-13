@@ -40,8 +40,8 @@ dashboard. The dashboard is the last step, never the first.
   `wellness_days.resting_hr`, expanding median when history is shorter, `None`
   when there is none at all. Guard: `avg_hr − rhr < 10` → `None`.
 - **Informs**: aerobic efficiency trends. Because the offset is removed, the
-  number is comparable across paces, so subT categories and year-over-year
-  comparisons are meaningful.
+  number is comparable across paces *within a duration band*, so subT
+  categories and year-over-year comparisons are meaningful.
 - **Validation**: `HR ≈ 52.5 + 26.2·v` (R² = 0.54 over 2,685 steady runs), with
   the intercept matching the median resting HR (51 bpm). `v/HR` spreads 11.3%
   across speed quartiles; `v/(HR − RHR)` spreads 3.3%. A 42-day baseline
@@ -51,6 +51,23 @@ dashboard. The dashboard is the last step, never the first.
   difference) — a trend signal, not a per-run score. HR lag understates short
   reps, so compare same rep lengths and prefer ≥5 min. Heat, terrain and
   fatigue move it.
+- **Duration**: duration-dependent, so never compare across run lengths
+  unqualified. `excess HR = a + b·v + c/T + d·T` on 980 steady runs
+  (2022-09..2026-11, 20–240 min) gives `c = +135 bpm·min` and
+  `d = +0.072 bpm/min`: at a fixed pace, efficiency reads ~1.8% lower at
+  90 min, 4% lower at 120 min and 8.5% lower at 180 min than at 60 min. Short
+  runs are *not* inflated as a warm-up transient would suggest — the
+  20–30 min group is dominated by recovery sessions, often a second run of the
+  day, and reads slightly lower. Filtering by duration or dropping recovery
+  runs lowers split-half reliability (0.68 → 0.48), so trends use all steady
+  runs. A provisional +4% per hour beyond 60 min is a labelled estimate (±4%
+  at 2 h); the model cannot separate cardiac drift from heat, dehydration and
+  fatigue, so the correction factor is **parked** until streams or a
+  heat/fatigue control can shrink the uncertainty below the effect.
+  `experiments/efficiency_duration.py`.
+- **Comparability**: whole-session interval averages are not comparable to
+  steady runs; compare intervals within a fixed protocol or through work-rep
+  efficiency.
 - **Rendered**: session report, `eff` activities column, daily compact line,
   period/category reports, compare text report and tab, overview EWMA row,
   subT work reps and summary tables, subT EWMA report, subT chart panel.
