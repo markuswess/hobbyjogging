@@ -142,9 +142,9 @@ def parse_report_args(
 
 def parse_races_args(
     argv: list[str],
-) -> tuple[str | None, date | None, date | None, int | None]:
+):
     """Parse bucket, date, and limit filters for the races report."""
-    from .analysis import BUCKET_ORDER
+    from .analysis import BUCKET_ORDER, RaceFilter
 
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--bucket", choices=BUCKET_ORDER)
@@ -154,29 +154,52 @@ def parse_races_args(
     parser.add_argument("--limit", type=int)
     args = parser.parse_args(argv)
 
-    if (
-        args.year is not None
-        and (args.start is not None or args.end is not None)
-    ):
-        raise ValueError("--year cannot be combined with --from/--to")
+    return _race_filter(
+        bucket=args.bucket,
+        year=args.year,
+        start=args.start,
+        end=args.end,
+        limit=args.limit,
+    )
 
-    if args.limit is not None and args.limit <= 0:
-        raise ValueError("--limit must be positive")
 
-    start = args.start
-    end = args.end
+def _race_filter(
+    *,
+    bucket: str | None = None,
+    year: int | None = None,
+    start: date | None = None,
+    end: date | None = None,
+    limit: int | None = None,
+    prefix: str = "--",
+):
+    """Build a race filter from parsed options."""
+    from .analysis import RaceFilter
 
-    if args.year is not None:
+    if year is not None and (start is not None or end is not None):
+        raise ValueError(
+            f"{prefix}year cannot be combined with "
+            f"{prefix}from/{prefix}to"
+        )
+
+    if limit is not None and limit <= 0:
+        raise ValueError(f"{prefix}limit must be positive")
+
+    if year is not None:
         try:
-            start = date(args.year, 1, 1)
-            end = date(args.year, 12, 31)
+            start = date(year, 1, 1)
+            end = date(year, 12, 31)
         except ValueError as exc:
-            raise ValueError(f"invalid year: {args.year}") from exc
+            raise ValueError(f"invalid {prefix}year: {year}") from exc
 
     if start is not None and end is not None and start > end:
-        raise ValueError("--from must not be after --to")
+        raise ValueError(f"{prefix}from must not be after {prefix}to")
 
-    return args.bucket, start, end, args.limit
+    return RaceFilter(
+        bucket=bucket,
+        start=start,
+        end=end,
+        limit=limit,
+    )
 
 
 def parse_planned_args(
@@ -254,10 +277,13 @@ def parse_dashboard_args(
     int,
     int,
     int,
+    "RaceFilter",
     tuple[str, ...],
     str | None,
 ]:
     """Parse dashboard output, windows, chart ranges, and reports."""
+    from .analysis import BUCKET_ORDER
+
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
     parser.add_argument("--days", type=int, default=14)
@@ -271,6 +297,11 @@ def parse_dashboard_args(
     )
     parser.add_argument("--analysis-days", type=int, default=731)
     parser.add_argument("--compare-window", type=int, default=182)
+    parser.add_argument("--race-bucket", choices=BUCKET_ORDER)
+    parser.add_argument("--race-year", type=int)
+    parser.add_argument("--race-from", dest="race_start", type=date_arg)
+    parser.add_argument("--race-to", dest="race_end", type=date_arg)
+    parser.add_argument("--race-limit", type=int)
     parser.add_argument("--reports")
     parser.add_argument("--demo-label")
     args = parser.parse_args(argv)
@@ -289,6 +320,15 @@ def parse_dashboard_args(
         raise ValueError("--analysis-days must be positive")
     if args.compare_window <= 0:
         raise ValueError("--compare-window must be positive")
+
+    race_filter = _race_filter(
+        bucket=args.race_bucket,
+        year=args.race_year,
+        start=args.race_start,
+        end=args.race_end,
+        limit=args.race_limit,
+        prefix="--race-",
+    )
 
     reports = tuple(
         part.strip()
@@ -314,6 +354,7 @@ def parse_dashboard_args(
         args.recovery_days,
         args.analysis_days,
         args.compare_window,
+        race_filter,
         reports,
         args.demo_label,
     )

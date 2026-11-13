@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from hobbyjogging_core.model import Event, EventZoneTime, Lap
 from hobbyjogging_report.analysis import (
+    RaceFilter,
     equivalent_times,
     fit_riegel,
     half_split,
@@ -230,7 +231,11 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("Riegel estimate", report)
 
     def test_bucket_filter_applies_to_results_and_pbs(self):
-        report = races_report(self._source(), bucket="10k", today=D)
+        report = races_report(
+            self._source(),
+            filters=RaceFilter(bucket="10k"),
+            today=D,
+        )
         results = report.split("## Personal bests")[0]
         pbs = report.split("## Personal bests")[1]
 
@@ -246,8 +251,10 @@ class RaceReportTests(unittest.TestCase):
     def test_year_filter_scopes_results_and_upcoming(self):
         report = races_report(
             self._source(),
-            start=date(2025, 1, 1),
-            end=date(2025, 12, 31),
+            filters=RaceFilter(
+                start=date(2025, 1, 1),
+                end=date(2025, 12, 31),
+            ),
             today=D,
         )
 
@@ -257,7 +264,11 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("Filter: 2025-01-01 → 2025-12-31", report)
 
     def test_limit_caps_rows_but_pbs_use_all_matches(self):
-        report = races_report(self._source(), limit=2, today=D)
+        report = races_report(
+            self._source(),
+            filters=RaceFilter(limit=2),
+            today=D,
+        )
         results = report.split("## Personal bests")[0]
         pbs = report.split("## Personal bests")[1]
 
@@ -268,7 +279,11 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("| HM |", pbs)
 
     def test_empty_filter_still_shows_upcoming(self):
-        report = races_report(self._source(), bucket="M", today=D)
+        report = races_report(
+            self._source(),
+            filters=RaceFilter(bucket="M"),
+            today=D,
+        )
 
         self.assertIn("Filter: bucket M", report)
         self.assertIn("No race results found.", report)
@@ -278,8 +293,10 @@ class RaceReportTests(unittest.TestCase):
     def test_empty_year_filter_hides_upcoming(self):
         report = races_report(
             self._source(),
-            start=date(2024, 1, 1),
-            end=date(2024, 12, 31),
+            filters=RaceFilter(
+                start=date(2024, 1, 1),
+                end=date(2024, 12, 31),
+            ),
             today=D,
         )
 

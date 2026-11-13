@@ -715,6 +715,10 @@ Pages:
 - `performance.html` (Performance) — upcoming races, race results, personal
   bests, a log-log race chart with the Riegel fit, and equivalent times.
   Results and PBs link to per-race pages with splits and execution details.
+  Build-time filters `--race-bucket`, `--race-year` (or `--race-from` /
+  `--race-to`) and `--race-limit` scope the results, PBs, chart and Riegel
+  table; a date filter also scopes upcoming races, while bucket and limit
+  leave them alone.
 - `gear.html` (Gear) — gear mileage bars with target markers, the gear
   table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,

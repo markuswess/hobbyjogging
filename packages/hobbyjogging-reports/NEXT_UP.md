@@ -209,7 +209,9 @@ Current focus: the dashboard's gear/devices and race work.
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
   upcoming races, while bucket and limit leave them alone. Limit caps the
-  result rows only, so PBs still use every matching race. Tests cover
+  result rows only, so PBs still use every matching race. The dashboard
+  Performance tab exposes the same filters as `--race-bucket`,
+  `--race-year`/`--race-from`/`--race-to` and `--race-limit`. Tests cover
   defaults, combined filters, truncation, and empty results.
 - **Stable compare colors.** All three compare charts map a year through
   `compare_color(year)`, anchored on 2009, so a year keeps one color across
