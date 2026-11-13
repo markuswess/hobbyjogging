@@ -72,6 +72,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency), and how do they move? (vague) | candidate | — | 2026-11-13 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (needs more races spanning the distances) | blocked | — | 2026-11-13 |
+| Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (needs more races spanning the distances) | blocked | — | 2026-11-13 |
 | Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague) | candidate | — | 2026-11-13 |
 | Garmin VO2max jumps | Why do the readings jump — sport-specific values, terrain, or device history? (revisit with canonical elevation data) | parked | `vo2max_jumps.py` | 2026-11-13 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
