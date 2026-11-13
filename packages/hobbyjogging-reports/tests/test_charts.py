@@ -544,7 +544,7 @@ class CompareChartTests(unittest.TestCase):
 
         self.assertIn('"name":"2026 planned"', html)
         self.assertIn('"dash":"dash"', html)
-        self.assertIn('"y":[8.0,9.0]', html)
+        self.assertIn('"y":[56.0,63.0]', html)
 
     def test_compare_chart_hides_older_years_in_the_legend(self):
         series = [
@@ -565,7 +565,7 @@ class CompareChartTests(unittest.TestCase):
         for year in range(2018, 2027):
             self.assertIn(f'"name":"{year}"', html)
 
-    def test_compare_chart_time_axis_is_in_minutes(self):
+    def test_compare_chart_time_axis_is_weekly_hours(self):
         series = [
             (
                 2026,
@@ -582,8 +582,8 @@ class CompareChartTests(unittest.TestCase):
             as_html=True,
         )
 
-        self.assertIn("min \\u002f day", html)
-        self.assertIn('"y":[90.0,120.0]', html)
+        self.assertIn("hours \\u002f week", html)
+        self.assertIn('"y":[10.5,14.0]', html)
 
     def test_compare_chart_writes_file(self):
         series = [(2026, [(date(2026, 1, 1), 20.0)])]

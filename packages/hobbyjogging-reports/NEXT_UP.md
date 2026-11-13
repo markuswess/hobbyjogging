@@ -76,7 +76,7 @@ planned-vs-actual comparison remain next.
   default volume/42d; the current year stops at today and is marked) plus
   the year and month comparison reports. The EWMA runs across the whole
   history, so each year line starts on the previous year's close. The tab
-  shows volume, time (minutes/day), and efficiency charts (182-day EWMA by
+  shows volume (km/week), time (hours/week), and efficiency charts (182-day EWMA by
   default), with dashed projected volume/time lines for the current and
   future years: actual through today, then the plan. Only the five most
   recent years are visible by default; older years stay in the legend and

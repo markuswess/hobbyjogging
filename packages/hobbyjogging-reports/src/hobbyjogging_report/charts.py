@@ -1485,13 +1485,13 @@ def plot_compare(
     reference_year = 2001
     reference_start = date(reference_year, 1, 1)
     ylabels = {
-        "volume": "km / day",
-        "time": "min / day",
+        "volume": "km / week",
+        "time": "hours / week",
         "load": "load / day",
         "runs": "runs / day",
         "efficiency": "m / excess beat",
     }
-    scale = 60.0 if metric == "time" else 1.0
+    scale = 7.0 if metric in ("volume", "time") else 1.0
     planned_series = planned_series or []
     planned_by_year = dict(planned_series)
     all_years = sorted(
