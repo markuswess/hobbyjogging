@@ -608,6 +608,56 @@ Updated 2026-11-12.
     `tz_offset_min` where local time matters — chart day boundaries and session
     times. Decide per field whether it earns a place.
 
+22. **Release versioning** (repo-level; no package). Every `pyproject.toml` says
+    `0.1.0` and never changes, and there are no tags, so "which code built this
+    database" is unanswerable. The *data* contract already exists — `PRAGMA
+    user_version`, immutable ordered migrations, and `migrate()` refusing a
+    database newer than the code — so only the code version is missing.
+    - **Triggers**: the homelab cutover (item 13), where scheduled syncs and
+      ad-hoc reports can run two code versions against one DB; a second
+      installation; any destructive migration; and the published demo, which
+      already ships output without provenance.
+    - **Shape**: one repo-level semver tag (the four packages move together),
+      a `CHANGELOG.md` with schema/data-task/report sections and a
+      compatibility line ("v0.4 requires schema ≥10, migrates to 10"), and a
+      GitHub release note. **No PyPI** — private workspace, no consumer.
+      Pre-1.0 while the schema moves; 1.0 only once a second person's data is
+      on it.
+    - **Cadence**: not time-based — tag now for the current state, then at each
+      schema bump and milestone.
+    - **Not versioned**: experiments, report output, docs.
+    - **Checklist instead of tests**: suites green, changelog written, DB
+      backed up before the migration, tag pushed.
+
+23. **Portability for a second user** (core + import + reports + CI). The model
+    is already portable — canonical activity, owner-based fields, no
+    per-source priority, the migration machinery, the importers, reports over
+    `DataSource`, the synthetic demo. What is personal is the defaults.
+    - **Blocking**: no `init`/`doctor` (a new user must infer that the first
+      import creates and migrates the DB, and nothing checks the paths,
+      credentials or schema version up front); no test CI (only `pages.yml`
+      exists); `requires-python >= 3.14` with no 3.14-only syntax found, so the
+      floor can likely drop to 3.12.
+    - **Personal constants in the analysis**: fixed chart ceilings
+      (`VOLUME_Y_MAX`, `TIME_Y_MAX`, `LOAD_Y_MAX` — a 130 km/week axis for a
+      40 km/week athlete), `COMPARE_VISIBLE_YEARS = 5`, the 2009 colour anchor,
+      `RACE_DAYS = 180`. Make the ceilings a "nice max" from the data.
+    - **The sheet shapes the core**: `SHEET_TYPE_CODES` (German `Trainigstyp`
+      codes for one personal ODS) lives in `hobbyjogging_core.workouts`; it
+      belongs in the import package so the canonical vocabulary is not shaped
+      by one spreadsheet.
+    - **Thresholds as defaults, not laws**: RPE > 3, 90-min long run, 40-min
+      recovery, subT 4/7-min buckets, 5-bpm HR conflict, 10 %/20 m elevation.
+      Document them as defaults and keep them in one module.
+    - **Missing one-file fixes**: no `LICENSE`, no `.env.example`; the README
+      starts at `data/fit` without saying how files get there (Garmin GDPR
+      export, or Intervals-only).
+    - **Out of scope, state it**: multi-athlete (one athlete per DB), imperial
+      units, a hosted service, arbitrary platforms.
+    - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, test
+      CI, the README first-run path; then the data-driven ceilings and the
+      sheet-code move; then the Python floor.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

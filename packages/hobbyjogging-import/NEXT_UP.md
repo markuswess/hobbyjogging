@@ -172,6 +172,15 @@ on.
   the FIT link win. Depends on the core `devices` / `activity_devices`
   migration.
 
+- **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
+  fresh database explicitly (today the first import does it implicitly), and
+  `doctor` checks the DB path and writability, the schema version, the FIT
+  directory and the credentials, printing what is missing. See root item 23.
+- **Move `SHEET_TYPE_CODES` here.** The German `Trainigstyp` mapping for one
+  personal ODS lives in `hobbyjogging_core.workouts`; move it into this
+  package so the canonical vocabulary is not shaped by one spreadsheet.
+  Maintenance already depends on import, so its backfills keep working.
+
 **Runalyze enrichment** is still waiting on the API details (below).
 
 ## Waiting on

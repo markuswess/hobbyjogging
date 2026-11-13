@@ -292,6 +292,14 @@ Current focus: the dashboard's gear/devices and race work.
     series; add the cycling series when it exists. Depends on the root VO2max
     bug fix.
 
+12. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
+    `LOAD_Y_MAX` are fixed to this athlete's peak (a 130 km/week volume axis),
+    so another user's charts are mostly empty and this one's are cramped when
+    it grows. Compute a "nice max" from the data (round up to a sensible step)
+    and keep the fixed values only as a fallback. Same for
+    `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
+    See root item 23.
+
 ## Tests and docs
 
 Covered now:
