@@ -223,7 +223,34 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
      backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
 
-4. **Device registry and per-activity device** (core + import + maintenance +
+4. **Maximum HR per activity** (core + import + maintenance). There is no
+   canonical column today, though Intervals `max_heartrate`, the FIT session
+   and the sheet's `max. Hf` (1,233 rows) all carry it.
+   - **Next migration**: `activities.max_hr`, nullable, owner-based with a
+     small tolerance (2 bpm); manual wins.
+   - **Import**: FIT session max HR, Intervals `max_heartrate`, sheet
+     `max. Hf`.
+   - **Backfill `activity_max_hr_v1`** from the stored payloads.
+   - **Uses**: HR-zone accuracy, interval intensity, and the existing >205 bpm
+     sensor-fault cause reading the canonical value; a session-report line.
+   - **Coverage**: report how many activities gain it, per source and year,
+     before deciding whether the column earns its place.
+
+5. **Per-activity weather** (core + import + maintenance + reports).
+   Intervals carries `average_temp`, `average_weather_temp`,
+   `average_feels_like`, `average_wind_speed`, `average_wind_gust` and
+   `average_clouds` (2,847 activities); the sheet has `Temperatur in °C`
+   (766). Weather is the biggest pace/HR confounder we ignore today.
+   - **Explore first, in the lab**: how much temperature and wind explain pace
+     and HR variance, and whether an "adjusted pace" is worth it.
+   - **If it earns its place**: a small `activity_weather` row per activity
+     (`temp_c`, `feels_like_c`, `wind_speed_ms`, `wind_gust_ms`, `clouds_pct`,
+     `source`) rather than five columns on `activities`; importers write it and
+     `activity_weather_v1` backfills from the payloads.
+   - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
+     comparing similar efforts across conditions.
+
+6. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
    `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
    2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
@@ -252,19 +279,19 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-5. **Runalyze enrichment** when the API auth/endpoint details are settled:
+7. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-6. **Homelab cutover**: DB + importer + dashboard generator + static server,
+8. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-7. **Reports backlog** — handed to the reports session; the list lives in
+9. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: the equipment report and tab
    (including devices), the race report plus Performance tab, and the Docs
    tab.
-8. **Raw vs derived: document the tiers and add a check** (low priority). The
+10. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable

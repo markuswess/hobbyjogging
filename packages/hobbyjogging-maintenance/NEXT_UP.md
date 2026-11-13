@@ -28,6 +28,13 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`activity_max_hr_v1`** (backfill). Fill `activities.max_hr` from the
+  stored payloads (FIT session, Intervals `max_heartrate`, sheet `max. Hf`),
+  owner-based with a 2 bpm tolerance, manual untouched. Idempotent, dry-run,
+  and it reports coverage per source and year.
+- **`activity_weather_v1`** (backfill). Create `activity_weather` rows from the
+  Intervals weather block and the sheet's `Temperatur in °C`, idempotent,
+  dry-run.
 - **`activity_devices_v1`** (backfill). Once the core device tables and the
   importer writes land, create devices and activity links from the stored
   payloads: FIT `file.manufacturer/product/serial_number` as `recorder`,

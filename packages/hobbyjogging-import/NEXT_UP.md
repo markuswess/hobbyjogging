@@ -94,6 +94,12 @@ on.
 
 ## Next
 
+- **Max HR and weather capture.** Write the FIT session max HR, Intervals
+  `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
+  (`average_temp`, `average_feels_like`, `average_wind_speed`,
+  `average_wind_gust`, `average_clouds`) plus the sheet's `Temperatur in °C`.
+  Depends on the core `activities.max_hr` column and the `activity_weather`
+  table.
 - **Device capture.** Parse FIT `file_id` (manufacturer, product, serial) into
   the core device registry and link the activity as `recorder`; normalize
   Intervals `device_name` (`GARMIN ENDURO` / `Garmin Enduro`, `EDGE_540` /

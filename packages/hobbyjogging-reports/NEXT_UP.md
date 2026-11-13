@@ -226,6 +226,11 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
      behind.
    - **Docs**: the reports README dashboard section.
 
+4. **Weather and max HR in the reports.** Once the data lands: show max HR in
+   the session report and use it for HR-zone checks; annotate pace, HR and
+   efficiency charts with temperature and wind; add a per-year data-coverage
+   line for both.
+
 ## Tests and docs
 
 Covered now:
