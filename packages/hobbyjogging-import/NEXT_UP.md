@@ -98,7 +98,11 @@ on.
   scan for contradictions between the stored classification and the evidence,
   producing `consistency` review items (info, non-hiding) with a suggestion in
   `context_json` and a triage `(a)ccept` action that writes the suggestion as
-  manual. Evidence-gated and conservative — measured yields:
+  manual. Evidence-gated and conservative.
+  **The exact rule set and thresholds are still to be determined** — the rules
+  below are measured candidates, not a committed set; settle them (and the
+  90% / 40 m/km / 5 min / 150 bpm / 90 min thresholds) before implementing.
+  Measured yields:
   - `intervals` but the WORK reps cover >90% of the activity → suggest
     `continuous` (38).
   - `run` with ≥40 m/km lap elevation → suggest `trail_run` (9); also use
