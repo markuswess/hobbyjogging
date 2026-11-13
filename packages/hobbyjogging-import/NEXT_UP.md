@@ -172,6 +172,13 @@ on.
   the FIT link win. Depends on the core `devices` / `activity_devices`
   migration.
 
+- **Committed FIT fixture.** `test_fit` reads `data/fit/*.fit`, which is
+  gitignored, so on CI every real-file test skips (they now guard with
+  `skipUnless`) and the parser is only covered by synthetic messages. Commit
+  one sample under `tests/fixtures/` and point the tests at it, so CI parses a
+  real file. A FIT carries timestamps, HR and possibly GPS, so this is a
+  privacy call even in a private repo; the alternative is a synthetic encoder
+  for the test only.
 - **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT

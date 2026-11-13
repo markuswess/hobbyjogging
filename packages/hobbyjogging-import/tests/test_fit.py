@@ -442,6 +442,10 @@ class FitSampleTests(unittest.TestCase):
             format_fit_file(summary),
         )
 
+    @unittest.skipUnless(
+        SAMPLE_FIT.exists(),
+        "sample FIT file is not available",
+    )
     def test_parses_real_sample(self):
         summary = parse_fit_file(SAMPLE_FIT)
 
