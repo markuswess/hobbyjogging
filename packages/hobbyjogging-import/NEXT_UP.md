@@ -122,6 +122,11 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
+- **Athlete thresholds and zone configs.** Write `athlete_thresholds`
+  snapshots and `zone_configs` rows (reusing identical boundaries) and set the
+  activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,
+  `threshold_pace`, `icu_hr_zones` and `pace_zones`. Treat zero and
+  implausible threshold paces as absent.
 - **Max HR and weather capture.** Write the FIT session max HR, Intervals
   `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
   (`average_temp`, `average_feels_like`, `average_wind_speed`,

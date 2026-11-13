@@ -28,6 +28,9 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
+  (backfills). Create threshold snapshots and zone configs from the stored
+  payloads and set the activity FK columns; idempotent, dry-run.
 - **`wellness_extras_v1`** (backfill). Fill the new wellness columns from
   the stored Intervals wellness payloads (3,022 days), idempotent, dry-run.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /

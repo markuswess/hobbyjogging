@@ -250,7 +250,31 @@ Updated 2026-11-12.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
-6. **Wellness beyond HRV, resting HR and sleep** (core + import +
+6. **Athlete thresholds and zone configs** (core + import + maintenance +
+   reports). The Intervals payloads carry the athlete's settings per activity:
+   `athlete_max_hr` (192), `lthr` (174, drifting 172–180), `LTHRdetected`,
+   `threshold_pace` (**4.59 → 4.85 m/s = 3:38 → 3:26/km** across 2019–2026),
+   and the zone boundaries `icu_hr_zones` (`[135,156,174,192]`) and
+   `pace_zones` (`[73,83,100,999]` %). None of it is stored, and
+   `zone_configs` plus the activity FK columns are empty dead schema.
+   - **Zone configs**: reuse `zone_configs(id, kind, source,
+     boundaries_json)`, one row per distinct snapshot, and set
+     `activities.pace_zone_config_id` / `hr_zone_config_id`. Zone times then
+     mean the same thing across eras.
+   - **Thresholds**: a small dated `athlete_thresholds` snapshot table
+     (`effective_from`, `max_hr`, `lthr`, `threshold_pace_mps`, `source`)
+     rather than columns on activities — they belong to the athlete and change
+     slowly.
+   - **Import**: write both from the payloads; treat `threshold_pace` 0 and
+     implausible values (e.g. 0.83) as absent.
+   - **Backfills**: `athlete_thresholds_v1`, `activity_zone_configs_v1`.
+   - **Reports**: a threshold trend chart (LTHR, threshold pace, max HR) beside
+     VO2max, era-correct zone normalization, and subT work-rep pace compared
+     with the period's threshold pace.
+   - **Validation**: Intervals' threshold pace and the subT-derived pace should
+     agree; report the delta.
+
+7. **Wellness beyond HRV, resting HR and sleep** (core + import +
    maintenance + reports). Intervals wellness carries 47 keys; we store three.
    The useful extras: `readiness`, `sleepScore`/`sleepQuality`, `stress`,
    `respiration`, `spO2`, `mood`, `soreness`/`fatigue`, `steps`,
@@ -264,7 +288,7 @@ Updated 2026-11-12.
    - Start with the four with the best signal-to-noise — readiness,
      sleepScore, stress, respiration — and leave the rest behind a flag.
 
-7. **Route identity and grouping** (core + import + maintenance + reports).
+8. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
    (993), but the canonical model has no route. FIT payloads carry no GPS
    streams, so historical route identity can only come from the sheet.
@@ -279,7 +303,7 @@ Updated 2026-11-12.
    - **Open**: GPS-derived routes for the FIT era would need stored streams,
      which do not exist today.
 
-8. **Device registry and per-activity device** (core + import + maintenance +
+9. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
    `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
    2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
@@ -308,19 +332,19 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-9. **Runalyze enrichment** when the API auth/endpoint details are settled:
+10. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-10. **Homelab cutover**: DB + importer + dashboard generator + static server,
+11. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-11. **Reports backlog** — handed to the reports session; the list lives in
+12. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: the equipment report and tab
    (including devices), the race report plus Performance tab, and the Docs
    tab.
-12. **Raw vs derived: document the tiers and add a check** (low priority). The
+13. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable
