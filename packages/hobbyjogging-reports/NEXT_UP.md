@@ -183,6 +183,26 @@ planned-vs-actual comparison remain next.
    (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
    card; compute in `analysis/`, render separately.
 
+5. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
+   (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).
+   - **Phase 1**: render `packages/hobbyjogging-reports/README.md` through the
+     existing Markdown → HTML renderer inside a `.report` card, with a short
+     intro and a table of contents. Nav becomes Overview, Activities, Recovery
+     and Health, NSA, Analysis, Compare, **Docs**, Data Health.
+   - **Phase 2 (planned)**: per-metric explanations — definition, formula,
+     baseline, thresholds, caveats — generated from `docs/METRICS.md`, which is
+     already the metric registry. Link metric names in the dashboard to their
+     Docs section.
+   - **The embedded Markdown reports** currently on that tab (`--reports LIST`)
+     already appear elsewhere (overview embeds overview/daily/planned,
+     recovery embeds recovery-report, nsa embeds subt-report). Move any
+     remaining ones to their page, then retire `--reports` or keep it as a
+     no-op for compatibility.
+   - **Tests**: the page builds, contains the README heading, the nav marks
+     Docs active, the demo label still applies, and no `reports.html` is left
+     behind.
+   - **Docs**: the reports README dashboard section.
+
 ## Tests and docs
 
 Covered now:
