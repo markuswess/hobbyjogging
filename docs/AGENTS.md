@@ -33,6 +33,20 @@ Rules:
 - The user runs interactive triage against the real database themselves. Test
   risky operations on a copy (e.g. `/tmp/opencode/`) first.
 
+## Working the todo lists
+
+- Pick by **impact per unit of effort**, not by list order: the highest-impact,
+  lowest-workload item first. The numbering is not a schedule.
+- **Stay inside the package as long as possible.** If an item can be solved
+  within the package, do that before asking for a core, schema or cross-package
+  change; escalate only when the package genuinely cannot express the fix.
+- When an item needs both, do the smallest core or cross-package piece that
+  unblocks it, then return to the package and finish it there.
+- If an item turns out much larger than expected, stop and leave it for the
+  root session to re-scope instead of half-implementing it across packages.
+- Record a deferral with its reason in that package's `NEXT_UP.md` (for example
+  "needs elevation data"), so the next session does not re-discover it.
+
 ## Packages
 
 - `packages/hobbyjogging-core` — canonical model, schema/migrations, sport
