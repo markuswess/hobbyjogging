@@ -17,7 +17,7 @@ from ..analysis import (
 )
 from ..charts import plot_races
 from ..command_support import activity_start
-from ..format import fmt_time, format_pace
+from ..format import fmt_clock, format_pace
 from ..html import esc, table
 from ..review import exclude_review
 
@@ -48,7 +48,7 @@ def _distance(value: float | None) -> str:
 
 
 def _time(value: float | None) -> str:
-    return "-" if not value else fmt_time(value)
+    return "-" if not value else fmt_clock(value)
 
 
 def build_performance_section(

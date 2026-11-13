@@ -218,6 +218,7 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("# Races", report)
         self.assertIn("## Results", report)
         self.assertIn("Spring 5k", report)
+        self.assertIn("20:00", report)
         self.assertIn("## Personal bests", report)
         self.assertIn("Riegel estimate", report)
 
@@ -226,6 +227,7 @@ class RaceReportTests(unittest.TestCase):
 
         self.assertIn("# Race 2026-10-01", report)
         self.assertIn("Spring 5k", report)
+        self.assertIn("- Time: 20:00", report)
         self.assertIn("### Planned vs actual zones", report)
         self.assertIn("### Plan", report)
 

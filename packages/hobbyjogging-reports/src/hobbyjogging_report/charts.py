@@ -24,7 +24,7 @@ from .analysis import (
     pace_hr_trends,
     recovery_bands,
 )
-from .format import fmt_time, format_pace
+from .format import fmt_clock, fmt_time, format_pace
 from .model import (
     AverageWindows,
     DistancePoint,
@@ -1510,7 +1510,7 @@ def plot_races(
                     f"{point.activity.date} "
                     f"{point.activity.name or point.bucket}"
                     f"<br>{point.activity.distance_m / 1000:.2f} km, "
-                    f"{fmt_time(point.activity.duration_s)}"
+                    f"{fmt_clock(point.activity.duration_s)}"
                     for point in points
                 ],
                 hoverinfo="text",

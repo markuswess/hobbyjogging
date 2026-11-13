@@ -10,6 +10,7 @@ from .analysis import (
     equivalent_times,
     fit_riegel,
     half_split,
+    pace_s_per_km,
     personal_bests,
     race_results,
     upcoming_races,
@@ -17,6 +18,7 @@ from .analysis import (
 from .classify import classify
 from .command_support import activity_start, resting_hr_lookup
 from .format import (
+    fmt_clock,
     fmt_time,
     format_pace,
     format_session_activity,
@@ -101,7 +103,7 @@ def races_report(
                 f"| {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
                 f"{result.bucket} | {_distance(activity.distance_m)} | "
-                f"{fmt_time(activity.duration_s)} | "
+                f"{fmt_clock(activity.duration_s)} | "
                 f"{_pace(result.pace_s_per_km)} | "
                 f"{'-' if activity.avg_hr is None else f'{activity.avg_hr:.0f}'} | "
                 f"{_load(activity.training_load)} |"
@@ -121,7 +123,7 @@ def races_report(
                 f"| {result.bucket} | {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
                 f"{_distance(activity.distance_m)} | "
-                f"{fmt_time(activity.duration_s)} | "
+                f"{fmt_clock(activity.duration_s)} | "
                 f"{_pace(result.pace_s_per_km)} |"
             )
 
@@ -144,8 +146,8 @@ def races_report(
         ])
         for label, predicted, pb in predictions:
             lines.append(
-                f"| {label} | {fmt_time(predicted)} | "
-                f"{'-' if pb is None else fmt_time(pb)} |"
+                f"| {label} | {fmt_clock(predicted)} | "
+                f"{'-' if pb is None else fmt_clock(pb)} |"
             )
 
     return "\n".join(lines)
@@ -209,9 +211,9 @@ def _plan_lines(activity, events) -> list[str]:
     if event.duration_s:
         delta = activity.duration_s - event.duration_s
         lines.append(
-            f"- Duration: planned {fmt_time(event.duration_s)}, "
-            f"actual {fmt_time(activity.duration_s)} "
-            f"({'+' if delta >= 0 else '-'}{fmt_time(abs(delta))})"
+            f"- Duration: planned {fmt_clock(event.duration_s)}, "
+            f"actual {fmt_clock(activity.duration_s)} "
+            f"({'+' if delta >= 0 else '-'}{fmt_clock(abs(delta))})"
         )
     if event.distance_m:
         delta = (activity.distance_m or 0) - event.distance_m
@@ -260,7 +262,12 @@ def race_report(
         if item.activity_id == activity.id
     ]
 
-    lines = [f"# Race {activity.date}"]
+    lines = [
+        f"# Race {activity.date}",
+        f"- Time: {fmt_clock(activity.duration_s)}",
+        f"- Distance: {_distance(activity.distance_m)}",
+        f"- Pace: {_pace(pace_s_per_km(activity.duration_s, activity.distance_m))}",
+    ]
     note = review_note(excluded)
     if note:
         lines.append(f"\n> {note}")
