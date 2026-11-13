@@ -700,6 +700,38 @@ Updated 2026-11-12.
       explicitly listed as plumbing; every entry names the module that
       computes it; no entry describes code that no longer exists.
 
+25. **LLM coaching workflow** (root + reports). The workflow exists but lives
+    outside the repo: another model reads the Markdown reports and plans through
+    a terminal agent, discusses them, and writes a coaching note as Markdown
+    that could be shown in the dashboard. Nothing defines where that note lives,
+    what shape it has, or how the dashboard finds it. ARCHITECTURE already plans
+    a deterministic "LLM coaching bundle" and an append-only decision log; this
+    item makes the real workflow first-class and feeds that plan.
+    - **Notes**: a `coaching/` directory of committed Markdown notes, one file
+      per session, with front matter (`date`, `period`, `focus`, linked
+      events) and sections (state, assessment, decision, next). The decision
+      section *is* the append-only decision log ARCHITECTURE asks for.
+    - **Input**: the model reads reports through the CLI on demand (`session`,
+      `period`, `races`, `plan`) rather than a giant dump. A
+      `reports.sh coaching-bundle` command would emit a compact digest — goals,
+      planned events, load and recovery trends, key sessions, explicit caveats
+      — plus pointers, bounded in size and reproducible for a date range.
+    - **Continuity**: a session starts by reading the last N notes, so a
+      recommendation and whether it was followed carries over; the next note
+      records the outcome.
+    - **Write safety**: the model never writes the database. Reports stay
+      read-only and the only write is the note file.
+    - **Dashboard**: a Coaching tab with the latest note rendered and an index
+      of past ones, through the Markdown-to-HTML path the Docs tab already
+      uses. The public demo builds from the synthetic database and must not
+      ship real notes — exclude `coaching/` when a demo label is set, or ship a
+      synthetic example.
+    - **Later**: plans authored as events instead of prose, which ties into the
+      platform-independence item.
+    - **Open questions**: committed notes or local-only; one file per session
+      or per week; JSON, Markdown or both for the bundle; and whether the tab
+      is "Coaching" or part of "Docs".
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

@@ -309,6 +309,13 @@ Current focus: the dashboard's gear/devices and race work.
     code so the site stays self-contained. If the catalogue is generated, the
     tab renders the same source the Markdown does.
 
+14. **Coaching tab.** Render the latest coaching note and an index of past
+    ones, through the same Markdown-to-HTML path as Docs, with front matter
+    turned into a header (date, period, focus) and the decision sections
+    linked. Must be empty — not leaking — in the public demo: exclude the
+    `coaching/` directory when a demo label is set, or ship a synthetic
+    example note. See root item 25.
+
 ## Tests and docs
 
 Covered now:
