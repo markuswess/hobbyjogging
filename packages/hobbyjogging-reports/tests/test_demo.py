@@ -517,7 +517,10 @@ class DemoGeneratorTests(unittest.TestCase):
                 ),
                 "gear.html": ("Gear", "Coverage"),
                 "docs.html": ("Reports guide", "hobbyjogging-reports"),
-                "lab.html": ("Experiment scripts", "Metrics"),
+                "lab.html": (
+                    "Lab session ground rules",
+                    "bench rules only",
+                ),
                 "health.html": ("Data Health", "Open review items"),
             }
 
@@ -535,6 +538,20 @@ class DemoGeneratorTests(unittest.TestCase):
             health = (site / "health.html").read_text()
             self.assertIn("The review queue is empty.", health)
             self.assertIn("Synthetic demo data", health)
+
+            # The public demo must not publish the lab notebook, the experiment
+            # scripts, or the metric registry: they carry this athlete's own
+            # results.
+            lab = (site / "lab.html").read_text()
+            for leaked in (
+                "Parked notes",
+                "Efficiency frontier",
+                "hr_efficiency_line.py",
+                "median RHR 51",
+                "<h2>Experiment scripts</h2>",
+                "<h2>Metrics</h2>",
+            ):
+                self.assertNotIn(leaked, lab)
 
 
 class DemoCommandTests(unittest.TestCase):

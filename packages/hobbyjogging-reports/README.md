@@ -91,7 +91,9 @@ Pages:
 The `--reports` dashboard option is accepted as a compatibility no-op;
 those Markdown reports are already embedded on their relevant pages. The Docs
 tab renders the README; the Lab tab renders the experiments notebook, scripts
-and metric registry.
+and metric registry. A demo build (`--demo-label`) shows the lab's bench rules
+only: the notebook, the script list, and the registry hold this athlete's own
+results and are left out.
 
 The main chart shows daily running **minutes** on an axis sized to the
 typical day (see *Chart axes* below),

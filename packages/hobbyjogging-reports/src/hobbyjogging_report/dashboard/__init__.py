@@ -405,7 +405,7 @@ def build_dashboard(
             health=health,
             demo_label=demo_label,
             include_review=include_review,
-            section=build_lab_section(),
+            section=build_lab_section(demo=demo_label is not None),
         ),
         "health.html": health_page(
             generated_at=generated_at,

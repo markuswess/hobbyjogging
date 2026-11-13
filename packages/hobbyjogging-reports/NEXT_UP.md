@@ -262,17 +262,18 @@ Current focus: the dashboard's gear/devices and race work.
   marked days. The RPE overlay now has its own scale instead of pinning the
   load axis to 0–150.
 
+- **The demo Lab tab publishes no personal results.** A demo build renders
+  the bench guide from `experiments/README.md` (everything before `## Ideas`)
+  and nothing else: no idea table, no rejected or parked findings, no script
+  list, no metric registry. The guide's registry link becomes plain text
+  instead of a path into the repo. A test asserts the demo page cannot contain
+  the notebook, the scripts, or the registry, and the dashboard test keeps the
+  full Lab for non-demo builds. The docs README example already uses a neutral
+  placeholder path.
+
 ## Bugs
 
-- **The demo publishes the lab and a private path.** `build_lab_section()`
-  reads `experiments/README.md` and `docs/METRICS.md` straight from the repo,
-  so the public Lab tab shows the candidate table, the rejected findings and
-  the personal validation numbers ("the Feb–Mar 2026 illness", "RHR 51 → 59").
-  The Docs tab renders the reports README, whose setup example contains
-  `~/projects/laufen_private/...`. Demo builds must render the bench guide only
-  — never the notebook or the registry — and the README example must use a
-  neutral path. Root item 29 detaches the notebook entirely, which removes the
-  first half for good.
+_None._
 
 ## Next
 

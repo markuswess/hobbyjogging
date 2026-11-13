@@ -19,6 +19,16 @@ INTRO = (
     "registry below become package code and dashboard numbers."
 )
 
+DEMO_INTRO = (
+    "The lab is where metric ideas are explored before promotion. This demo "
+    "shows the bench rules only; the notebook, the experiment scripts, and the "
+    "metric registry are private to the athlete's own installation."
+)
+
+IDEA_TABLE_HEADING = "\n## Ideas"
+METRICS_LINK = "[`docs/METRICS.md`](../docs/METRICS.md)"
+METRICS_TEXT = "`docs/METRICS.md`"
+
 
 @dataclass(frozen=True)
 class LabSection:
@@ -28,6 +38,13 @@ class LabSection:
     readme_html: str
     scripts_html: str
     metrics_html: str
+    demo: bool = False
+
+
+def _bench_guide(text: str) -> str:
+    """The lab rules, without the idea table, rejected cards, or park notes."""
+    guide, marker, _rest = text.partition(IDEA_TABLE_HEADING)
+    return guide if marker else ""
 
 
 def _docstring_summary(path: Path) -> str:
@@ -71,7 +88,7 @@ def _promoted_metrics(tokens):
             return
 
 
-def _toc(readme_tokens, metric_tokens) -> str:
+def _toc(readme_tokens, metric_tokens, *, guide_title="Lab notebook") -> str:
     readme_items = "".join(
         f'<li><a href="#{token["id"]}">{token["name"]}</a></li>'
         for token in headings(readme_tokens, 2)
@@ -87,7 +104,7 @@ def _toc(readme_tokens, metric_tokens) -> str:
     groups = []
     if readme_items:
         groups.append(
-            "<h3>Lab notebook</h3>"
+            f"<h3>{guide_title}</h3>"
             f"<ul>{readme_items}</ul>"
         )
     if metric_items:
@@ -104,8 +121,42 @@ def _toc(readme_tokens, metric_tokens) -> str:
     )
 
 
-def build_lab_section() -> LabSection:
-    """Render the experiments notebook, its scripts, and the metrics."""
+def build_lab_section(*, demo: bool = False) -> LabSection:
+    """Render the experiments notebook, its scripts, and the metrics.
+
+    A demo build shows the bench guide only: the notebook's idea table, the
+    rejected and parked findings, the script list, and the metric registry all
+    carry this athlete's own results and must not be published.
+    """
+    if demo:
+        readme_html = (
+            '<p class="muted">experiments/README.md is not available in this '
+            "installation.</p>"
+        )
+        readme_tokens = []
+
+        if README_PATH.exists():
+            readme_html, readme_tokens = render_markdown(
+                _bench_guide(
+                    README_PATH.read_text(encoding="utf-8").replace(
+                        METRICS_LINK,
+                        METRICS_TEXT,
+                    )
+                ),
+                "lab-",
+            )
+
+        return LabSection(
+            demo=True,
+            intro_html=(
+                f"<p>{DEMO_INTRO}</p>"
+                f"{_toc(readme_tokens, [], guide_title='Bench guide')}"
+            ),
+            readme_html=readme_html,
+            scripts_html="",
+            metrics_html="",
+        )
+
     readme_html = (
         '<p class="muted">experiments/README.md is not available in this '
         "installation.</p>"
@@ -134,6 +185,7 @@ def build_lab_section() -> LabSection:
         )
 
     return LabSection(
+        demo=False,
         intro_html=f"<p>{INTRO}</p>{_toc(readme_tokens, metric_tokens)}",
         readme_html=readme_html,
         scripts_html=_scripts_html(),

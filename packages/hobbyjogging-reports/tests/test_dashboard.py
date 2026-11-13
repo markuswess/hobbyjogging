@@ -14,6 +14,7 @@ from hobbyjogging_core.model import (
     WellnessDay,
 )
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
+from hobbyjogging_report.dashboard.lab import _bench_guide, build_lab_section
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
 from hobbyjogging_report.zone_groups import (
@@ -752,6 +753,49 @@ class DashboardEwmaTests(unittest.TestCase):
         self.assertGreater(run_time.values[7], run_time.values[42])
         self.assertGreater(run_time.values[42], run_time.values[182])
         self.assertLessEqual(run_time.values[7], 7 * 3600)
+
+
+class LabSectionTests(unittest.TestCase):
+
+    def test_bench_guide_stops_at_the_idea_table(self):
+        text = (
+            "# Experiments\n\nRules.\n\n"
+            "## Lab session ground rules\n\n- one\n\n"
+            "## Ideas\n\n| Idea |\n"
+        )
+
+        self.assertEqual(
+            "# Experiments\n\nRules.\n\n"
+            "## Lab session ground rules\n\n- one\n",
+            _bench_guide(text),
+        )
+
+    def test_bench_guide_is_empty_without_the_idea_table(self):
+        self.assertEqual("", _bench_guide("# Experiments\n"))
+
+    def test_demo_section_shows_the_bench_guide_only(self):
+        section = build_lab_section(demo=True)
+
+        self.assertTrue(section.demo)
+        self.assertEqual("", section.scripts_html)
+        self.assertEqual("", section.metrics_html)
+        self.assertIn("Lab session ground rules", section.readme_html)
+        self.assertNotIn(">Ideas<", section.readme_html)
+        self.assertNotIn("Parked notes", section.readme_html)
+
+    def test_demo_guide_does_not_link_to_the_registry(self):
+        section = build_lab_section(demo=True)
+
+        self.assertNotIn("../docs/", section.readme_html)
+        self.assertIn("<code>docs/METRICS.md</code>", section.readme_html)
+
+    def test_full_section_keeps_the_notebook_and_registry(self):
+        section = build_lab_section()
+
+        self.assertFalse(section.demo)
+        self.assertIn(">Ideas<", section.readme_html)
+        self.assertIn("Experiment", section.scripts_html)
+        self.assertIn("Promoted", section.metrics_html)
 
 
 if __name__ == "__main__":

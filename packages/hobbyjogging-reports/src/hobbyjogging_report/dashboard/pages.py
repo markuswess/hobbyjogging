@@ -585,9 +585,16 @@ def lab_page(
     body = (
         card(None, f'<div class="report">{section.intro_html}</div>')
         + card(None, f'<div class="report">{section.readme_html}</div>')
-        + card("Experiment scripts", section.scripts_html)
-        + card("Metrics", f'<div class="report">{section.metrics_html}</div>')
     )
+
+    if not section.demo:
+        body += (
+            card("Experiment scripts", section.scripts_html)
+            + card(
+                "Metrics",
+                f'<div class="report">{section.metrics_html}</div>',
+            )
+        )
 
     return page(
         title="Lab",
