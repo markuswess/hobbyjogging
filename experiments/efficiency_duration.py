@@ -44,11 +44,13 @@ sizes the bias.
 from __future__ import annotations
 
 import random
-from datetime import date
+from collections import Counter, defaultdict
+from datetime import date, datetime, timedelta
 from statistics import median
 
 import plotly.graph_objects as go
 
+from hobbyjogging_core.workouts import is_quality
 from hobbyjogging_report.analysis import RUN_TYPES
 from hobbyjogging_report.analysis.efficiency import (
     MIN_EXCESS_HR,
@@ -102,6 +104,7 @@ def build_rows(activities, baseline) -> list[dict]:
 
         rows.append(
             {
+                "id": activity.id,
                 "date": activity.date,
                 "name": activity.name,
                 "sport": activity.type,
@@ -110,6 +113,12 @@ def build_rows(activities, baseline) -> list[dict]:
                 "excess": excess,
                 "rhr": resting_hr,
                 "distance_m": activity.distance_m,
+                "avg_hr": activity.avg_hr,
+                "started_at_utc": activity.started_at_utc,
+                "training_load": activity.training_load,
+                "rpe": activity.rpe,
+                "intensity": activity.intensity,
+                "tags": set(activity.tags),
                 "methods": set(activity.workout_methods),
                 "targets": set(activity.workout_targets),
                 "efficiency": (
@@ -502,6 +511,10 @@ def sensitivity(
                 and row["targets"] <= {"base", "recovery", "other"}
             ],
         ),
+        (
+            "exclude recovery target",
+            [row for row in primary if "recovery" not in row["targets"]],
+        ),
     ]
 
     # The 180-day resting-HR baseline needs its own rows.
@@ -565,6 +578,247 @@ def sensitivity(
     table(
         table_rows,
         headers=["variant", "n", "c", "d", "30 vs 60", "60 vs 120"],
+    )
+
+
+def _median(values):
+    cleaned = [value for value in values if value is not None]
+    return median(cleaned) if cleaned else None
+
+
+def _fmt(value, digits=1):
+    return f"{value:.{digits}f}" if value is not None else "-"
+
+
+def _hour(started_at_utc: str) -> int | None:
+    if not started_at_utc:
+        return None
+    try:
+        moment = datetime.fromisoformat(started_at_utc.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment.hour
+
+
+def _group(rows: list[dict], low: float, high: float) -> list[dict]:
+    return [row for row in rows if low <= row["minutes"] < high]
+
+
+def diagnose(primary: list[dict], activities: list) -> None:
+    """Characterize the 20-30 min runs against the 30-60 min reference."""
+    day_count = Counter(activity.date for activity in activities)
+    load_by_date: dict[date, float] = defaultdict(float)
+    for activity in activities:
+        load_by_date[activity.date] += activity.training_load or 0.0
+
+    short = _group(primary, 20, 30)
+    reference = _group(primary, 30, 60)
+
+    table_rows = []
+
+    for label, chunk in (("20-30", short), ("30-60", reference)):
+        quality = [
+            is_quality(row["methods"], row["targets"]) for row in chunk
+        ]
+        known = [value for value in quality if value is not None]
+        hours = [_hour(row["started_at_utc"]) for row in chunk]
+        known_hours = [hour for hour in hours if hour is not None]
+        table_rows.append(
+            (
+                label,
+                len(chunk),
+                _fmt(median(row["speed"] * 3.6 for row in chunk), 1),
+                _fmt(weighted_efficiency(chunk), 2),
+                _fmt(median(row["avg_hr"] for row in chunk), 0),
+                _fmt(
+                    100 * sum(value is True for value in known) / len(known)
+                    if known
+                    else None,
+                    0,
+                ),
+                _fmt(_median(row["rpe"] for row in chunk), 1),
+                _fmt(_median(row["intensity"] for row in chunk), 2),
+                _fmt(
+                    _median(
+                        row["training_load"] / (row["minutes"] / 60)
+                        for row in chunk
+                        if row["training_load"] is not None
+                    ),
+                    0,
+                ),
+                _fmt(
+                    100
+                    * sum(day_count[row["date"]] > 1 for row in chunk)
+                    / len(chunk),
+                    0,
+                ),
+                _fmt(
+                    100
+                    * sum(4 <= hour < 9 for hour in known_hours)
+                    / len(known_hours)
+                    if known_hours
+                    else None,
+                    0,
+                ),
+                _fmt(
+                    100
+                    * sum(5 <= row["date"].month <= 9 for row in chunk)
+                    / len(chunk),
+                    0,
+                ),
+            )
+        )
+
+    print("\nwhat are the 20-30 min runs?")
+    table(
+        table_rows,
+        headers=[
+            "min",
+            "n",
+            "km/h",
+            "eff",
+            "HR",
+            "quality %",
+            "RPE",
+            "IF",
+            "load/h",
+            "double %",
+            "morning %",
+            "May-Sep %",
+        ],
+    )
+
+    print("\nefficiency by target and duration:")
+    target_rows = []
+    for label, low, high in (
+        ("20-30", 20, 30),
+        ("30-60", 30, 60),
+        ("60-120", 60, 120),
+        ("120-240", 120, 241),
+    ):
+        chunk = _group(primary, low, high)
+        for target in ("base", "recovery"):
+            subset = [row for row in chunk if target in row["targets"]]
+            if not subset:
+                continue
+            target_rows.append(
+                (
+                    label,
+                    target,
+                    len(subset),
+                    _fmt(median(row["speed"] * 3.6 for row in subset), 1),
+                    _fmt(weighted_efficiency(subset), 2),
+                    _fmt(median(row["avg_hr"] for row in subset), 0),
+                )
+            )
+    table(
+        target_rows,
+        headers=["min", "target", "n", "km/h", "eff", "HR"],
+    )
+
+    for kind in ("methods", "targets"):
+        short_counts = Counter(
+            token for row in short for token in (row[kind] or {None})
+        )
+        ref_counts = Counter(
+            token for row in reference for token in (row[kind] or {None})
+        )
+        tokens = sorted(
+            set(short_counts) | set(ref_counts),
+            key=lambda token: -(short_counts[token] + ref_counts[token]),
+        )
+        table(
+            [
+                (
+                    token or "(none)",
+                    short_counts[token],
+                    ref_counts[token],
+                )
+                for token in tokens
+            ],
+            headers=[kind[:-1], "20-30", "30-60"],
+        )
+
+    short_tags = Counter(tag for row in short for tag in row["tags"])
+    ref_tags = Counter(tag for row in reference for tag in row["tags"])
+    tags = sorted(
+        set(short_tags) | set(ref_tags),
+        key=lambda tag: -(short_tags[tag] + ref_tags[tag]),
+    )[:8]
+    if tags:
+        table(
+            [(tag, short_tags[tag], ref_tags[tag]) for tag in tags],
+            headers=["tag", "20-30", "30-60"],
+        )
+
+    # First-lap behavior: a fast start shows up as a first lap faster than
+    # the session and faster than the other laps.
+    lap_rows = []
+    with create_source() as source:
+        for label, chunk in (("20-30", short), ("30-60", reference)):
+            ratios = []
+            hr_deltas = []
+            first_minutes = []
+            faster_share = []
+
+            for row in chunk:
+                laps = source.activity_laps(row["id"])
+                if len(laps) < 2:
+                    continue
+                first = min(laps, key=lambda lap: lap.index)
+                others = [
+                    lap
+                    for lap in laps
+                    if lap.index != first.index
+                    and lap.duration_s > 0
+                    and lap.distance_m > 0
+                ]
+                if not (
+                    first.duration_s > 0
+                    and first.distance_m > 0
+                    and first.avg_hr is not None
+                    and others
+                ):
+                    continue
+
+                first_pace = first.duration_s / first.distance_m * 1000
+                session_pace = row["minutes"] * 60 / row["distance_m"] * 1000
+                ratios.append(first_pace / session_pace)
+                hr_deltas.append(first.avg_hr - row["avg_hr"])
+                first_minutes.append(first.duration_s / 60.0)
+                other_paces = [
+                    lap.duration_s / lap.distance_m * 1000 for lap in others
+                ]
+                faster_share.append(first_pace < median(other_paces))
+
+            lap_rows.append(
+                (
+                    label,
+                    len(ratios),
+                    _fmt(_median(first_minutes), 1),
+                    _fmt(_median(ratios), 2),
+                    _fmt(_median(hr_deltas), 1),
+                    _fmt(100 * sum(faster_share) / len(faster_share), 0)
+                    if faster_share
+                    else "-",
+                )
+            )
+
+    print("\nfirst-lap behavior (runs with >= 2 laps):")
+    table(
+        lap_rows,
+        headers=[
+            "min",
+            "n",
+            "first lap min",
+            "first/session pace",
+            "first HR vs session",
+            "first faster than other laps %",
+        ],
+    ),
+    print(
+        "pace ratio < 1 means the first lap was faster than the session "
+        "average; HR delta is first-lap average minus session average."
     )
 
 
@@ -789,6 +1043,8 @@ def main() -> None:
     print("\nsensitivity:")
     baseline_180 = resting_hr_baselines(wellness, window_days=180)
     sensitivity(rows, primary, baseline_180)
+
+    diagnose(primary, activities)
 
     plot_efficiency(primary, beta)
     plot_contributions(beta)
