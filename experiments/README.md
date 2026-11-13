@@ -61,5 +61,5 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (needs canonical weight and max HR) | parked | — | 2026-11-13 |
-| Heat-adjusted efficiency | How much of an efficiency change is temperature? (needs canonical temperature) | parked | — | 2026-11-13 |
+| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (needs canonical temperature; wind/rain/clouds are empty) | parked | — | 2026-11-13 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs canonical elevation) | parked | — | 2026-11-13 |
