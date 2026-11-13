@@ -79,10 +79,10 @@ planned-vs-actual comparison remain next.
   shows volume (km/week), time (hours/week), and efficiency charts (182-day EWMA by
   default), with dashed projected volume/time lines for the current and
   future years: actual through today, then the plan. A separate raw Garmin
-  VO2max dot plot uses one value per activity, no averaging. Only the five
-  most recent years are visible by default; older years stay in the legend
-  and can be re-enabled. The year/month comparison reports include the
-  latest raw Garmin VO2max reading. Also `charts.sh compare`.
+  VO2max line plot connects the per-activity readings, no averaging. Only
+  the five most recent years are visible by default; older years stay in
+  the legend and can be re-enabled. The year/month comparison reports use
+  the period average Garmin VO2max. Also `charts.sh compare`.
 - **Pace vs HR scatter.** `charts.sh pace-hr` and the Analysis tab plot one
   point per run: linear speed (m/s, labelled in min/km ticks) against
   average HR, coloured by date from blue (oldest) to red (newest) with a

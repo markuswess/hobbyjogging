@@ -336,7 +336,7 @@ class CompareReportTests(unittest.TestCase):
         self.assertIn("2025-01-01 → 2026-12-31", report)
         self.assertIn(
             "| Period | Runs | Cross | Run time | Cross time | Run km | "
-            "Avg pace | Avg HR | Garmin VO2max | Efficiency |",
+            "Avg pace | Avg HR | Garmin VO2max avg | Efficiency |",
             report,
         )
         self.assertIn(
@@ -422,7 +422,7 @@ class CompareReportTests(unittest.TestCase):
             report,
         )
 
-    def test_report_shows_latest_raw_garmin_vo2max(self):
+    def test_report_averages_garmin_vo2max(self):
         source = FakeSource(
             [
                 activity(
@@ -435,7 +435,7 @@ class CompareReportTests(unittest.TestCase):
                     id="b",
                     date=date(2025, 6, 3),
                     distance_m=10000,
-                    vo2max_garmin=55.1,
+                    vo2max_garmin=55.0,
                 ),
             ]
         )
@@ -448,7 +448,7 @@ class CompareReportTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "| 2025 | 2 | 0 | 2h00 | - | 20.0 | 6:00/km | - | 55.1 | - |",
+            "| 2025 | 2 | 0 | 2h00 | - | 20.0 | 6:00/km | - | 54.6 | - |",
             report,
         )
 

@@ -77,8 +77,8 @@ def compare_periods(
             "hr_count": 0,
             "efficiency_distance_m": 0.0,
             "efficiency_beats": 0.0,
-            "vo2max_garmin": None,
-            "vo2max_date": None,
+            "vo2max_sum": 0.0,
+            "vo2max_count": 0,
         }
         for period in _period_starts(mode, start, end)
     }
@@ -126,13 +126,9 @@ def compare_periods(
             if (
                 activity.vo2max_garmin is not None
                 and activity.vo2max_garmin > 0
-                and (
-                    row["vo2max_date"] is None
-                    or activity.date >= row["vo2max_date"]
-                )
             ):
-                row["vo2max_garmin"] = activity.vo2max_garmin
-                row["vo2max_date"] = activity.date
+                row["vo2max_sum"] += activity.vo2max_garmin
+                row["vo2max_count"] += 1
         else:
             row["cross_sessions"] += 1
             row["cross_time_s"] += duration
@@ -169,7 +165,11 @@ def compare_periods(
                 pace_s_per_km=pace,
                 avg_hr=avg_hr,
                 efficiency=efficiency,
-                vo2max_garmin=row["vo2max_garmin"],
+                vo2max_garmin=(
+                    row["vo2max_sum"] / row["vo2max_count"]
+                    if row["vo2max_count"]
+                    else None
+                ),
             )
         )
 

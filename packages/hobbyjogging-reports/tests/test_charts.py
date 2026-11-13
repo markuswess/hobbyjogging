@@ -475,7 +475,7 @@ class CompareVo2maxChartTests(unittest.TestCase):
         self.assertIn("Garmin VO2max by year", html)
         self.assertIn('"y":[54.2,54.2]', html)
         self.assertIn('"y":[55.1]', html)
-        self.assertIn('"mode":"markers"', html)
+        self.assertIn('"mode":"lines"', html)
 
     def test_empty_measurements_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

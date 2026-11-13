@@ -1500,7 +1500,7 @@ def plot_compare_vo2max(
                     for measurement in chunk
                 ],
                 y=[measurement.value for measurement in chunk],
-                mode="markers",
+                mode="lines",
                 name=str(year),
                 visible=(
                     True if year >= visible_from else "legendonly"

@@ -102,7 +102,7 @@ def compare_report(
     lines.extend([
         "",
         "| Period | Runs | Cross | Run time | Cross time | Run km | "
-        "Avg pace | Avg HR | Garmin VO2max | Efficiency |",
+        "Avg pace | Avg HR | Garmin VO2max avg | Efficiency |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
 
