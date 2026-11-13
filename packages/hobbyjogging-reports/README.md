@@ -115,10 +115,9 @@ It refuses to replace a non-empty directory unless it is a previous
 dashboard (marked with `.hobbyjogging-dashboard`).
 
 The data-health banner counts activities with open review items, missing
-load, missing pace zones, missing HR, and missing distance. The individual
-queue is available through `DataSource.review_items(status="open",
-category=...)`, which returns `ReviewItem` objects; rendering the categories
-is a follow-up.
+load, missing pace zones, missing HR, and missing distance. The health page
+also lists the open review queue itself (severity, category, detail, linked
+activity, date) through `DataSource.review_items(status="open")`.
 
 ## Synthetic demo database
 
@@ -140,8 +139,8 @@ database or any personal data.
         --with-review-items --force
 
 `--out` is required and an existing file is refused without `--force`;
-the canonical `HOBBYJOGGING_DB` is never used. The file is normally about
-2 MB and contains no raw source payloads.
+the canonical `HOBBYJOGGING_DB` is never used. The file is about 4.4 MB
+and contains no raw source payloads.
 
 Build the demo site from it with an explicit database path and the
 synthetic-data badge:
