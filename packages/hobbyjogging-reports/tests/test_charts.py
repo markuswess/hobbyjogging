@@ -6,6 +6,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     PACE_HR_SYMBOLS,
+    compare_color,
     plot_compare,
     plot_equipment,
     plot_races,
@@ -690,6 +691,43 @@ class ComparePaceHrChartTests(unittest.TestCase):
 
 
 class CompareChartTests(unittest.TestCase):
+
+    def test_compare_color_is_anchored_on_a_fixed_year(self):
+        self.assertEqual("#1f77b4", compare_color(2009))
+        self.assertNotEqual(compare_color(2009), compare_color(2026))
+        self.assertEqual(compare_color(2023), compare_color(2023))
+
+    def test_all_compare_charts_share_one_year_color(self):
+        year = 2023
+        color = compare_color(year)
+
+        pace_hr = plot_compare_pace_hr(
+            [
+                PaceHrPoint(date(2019, 6, 1), 300.0, 150.0),
+                PaceHrPoint(date(year, 6, 1), 300.0, 150.0),
+            ],
+            "",
+            as_html=True,
+        )
+        vo2max = plot_compare_vo2max(
+            [Vo2maxMeasurement(date(year, 6, 1), 54.0)],
+            "",
+            as_html=True,
+        )
+        ewma = plot_compare(
+            [
+                (2020, [(date(2020, 1, 1), 8.0)]),
+                (year, [(date(year, 1, 1), 10.0)]),
+            ],
+            "",
+            metric="volume",
+            window=42,
+            today=date(year, 12, 31),
+            as_html=True,
+        )
+
+        for html in (pace_hr, vo2max, ewma):
+            self.assertIn(f'"color":"{color}"', html)
 
     def test_compare_chart_aligns_years_on_a_reference_axis(self):
         series = [

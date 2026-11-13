@@ -126,11 +126,13 @@ HTML dashboard:
   resting-HR baseline; the label shows both values and the band. The scatter
   keeps every run, but the steady-band points that feed those dashed lines
   carry a dark outline, and the chart note says so. The compare page keeps
-  the year colours and uses the same category symbols per point.
+  the same fixed per-year colours and uses the same category symbols per
+  point.
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
-  choose the metric and smoothing. Volume is in km/week and time in
-  hours/week, matching the dedicated volume and time charts.
+  choose the metric and smoothing. Each year keeps one fixed colour across
+  the compare charts, regardless of the data range. Volume is in km/week and
+  time in hours/week, matching the dedicated volume and time charts.
   Volume and time also draw dashed projection lines for the current and
   future years: actual values through today, then the planned events. If
   today has no run yet, today's planned value is used. The textual

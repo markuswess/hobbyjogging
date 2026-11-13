@@ -1,6 +1,6 @@
 # Next up: reports package
 
-Updated 2026-11-12.
+Updated 2026-11-13.
 
 Current focus: the dashboard's gear/devices and race work.
 
@@ -196,6 +196,12 @@ Current focus: the dashboard's gear/devices and race work.
   no-op. A **Lab** tab follows Docs and renders `experiments/README.md`, the
   experiment script index with one-line summaries, and the metric registry
   from `docs/METRICS.md`, with its own contents list.
+- **Stable compare colors.** All three compare charts map a year through
+  `compare_color(year)`, anchored on 2009, so a year keeps one color across
+  the volume/time/load/runs/efficiency, pace/HR, and VO2max charts, and the
+  colors no longer shuffle when the data range or `--compare-window`
+  changes. The 18 colors cover 2009–2026 without collision; tests pin the
+  mapping and check all three charts.
 - **One segment table in the session report.** The report now prints typed
   intervals when there is more than one, otherwise device laps when there is
   more than one, and nothing when there is a single segment on each side.
@@ -218,19 +224,6 @@ Current focus: the dashboard's gear/devices and race work.
     page instead of leaving two numbers.
   - Tests: the page title, the completeness denominator and the report's
     window label agree; `--recovery-days` still overrides.
-
-- **Compare plot colors shift between charts.** All three compare charts pick
-  `COMPARE_COLORS[index % len]` from the *index in that chart's own sorted year
-  list* (`plot_compare_pace_hr`, `plot_compare_vo2max`, `plot_compare`), so a
-  year's color depends on which other years happen to be present: 2023 is one
-  color in the volume chart and another in the VO2max chart because their year
-  sets differ, and the colors shuffle again when the data range or
-  `--compare-window` changes.
-  - Fix: one `compare_color(year)` helper anchored on a fixed year —
-    `COMPARE_COLORS[(year - 2009) % len(COMPARE_COLORS)]` — used by all three.
-    The 18 colors then cover 2009–2026 with no collision.
-  - Tests: a year gets the same color in all three charts, and a year outside
-    the current data range still maps deterministically.
 
 ## Next
 

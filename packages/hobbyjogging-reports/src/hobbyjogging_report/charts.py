@@ -128,6 +128,11 @@ COMPARE_COLORS = (
 )
 
 
+def compare_color(year: int) -> str:
+    """Stable per-year compare color, independent of the plotted year set."""
+    return COMPARE_COLORS[(year - 2009) % len(COMPARE_COLORS)]
+
+
 def _require_data(*series) -> None:
     if not any(series):
         raise ValueError("no data to plot")
@@ -1499,7 +1504,7 @@ def plot_compare_pace_hr(
 
     visible_from = max(years) - COMPARE_VISIBLE_YEARS + 1
 
-    for index, year in enumerate(years):
+    for year in years:
         chunk = [point for point in points if point.date.year == year]
         visible = True if year >= visible_from else "legendonly"
 
@@ -1511,7 +1516,7 @@ def plot_compare_pace_hr(
                 name=str(year),
                 visible=visible,
                 marker={
-                    "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
+                    "color": compare_color(year),
                     "size": 6,
                     "opacity": 0.72,
                     "symbol": [
@@ -1751,7 +1756,7 @@ def plot_compare_vo2max(
     visible_from = max(years) - (COMPARE_VISIBLE_YEARS - 1)
     figure = go.Figure()
 
-    for index, year in enumerate(years):
+    for year in years:
         chunk = [
             measurement
             for measurement in measurements
@@ -1773,7 +1778,7 @@ def plot_compare_vo2max(
                     True if year >= visible_from else "legendonly"
                 ),
                 marker={
-                    "color": COMPARE_COLORS[index % len(COMPARE_COLORS)],
+                    "color": compare_color(year),
                     "size": 6,
                     "opacity": 0.7,
                 },
@@ -1838,8 +1843,8 @@ def plot_compare(
     )
     visible_from = max(all_years) - (COMPARE_VISIBLE_YEARS - 1)
     color_for = {
-        year: COMPARE_COLORS[index % len(COMPARE_COLORS)]
-        for index, year in enumerate(all_years)
+        year: compare_color(year)
+        for year in all_years
     }
     figure = go.Figure()
 
