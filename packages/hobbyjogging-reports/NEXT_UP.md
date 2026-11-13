@@ -78,9 +78,11 @@ planned-vs-actual comparison remain next.
   history, so each year line starts on the previous year's close. The tab
   shows volume (km/week), time (hours/week), and efficiency charts (182-day EWMA by
   default), with dashed projected volume/time lines for the current and
-  future years: actual through today, then the plan. Only the five most
-  recent years are visible by default; older years stay in the legend and
-  can be re-enabled. Also `charts.sh compare`.
+  future years: actual through today, then the plan. A separate raw Garmin
+  VO2max dot plot uses one value per activity, no averaging. Only the five
+  most recent years are visible by default; older years stay in the legend
+  and can be re-enabled. The year/month comparison reports include the
+  latest raw Garmin VO2max reading. Also `charts.sh compare`.
 - **Pace vs HR scatter.** `charts.sh pace-hr` and the Analysis tab plot one
   point per run: linear speed (m/s, labelled in min/km ticks) against
   average HR, coloured by date from blue (oldest) to red (newest) with a
@@ -174,14 +176,23 @@ planned-vs-actual comparison remain next.
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Shoe mileage.** Distance per equipment item from canonical data:
-   `equipment` → `activity_equipment` → `activities.distance_m`. No schema
-   change — 10 shoes and 1,842 links are already there (e.g. Lunge C-Dur
-   3,774 km / 283 runs, Brooks Adrenaline 20 2,878 km / 184 runs). Show total
-   distance and session count per shoe, wear against `target_distance_m` when
-   set (currently NULL for every shoe), and retirement candidates
-   (`retired_on` empty, beyond the target). A `shoes` report plus a dashboard
-   card; compute in `analysis/`, render separately.
+4. **Equipment report and dashboard tab.** `reports.sh equipment` plus an
+   **Equipment** dashboard tab, computed from `equipment` →
+   `activity_equipment` → `activities.distance_m`. No schema change.
+   - **Per item**: name, brand/model, type, acquired/retired, sessions, km,
+     km/month, last used, target/wear, notes.
+   - **Coverage block**: activities with and without gear per year. Gear
+     currently ends in 2021 (10 shoes, 1,842 links); 2022–2026 has none until
+     the Runalyze gear import lands, so show the gap explicitly.
+   - **Retirement candidates**: active items beyond the target, or unused for
+     N months.
+   - **Wear target**: `target_distance_m` is NULL everywhere; use a report
+     constant (e.g. 800 km for shoes) with an optional per-item override.
+     Ignore the sheet's own totals in the notes for now.
+   - **Dashboard**: the table plus a chart — cumulative km per shoe over time,
+     or bars with target lines and retirement markers.
+   - **Tests**: mileage sums, coverage counts, the active/retired split, and
+     `-` rendering when an item has no activities.
 
 5. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
    (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).

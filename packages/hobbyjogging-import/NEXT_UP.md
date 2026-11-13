@@ -102,6 +102,15 @@ the API details (below).
 - **Runalyze enrichment** (blocked on API auth/endpoint details): comments
   merged into `description`, tags in `activity_tags`, gear via the
   equipment-categories endpoint, and `vo2max_runalyze`.
+  - **Gear / equipment**: gear records become
+    `source_records(record_type='gear')` plus `equipment` rows, and activities
+    link through `activity_equipment` with `source='runalyze'`. Cross-source
+    identity reuses `equipment_source_links`: link a gear record to an
+    existing item when its activities consistently carry the same sheet shoe
+    (co-occurrence), else on a unique normalized brand+model match, else open
+    an `ambiguous_equipment` review item — never guess (the two "Lunge C-Dur"
+    pairs differ only by colour and date). 2022+ gear has no sheet
+    counterpart and simply creates new rows.
 - The dashboard is reports-package work.
 - The planned-event zone display is reports-package work.
 

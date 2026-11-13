@@ -202,12 +202,15 @@ Updated 2026-11-12.
 3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
-   activities.
+   activities. The gear half includes cross-source equipment identity
+   (`equipment_source_links`, co-occurrence matching, review items for
+   ambiguity); see the import `NEXT_UP`.
 4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 5. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
-   vs actual by session, optional HR-zone variant, shoe mileage.
+   vs actual by session, optional HR-zone variant, the equipment report and
+   dashboard tab.
 6. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
