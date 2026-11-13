@@ -138,7 +138,46 @@ Updated 2026-11-12.
 
 ## Next
 
-1. **Derive the display category from the stored sets** (core + reports).
+1. **Activity editing, CLI first** (core + import). The only manual write
+   surface is `review edit`, which changes `duration_s`, `distance_m` and
+   `sport`, and only with a review item attached. Name, description, RPE, feel,
+   sub-sport, tags, classification and equipment have no free-form edit, no way
+   to clear a value, and no history — `activity_field_sources` stores only the
+   current owner and value, so there is nothing to undo against.
+   - **Command**: `hobbyjogging activity edit <id>` with explicit flags
+     (`--name`, `--description`, `--rpe`, `--feel`, `--sub-sport`, repeatable
+     `--tag`, `--method`, `--target`, `--equipment`), plus `--clear <field>`,
+     `--dry-run`, `--history`, and an interactive mode that prompts field by
+     field with the current value as the default. A review item is never
+     required.
+   - **Provenance**: every field goes through `TrainingWriter.set_manual_field`
+     (`is_manual=1`, `source='manual'`), so a reimport cannot undo it; `sport`
+     still normalizes through `core.sports`; the sets go through
+     `set_manual_activity_workout_methods` / `_targets`.
+   - **Quality**: reuse `apply_manual_edit`, which re-runs the quality rules and
+     prints the findings that still stand.
+   - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
+     new_json, source, note, created_at)`, append-only, written in the same
+     transaction as the edit. `activity_field_sources` is a snapshot, not a
+     history; independence later means the database has to carry the audit
+     trail a platform would have kept. `--history` reads it, and events and
+     wellness reuse it.
+   - **Placement**: keep it in the import CLI for now — `editing`, `values`,
+     `quality` and `causes` already live there. When the front end starts,
+     extract a `hobbyjogging-app` package and move those modules behind it, the
+     same move the classifier made to core once it had a second consumer.
+   - **Front end (later, same package)**: localhost only — the database is
+     single-writer (WAL, 5 s busy timeout) and unauthenticated, so it must never
+     be exposed. The CLI stays the reference implementation: if the UI needs
+     something the CLI cannot do, the CLI is wrong.
+   - **Tests**: a manual edit survives a reimport; `--clear` removes the value
+     and its manual ownership; `--history` shows the prior value; `--dry-run`
+     writes nothing; quality findings print; an empty interactive answer keeps
+     the current value; tags/methods/targets replace as sets.
+   - **Docs**: the ARCHITECTURE role list gains the human write surface, and
+     the import README documents the command.
+
+2. **Derive the display category from the stored sets** (core + reports).
    `classify()` currently re-derives the category from name, duration and
    intervals even when the activity is classified, so the display contradicts
    the canonical sets for **142 of 2,903 classified activities (4.9%)**: races
@@ -150,7 +189,7 @@ Updated 2026-11-12.
      priority: `race` → race, `long_run` → longrun, `fartlek` → fartlek,
      `intervals`/`progression` → intervals, `continuous`+`threshold` → tempo,
      `continuous`+`recovery` → recovery, `continuous` → easy, empty → unknown.
-     `quality/fartlek` is a **new display kind** (item 2), deliberately not
+     `quality/fartlek` is a **new display kind** (item 3), deliberately not
      folded into `intervals/other`, so rep-based analyses stay clean. It must round-trip
      with `classification_for_category` for every mapped pair; the only
      intentional ambiguity is `{continuous}, {base}`, which is `easy` (the
@@ -177,7 +216,7 @@ Updated 2026-11-12.
    - **Docs**: the reports README taxonomy section and the ARCHITECTURE
      `classify.py` bullet.
 
-2. **Bring back `fartlek` for unstructured quality** (core + import +
+3. **Bring back `fartlek` for unstructured quality** (core + import +
    maintenance + reports). `intervals` has become a mixed bucket: of the 561
    activities carrying it, **170 have zero WORK reps** and 22 have 1–2, 47
    have no target, and 40 spend >75% of the session in WORK. The sheet code
@@ -191,7 +230,7 @@ Updated 2026-11-12.
      mutually exclusive with `intervals` and never quality by itself only —
      it always is. Map `fs` to `fartlek` + a `vo2max` target in
      `SHEET_TYPE_CODES`, and add the aliases (`fahrtspiel`, `fartlek_run`).
-     `category_for_sets` returns the new `quality/fartlek` kind (item 1).
+     `category_for_sets` returns the new `quality/fartlek` kind (item 2).
    - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
      `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
      their targets alone except for filling a missing one with `vo2max`.
@@ -207,7 +246,7 @@ Updated 2026-11-12.
      round-trips to `intervals`; the 54 fs rows convert and manual rows do not;
      the subT buckets ignore fartlek.
 
-3. **Link planned races to activities and propagate the `race` method**
+4. **Link planned races to activities and propagate the `race` method**
    (core + maintenance). The classifier only reads the name, so the two past
    planned races are misclassified: the 2026 Linz Marathon (42.45 km, 2:37:49)
    is `long_run` and the 2025 Baden Stadtlauf 10k is `intervals`, although both
@@ -231,7 +270,7 @@ Updated 2026-11-12.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
 
-4. **Elevation gain and loss on activities** (core + import + maintenance).
+5. **Elevation gain and loss on activities** (core + import + maintenance).
    Per-lap FIT elevation is stored (`activity_laps.elevation_gain_m`, 2,800
    activities), but `activities` has no elevation column. The payloads cover
    81% of activities: Intervals `total_elevation_gain` / `_loss` (2,846), the
@@ -256,7 +295,7 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
      backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
 
-5. **Maximum HR per activity** (core + import + maintenance). There is no
+6. **Maximum HR per activity** (core + import + maintenance). There is no
    canonical column today, though Intervals `max_heartrate`, the FIT session
    and the sheet's `max. Hf` (1,233 rows) all carry it.
    - **Next migration**: `activities.max_hr`, nullable, owner-based with a
@@ -269,7 +308,7 @@ Updated 2026-11-12.
    - **Coverage**: report how many activities gain it, per source and year,
      before deciding whether the column earns its place.
 
-6. **Per-activity weather** (core + import + maintenance + reports).
+7. **Per-activity weather** (core + import + maintenance + reports).
    Intervals carries `average_temp`, `average_weather_temp`,
    `average_feels_like`, `average_wind_speed`, `average_wind_gust` and
    `average_clouds` (2,847 activities); the sheet has `Temperatur in °C`
@@ -283,7 +322,7 @@ Updated 2026-11-12.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
-7. **Athlete thresholds and zone configs** (core + import + maintenance +
+8. **Athlete thresholds and zone configs** (core + import + maintenance +
    reports). The Intervals payloads carry the athlete's settings per activity:
    `athlete_max_hr` (192), `lthr` (174, drifting 172–180), `LTHRdetected`,
    `threshold_pace` (**4.59 → 4.85 m/s = 3:38 → 3:26/km** across 2019–2026),
@@ -304,7 +343,7 @@ Updated 2026-11-12.
    - **Reports**: a threshold trend chart (LTHR, threshold pace, max HR) beside
      VO2max, era-correct zone normalization, and subT work-rep pace compared
      with the period's threshold pace.
-   - **Races as threshold evidence** (idea, depends on item 3's race links).
+   - **Races as threshold evidence** (idea, depends on item 4's race links).
      Intervals' stamped values are athlete settings, not measurements, and
      `threshold_pace` is missing on ~1,400 activities. A race is the best
      observed evidence we have: a 10k–half marathon result gives a defensible
@@ -320,7 +359,7 @@ Updated 2026-11-12.
    - **Validation**: Intervals' threshold pace and the subT-derived pace should
      agree; report the delta.
 
-8. **Wellness beyond HRV, resting HR and sleep** (core + import +
+9. **Wellness beyond HRV, resting HR and sleep** (core + import +
    maintenance + reports). Intervals wellness carries 47 keys; we store three.
    The useful extras: `readiness`, `sleepScore`/`sleepQuality`, `stress`,
    `respiration`, `spO2`, `mood`, `soreness`/`fatigue`, `steps`,
@@ -334,7 +373,7 @@ Updated 2026-11-12.
    - Start with the four with the best signal-to-noise — readiness,
      sleepScore, stress, respiration — and leave the rest behind a flag.
 
-9. **Route identity and grouping** (core + import + maintenance + reports).
+10. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
    (993), but the canonical model has no route. FIT payloads carry no GPS
    streams, so historical route identity can only come from the sheet.
@@ -349,7 +388,7 @@ Updated 2026-11-12.
    - **Open**: GPS-derived routes for the FIT era would need stored streams,
      which do not exist today.
 
-10. **Device registry and per-activity device** (core + import + maintenance +
+11. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
    `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
    2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
@@ -378,19 +417,41 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-11. **Runalyze enrichment** when the API auth/endpoint details are settled:
+12. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-12. **Homelab cutover**: DB + importer + dashboard generator + static server,
+13. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-13. **Reports backlog** — handed to the reports session; the list lives in
-   `packages/hobbyjogging-reports/NEXT_UP.md`: the equipment report and tab
-   (including devices), the race report plus Performance tab, and the Docs
-   tab.
-14. **Raw vs derived: document the tiers and add a check** (low priority). The
+14. **Platform independence** (long-term, dormant; ingestion unchanged). The
+    goal is to stop depending on Intervals.icu as the *system of record* — not
+    to stop using it as transport. The trigger is a paywall or wanting out, so
+    nothing here starts now: Garmin, Intervals and FIT ingestion stay exactly
+    as they are.
+    - **Acceptance test**: for every action taken in Intervals today there is a
+      local equivalent, and a reimport cannot undo it.
+    - **What is missing**: events are Intervals-authoritative (`upsert_event`
+      replaces every field including NULLs, removal soft-excludes), wellness has
+      no owner tracking, there is no notes/comments table, and planned workouts
+      carry methods/targets/zones but no step list.
+    - **Phases**, in order: owner-tracked events (`event_field_sources`, manual
+      wins, a new `AGENTS.md` rule) → notes/comments (`activity_notes`,
+      append-only) → planned-workout steps and authoring → subjective wellness
+      ownership → thresholds/zones (item 8) → the front end from item 1 →
+      Garmin/FIT ingest so Intervals becomes optional.
+    - **Parked decisions**: whether programmed workouts are followed on the
+      watch (which would need a `.fit` workout export and upload) or the lap
+      button is enough — the 370 intervals activities with ≥3 WORK reps suggest
+      the latter; and whether the front end ever replaces the CLI.
+    - **Edit history** from item 1 is a prerequisite, not an extra: without it,
+      dropping the platform also drops the audit trail.
+
+15. **Reports backlog** — handed to the reports session; the list lives in
+   `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
+   than duplicated here.
+16. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable
