@@ -223,19 +223,48 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
      backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
 
-4. **Runalyze enrichment** when the API auth/endpoint details are settled:
+4. **Device registry and per-activity device** (core + import + maintenance +
+   reports). The sources already carry the device: FIT
+   `file.manufacturer/product/serial_number` (fr645 2019–2022, enduro
+   2022–2026, edge_540 2025–2026, fr945 once, 2 "connect" uploads) and
+   Intervals `device_name` with the same four devices in mixed casing. Nothing
+   before 2019 (the sheet has no device column), and `vo2max_garmin` from FIT
+   message 140 differs per watch algorithm without being attributable.
+   - **Next migration**: `devices(id, type, manufacturer, product,
+     serial_number, name, acquired_on, retired_on, notes)` and
+     `activity_devices(activity_id, device_id, role, source,
+     source_record_id, is_manual)`. Device id
+     `fit:<manufacturer>:<product>:<serial>`; Intervals-only devices
+     `intervals:<slug>`. `role` is `recorder` in v1 (the table leaves room for
+     `hrm`).
+   - **Import**: FIT parses `file_id` (already in the payload) → upsert the
+     device and link the activity; Intervals normalizes `device_name` to a
+     product and links with `source='intervals'` (FIT wins on conflict).
+     Sheet: nothing.
+   - **Maintenance**: `activity_devices_v1` backfills devices and links from
+     the stored payloads, idempotent, `--dry-run`.
+   - **Pre-2019 gap**: manual assignment only (a `devices assign --from --to
+     --device` command or a triage action writing manual links); never infer
+     from a date range.
+   - **Reports**: the equipment page becomes "Gear & devices" with active
+     periods, counts and a device timeline; the VO2max chart marks device
+     changes; the session report shows `- Device: …`.
+   - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
+     precedence, backfill idempotency, manual links surviving.
+
+5. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-5. **Homelab cutover**: DB + importer + dashboard generator + static server,
+6. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-6. **Reports backlog** — handed to the reports session; the list lives in
+7. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
    vs actual by session, optional HR-zone variant, the equipment report and
-   tab, and the race report plus Performance tab.
-7. **Raw vs derived: document the tiers and add a check** (low priority). The
+   tab (including devices), and the race report plus Performance tab.
+8. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable

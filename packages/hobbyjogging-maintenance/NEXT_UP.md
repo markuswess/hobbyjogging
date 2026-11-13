@@ -28,6 +28,15 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`activity_devices_v1`** (backfill). Once the core device tables and the
+  importer writes land, create devices and activity links from the stored
+  payloads: FIT `file.manufacturer/product/serial_number` as `recorder`,
+  Intervals `device_name` normalized to the same product. Idempotent;
+  `--dry-run`; never touches manual links.
+  - Tests: device creation from FIT and Intervals, FIT-over-Intervals
+    precedence, a rerun is a no-op, dry-run writes nothing, manual links
+    survive.
+
 Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on

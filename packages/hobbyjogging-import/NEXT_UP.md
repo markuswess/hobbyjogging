@@ -94,8 +94,14 @@ on.
 
 ## Next
 
-Nothing package-local is queued; **Runalyze enrichment** is still waiting on
-the API details (below).
+- **Device capture.** Parse FIT `file_id` (manufacturer, product, serial) into
+  the core device registry and link the activity as `recorder`; normalize
+  Intervals `device_name` (`GARMIN ENDURO` / `Garmin Enduro`, `EDGE_540` /
+  `Edge 540`) to the same product and link with `source='intervals'`, letting
+  the FIT link win. Depends on the core `devices` / `activity_devices`
+  migration.
+
+**Runalyze enrichment** is still waiting on the API details (below).
 
 ## Waiting on
 

@@ -176,9 +176,10 @@ planned-vs-actual comparison remain next.
    activities store power zone times; do not fake them.
 3. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Equipment report and dashboard tab.** `reports.sh equipment` plus an
-   **Equipment** dashboard tab, computed from `equipment` →
-   `activity_equipment` → `activities.distance_m`. No schema change.
+4. **Equipment report and dashboard tab** — "Gear & devices".
+   `reports.sh equipment` plus an **Equipment** dashboard tab, computed from
+   `equipment` → `activity_equipment` → `activities.distance_m`, and from the
+   device registry once the root device item lands.
    - **Per item**: name, brand/model, type, acquired/retired, sessions, km,
      km/month, last used, target/wear, notes.
    - **Coverage block**: activities with and without gear per year. Gear
@@ -191,6 +192,9 @@ planned-vs-actual comparison remain next.
      Ignore the sheet's own totals in the notes for now.
    - **Dashboard**: the table plus a chart — cumulative km per shoe over time,
      or bars with target lines and retirement markers.
+   - **Devices**: a device timeline (which watch/computer recorded when, with
+     activity counts), and the VO2max chart marks device changes so a step is
+     attributable to the watch. The session report gains a `- Device:` line.
    - **Tests**: mileage sums, coverage counts, the active/retired split, and
      `-` rendering when an item has no activities.
 
