@@ -371,29 +371,34 @@ items 24 and 25. Only **12** and **13** can be done in this package today.
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
-13. **Recency-weighted Riegel fit.** `fit_riegel()` fits log time against log
-    distance over every race in the log, so a 2011 5k and last month's 10k
-    carry equal weight and the exponent describes the whole history, not
-    current fitness. A hard recent window was measured and rejected: the last
-    24 months hold only 5k/10k/trail races (n=9), so the exponent collapses to
-    1.011 and extrapolates a marathon to 2:27 from a 2× distance span. Weight
-    the points by age instead, so every distance still informs the exponent
-    while current form dominates.
-    - **Weighting**: an exponential half-life on the race date, a constant in
-      `analysis/races.py` (start at 2 years). Real data: exponent 1.059 /
-      R² 0.92 unweighted (marathon 2:37:54 against a 2:50:32 PB) versus 1.101 /
-      0.91 at a 2-year half-life (2:47:48), which is closer to the PB. PBs stay
-      all-time and unweighted.
-    - **Chart**: keep every race in the scatter, but mark the points that carry
-      most of the weight (within one half-life) so it is visible which races
-      drive the line, and label the fit with its weighting and n next to the
-      exponent and R².
-    - **Equivalent times**: use the weighted exponent, and say so when the
-      reference race is older than the weighting's centre (the current
-      fallback picks the most recent road race of any age).
-    - **Tests**: an old outlier moves the fit less than a recent one; the label
-      carries the weighting and n; PBs are unchanged; the CLI `races` report and
-      the Performance tab agree.
+13. **Two-timescale Riegel fit.** `fit_riegel()` fits log time against log
+    distance over every race in the log, so a 2011 5k and last month's 10k carry
+    equal weight: the exponent describes the whole history and the line's level
+    is set by old form. A hard recent window was measured and rejected — the
+    last 24 months hold only 5k/10k/trail races (n=9), so the exponent collapses
+    to 1.011 and extrapolates a marathon to 2:27 from a 2× distance span. Split
+    the two estimates instead.
+    - **Exponent (shape)**: all races, full distance span, optionally
+      age-weighted with a 2-year half-life. Unweighted the real data gives
+      1.059 / R² 0.92; weighted 1.101 / 0.91, which puts the marathon at 2:47:48
+      against a 2:50:32 PB.
+    - **Level (current form)**: with the exponent fixed, take the median of
+      `log t − β log d` over the recent window — the last 12 months, widened
+      until at least three races. The median means one good or bad day moves
+      the level by one rank, not by its magnitude.
+    - **Line and table**: `t = exp(A) · d^β` draws the line *and* produces the
+      equivalent times, so they can no longer disagree — today the table is
+      anchored on the most recent 10k while the line is a free fit.
+    - **Chart**: keep every race in the scatter, emphasise the recent-window
+      points, and label `β from all races (n=12, 5k–M) · level from the last 12
+      months (n=4) · level spread ±1.4%`. The residual spread is the honest
+      uncertainty on current form; the fit's R² describes the shape, not the
+      level.
+    - **PBs** stay all-time and unweighted.
+    - **Tests**: a recent outlier moves the level but not the exponent; an old
+      outlier moves neither much; the window widens when recent races are
+      sparse; the label carries both windows and n; PBs are unchanged; the CLI
+      `races` report and the Performance tab agree.
 
 ## Tests and docs
 
