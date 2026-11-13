@@ -166,12 +166,21 @@ def build_performance_section(
             if fit
             else ""
         ) + table(
-            ["Distance", "Predicted", "PB"],
+            ["Distance", "Predicted", "Pace", "PB", "PB pace"],
             [
-                [label, _time(predicted), _time(pb)]
-                for label, predicted, pb in predictions
+                [
+                    row.label,
+                    _time(row.predicted_s),
+                    _pace(row.predicted_pace_s_per_km),
+                    _time(row.pb_s),
+                    _pace(row.pb_pace_s_per_km),
+                ]
+                for row in predictions
             ],
-            numeric=(1, 2),
+            numeric=(1, 2, 3, 4),
+        ) + (
+            '<p class="muted">PB paces use the race\'s measured distance, so '
+            "a short course can pace slower than its time.</p>"
         )
     else:
         equivalent_html = (

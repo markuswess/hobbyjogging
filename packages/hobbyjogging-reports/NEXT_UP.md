@@ -105,6 +105,12 @@ this list keeps the recent decisions only.
   tolerance inside a bucket waits for official race distances (root item
   18).
 
+- **Equivalent times with paces.** The Riegel table projects 5k, 7k, 10k,
+  15k, HM, 30k and the marathon. 7k/15k/30k have no PB bucket, so they show
+  a prediction only, and both the predicted and PB columns now carry a
+  min/km pace (`EquivalentTime`). The `races` report and the Performance
+  tab print the same rows.
+
 ## Bugs
 
 _None._

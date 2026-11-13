@@ -69,11 +69,11 @@ Pages:
 - `performance.html` (Performance) — upcoming races, race results, personal
   bests, a per-bucket PB progression chart in pace (5k/10k/HM/M only, with
   the races that missed the line as hollow dots in the bucket's colour and
-  slow ones above the axis marked), a
-  log-log race chart whose dashed Riegel line passes through the reference
-  race and produces the equivalent times, and those times as a table.
-  Results and PBs link to per-race pages
-  with splits and execution details.
+  slow ones above the axis marked), a log-log race chart whose dashed Riegel
+  line passes through the reference race, and an equivalent-times table for
+  5k, 7k, 10k, 15k, HM, 30k and the marathon with the predicted and PB pace
+  for each. Results and PBs link to per-race pages with splits and execution
+  details.
 - `gear.html` (Gear) — gear mileage bars with target markers, the gear
   table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
@@ -199,13 +199,14 @@ database `DataSource` and produces the Markdown reports and charts:
   short/medium/long/LT1. Shows work-block and summary tables.
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
   HM, M, trail, other with short-course tolerance), upcoming races, a
-  Riegel exponent fit over every race, and equivalent-time predictions
-  scaled from the reference race (the newest road 10k, else the newest road
-  race), which the Performance tab's chart line passes through as well.
-  Standard-distance PBs require a measured distance within 2% of the
-  standard, so a 4.2 km race cannot win the 5k PB; Trail and Other are
-  labelled raw, keep the fastest raw time, and get no PB progression line.
-  Filter with
+  Riegel exponent fit over every race, and equivalent-time predictions at
+  5k, 7k, 10k, 15k, HM, 30k and the marathon, each with the predicted pace
+  and the PB pace. The predictions scale from the reference race (the
+  newest road 10k, else the newest road race), which the Performance tab's
+  chart line passes through as well. Standard-distance PBs require a
+  measured distance within 2% of the standard, so a 4.2 km race cannot win
+  the 5k PB; Trail and Other are labelled raw, keep the fastest raw time,
+  and get no PB progression line. Filter with
   `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or `--from`/`--to`),
   and `--limit N` for the latest results, e.g.
   `./reports.sh races --bucket 10k --year 2026 --limit 10`. Filters scope

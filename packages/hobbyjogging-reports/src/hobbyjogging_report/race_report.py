@@ -205,14 +205,22 @@ def races_report(
     if predictions:
         lines.extend([
             "",
-            "| Distance | Predicted | PB |",
-            "|---|---:|---:|",
+            "| Distance | Predicted | Pace | PB | PB pace |",
+            "|---|---:|---:|---:|---:|",
         ])
-        for label, predicted, pb in predictions:
+        for row in predictions:
             lines.append(
-                f"| {label} | {fmt_clock(predicted)} | "
-                f"{'-' if pb is None else fmt_clock(pb)} |"
+                f"| {row.label} | {fmt_clock(row.predicted_s)} | "
+                f"{_pace(row.predicted_pace_s_per_km)} | "
+                f"{'-' if row.pb_s is None else fmt_clock(row.pb_s)} | "
+                f"{_pace(row.pb_pace_s_per_km)} |"
             )
+
+        lines.extend([
+            "",
+            "PB paces use the race's measured distance, so a short course can "
+            "pace slower than its time.",
+        ])
 
     return "\n".join(lines)
 

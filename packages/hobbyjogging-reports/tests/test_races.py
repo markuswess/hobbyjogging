@@ -161,8 +161,18 @@ class RaceAnalysisTests(unittest.TestCase):
 
         rows = equivalent_times(results, fit)
 
-        self.assertEqual(["5k", "10k", "HM", "M"], [row[0] for row in rows])
-        self.assertAlmostEqual(2400 * (0.5) ** fit.exponent, rows[0][1])
+        self.assertEqual(
+            ["5k", "7k", "10k", "15k", "HM", "30k", "M"],
+            [row.label for row in rows],
+        )
+        self.assertAlmostEqual(
+            2400 * (0.5) ** fit.exponent,
+            rows[0].predicted_s,
+        )
+        # The in-between projections carry no PB bucket.
+        self.assertIsNone(rows[1].pb_s)
+        self.assertIsNone(rows[3].pb_s)
+        self.assertIsNone(rows[5].pb_s)
 
     def test_personal_bests_require_a_standard_distance(self):
         results = race_results(
@@ -390,21 +400,30 @@ class RiegelLineTests(unittest.TestCase):
             ),
         )
 
+    def test_equivalent_times_carry_paces(self):
+        results = self._results()
+        fit = fit_riegel(results)
+        rows = {row.label: row for row in equivalent_times(results, fit)}
+
+        five = rows["5k"]
+        self.assertAlmostEqual(
+            five.predicted_s / 5.0,
+            five.predicted_pace_s_per_km,
+        )
+        self.assertAlmostEqual(
+            2500 / 10.0,
+            rows["10k"].pb_pace_s_per_km,
+        )
+        self.assertIsNone(rows["7k"].pb_pace_s_per_km)
+
     def test_equivalent_times_are_the_reference_line(self):
         results = self._results()
         fit = fit_riegel(results)
         reference = riegel_reference(results)
-        distances = {
-            "5k": 5000.0,
-            "10k": 10000.0,
-            "HM": 21097.5,
-            "M": 42195.0,
-        }
-
-        for label, predicted, _pb in equivalent_times(results, fit):
+        for row in equivalent_times(results, fit):
             self.assertAlmostEqual(
-                riegel_time(reference, fit, distances[label]),
-                predicted,
+                riegel_time(reference, fit, row.distance_m),
+                row.predicted_s,
             )
 
 
@@ -472,6 +491,10 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("20:00", report)
         self.assertIn("## Personal bests", report)
         self.assertIn("Riegel estimate", report)
+        self.assertIn(
+            "| Distance | Predicted | Pace | PB | PB pace |",
+            report,
+        )
 
     def test_report_predictions_match_the_table(self):
         source = self._source()
@@ -479,9 +502,9 @@ class RaceReportTests(unittest.TestCase):
         results = race_results(source.activities(date(2000, 1, 1), D))
         fit = fit_riegel(results)
 
-        for label, predicted, _pb in equivalent_times(results, fit):
+        for row in equivalent_times(results, fit):
             self.assertIn(
-                f"| {label} | {fmt_clock(predicted)} |",
+                f"| {row.label} | {fmt_clock(row.predicted_s)} |",
                 report,
             )
 
@@ -496,9 +519,9 @@ class RaceReportTests(unittest.TestCase):
         results = race_results(source.activities(date(2000, 1, 1), D))
         fit = fit_riegel(results)
 
-        for label, predicted, _pb in equivalent_times(results, fit):
-            text = fmt_clock(predicted)
-            self.assertIn(f"| {label} | {text} |", report)
+        for row in equivalent_times(results, fit):
+            text = fmt_clock(row.predicted_s)
+            self.assertIn(f"| {row.label} | {text} |", report)
             self.assertIn(text, section.equivalent_html)
 
     def test_raw_bucket_pb_is_labelled(self):

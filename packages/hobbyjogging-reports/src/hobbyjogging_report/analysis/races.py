@@ -27,6 +27,15 @@ STANDARD_DISTANCES = {
     "M": 42195.0,
 }
 STANDARD_BUCKETS = tuple(STANDARD_DISTANCES)
+PROJECTION_DISTANCES = {
+    "5k": 5000.0,
+    "7k": 7000.0,
+    "10k": 10000.0,
+    "15k": 15000.0,
+    "HM": 21097.5,
+    "30k": 30000.0,
+    "M": 42195.0,
+}
 RAW_BUCKETS = (TRAIL_BUCKET, OTHER_BUCKET)
 
 
@@ -285,33 +294,57 @@ def riegel_reference(results: list[RaceResult]) -> RaceResult | None:
     return race
 
 
+@dataclass(frozen=True)
+class EquivalentTime:
+    """One projected distance: the Riegel time, its PB, and both paces."""
+
+    label: str
+    distance_m: float
+    predicted_s: float
+    pb_s: float | None = None
+    pb_distance_m: float | None = None
+
+    @property
+    def predicted_pace_s_per_km(self) -> float | None:
+        return pace_s_per_km(self.predicted_s, self.distance_m)
+
+    @property
+    def pb_pace_s_per_km(self) -> float | None:
+        if self.pb_s is None or self.pb_distance_m is None:
+            return None
+
+        return pace_s_per_km(self.pb_s, self.pb_distance_m)
+
+
 def equivalent_times(
     results: list[RaceResult],
     fit: RiegelFit | None,
-) -> list[tuple[str, float, float | None]]:
-    """Predicted standard-distance times plus the current PB in each bucket.
+) -> list[EquivalentTime]:
+    """Projected times from 5k to marathon, plus the current PB at each.
 
-    The predictions scale :func:`riegel_reference` by the fitted exponent;
-    the PB column is all-time.
+    7k, 15k and 30k have no PB bucket, so they carry a prediction only. The
+    predictions scale :func:`riegel_reference` by the fitted exponent; the
+    PB column is all-time.
     """
     race = riegel_reference(results)
 
     if race is None or fit is None:
         return []
 
+    pbs = {result.bucket: result for result in personal_bests(results)}
     rows = []
 
-    for label, distance_m in STANDARD_DISTANCES.items():
-        predicted = riegel_time(race, fit, distance_m)
-        pb = next(
-            (
-                result.activity.duration_s
-                for result in personal_bests(results)
-                if result.bucket == label
-            ),
-            None,
+    for label, distance_m in PROJECTION_DISTANCES.items():
+        pb = pbs.get(label)
+        rows.append(
+            EquivalentTime(
+                label=label,
+                distance_m=distance_m,
+                predicted_s=riegel_time(race, fit, distance_m),
+                pb_s=pb.activity.duration_s if pb else None,
+                pb_distance_m=pb.activity.distance_m if pb else None,
+            )
         )
-        rows.append((label, predicted, pb))
 
     return rows
 

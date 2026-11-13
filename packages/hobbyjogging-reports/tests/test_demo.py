@@ -514,6 +514,7 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Personal bests",
                     "PB progression",
                     "Equivalent times",
+                    "PB pace",
                 ),
                 "gear.html": ("Gear", "Coverage"),
                 "docs.html": ("Reports guide", "hobbyjogging-reports"),

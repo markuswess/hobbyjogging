@@ -884,17 +884,12 @@ class RaceChartTests(unittest.TestCase):
             line["x"][1] / line["x"][0]
         )
 
-        for label, predicted, _pb in equivalent_times(results, fit):
-            distance_km = {
-                "5k": 5.0,
-                "10k": 10.0,
-                "HM": 21.0975,
-                "M": 42.195,
-            }[label]
+        for row in equivalent_times(results, fit):
+            distance_km = row.distance_m / 1000
             on_line = line["y"][0] * (
                 distance_km / line["x"][0]
             ) ** slope
-            self.assertAlmostEqual(predicted / 60, on_line)
+            self.assertAlmostEqual(row.predicted_s / 60, on_line)
 
 
 class EquipmentChartTests(unittest.TestCase):
