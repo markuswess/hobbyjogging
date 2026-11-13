@@ -659,6 +659,47 @@ Updated 2026-11-12.
       pull-request test workflow, the README first-run path; then the
       data-driven ceilings and the sheet-code move; then the Python floor.
 
+24. **Catalogue every metric and analysis tool** (docs + reports; idea). The
+    registry only documents what came through the lab gate, so most of what the
+    reports actually compute is undocumented: load EWMAs, zone shares, session
+    RPE, race buckets and Riegel, the VO2max EWMAs, the robust wellness bands,
+    the classifier, the work-interval filter, the matching and tolerance rules.
+    The goal is a reference catalogue of everything in use, with a source for
+    each, distinct from the promotion gate.
+    - **Two jobs, two homes.** `docs/METRICS.md` stays the registry (gate,
+      promoted, rejected); the catalogue is a separate document (working name
+      `docs/ANALYSIS.md`) so a reader does not confuse "how a metric earns its
+      place" with "what a metric means".
+    - **Three classes with different reference styles**: *metrics* (a number:
+      efficiency, load, IF, zone share), *methods* (the classifier, the
+      work-interval filter, race matching, the owner/tolerance rules) and
+      *statistics* (EWMA, median/MAD, split-half reliability, regression). Each
+      entry: definition, formula, source or "coaching convention", where it
+      renders, and its caveats.
+    - **References**: cite the origin where one exists (Riegel 1981 for the
+      endurance formula; Foster 2001 for session RPE; Coggan/Allen for
+      CTL/ATL/TSB and IF; Seiler for polarization; Daniels for VDOT; Friel for
+      decoupling; Minetti for the grade cost model; Plews/Buchheit for HRV).
+      Mark coaching conventions explicitly rather than inventing a citation —
+      the load EWMAs and m/beat are conventions, not papers.
+    - **Anti-drift**: either generate the list from one registry in the reports
+      package and render Markdown and HTML from it, or keep it hand-written
+      with a test asserting every `analysis/` module is mentioned and every
+      named module still exists. Prefer the second unless the first proves
+      cheap; prose does not generate well.
+    - **Dashboard**: a "Metrics" tab rendering the catalogue grouped by area
+      (load, intensity, efficiency, races, wellness, tools) with anchors, next
+      to the existing Docs tab. Formulas must render without new runtime
+      dependencies — plain Unicode/code blocks, or bundle KaTeX if the site
+      stays self-contained.
+    - **Open questions**: one doc or two; catalogue at metric level or
+      report level; whether the review rules and the import tolerances belong
+      in it (they are tools, not metrics); and whether the lab's candidate
+      table should link into the catalogue.
+    - **Acceptance**: every number a report shows is either catalogued or
+      explicitly listed as plumbing; every entry names the module that
+      computes it; no entry describes code that no longer exists.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

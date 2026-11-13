@@ -303,6 +303,12 @@ Current focus: the dashboard's gear/devices and race work.
     `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
     See root item 23.
 
+13. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
+    races, wellness, tools), one anchor per entry, formulas as plain text or
+    code so the site stays self-contained. If the catalogue is generated, the
+    tab renders the same source the Markdown does.
+
 ## Tests and docs
 
 Covered now:
