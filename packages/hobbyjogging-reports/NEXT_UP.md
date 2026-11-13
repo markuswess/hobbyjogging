@@ -156,6 +156,13 @@ Current focus: the dashboard's gear/devices and race work.
   the existing intervals/work reps. `DataSource.activity_laps` exposes the
   existing repository query, and dashboard detail pages pass the same context
   (including per-day events and wellness) as the CLI.
+- **Gear report and Gear tab.** `reports.sh equipment` aggregates
+  `equipment` → `activity_equipment` → activities into sessions, km,
+  km/month, last use, target/wear, and active/retired status. It also shows
+  per-year coverage with and without gear and retirement candidates (over
+  target or unused for a year). The Gear dashboard tab adds a mileage bar
+  chart with target markers, the same table, coverage, and candidates. Shoes
+  without `target_distance_m` use an 800 km default.
 - **Docs tab instead of Reports.** `docs.html` replaces the old Reports tab
   and renders the reports README plus `docs/METRICS.md`, with a contents list
   and prefixed heading anchors. The nav order is Overview, Activities,
@@ -172,27 +179,10 @@ Current focus: the dashboard's gear/devices and race work.
 
 ## Next
 
-1. **Equipment report and dashboard tab** — "Gear & devices".
-   `reports.sh equipment` plus an **Equipment** dashboard tab, computed from
-   `equipment` → `activity_equipment` → `activities.distance_m`, and from the
-   device registry once the root device item lands.
-   - **Per item**: name, brand/model, type, acquired/retired, sessions, km,
-     km/month, last used, target/wear, notes.
-   - **Coverage block**: activities with and without gear per year. Gear
-     currently ends in 2021 (10 shoes, 1,842 links); 2022–2026 has none until
-     the Runalyze gear import lands, so show the gap explicitly.
-   - **Retirement candidates**: active items beyond the target, or unused for
-     N months.
-   - **Wear target**: `target_distance_m` is NULL everywhere; use a report
-     constant (e.g. 800 km for shoes) with an optional per-item override.
-     Ignore the sheet's own totals in the notes for now.
-   - **Dashboard**: the table plus a chart — cumulative km per shoe over time,
-     or bars with target lines and retirement markers.
-   - **Devices**: a device timeline (which watch/computer recorded when, with
-     activity counts), and the VO2max chart marks device changes so a step is
-     attributable to the watch. The session report gains a `- Device:` line.
-   - **Tests**: mileage sums, coverage counts, the active/retired split, and
-     `-` rendering when an item has no activities.
+1. **Device timeline.** Depends on the root device registry. Add a device
+   timeline (which watch/computer recorded when, with activity counts), mark
+   device changes on the VO2max chart so a step is attributable to the watch,
+   and add a `- Device:` line to the session report.
 
 2. **Race report and Performance tab.** Depends on the root
    `event_activity_links` item; until that lands, use activities whose methods

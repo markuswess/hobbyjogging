@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from hobbyjogging_core.model import (
+    Equipment,
     Event,
     EventZoneTime,
     ReviewItem,
@@ -26,7 +27,17 @@ activity = activity_factory()
 
 
 def _source():
+    shoe = Equipment(
+        id="shoe1",
+        type="shoe",
+        name="Demo Shoe",
+        brand="Acme",
+        acquired_on=TODAY - timedelta(days=200),
+        target_distance_m=100000,
+    )
+
     return FakeSource(
+        equipment=[shoe],
         activities=[
             activity(
                 id="run1",
@@ -42,6 +53,7 @@ def _source():
                 rpe=3,
                 workout_methods=["continuous"],
                 workout_targets=["base"],
+                equipment=[shoe],
             ),
             activity(
                 id="run2",
@@ -54,6 +66,7 @@ def _source():
                 pace_zone_times=[600, 600, 300, 300],
                 feel=2,
                 rpe=5,
+                equipment=[shoe],
             ),
             activity(
                 id="ride1",
@@ -235,6 +248,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn(">Data Health</a>", index)
             self.assertIn(">Docs</a>", index)
             self.assertIn(">Lab</a>", index)
+            self.assertIn(">Gear</a>", index)
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
@@ -346,6 +360,13 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Lab session ground rules", lab)
             self.assertIn("hr_efficiency_line.py", lab)
             self.assertIn("Experiment scripts", lab)
+
+            gear = (target / "gear.html").read_text()
+            self.assertIn(">Gear</a>", gear)
+            self.assertIn("Demo Shoe", gear)
+            self.assertIn("15", gear)
+            self.assertIn("Retirement candidates", gear)
+            self.assertIn("Plotly.newPlot", gear)
 
     def test_reports_flag_is_a_compatibility_noop(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -16,6 +16,13 @@ from .baseline import (
     robust_baseline,
     robust_baselines,
 )
+from .equipment import (
+    DEFAULT_SHOE_TARGET_M,
+    EquipmentStat,
+    equipment_coverage,
+    equipment_usage,
+    retirement_candidates,
+)
 from .efficiency import (
     EFFICIENCY_UNIT,
     MIN_EXCESS_HR,
@@ -115,7 +122,9 @@ __all__ = [
     "DEFAULT_AVERAGE_WINDOWS",
     "BASELINE_WINDOW_DAYS",
     "DEFAULT_ZONE_COUNT",
+    "DEFAULT_SHOE_TARGET_M",
     "EFFICIENCY_UNIT",
+    "EquipmentStat",
     "MIN_EXCESS_HR",
     "RESTING_HR_WINDOW_DAYS",
     "LT1_WORDS",
@@ -147,6 +156,8 @@ __all__ = [
     "daily_zone_time",
     "distance_averages",
     "event_zone_seconds",
+    "equipment_coverage",
+    "equipment_usage",
     "event_zone_time",
     "interval_efficiency",
     "is_lt1_activity",
@@ -167,6 +178,7 @@ __all__ = [
     "RecoveryBands",
     "recovery_bands",
     "recovery_trends",
+    "retirement_candidates",
     "robust_baseline",
     "robust_baselines",
     "rpe_metrics",

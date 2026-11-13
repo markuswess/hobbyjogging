@@ -6,6 +6,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     plot_compare,
+    plot_equipment,
     plot_compare_pace_hr,
     plot_compare_vo2max,
     plot_load,
@@ -17,6 +18,8 @@ from hobbyjogging_report.charts import (
     plot_vo2max,
     plot_volume,
 )
+from hobbyjogging_report.analysis import EquipmentStat
+from hobbyjogging_core.model import Equipment
 from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
@@ -457,6 +460,50 @@ class PaceHrChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+
+class EquipmentChartTests(unittest.TestCase):
+
+    def test_equipment_chart_writes_and_marks_targets(self):
+        stats = [
+            EquipmentStat(
+                equipment=Equipment(
+                    id="shoe-1",
+                    type="shoe",
+                    name="Demo Shoe",
+                    acquired_on=D,
+                ),
+                sessions=2,
+                distance_m=700000,
+                target_distance_m=800000,
+            ),
+            EquipmentStat(
+                equipment=Equipment(
+                    id="shoe-2",
+                    type="shoe",
+                    name="Retired Shoe",
+                    retired_on=D,
+                ),
+                sessions=3,
+                distance_m=1200000,
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "gear.png"
+            result = plot_equipment(stats, str(output))
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+        html = plot_equipment(stats, "", as_html=True)
+        self.assertIn("target", html)
+        self.assertIn("Demo Shoe", html)
+
+    def test_equipment_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_equipment([], str(Path(tmp) / "gear.png"))
 
 
 class CompareVo2maxChartTests(unittest.TestCase):

@@ -43,6 +43,7 @@ from .report_commands import (
     run_classify_command,
     run_compare_command,
     run_daily_command,
+    run_equipment_command,
     run_dashboard_command,
     run_demo_command,
     run_debug_command,
@@ -183,6 +184,13 @@ COMMANDS = {
         ("reports.sh subt-report --days 90",),
         parse=partial(parse_report_args, default_days=90),
         run=run_subt_report_command,
+    ),
+    "equipment": Command(
+        "equipment",
+        "Gear mileage, coverage, wear, and retirement candidates",
+        "equipment",
+        ("reports.sh equipment",),
+        run=run_equipment_command,
     ),
     "recovery-report": Command(
         "recovery-report",

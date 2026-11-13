@@ -4,6 +4,7 @@ from .activity_list import activities_report
 from .command_support import reviewed_range
 from .compare import compare_report
 from .daily import daily
+from .equipment_report import equipment_report
 from .dashboard import build_dashboard
 from .debug import debug
 from .overview import overview_report
@@ -153,6 +154,10 @@ def run_subt_report_command(parsed, source, include_review):
         source,
         include_review=include_review,
     )
+
+
+def run_equipment_command(parsed, source, include_review):
+    return equipment_report(source, include_review=include_review)
 
 
 def run_recovery_report_command(parsed, source, include_review):

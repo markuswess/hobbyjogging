@@ -17,6 +17,7 @@ warnings.filterwarnings(
 
 from .analysis import (
     EFFICIENCY_UNIT,
+    EquipmentStat,
     SUBT_CATEGORIES,
     pace_hr_efficiency_lines,
     pace_hr_trends,
@@ -1467,6 +1468,75 @@ def plot_compare_pace_hr(
         as_html=as_html,
         width=1650,
         height=1500,
+    )
+
+
+def plot_equipment(
+    stats: list[EquipmentStat],
+    output: str,
+    title: str = "Gear mileage",
+    as_html: bool = False,
+) -> str:
+    """Horizontal mileage bars with target markers."""
+    _require_data(stats)
+    ordered = list(reversed(stats))
+    labels = [stat.label for stat in ordered]
+    colors = [
+        "#c7c7c7" if stat.retired else "#1f77b4"
+        for stat in ordered
+    ]
+
+    figure = go.Figure(
+        go.Bar(
+            x=[stat.distance_m / 1000 for stat in ordered],
+            y=labels,
+            orientation="h",
+            name="mileage",
+            marker={"color": colors},
+            hovertemplate=(
+                "%{y}<br>%{x:.0f} km<extra></extra>"
+            ),
+        )
+    )
+
+    targets = [stat for stat in ordered if stat.target_distance_m]
+    if targets:
+        figure.add_trace(
+            go.Scatter(
+                x=[
+                    stat.target_distance_m / 1000
+                    for stat in targets
+                ],
+                y=[stat.label for stat in targets],
+                mode="markers",
+                name="target",
+                marker={
+                    "symbol": "line-ns-open",
+                    "size": 16,
+                    "color": "#111111",
+                    "line": {"width": 2},
+                },
+                hovertemplate=(
+                    "%{y}<br>target %{x:.0f} km<extra></extra>"
+                ),
+            )
+        )
+
+    figure.update_xaxes(title_text="km")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=max(500, 60 * len(stats) + 180),
+        margin={"l": 170, "r": 30, "t": 70, "b": 100},
+        legend=_legend_below(),
+        hovermode="closest",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1200,
     )
 
 

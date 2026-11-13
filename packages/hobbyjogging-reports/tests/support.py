@@ -55,8 +55,10 @@ class FakeSource:
         links=None,
         review_items=None,
         laps=None,
+        equipment=None,
     ):
         self._activities = list(activities or [])
+        self._equipment = list(equipment or [])
         self._intervals = dict(intervals or {})
         self._laps = dict(laps or {})
         self._wellness = list(wellness or [])
@@ -92,6 +94,9 @@ class FakeSource:
 
     def activity_laps(self, activity_id):
         return self._laps.get(activity_id, [])
+
+    def equipment(self):
+        return list(self._equipment)
 
     def activity_links(self, activity_id):
         return self._links.get(activity_id)

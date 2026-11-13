@@ -39,6 +39,10 @@ HTML dashboard:
   category column.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
+- **equipment** — Gear mileage and use from `equipment` →
+  `activity_equipment` → activities: sessions, km, km/month, last used,
+  target/wear, coverage per year, and retirement candidates. Shoes without
+  `target_distance_m` use an 800 km default.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout
@@ -670,6 +674,8 @@ Pages:
   targets, zone times, description, the raw segment table, and subT/LT1
   work reps),
   exactly as `reports.sh session` renders it.
+- `gear.html` (Gear) — gear mileage bars with target markers, the gear
+  table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
   HR, and sleep as interactive plotly panels over the last 186 days

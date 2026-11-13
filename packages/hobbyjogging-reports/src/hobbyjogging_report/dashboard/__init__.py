@@ -44,9 +44,11 @@ from .pages import (
     overview_page,
     recovery_page,
     docs_page,
+    gear_page,
     lab_page,
 )
 from .docs import build_docs_section
+from .gear import build_gear_section
 from .lab import build_lab_section
 from .reports import REPORT_NAMES, build_report
 from ..zone_groups import (
@@ -276,6 +278,11 @@ def build_dashboard(
     )
 
     open_review = source.review_items(status="open")
+    gear_section = build_gear_section(
+        source,
+        today=today,
+        include_review=include_review,
+    )
     pages = {
         "index.html": overview_page(
             generated_at=generated_at,
@@ -337,6 +344,13 @@ def build_dashboard(
             report_html=recovery_html,
             start=recovery_start,
             end=today,
+        ),
+        "gear.html": gear_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            section=gear_section,
         ),
         "docs.html": docs_page(
             generated_at=generated_at,

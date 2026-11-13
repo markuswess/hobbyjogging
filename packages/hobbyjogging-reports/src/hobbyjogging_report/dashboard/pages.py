@@ -22,6 +22,7 @@ from ..model import RecoveryPoint, Vo2maxPoint
 from .analysis import AnalysisSection
 from .compare import CompareSection
 from .docs import DocsSection
+from .gear import GearSection
 from .lab import LabSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
@@ -510,6 +511,36 @@ def health_page(
         ),
         demo_label=demo_label,
         active="health",
+    )
+
+
+def gear_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    demo_label: str | None = None,
+    section: GearSection,
+) -> str:
+    """Render gear mileage, coverage, and retirement candidates."""
+    body = (
+        card(None, section.summary_html)
+        + card("Mileage", section.chart_html)
+        + card("Gear", section.table_html)
+        + card("Coverage", section.coverage_html)
+        + card("Retirement candidates", section.candidates_html)
+    )
+
+    return page(
+        title="Gear",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="gear",
     )
 
 
