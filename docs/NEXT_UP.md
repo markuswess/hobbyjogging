@@ -183,6 +183,15 @@ Updated 2026-11-12.
 4. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
    vs actual by session, optional HR-zone variant, shoe mileage.
+5. **Raw vs derived: document the tiers and add a check** (low priority). The
+   tiers already exist structurally — raw `source_records`, canonical
+   `activities`/`events` columns, derived set/zone tables, read-time metrics —
+   but the invariant is implicit: a derived stored value is always recomputable
+   from raw + manual and never outranks manual. Add a short ARCHITECTURE
+   section and a read-only maintenance `check` task (the kind cut from the
+   runner) asserting that derived rows have a known origin, manual rows survive
+   recomputes, and a recompute reproduces the same sets. No schema change; a
+   `computed_by` column only if a queryable need appears.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
