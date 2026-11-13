@@ -158,7 +158,15 @@ def run_subt_report_command(parsed, source, include_review):
 
 
 def run_races_command(parsed, source, include_review):
-    return races_report(source, include_review=include_review)
+    bucket, start, end, limit = parsed
+    return races_report(
+        source,
+        bucket=bucket,
+        start=start,
+        end=end,
+        limit=limit,
+        include_review=include_review,
+    )
 
 
 def run_race_command(parsed, source, include_review):

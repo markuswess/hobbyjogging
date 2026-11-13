@@ -41,7 +41,12 @@ HTML dashboard:
   short/medium/long/LT1. Shows work-block and summary tables.
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
   HM, M, trail, other with short-course tolerance), upcoming races, a
-  Riegel log-log fit, and equivalent-time predictions.
+  Riegel log-log fit, and equivalent-time predictions. Filter with
+  `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or `--from`/`--to`),
+  and `--limit N` for the latest results, e.g.
+  `./reports.sh races --bucket 10k --year 2026 --limit 10`. Filters scope
+  the results and PB tables; a date filter also scopes upcoming races,
+  while `--bucket` and `--limit` leave them unfiltered.
 - **race <activity-id>** — One race-day report: splits, first/second-half
   pace, planned-vs-actual zones and duration/distance when a race event
   exists on the same date.

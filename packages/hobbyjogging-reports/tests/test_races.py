@@ -192,11 +192,18 @@ class RaceReportTests(unittest.TestCase):
                     distance_m=21097,
                     duration_s=5400,
                 ),
+                _race(
+                    id="d",
+                    date=date(2025, 10, 1),
+                    name="Old 5k",
+                    distance_m=5000,
+                    duration_s=1250,
+                ),
             ],
             events=[
                 Event(
                     date=D,
-                    name="Spring 5k",
+                    name="Future 5k",
                     type="run",
                     duration_s=1150,
                     distance_m=5000,
@@ -221,6 +228,63 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("20:00", report)
         self.assertIn("## Personal bests", report)
         self.assertIn("Riegel estimate", report)
+
+    def test_bucket_filter_applies_to_results_and_pbs(self):
+        report = races_report(self._source(), bucket="10k", today=D)
+        results = report.split("## Personal bests")[0]
+        pbs = report.split("## Personal bests")[1]
+
+        self.assertIn("Filter: bucket 10k", report)
+        self.assertIn("Autumn 10k", results)
+        self.assertNotIn("Spring 5k", results)
+        self.assertNotIn("Half", results)
+        self.assertIn("| 10k |", pbs)
+        self.assertNotIn("| 5k |", pbs)
+        # The upcoming list is not bucket-filtered.
+        self.assertIn("Future 5k", results)
+
+    def test_year_filter_scopes_results_and_upcoming(self):
+        report = races_report(
+            self._source(),
+            start=date(2025, 1, 1),
+            end=date(2025, 12, 31),
+            today=D,
+        )
+
+        self.assertIn("Old 5k", report)
+        self.assertNotIn("Autumn 10k", report)
+        self.assertNotIn("Future 5k", report)
+        self.assertIn("Filter: 2025-01-01 → 2025-12-31", report)
+
+    def test_limit_caps_rows_but_pbs_use_all_matches(self):
+        report = races_report(self._source(), limit=2, today=D)
+        results = report.split("## Personal bests")[0]
+        pbs = report.split("## Personal bests")[1]
+
+        self.assertIn("Spring 5k", results)
+        self.assertIn("Autumn 10k", results)
+        self.assertNotIn("Half", results)
+        self.assertIn("Showing the latest 2 of 4 matching races.", report)
+        self.assertIn("| HM |", pbs)
+
+    def test_empty_filter_still_shows_upcoming(self):
+        report = races_report(self._source(), bucket="M", today=D)
+
+        self.assertIn("Filter: bucket M", report)
+        self.assertIn("No race results found.", report)
+        self.assertNotIn("## Personal bests", report)
+        self.assertIn("Future 5k", report)
+
+    def test_empty_year_filter_hides_upcoming(self):
+        report = races_report(
+            self._source(),
+            start=date(2024, 1, 1),
+            end=date(2024, 12, 31),
+            today=D,
+        )
+
+        self.assertIn("- No races found", report)
+        self.assertNotIn("Future 5k", report)
 
     def test_race_report_includes_plan_and_execution(self):
         report = race_report("a", self._source(), today=D)

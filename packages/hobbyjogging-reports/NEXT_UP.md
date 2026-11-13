@@ -205,6 +205,12 @@ Current focus: the dashboard's gear/devices and race work.
   from `recovery_report.WINDOWS[-1]` (182), matching the embedded report's
   7/42/182-day label and the page range and completeness line. Tests cover
   the default title, the denominator, and the `--recovery-days` override.
+- **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
+  `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
+  filters scope the results, PB and Riegel tables; a date filter also scopes
+  upcoming races, while bucket and limit leave them alone. Limit caps the
+  result rows only, so PBs still use every matching race. Tests cover
+  defaults, combined filters, truncation, and empty results.
 - **Stable compare colors.** All three compare charts map a year through
   `compare_color(year)`, anchored on 2009, so a year keeps one color across
   the volume/time/load/runs/efficiency, pace/HR, and VO2max charts, and the
@@ -276,63 +282,56 @@ Current focus: the dashboard's gear/devices and race work.
    - Tests: only improvements advance the step line; ties do not; buckets stay
      separate; official values win when present.
 
-8. **Race report filters.** Add `--bucket`, `--year` (or `--from`/`--to`),
-   and `--limit` to `reports.sh races`, applying them to the results and PB
-   tables while leaving the upcoming-race list unfiltered unless explicitly
-   requested. Derive the filter metadata from the existing race buckets; no
-   schema change. Add a short usage note to the README and tests for combined
-   filters and empty results.
+8. **Elevation in the reports.** Once the columns land: climb per km in the
+   session report and the activities list, a coarse grade-adjusted pace from
+   per-lap gain (the FIT payload has no altitude stream, so this is
+   lap-level), trail suggestions from the ≥40 m/km evidence, and route
+   difficulty on the dashboard.
 
-9. **Elevation in the reports.** Once the columns land: climb per km in the
-    session report and the activities list, a coarse grade-adjusted pace from
-    per-lap gain (the FIT payload has no altitude stream, so this is
-    lap-level), trail suggestions from the ≥40 m/km evidence, and route
-    difficulty on the dashboard.
+9. **Strava in the session report.** A `Strava: …` line with the title, the
+   description as an annotation, and a link to the activity. Depends on the
+   root Strava item and on the notes/description decision in root item 1.
 
-10. **Strava in the session report.** A `Strava: …` line with the title, the
-    description as an annotation, and a link to the activity. Depends on the
-    root Strava item and on the notes/description decision in root item 1.
+10. **VO2max by sport in the charts.** Label the series "Running VO2max" and
+   keep it to running activities, so the 482 rides stop injecting a different
+   series; add the cycling series when it exists. Depends on the root VO2max
+   bug fix.
 
-11. **VO2max by sport in the charts.** Label the series "Running VO2max" and
-    keep it to running activities, so the 482 rides stop injecting a different
-    series; add the cycling series when it exists. Depends on the root VO2max
-    bug fix.
+11. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
+   `LOAD_Y_MAX` are fixed to this athlete's peak (a 130 km/week volume axis),
+   so another user's charts are mostly empty and this one's are cramped when
+   it grows. Compute a "nice max" from the data (round up to a sensible step)
+   and keep the fixed values only as a fallback. Same for
+   `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
+   See root item 23.
 
-12. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
-    `LOAD_Y_MAX` are fixed to this athlete's peak (a 130 km/week volume axis),
-    so another user's charts are mostly empty and this one's are cramped when
-    it grows. Compute a "nice max" from the data (round up to a sensible step)
-    and keep the fixed values only as a fallback. Same for
-    `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
-    See root item 23.
+12. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+   dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
+   races, wellness, tools), one anchor per entry, formulas as plain text or
+   code so the site stays self-contained. If the catalogue is generated, the
+   tab renders the same source the Markdown does.
 
-13. **Metrics tab.** Render the analysis catalogue from root item 24 as a
-    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
-    races, wellness, tools), one anchor per entry, formulas as plain text or
-    code so the site stays self-contained. If the catalogue is generated, the
-    tab renders the same source the Markdown does.
+13. **Coaching tab.** Render the latest coaching note and an index of past
+   ones, through the same Markdown-to-HTML path as Docs, with front matter
+   turned into a header (date, period, focus) and the decision sections
+   linked. Must be empty — not leaking — in the public demo: exclude the
+   `coaching/` directory when a demo label is set, or ship a synthetic
+   example note. See root item 25.
 
-14. **Coaching tab.** Render the latest coaching note and an index of past
-    ones, through the same Markdown-to-HTML path as Docs, with front matter
-    turned into a header (date, period, focus) and the decision sections
-    linked. Must be empty — not leaking — in the public demo: exclude the
-    `coaching/` directory when a demo label is set, or ship a synthetic
-    example note. See root item 25.
+14. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
+   database and asserts every report and dashboard tab renders non-empty
+   content, so a feature that adds a field without demo data fails loudly.
+   Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
+   weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
+   Coaching and Metrics tabs once they exist. See root item 26.
 
-15. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
-    database and asserts every report and dashboard tab renders non-empty
-    content, so a feature that adds a field without demo data fails loudly.
-    Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
-    weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
-    Coaching and Metrics tabs once they exist. See root item 26.
-
-16. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
-    4,457 `activity_intervals` calls, 219 `activities()` range loads, 95 lap
-    loads, for ~5 s. Add a read-only per-build cache on `DataSource`
-    (`activities()` by range, intervals and laps by id), a `--timing` summary
-    per phase, and a test bounding the query count on the demo database. Do the
-    cache before touching the analysis code — it removes most of the work
-    without changing any result. See root item 27.
+15. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
+   4,457 `activity_intervals` calls, 219 `activities()` range loads, 95 lap
+   loads, for ~5 s. Add a read-only per-build cache on `DataSource`
+   (`activities()` by range, intervals and laps by id), a `--timing` summary
+   per phase, and a test bounding the query count on the demo database. Do the
+   cache before touching the analysis code — it removes most of the work
+   without changing any result. See root item 27.
 
 ## Tests and docs
 

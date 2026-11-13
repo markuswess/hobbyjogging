@@ -44,26 +44,66 @@ def _load(value: float | None) -> str:
 def races_report(
     source: DataSource,
     *,
+    bucket: str | None = None,
+    start: date | None = None,
+    end: date | None = None,
+    limit: int | None = None,
     today: date | None = None,
     include_review: bool = False,
     future_days: int = 180,
 ) -> str:
-    """Render race results, PBs, upcoming races, and Riegel estimates."""
+    """Render race results, PBs, upcoming races, and Riegel estimates.
+
+    ``bucket``, ``start``/``end`` and ``limit`` scope the results and PB
+    tables. A date filter also scopes the upcoming list, because it is an
+    explicit range; bucket and limit never do.
+    """
     today = today or date.today()
     activities, excluded = exclude_review(
         source.activities(activity_start(source, today), today),
         include_review=include_review,
     )
-    results = race_results(activities)
+    results = [
+        result
+        for result in race_results(activities)
+        if (bucket is None or result.bucket == bucket)
+        and (start is None or result.activity.date >= start)
+        and (end is None or result.activity.date <= end)
+    ]
+    shown = results if limit is None else results[:limit]
     upcoming = upcoming_races(
         source.events(today, today + timedelta(days=future_days)),
         today,
         days=future_days,
     )
+
+    if start is not None or end is not None:
+        upcoming = [
+            event
+            for event in upcoming
+            if (start is None or event.date >= start)
+            and (end is None or event.date <= end)
+        ]
+
     fit = fit_riegel(results)
     predictions = equivalent_times(results, fit)
 
     lines = ["# Races", f"Through {today}"]
+    filters = []
+
+    if bucket is not None:
+        filters.append(f"bucket {bucket}")
+    if start is not None and end is not None:
+        filters.append(f"{start} → {end}")
+    elif start is not None:
+        filters.append(f"from {start}")
+    elif end is not None:
+        filters.append(f"through {end}")
+    if limit is not None:
+        filters.append(f"latest {limit}")
+
+    if filters:
+        lines.append(f"Filter: {' · '.join(filters)}")
 
     note = review_note(excluded)
     if note:
@@ -97,7 +137,7 @@ def races_report(
             "| Date | Race | Bucket | Distance | Time | Pace | HR | Load |",
             "|---|---|---|---:|---:|---:|---:|---:|",
         ])
-        for result in results:
+        for result in shown:
             activity = result.activity
             lines.append(
                 f"| {activity.date} | "
@@ -108,6 +148,13 @@ def races_report(
                 f"{'-' if activity.avg_hr is None else f'{activity.avg_hr:.0f}'} | "
                 f"{_load(activity.training_load)} |"
             )
+
+        if len(shown) < len(results):
+            lines.extend([
+                "",
+                f"Showing the latest {len(shown)} of "
+                f"{len(results)} matching races.",
+            ])
 
         groups = personal_bests(results)
         lines.extend([
@@ -126,6 +173,13 @@ def races_report(
                 f"{fmt_clock(activity.duration_s)} | "
                 f"{_pace(result.pace_s_per_km)} |"
             )
+    else:
+        lines.extend([
+            "",
+            "## Results",
+            "",
+            "- No race results found.",
+        ])
 
     if fit is not None:
         lines.extend([

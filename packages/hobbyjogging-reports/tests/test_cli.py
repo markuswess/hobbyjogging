@@ -16,6 +16,7 @@ from hobbyjogging_report.cli import (
     parse_overview_args,
     parse_overview_chart_args,
     parse_planned_args,
+    parse_races_args,
     parse_recovery_args,
     parse_report_args,
     parse_time_args,
@@ -530,8 +531,46 @@ class CompareArgsTests(unittest.TestCase):
                 parse_compare_args(["weeks"], today=TODAY)
 
 
-class DashboardArgsTests(unittest.TestCase):
+class RacesArgsTests(unittest.TestCase):
 
+    def test_defaults_are_unfiltered(self):
+        self.assertEqual(
+            (None, None, None, None),
+            parse_races_args([]),
+        )
+
+    def test_reads_bucket_year_and_limit(self):
+        self.assertEqual(
+            ("10k", date(2026, 1, 1), date(2026, 12, 31), 5),
+            parse_races_args(
+                ["--bucket", "10k", "--year", "2026", "--limit", "5"]
+            ),
+        )
+
+    def test_reads_an_explicit_range(self):
+        self.assertEqual(
+            ("5k", date(2025, 3, 1), date(2025, 6, 30), None),
+            parse_races_args(
+                ["--bucket", "5k", "--from", "2025-03-01",
+                 "--to", "2025-06-30"]
+            ),
+        )
+
+    def test_rejects_year_with_an_explicit_range(self):
+        with self.assertRaises(ValueError):
+            parse_races_args(["--year", "2026", "--from", "2026-01-01"])
+
+    def test_rejects_non_positive_limit(self):
+        with self.assertRaises(ValueError):
+            parse_races_args(["--limit", "0"])
+
+    def test_rejects_unknown_bucket(self):
+        with self.assertRaises(SystemExit):
+            with redirect_stderr(io.StringIO()):
+                parse_races_args(["--bucket", "marathon"])
+
+
+class DashboardArgsTests(unittest.TestCase):
     def test_defaults(self):
         self.assertEqual(
             (None, 14, 50, 182, 14, 182, 731, 182, (), None),

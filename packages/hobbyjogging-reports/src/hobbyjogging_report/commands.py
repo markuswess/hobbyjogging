@@ -28,6 +28,7 @@ from .cli import (
     parse_overview_args,
     parse_overview_chart_args,
     parse_planned_args,
+    parse_races_args,
     parse_recovery_args,
     parse_report_args,
     parse_time_args,
@@ -198,8 +199,13 @@ COMMANDS = {
     "races": Command(
         "races",
         "Race results, PBs, upcoming races, and Riegel estimates",
-        "races",
-        ("reports.sh races",),
+        "races [--bucket BUCKET] [--year YYYY | --from DATE --to DATE] "
+        "[--limit N]",
+        (
+            "reports.sh races",
+            "reports.sh races --bucket 10k --year 2026",
+        ),
+        parse=parse_races_args,
         run=run_races_command,
     ),
     "race": Command(

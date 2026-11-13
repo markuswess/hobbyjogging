@@ -140,6 +140,45 @@ def parse_report_args(
     return resolve_range(days, args.start, args.end, today=today)
 
 
+def parse_races_args(
+    argv: list[str],
+) -> tuple[str | None, date | None, date | None, int | None]:
+    """Parse bucket, date, and limit filters for the races report."""
+    from .analysis import BUCKET_ORDER
+
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--bucket", choices=BUCKET_ORDER)
+    parser.add_argument("--year", type=int)
+    parser.add_argument("--from", dest="start", type=date_arg)
+    parser.add_argument("--to", dest="end", type=date_arg)
+    parser.add_argument("--limit", type=int)
+    args = parser.parse_args(argv)
+
+    if (
+        args.year is not None
+        and (args.start is not None or args.end is not None)
+    ):
+        raise ValueError("--year cannot be combined with --from/--to")
+
+    if args.limit is not None and args.limit <= 0:
+        raise ValueError("--limit must be positive")
+
+    start = args.start
+    end = args.end
+
+    if args.year is not None:
+        try:
+            start = date(args.year, 1, 1)
+            end = date(args.year, 12, 31)
+        except ValueError as exc:
+            raise ValueError(f"invalid year: {args.year}") from exc
+
+    if start is not None and end is not None and start > end:
+        raise ValueError("--from must not be after --to")
+
+    return args.bucket, start, end, args.limit
+
+
 def parse_planned_args(
     argv: list[str],
     default_days: int = DEFAULT_PLANNED_DAYS,
