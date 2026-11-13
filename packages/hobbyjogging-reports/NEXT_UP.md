@@ -380,6 +380,23 @@ items 24 and 25. Only **12** can be done in this package today.
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
+14. **PB progression: pace axis, standard buckets only.** The step chart plots
+    raw race times on one shared y-axis, so a 15 s 5k improvement is invisible
+    next to a 2:40 marathon line, and Trail/Other compare unrelated distances.
+    - **Y-axis**: average pace (min/km) instead of total time. Within a bucket
+      the pace is comparable, and the axis span drops from ~170 minutes to
+      ~90 seconds, so a short-distance gain is visible.
+    - **Buckets**: plot the standard distances only (5k, 10k, HM, M). Drop Trail
+      and Other from the progression — they have no standard distance, so a
+      step there is a distance change, not a PB. Their raw times stay in the
+      results table, labelled as raw.
+    - **Remainder**: the 2 % tolerance and the raw-time bias inside the band
+      wait for official race distances (root item 18); once a 5k is exactly
+      5000 m the band question disappears.
+    - **Docs**: the reports README's Performance bullet and the tab description.
+    - **Tests**: the axis is pace; Trail/Other produce no progression line; a
+      faster 5k advances its line; the end annotation reads in min/km.
+
 ## Tests and docs
 
 Covered now:
