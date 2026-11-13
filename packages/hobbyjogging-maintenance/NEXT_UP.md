@@ -31,6 +31,12 @@ This file records what the package is still waiting on.
 - **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
   (backfills). Create threshold snapshots and zone configs from the stored
   payloads and set the activity FK columns; idempotent, dry-run.
+- **`thresholds_from_races_v1`** (backfill, idea — blocked on the race links
+  and on the lab work settling the derivation). Derive per-era threshold pace
+  and LTHR from linked race results, fill the activities where Intervals has
+  no `threshold_pace`, and record the derived series next to the stamped one
+  so the reports can show both. Idempotent, dry-run, and it reports the delta
+  to the stamped values.
 - **`wellness_extras_v1`** (backfill). Fill the new wellness columns from
   the stored Intervals wellness payloads (3,022 days), idempotent, dry-run.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /

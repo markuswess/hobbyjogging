@@ -228,7 +228,8 @@ Current focus: the dashboard's gear/devices and race work.
 6. **Threshold trend and era-correct zones.** A chart of LTHR, threshold pace
    and max HR over the years beside VO2max; normalize activity zones with each
    activity's zone config; compare subT work-rep pace with the period's
-   threshold pace.
+   threshold pace. If the race-derived series lands, show it against the
+   stamped values so a divergence is visible.
 
 ## Tests and docs
 

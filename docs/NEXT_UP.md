@@ -271,6 +271,19 @@ Updated 2026-11-12.
    - **Reports**: a threshold trend chart (LTHR, threshold pace, max HR) beside
      VO2max, era-correct zone normalization, and subT work-rep pace compared
      with the period's threshold pace.
+   - **Races as threshold evidence** (idea, depends on item 2's race links).
+     Intervals' stamped values are athlete settings, not measurements, and
+     `threshold_pace` is missing on ~1,400 activities. A race is the best
+     observed evidence we have: a 10k–half marathon result gives a defensible
+     threshold pace (via Riegel-style adjustment for the distance) and LTHR
+     (the sustained HR of the last third). A `thresholds_from_races_v1`
+     backfill would derive a per-era series from linked race results and use it
+     to (a) fill the gaps, (b) cross-check the stamped values, and (c) emit a
+     consensus series where they disagree. It also yields HR/pace zone
+     boundaries for eras with no `icu_hr_zones`. **The derivation rule set,
+     the race-distance window and the tolerances are still to be determined** —
+     start in the lab against the existing stamped values before storing
+     anything.
    - **Validation**: Intervals' threshold pace and the subT-derived pace should
      agree; report the delta.
 
