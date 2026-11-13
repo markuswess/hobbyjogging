@@ -243,6 +243,23 @@ Current focus: the dashboard's gear/devices and race work.
     percent of its steady-state mean, and the 2022 line start agrees with the
     year table.
 
+- **Bucket PBs compare unequal distances.** `personal_bests()` takes the
+  fastest raw `duration_s` inside a bucket, and the buckets are wide: 5k is
+  4.0–6.2 km, 10k 9.5–10.7, HM 19.0–23.0, M 40.0–44.5. So a 4.2 km race wins
+  the 5k PB and a 40 km run wins the marathon PB — the number is a time at
+  whatever distance happened to fall in the bucket, not at the standard
+  distance. `equivalent_times()` already predicts standard-distance times, but
+  the PB it prints is the raw bucket winner.
+  - **Fix once official results exist** (root item 18): the PB is the fastest
+    `official_time_s` at `official_distance_m`, which is exact, and the bucket
+    only groups the display.
+  - **Until then**: require a distance within ~2 % of the standard for a PB,
+    or compare equivalent times through the Riegel fit and label the result as
+    adjusted — never present a raw time as a standard-distance PB. Show the
+    distance beside every PB so the basis is visible.
+  - **Test**: a 4.2 km race does not win the 5k PB; a 5.00 km official result
+    does; an adjusted PB carries its label.
+
 ## Next
 
 1. **Device timeline.** Depends on the root device registry. Add a device
