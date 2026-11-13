@@ -326,6 +326,14 @@ Current focus: the dashboard's gear/devices and race work.
     weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
     Coaching and Metrics tabs once they exist. See root item 26.
 
+16. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
+    4,457 `activity_intervals` calls, 219 `activities()` range loads, 95 lap
+    loads, for ~5 s. Add a read-only per-build cache on `DataSource`
+    (`activities()` by range, intervals and laps by id), a `--timing` summary
+    per phase, and a test bounding the query count on the demo database. Do the
+    cache before touching the analysis code — it removes most of the work
+    without changing any result. See root item 27.
+
 ## Tests and docs
 
 Covered now:

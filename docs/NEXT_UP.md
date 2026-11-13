@@ -752,6 +752,29 @@ Updated 2026-11-12.
       build, a taper, a race, a couple of devices — versus how much to leave
       empty so the "no data" paths stay exercised.
 
+27. **Performance budget** (reports + import; watch, do not optimise
+    blindly). Sync and dashboard run times grow with the data. They are not yet
+    a nuisance, so the work is to measure, record and notice — and only
+    optimise when a ceiling is crossed.
+    - **Baseline** (real DB, 4,136 activities): a full dashboard build takes
+      **~5 s and issues 6,803 SQL queries** — 4,457 `activity_intervals` calls,
+      219 `activities(start, today)` range loads and 95 lap loads.
+    - **Instrument**: a `--timing` summary on the CLI with per-phase numbers
+      (read, analysis, charts, write), plus one line at the end of a dashboard
+      build and of a sync, so a regression is visible in the log.
+    - **Budget**: a ceiling (for example dashboard under 15 s on the real DB)
+      that counts as a bug when crossed; re-record the numbers at each release
+      tag (item 22).
+    - **Suspects, in order**: per-activity interval/lap lookups inside loops;
+      each dashboard section loading its own `activities()` range (219 calls
+      per build); per-activity `classify()`; chart rendering.
+    - **Cheap first**: a read-only per-build cache on `DataSource` —
+      `activities()` by range and `activity_intervals()`/`activity_laps()` by
+      id — removes most of it without touching the analysis code. Do that
+      before rewriting queries.
+    - **Tests**: bound the query count on the demo database, so a new N+1 fails
+      the suite instead of the wall clock.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

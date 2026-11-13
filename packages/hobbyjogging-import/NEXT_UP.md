@@ -172,6 +172,10 @@ on.
   the FIT link win. Depends on the core `devices` / `activity_devices`
   migration.
 
+- **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
+  fetch, Intervals import, FIT scan, review scan, classification, dashboard),
+  so a slowdown shows up in the log instead of in a session that feels slow.
+  See root item 27.
 - **Committed FIT fixture.** `test_fit` reads `data/fit/*.fit`, which is
   gitignored, so on CI every real-file test skips (they now guard with
   `skipUnless`) and the parser is only covered by synthetic messages. Commit
