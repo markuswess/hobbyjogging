@@ -277,6 +277,21 @@ Current focus: the dashboard's gear/devices and race work.
    schema change. Add a short usage note to the README and tests for combined
    filters and empty results.
 
+9. **Elevation in the reports.** Once the columns land: climb per km in the
+    session report and the activities list, a coarse grade-adjusted pace from
+    per-lap gain (the FIT payload has no altitude stream, so this is
+    lap-level), trail suggestions from the ≥40 m/km evidence, and route
+    difficulty on the dashboard.
+
+10. **Strava in the session report.** A `Strava: …` line with the title, the
+    description as an annotation, and a link to the activity. Depends on the
+    root Strava item and on the notes/description decision in root item 1.
+
+11. **VO2max by sport in the charts.** Label the series "Running VO2max" and
+    keep it to running activities, so the 482 rides stop injecting a different
+    series; add the cycling series when it exists. Depends on the root VO2max
+    bug fix.
+
 ## Tests and docs
 
 Covered now:

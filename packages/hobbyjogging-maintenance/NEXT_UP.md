@@ -28,6 +28,20 @@ This file records what the package is still waiting on.
 
 ## Next
 
+- **`activity_elevation_v1`** (backfill). Fill `activities.elevation_gain_m`
+  / `_loss` from the stored payloads (Intervals, sheet gain-only) and from
+  summed FIT laps; no network, idempotent, dry-run.
+- **`race_links_current`** (recompute). Match planned race events to completed
+  activities (date + sport, then distance within ~5%, then start proximity),
+  write `event_activity_links`, open an `ambiguous_race` item for genuine
+  ambiguity, and never touch a manual link. See root item 4.
+- **`vo2max_garmin_sport_v1`** (backfill). Once the sport discriminator is
+  known, re-key or clear the values on non-running activities (482 rides, 22
+  swims, 21 trail runs) and report the count per sport. See the root VO2max
+  bug.
+- **`drop_classification_tags_v1`** (backfill). Remove the sheet's
+  `Trainigstyp` codes from `activity_tags`, keeping manual tags and orthogonal
+  labels (`hills`, `bad data`); idempotent, dry-run. See root item 19.
 - **`fartlek_from_fs_v1`** (backfill). Rewrite the sheet-`fs` activities from
   `intervals` to `fartlek` (54 today, 38 of them with no WORK reps), skipping
   manual rows and filling a missing target with `vo2max`. Idempotent, dry-run.

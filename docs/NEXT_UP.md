@@ -204,6 +204,14 @@ Updated 2026-11-12.
      resolved item id so the history explains the closure.
    - **Prompt table**: move `_VALUE_PROMPTS` from `triage.py` to `values.py`
      so the interactive edit mode and triage share one prompt/parser table.
+   - **Notes and comments — settle the home first.** Three designs exist for
+     user-authored text: Runalyze merges comments into `description`, Strava
+     gets its own table (item 16), and the independence item plans an
+     append-only `activity_notes`. Pick one before any of them ships:
+     `description` (one editable blob per activity, no history) or a notes
+     table (multiple timestamped notes, per source, the audit trail the edit
+     log already argues for). The edit CLI and the reports line depend on the
+     answer.
    - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
      new_json, source, note, created_at)`, append-only, written in the same
      transaction as the edit. `activity_field_sources` is a snapshot, not a
@@ -228,7 +236,37 @@ Updated 2026-11-12.
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
 
-2. **Derive the display category from the stored sets** (core + reports).
+2. **Bring back `fartlek` for unstructured quality** (core + import +
+   maintenance + reports). `intervals` has become a mixed bucket: of the 561
+   activities carrying it, **170 have zero WORK reps** and 22 have 1–2, 47
+   have no target, and 40 spend >75% of the session in WORK. The sheet code
+   `fs` (Fahrtspiel) is the proof: **60 activities, 54 now `intervals`, 38 of
+   them with zero WORK reps**.
+   - **The distinction to preserve**: `fartlek` means *never structured*;
+     `intervals` means *structured reps intended*, even when the device data
+     is missing. Relabelling the latter would lie about the session, so
+     missing reps stay `intervals` and become an audit data-gap item instead.
+   - **Core**: add `fartlek` to `WORKOUT_METHODS` and `QUALITY_METHODS`; it is
+     mutually exclusive with `intervals`, and it always makes a session
+     quality. Map `fs` to `fartlek` + a `vo2max` target in `SHEET_TYPE_CODES`,
+     and add the aliases (`fahrtspiel`, `fartlek_run`).
+     `category_for_sets` returns the new `quality/fartlek` kind (item 3).
+   - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
+     `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
+     their targets alone except for filling a missing one with `vo2max`.
+     Idempotent and dry-run.
+   - **Reports**: a `fartlek` label in the breakdown and the category column;
+     exclude it from the subT rep-length buckets and every rep-count/duration
+     analysis by construction (it has no reps to measure). The `tempo`-style
+     read-time fallback must not turn a fartlek into `intervals`.
+   - **Why this does not contradict the `tempo` retirement**: `tempo`
+     duplicated the target (continuous + threshold); `fartlek` expresses
+     structure, which the target axis cannot say.
+   - **Tests**: `fs` maps to fartlek+vo2max; fartlek is quality; fartlek never
+     round-trips to `intervals`; the 54 fs rows convert and manual rows do not;
+     the subT buckets ignore fartlek.
+
+3. **Derive the display category from the stored sets** (core + reports).
    `classify()` currently re-derives the category from name, duration and
    intervals even when the activity is classified, so the display contradicts
    the canonical sets for **142 of 2,903 classified activities (4.9%)**: races
@@ -240,7 +278,7 @@ Updated 2026-11-12.
      priority: `race` → race, `long_run` → longrun, `fartlek` → fartlek,
      `intervals`/`progression` → intervals, `continuous`+`threshold` → tempo,
      `continuous`+`recovery` → recovery, `continuous` → easy, empty → unknown.
-     `quality/fartlek` is a **new display kind** (item 3), deliberately not
+     `quality/fartlek` is a **new display kind** (item 2), deliberately not
      folded into `intervals/other`, so rep-based analyses stay clean. It must
      round-trip with `classification_for_category` for every mapped pair; the
      only intentional ambiguity is `{continuous}, {base}`, which is `easy`
@@ -266,36 +304,6 @@ Updated 2026-11-12.
      rep-length buckets; a warmup still shows `race-support`.
    - **Docs**: the reports README taxonomy section and the ARCHITECTURE
      `classify.py` bullet.
-
-3. **Bring back `fartlek` for unstructured quality** (core + import +
-   maintenance + reports). `intervals` has become a mixed bucket: of the 561
-   activities carrying it, **170 have zero WORK reps** and 22 have 1–2, 47
-   have no target, and 40 spend >75% of the session in WORK. The sheet code
-   `fs` (Fahrtspiel) is the proof: **60 activities, 54 now `intervals`, 38 of
-   them with zero WORK reps**.
-   - **The distinction to preserve**: `fartlek` means *never structured*;
-     `intervals` means *structured reps intended*, even when the device data
-     is missing. Relabelling the latter would lie about the session, so
-     missing reps stay `intervals` and become an audit data-gap item instead.
-   - **Core**: add `fartlek` to `WORKOUT_METHODS` and `QUALITY_METHODS`; it is
-     mutually exclusive with `intervals`, and it always makes a session
-     quality. Map `fs` to `fartlek` + a `vo2max` target in `SHEET_TYPE_CODES`,
-     and add the aliases (`fahrtspiel`, `fartlek_run`).
-     `category_for_sets` returns the new `quality/fartlek` kind (item 2).
-   - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
-     `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
-     their targets alone except for filling a missing one with `vo2max`.
-     Idempotent and dry-run.
-   - **Reports**: a `fartlek` label in the breakdown and the category column;
-     exclude it from the subT rep-length buckets and every rep-count/duration
-     analysis by construction (it has no reps to measure). The `tempo`-style
-     read-time fallback must not turn a fartlek into `intervals`.
-   - **Why this does not contradict the `tempo` retirement**: `tempo`
-     duplicated the target (continuous + threshold); `fartlek` expresses
-     structure, which the target axis cannot say.
-   - **Tests**: `fs` maps to fartlek+vo2max; fartlek is quality; fartlek never
-     round-trips to `intervals`; the 54 fs rows convert and manual rows do not;
-     the subT buckets ignore fartlek.
 
 4. **Link planned races to activities and propagate the `race` method**
    (core + maintenance). The classifier only reads the name, so the two past
@@ -329,7 +337,7 @@ Updated 2026-11-12.
    (parsed, not stored; `total_descent` not parsed at all). FIT and Intervals
    agree closely — median 0.4%, p90 5.3% on the 2,755 activities with both —
    so there is no authority fight.
-   - **Schema v11**: `activities.elevation_gain_m` and
+   - **Future schema**: `activities.elevation_gain_m` and
      `activities.elevation_loss_m`, both nullable.
    - **Importers**: FIT session `total_ascent` / `total_descent` (parse the
      descent), Intervals `total_elevation_gain` / `_loss`, sheet `m bergauf`
@@ -548,7 +556,7 @@ Updated 2026-11-12.
    official race metadata. `events.distance_m` is a planned/announced
    distance, not a result, and `activities.distance_m` is the measured
    GPS value — neither should be overwritten.
-   - **Schema v11**: `race_results(id, activity_id, event_id,
+   - **Future schema**: `race_results(id, activity_id, event_id,
      official_distance_m, official_time_s, placing, participants, notes,
      source, source_record_id, excluded_at, created_at, updated_at)`, with
      `UNIQUE(activity_id)`; both official columns are nullable. Race results
@@ -572,6 +580,34 @@ Updated 2026-11-12.
      and the race report shows both values.
    - **Docs**: the race-tracking section in `ROADMAP.md` and the reports
      README's race section.
+
+19. **Retire the redundant sheet tags** (core + import + maintenance + reports).
+    `activity_tags` still holds the sheet's `Trainigstyp` codes — 890 `w`,
+    278 `r`, 166 `i`, 130 `ll`, 99 `tdl`, 60 `fs`, 51 `m`, 44 `b`, 38 `lt`,
+    33 `u` — which the stored method/target sets now encode. Reports only print
+    them, and the classifier never reads them.
+    - **Decide**: keep tags for genuinely orthogonal labels (`hills`,
+      `bad data`) and drop the classification codes, or retire the table.
+    - **Backfill `drop_classification_tags_v1`**: remove the classification
+      codes, keep manual tags and the orthogonal ones; idempotent, dry-run.
+    - **Import**: stop writing the codes; keep the sheet's free tags.
+    - **Reports**: the session Tags line keeps working for what remains.
+    - **Tests**: the codes drop, `hills` survives, manual tags are untouched,
+      a rerun is a no-op.
+
+20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
+    priority). The payload carries `decoupling`, `efficiency_factor`,
+    `icu_intensity` and `icu_variability_index`, computed independently of
+    ours. Compare them with our efficiency and intensity on the same activities
+    to catch a formula bug before adding another derived number. Follows the
+    metrics gate: a lab script first, a card only if it earns one.
+
+21. **Sheet leftovers** (import + reports; low priority). `equipment.notes`
+    holds size, price and colour from the sheet and is never parsed;
+    `tz_offset_min` is populated on the activities and unused. Parse the notes
+    into typed equipment fields (or leave them as text) and use
+    `tz_offset_min` where local time matters — chart day boundaries and session
+    times. Decide per field whether it earns a place.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.

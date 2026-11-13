@@ -112,6 +112,10 @@ on.
   **The exact rule set and thresholds are still to be determined** — the rules
   below are measured candidates, not a committed set; settle them (and the
   90% / 40 m/km / 5 min / 150 bpm / 90 min thresholds) before implementing.
+  **Prerequisites**: the trail rule needs elevation (root item 5) and the
+  vo2max rule needs the per-sport VO2max fix (root bug) — without them the
+  evidence is wrong (482 rides carry a running VO2max), so implement the audit
+  after those land.
   Measured yields:
   - `intervals` but the WORK reps cover >90% of the activity → suggest
     `continuous` (38), or `fartlek` when the reps are irregular.
@@ -146,6 +150,12 @@ on.
   activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,
   `threshold_pace`, `icu_hr_zones` and `pace_zones`. Treat zero and
   implausible threshold paces as absent.
+- **VO2max by sport.** FIT message 140 field 7 is written to every activity
+  regardless of sport; a ride file carries ~60 fields (`unknown_43..67`) where
+  a run file carries ~30, so the sport-specific value should be identifiable
+  there. Detect the sport the value describes, write it only to a matching
+  activity, and stop stamping the running value onto rides and swims. See the
+  root VO2max bug.
 - **Max HR and weather capture.** Write the FIT session max HR, Intervals
   `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
   (`average_temp`, `average_feels_like`, `average_wind_speed`,
