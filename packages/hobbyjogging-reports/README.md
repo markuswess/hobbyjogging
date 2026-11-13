@@ -714,7 +714,7 @@ Pages:
   table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
-  HR, and sleep as interactive plotly panels over the last 186 days
+  HR, and sleep as interactive plotly panels over the last 182 days
   (`--recovery-days`) with 7-day averages, readiness bands, and a
   data-completeness note.
 - `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML

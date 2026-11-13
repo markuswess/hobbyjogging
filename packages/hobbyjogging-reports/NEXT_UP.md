@@ -37,7 +37,7 @@ Current focus: the dashboard's gear/devices and race work.
 - **Recovery report.** `reports.sh recovery-report` renders HRV, resting HR,
   and sleep with simple 7/42/182-day calendar-day moving averages (missing
   days skipped) plus the last four nights in the daily report's format. The
-  dashboard recovery page shows it first, then the chart (last 186 days by
+  dashboard recovery page shows it first, then the chart (last 182 days by
   default, `--recovery-days`) and completeness note. Also selectable with
   `--reports recovery-report`.
 - **Activity detail uses the session report.** `activity/<id>.html` renders
@@ -196,6 +196,11 @@ Current focus: the dashboard's gear/devices and race work.
   no-op. A **Lab** tab follows Docs and renders `experiments/README.md`, the
   experiment script index with one-line summaries, and the metric registry
   from `docs/METRICS.md`, with its own contents list.
+- **Recovery window one source of truth.** `RECOVERY_DAYS`, the
+  `--recovery-days` default, `dashboard.sh` help, and the README now derive
+  from `recovery_report.WINDOWS[-1]` (182), matching the embedded report's
+  7/42/182-day label and the page range and completeness line. Tests cover
+  the default title, the denominator, and the `--recovery-days` override.
 - **Stable compare colors.** All three compare charts map a year through
   `compare_color(year)`, anchored on 2009, so a year keeps one color across
   the volume/time/load/runs/efficiency, pace/HR, and VO2max charts, and the
@@ -211,19 +216,7 @@ Current focus: the dashboard's gear/devices and race work.
 
 ## Bugs
 
-- **Recovery tab window mismatch (182 vs 186).** The tab queries and labels a
-  186-day window — `RECOVERY_DAYS = 186`, the `--recovery-days` default, the
-  `dashboard.sh` help, the page title `start → end` and the "N of 186 days"
-  completeness line — while the embedded recovery report states 7/42/**182**-day
-  averages, so one tab shows two windows. The 186 arrived in `703c4d0` with no
-  recorded reason.
-  - Fix: one source of truth. Derive the window from
-    `recovery_report.WINDOWS[-1]` (182) instead of a separate constant, default
-    `--recovery-days` to it, and update `dashboard.sh` and the README. If the
-    extra 4 days are intentional slack, say so in the help text and on the
-    page instead of leaving two numbers.
-  - Tests: the page title, the completeness denominator and the report's
-    window label agree; `--recovery-days` still overrides.
+_None._
 
 ## Next
 

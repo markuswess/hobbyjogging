@@ -27,7 +27,7 @@ from ..model import AverageWindows
 from ..overview import overview_report
 from ..planned import planned_report
 from ..race_report import race_report
-from ..recovery_report import recovery_report
+from ..recovery_report import WINDOWS as RECOVERY_WINDOWS, recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .analysis import build_analysis_section
@@ -63,7 +63,7 @@ from ..zone_groups import (
 
 MARKER = ".hobbyjogging-dashboard"
 RACE_DAYS = 180
-RECOVERY_DAYS = 186
+RECOVERY_DAYS = RECOVERY_WINDOWS[-1]
 ANALYSIS_DAYS = 731
 NSA_DAYS = 365
 

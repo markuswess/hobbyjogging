@@ -270,6 +270,10 @@ class DashboardBuildTests(unittest.TestCase):
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
+            self.assertIn(
+                "Recovery and Health · 2026-05-12 → 2026-11-09",
+                recovery,
+            )
             self.assertIn("Recovery Report — Moving Averages", recovery)
             self.assertIn("7/42/182-day averages ending 2026-11-09", recovery)
             self.assertIn("7-day avg", recovery)
@@ -277,7 +281,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("58 ms", recovery)
             self.assertIn('<h3>Night</h3>', recovery)
             self.assertIn("2026-11-08: HRV 60 ms, RHR 45 bpm, Sleep 8h00", recovery)
-            self.assertIn("2 of 186 days have wellness data", recovery)
+            self.assertIn("2 of 182 days have wellness data", recovery)
             self.assertIn("Plotly.newPlot", recovery)
             self.assertNotIn('class="grid"', recovery)
 
@@ -451,6 +455,25 @@ class DashboardBuildTests(unittest.TestCase):
             health = (target / "health.html").read_text()
             self.assertIn("bad.html", health)
             self.assertIn("included", health)
+
+    def test_recovery_window_can_be_overridden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                _source(),
+                target,
+                today=TODAY,
+                recovery_days=60,
+            )
+
+            recovery = (target / "recovery.html").read_text()
+
+        self.assertIn(
+            "Recovery and Health · 2026-09-11 → 2026-11-09",
+            recovery,
+        )
+        self.assertIn("2 of 60 days have wellness data", recovery)
 
     def test_empty_source_still_renders_pages(self):
         with tempfile.TemporaryDirectory() as tmp:

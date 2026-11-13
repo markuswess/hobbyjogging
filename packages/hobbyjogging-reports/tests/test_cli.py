@@ -534,7 +534,7 @@ class DashboardArgsTests(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 182, 14, 186, 731, 182, (), None),
+            (None, 14, 50, 182, 14, 182, 731, 182, (), None),
             parse_dashboard_args([]),
         )
 
