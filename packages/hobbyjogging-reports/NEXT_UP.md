@@ -9,10 +9,10 @@ Current focus: the dashboard's gear/devices and race work.
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
   overview (7/42/182-day hard/total EWMAs, running volume by intensity group,
   load, plan vs actual), recovery and health charts, activity list and detail
-  pages, a Docs tab (README plus the metric registry), and a canonical
-  data-health banner; it opens the browser. `sync.sh` regenerates the same
-  site after a successful sync without opening a browser. Charts use bundled
-  plotly; generation is atomic.
+  pages, Docs and Lab tabs (README, experiments notebook, metric registry),
+  and a canonical data-health banner; it opens the browser. `sync.sh`
+  regenerates the same site after a successful sync without opening a browser.
+  Charts use bundled plotly; generation is atomic.
 - **Time chart uses pace zones.** The weekly stack and zone EWMA panel use
   activity pace zones. Planned pace zones appear as hatched weekly bars and
   continue through the EWMA panel as dashed projections. Planned zones of
@@ -189,12 +189,13 @@ Current focus: the dashboard's gear/devices and race work.
   chart with target markers, the same table, coverage, and candidates. Shoes
   without `target_distance_m` use an 800 km default.
 - **Docs tab instead of Reports.** `docs.html` replaces the old Reports tab
-  and renders the reports README plus `docs/METRICS.md`, with a contents list
-  and prefixed heading anchors. The nav order is Overview, Activities,
-  Recovery and Health, NSA, Analysis, Compare, Docs, Data Health. Embedded
+  and renders the reports README, with a contents list and prefixed heading
+  anchors. The nav order is Overview, Activities, Performance, Gear, Recovery
+  and Health, NSA, Analysis, Compare, Docs, Lab, Data Health. Embedded
   reports already live on their pages; `--reports` remains a compatibility
-  no-op. A **Lab** tab follows Docs and renders `experiments/README.md` plus
-  the experiment script index and one-line summaries.
+  no-op. A **Lab** tab follows Docs and renders `experiments/README.md`, the
+  experiment script index with one-line summaries, and the metric registry
+  from `docs/METRICS.md`, with its own contents list.
 - **One segment table in the session report.** The report now prints typed
   intervals when there is more than one, otherwise device laps when there is
   more than one, and nothing when there is a single segment on each side.

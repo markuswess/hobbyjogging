@@ -369,8 +369,6 @@ class DashboardBuildTests(unittest.TestCase):
             docs = (target / "docs.html").read_text()
             self.assertIn(">Docs</a>", docs)
             self.assertIn("Reports guide", docs)
-            self.assertIn("Metric registry", docs)
-            self.assertIn("Efficiency (m/excess beat)", docs)
             self.assertIn("class=\"toc\"", docs)
 
             lab = (target / "lab.html").read_text()
@@ -378,6 +376,9 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Lab session ground rules", lab)
             self.assertIn("hr_efficiency_line.py", lab)
             self.assertIn("Experiment scripts", lab)
+            self.assertIn("Efficiency (m/excess beat)", lab)
+            self.assertIn("Metrics", lab)
+            self.assertIn("class=\"toc\"", lab)
 
             performance = (target / "performance.html").read_text()
             self.assertIn(">Performance</a>", performance)

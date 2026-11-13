@@ -580,11 +580,12 @@ def lab_page(
     demo_label: str | None = None,
     section: LabSection,
 ) -> str:
-    """Render the experiments notebook and script index."""
+    """Render the experiments notebook, scripts, and metric registry."""
     body = (
         card(None, f'<div class="report">{section.intro_html}</div>')
         + card(None, f'<div class="report">{section.readme_html}</div>')
         + card("Experiment scripts", section.scripts_html)
+        + card("Metrics", f'<div class="report">{section.metrics_html}</div>')
     )
 
     return page(
@@ -608,11 +609,10 @@ def docs_page(
     demo_label: str | None = None,
     section: DocsSection,
 ) -> str:
-    """Render the package README and metric registry."""
+    """Render the package README."""
     body = (
         card(None, f'<div class="report">{section.intro_html}</div>')
         + card("Reports guide", f'<div class="report">{section.readme_html}</div>')
-        + card("Metrics", f'<div class="report">{section.metrics_html}</div>')
     )
 
     return page(

@@ -715,19 +715,21 @@ Pages:
   HR, and sleep as interactive plotly panels over the last 186 days
   (`--recovery-days`) with 7-day averages, readiness bands, and a
   data-completeness note.
-- `docs.html` (Docs) — the `hobbyjogging-reports` README and the metric
-  registry from `docs/METRICS.md`, rendered as HTML with a table of contents.
-  The overview, daily, planned, recovery, NSA, and compare reports are embedded
-  on their own pages, so there is no separate Reports tab.
-- `lab.html` (Lab) — the experiments notebook from `experiments/README.md`
-  plus a list of the current experiment scripts and their one-line summaries.
+- `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML
+  with a table of contents. The overview, daily, planned, recovery, NSA, and
+  compare reports are embedded on their own pages, so there is no separate
+  Reports tab.
+- `lab.html` (Lab) — the experiments notebook from `experiments/README.md`,
+  the list of current experiment scripts with their one-line summaries, and
+  the metric registry from `docs/METRICS.md`, each with a contents list.
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, linked activity, reported date), the activities hidden by review,
   and missing-data counts.
 
 The `--reports` dashboard option is accepted as a compatibility no-op;
 those Markdown reports are already embedded on their relevant pages. The Docs
-tab always renders the README and metric registry.
+tab renders the README; the Lab tab renders the experiments notebook, scripts
+and metric registry.
 
 The main chart shows daily running **minutes** on a **0–90 minute** axis,
 stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
