@@ -216,7 +216,20 @@ Current focus: the dashboard's gear/devices and race work.
 
 ## Bugs
 
-_None._
+- **Compare efficiency line starts ~10% high.** The 2022 efficiency line begins
+  at **2.715** on 2022-09-08 — the first day with a steady run and a resting-HR
+  baseline — while the year table reports **2.472** for 2022, so the line
+  starts at the top of the y-axis and slides down through 2023. Cause:
+  `compare_year_ewma` seeds the EWMA with `initial=values[0]`, one day's
+  carry-forward efficiency, and the 182-day alpha decays that error over
+  roughly six months. Volume, time and load have the same seeding but start
+  from zero-filled days, so their start is low and barely visible.
+  - Fix: burn in the EWMA. Initialise with the mean of the first window (or the
+    first few values) and/or drop the first time constant from the plotted
+    series, consistently for every compare metric.
+  - Test: the first plotted point of a synthetic series lands within a few
+    percent of its steady-state mean, and the 2022 line start agrees with the
+    year table.
 
 ## Next
 
