@@ -7,6 +7,7 @@ from hobbyjogging_report.analysis import (
     equivalent_times,
     fit_riegel,
     half_split,
+    pb_progressions,
     personal_bests,
     race_bucket,
     race_results,
@@ -150,6 +151,108 @@ class RaceAnalysisTests(unittest.TestCase):
 
         self.assertEqual(["5k", "10k", "HM", "M"], [row[0] for row in rows])
         self.assertAlmostEqual(2400 * (0.5) ** fit.exponent, rows[0][1])
+
+    def test_personal_bests_require_a_standard_distance(self):
+        results = race_results(
+            [
+                _race(id="short", date=D, distance_m=4200, duration_s=1000),
+                _race(
+                    id="proper",
+                    date=D + timedelta(days=1),
+                    distance_m=5000,
+                    duration_s=1300,
+                ),
+            ]
+        )
+
+        pbs = personal_bests(results)
+
+        self.assertEqual(["proper"], [result.activity.id for result in pbs])
+
+    def test_personal_bests_accept_the_two_percent_tolerance(self):
+        results = race_results(
+            [
+                _race(id="edge", date=D, distance_m=4900, duration_s=1200),
+                _race(
+                    id="outside",
+                    date=D,
+                    distance_m=4899,
+                    duration_s=1100,
+                ),
+            ]
+        )
+
+        pbs = personal_bests(results)
+
+        self.assertEqual(["edge"], [result.activity.id for result in pbs])
+
+    def test_pb_progressions_only_advance_on_improvements(self):
+        results = race_results(
+            [
+                _race(
+                    id=str(index),
+                    date=D + timedelta(days=index),
+                    distance_m=5000,
+                    duration_s=duration,
+                )
+                for index, duration in enumerate(
+                    (1300, 1250, 1250, 1280, 1200, 1300)
+                )
+            ]
+        )
+
+        progressions = pb_progressions(results)
+
+        self.assertEqual(["5k"], [p.bucket for p in progressions])
+        self.assertEqual(
+            [1300, 1250, 1200],
+            [step.activity.duration_s for step in progressions[0].steps],
+        )
+
+    def test_pb_progressions_keep_buckets_separate(self):
+        results = race_results(
+            [
+                _race(id="5a", date=D, distance_m=5000, duration_s=1200),
+                _race(
+                    id="10a",
+                    date=D + timedelta(days=1),
+                    distance_m=10000,
+                    duration_s=2400,
+                ),
+                _race(
+                    id="5b",
+                    date=D + timedelta(days=2),
+                    distance_m=5000,
+                    duration_s=1100,
+                ),
+            ]
+        )
+
+        progressions = pb_progressions(results)
+
+        self.assertEqual(["5k", "10k"], [p.bucket for p in progressions])
+        self.assertEqual(
+            [1200, 1100],
+            [step.activity.duration_s for step in progressions[0].steps],
+        )
+        self.assertEqual(
+            [2400],
+            [step.activity.duration_s for step in progressions[1].steps],
+        )
+
+    def test_pb_progressions_ignore_short_course_times(self):
+        results = race_results(
+            [
+                _race(
+                    id="short",
+                    date=D,
+                    distance_m=4200,
+                    duration_s=1000,
+                )
+            ]
+        )
+
+        self.assertEqual([], pb_progressions(results))
 
     def test_half_split_uses_lap_midpoint(self):
         split = half_split(

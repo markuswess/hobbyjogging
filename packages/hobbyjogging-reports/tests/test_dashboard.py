@@ -395,6 +395,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("42.20 km", performance)
             self.assertIn("Spring 5k", performance)
             self.assertIn("Personal bests", performance)
+            self.assertIn("PB progression", performance)
             self.assertIn("Riegel estimate", performance)
             self.assertIn("race/race1.html", performance)
             self.assertTrue((target / "race" / "race1.html").exists())

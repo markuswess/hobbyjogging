@@ -18,6 +18,7 @@ warnings.filterwarnings(
 from .analysis import (
     EFFICIENCY_UNIT,
     EquipmentStat,
+    PbProgression,
     RaceResult,
     STEADY_BAND_LABEL,
     SUBT_CATEGORIES,
@@ -1581,6 +1582,109 @@ def plot_compare_pace_hr(
         as_html=as_html,
         width=1650,
         height=1500,
+    )
+
+
+def _duration_ticks(low: float, high: float) -> tuple[list[float], list[str]]:
+    """Sortable time ticks in seconds with ``M:SS`` / ``H:MM:SS`` labels."""
+    span = max(high - low, 60.0)
+    steps = (15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200)
+    step = next(
+        (candidate for candidate in steps if span / candidate <= 8),
+        steps[-1],
+    )
+    start = int(low // step) * step
+    end = int(math.ceil(high / step)) * step
+    values = list(range(start, end + step, step))
+
+    return values, [fmt_clock(value) for value in values]
+
+
+PB_COLORS = {
+    "5k": "#1f77b4",
+    "10k": "#ff7f0e",
+    "HM": "#2ca02c",
+    "M": "#d62728",
+    "Trail": "#8c564b",
+    "Other": "#7f7f7f",
+}
+
+
+def plot_pb_progressions(
+    progressions: list[PbProgression],
+    output: str,
+    title: str = "PB progression",
+    as_html: bool = False,
+) -> str:
+    """Step lines of PB improvements, one per race bucket."""
+    _require_data(progressions)
+    times = [
+        step.activity.duration_s
+        for progression in progressions
+        for step in progression.steps
+    ]
+    tickvals, ticktext = _duration_ticks(min(times), max(times))
+    figure = go.Figure()
+
+    for progression in progressions:
+        steps = progression.steps
+        color = PB_COLORS.get(progression.bucket, "#7f7f7f")
+        figure.add_trace(
+            go.Scatter(
+                x=[step.activity.date for step in steps],
+                y=[step.activity.duration_s for step in steps],
+                mode="lines+markers",
+                name=progression.bucket,
+                line={"shape": "hv", "width": 2, "color": color},
+                marker={"size": 7, "color": color},
+                text=[
+                    (
+                        f"{step.activity.date} "
+                        f"{step.activity.name or progression.bucket}"
+                        f"<br>{step.activity.distance_m / 1000:.2f} km, "
+                        f"{fmt_clock(step.activity.duration_s)}"
+                    )
+                    for step in steps
+                ],
+                hoverinfo="text",
+            )
+        )
+        last = steps[-1]
+        figure.add_annotation(
+            x=last.activity.date,
+            y=last.activity.duration_s,
+            text=(
+                f"{progression.bucket} "
+                f"{fmt_clock(last.activity.duration_s)}"
+            ),
+            showarrow=False,
+            xanchor="left",
+            yanchor="bottom",
+            font={"size": 10, "color": color},
+        )
+
+    pad = max((max(times) - min(times)) * 0.05, 30.0)
+    figure.update_xaxes(title_text="date")
+    figure.update_yaxes(
+        title_text="race time",
+        range=[max(0.0, min(times) - pad), max(times) + pad],
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=700,
+        margin={"l": 70, "r": 100, "t": 70, "b": 100},
+        legend=_legend_below(),
+        hovermode="closest",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1200,
     )
 
 

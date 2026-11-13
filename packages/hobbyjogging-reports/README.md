@@ -41,7 +41,9 @@ HTML dashboard:
   short/medium/long/LT1. Shows work-block and summary tables.
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
   HM, M, trail, other with short-course tolerance), upcoming races, a
-  Riegel log-log fit, and equivalent-time predictions. Filter with
+  Riegel log-log fit, and equivalent-time predictions. Standard-distance PBs
+  require a measured distance within 2% of the standard, so a 4.2 km race
+  cannot win the 5k PB; Trail and Other use the fastest raw time. Filter with
   `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or `--from`/`--to`),
   and `--limit N` for the latest results, e.g.
   `./reports.sh races --bucket 10k --year 2026 --limit 10`. Filters scope
@@ -713,8 +715,9 @@ Pages:
   work reps),
   exactly as `reports.sh session` renders it.
 - `performance.html` (Performance) — upcoming races, race results, personal
-  bests, a log-log race chart with the Riegel fit, and equivalent times.
-  Results and PBs link to per-race pages with splits and execution details.
+  bests, a per-bucket PB progression chart, a log-log race chart with the
+  Riegel fit, and equivalent times. Results and PBs link to per-race pages
+  with splits and execution details.
 - `gear.html` (Gear) — gear mileage bars with target markers, the gear
   table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,

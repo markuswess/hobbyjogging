@@ -211,6 +211,17 @@ Current focus: the dashboard's gear/devices and race work.
   2.72 and agrees with the year table's 2.47; volume, time and load use the
   same burn-in. The planned line keeps the actual-only seed, so it still
   meets the actual line through today.
+- **Standard-distance PBs.** `personal_bests()` only accepts a race within
+  2% of the standard distance for 5k/10k/HM/M, so a 4.2 km race no longer
+  wins the 5k PB; Trail and Other still use the fastest raw time. The PB
+  tables show the distance, and the Riegel `PB` column uses the same
+  qualified PB. Official race results will replace this tolerance when root
+  item 18 lands.
+- **Race PB progression.** The Performance tab draws one step line per bucket
+  (`5k`, `10k`, `HM`, `M`, `Trail`, `Other`) through chronological PB
+  improvements only, with race points and the current PB annotated. The lines
+  use the same standard-distance rule. Tests cover strict improvements, ties,
+  bucket separation and short-course rejection.
 - **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
@@ -232,22 +243,7 @@ Current focus: the dashboard's gear/devices and race work.
 
 ## Bugs
 
-- **Bucket PBs compare unequal distances.** `personal_bests()` takes the
-  fastest raw `duration_s` inside a bucket, and the buckets are wide: 5k is
-  4.0–6.2 km, 10k 9.5–10.7, HM 19.0–23.0, M 40.0–44.5. So a 4.2 km race wins
-  the 5k PB and a 40 km run wins the marathon PB — the number is a time at
-  whatever distance happened to fall in the bucket, not at the standard
-  distance. `equivalent_times()` already predicts standard-distance times, but
-  the PB it prints is the raw bucket winner.
-  - **Fix once official results exist** (root item 18): the PB is the fastest
-    `official_time_s` at `official_distance_m`, which is exact, and the bucket
-    only groups the display.
-  - **Until then**: require a distance within ~2 % of the standard for a PB,
-    or compare equivalent times through the Riegel fit and label the result as
-    adjusted — never present a raw time as a standard-distance PB. Show the
-    distance beside every PB so the basis is visible.
-  - **Test**: a 4.2 km race does not win the 5k PB; a 5.00 km official result
-    does; an adjusted PB carries its label.
+_None._
 
 ## Next
 
@@ -280,32 +276,22 @@ Current focus: the dashboard's gear/devices and race work.
    read-time `tempo` fallback must not turn it into `intervals`. Depends on
    the root fartlek item.
 
-7. **Race PB progression chart.** Add a per-bucket PB trajectory to the
-   Performance tab (and optionally the `races` report): one step line per
-   distance bucket connecting improvements over time, with race points on
-   top and the current PB annotated. Use the bucket tolerance and, once the
-   official race-result table lands, the official distance/time pair with the
-   GPS fallback. X is date, Y is race time (`M:SS` / `H:MM:SS`); toggle or
-   separate small multiples for `5k`, `10k`, `HM`, `M`, `Trail`, `Other`.
-   - Tests: only improvements advance the step line; ties do not; buckets stay
-     separate; official values win when present.
-
-8. **Elevation in the reports.** Once the columns land: climb per km in the
+7. **Elevation in the reports.** Once the columns land: climb per km in the
    session report and the activities list, a coarse grade-adjusted pace from
    per-lap gain (the FIT payload has no altitude stream, so this is
    lap-level), trail suggestions from the ≥40 m/km evidence, and route
    difficulty on the dashboard.
 
-9. **Strava in the session report.** A `Strava: …` line with the title, the
+8. **Strava in the session report.** A `Strava: …` line with the title, the
    description as an annotation, and a link to the activity. Depends on the
    root Strava item and on the notes/description decision in root item 1.
 
-10. **VO2max by sport in the charts.** Label the series "Running VO2max" and
+9. **VO2max by sport in the charts.** Label the series "Running VO2max" and
    keep it to running activities, so the 482 rides stop injecting a different
    series; add the cycling series when it exists. Depends on the root VO2max
    bug fix.
 
-11. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
+10. **Data-driven chart ceilings.** `VOLUME_Y_MAX`, `TIME_Y_MAX` and
    `LOAD_Y_MAX` are fixed to this athlete's peak (a 130 km/week volume axis),
    so another user's charts are mostly empty and this one's are cramped when
    it grows. Compute a "nice max" from the data (round up to a sensible step)
@@ -313,27 +299,27 @@ Current focus: the dashboard's gear/devices and race work.
    `COMPARE_VISIBLE_YEARS` and `RACE_DAYS` if they turn out to be personal.
    See root item 23.
 
-12. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+11. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
    races, wellness, tools), one anchor per entry, formulas as plain text or
    code so the site stays self-contained. If the catalogue is generated, the
    tab renders the same source the Markdown does.
 
-13. **Coaching tab.** Render the latest coaching note and an index of past
+12. **Coaching tab.** Render the latest coaching note and an index of past
    ones, through the same Markdown-to-HTML path as Docs, with front matter
    turned into a header (date, period, focus) and the decision sections
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-14. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
+13. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
    database and asserts every report and dashboard tab renders non-empty
    content, so a feature that adds a field without demo data fails loudly.
    Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
    weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
    Coaching and Metrics tabs once they exist. See root item 26.
 
-15. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
+14. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
    4,457 `activity_intervals` calls, 219 `activities()` range loads, 95 lap
    loads, for ~5 s. Add a read-only per-build cache on `DataSource`
    (`activities()` by range, intervals and laps by id), a `--timing` summary

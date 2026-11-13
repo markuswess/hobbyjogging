@@ -496,6 +496,7 @@ def performance_page(
         + card("Upcoming races", section.upcoming_html)
         + card("Results", section.results_html)
         + card("Personal bests", section.pbs_html)
+        + card("PB progression", section.pb_html)
         + card("Race performance", section.chart_html)
         + card("Equivalent times", section.equivalent_html)
     )

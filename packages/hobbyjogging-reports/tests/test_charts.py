@@ -9,6 +9,7 @@ from hobbyjogging_report.charts import (
     compare_color,
     plot_compare,
     plot_equipment,
+    plot_pb_progressions,
     plot_races,
     plot_compare_pace_hr,
     plot_compare_vo2max,
@@ -24,6 +25,7 @@ from hobbyjogging_report.charts import (
 from hobbyjogging_report.analysis import (
     EquipmentStat,
     fit_riegel,
+    pb_progressions,
     race_results,
 )
 from hobbyjogging_core.model import Activity, Equipment
@@ -531,6 +533,73 @@ class PaceHrChartTests(unittest.TestCase):
 
         self.assertIn('"name":"Other"', html)
         self.assertIn('"symbol":"x"', html)
+
+
+class PbProgressionChartTests(unittest.TestCase):
+
+    def _progressions(self):
+        activities = [
+            Activity(
+                id="a",
+                date=date(2025, 3, 1),
+                type="run",
+                distance_m=5000,
+                duration_s=1300,
+                workout_methods=["race"],
+            ),
+            Activity(
+                id="b",
+                date=date(2025, 6, 1),
+                type="run",
+                distance_m=5000,
+                duration_s=1200,
+                workout_methods=["race"],
+            ),
+            Activity(
+                id="c",
+                date=date(2025, 9, 1),
+                type="run",
+                distance_m=10000,
+                duration_s=2500,
+                workout_methods=["race"],
+            ),
+        ]
+
+        return pb_progressions(race_results(activities))
+
+    def test_draws_step_lines_with_current_pb_labels(self):
+        html = plot_pb_progressions(
+            self._progressions(),
+            "",
+            as_html=True,
+        )
+
+        self.assertIn("PB progression", html)
+        self.assertIn('"shape":"hv"', html)
+        self.assertIn('"name":"5k"', html)
+        self.assertIn('"name":"10k"', html)
+        self.assertIn("5k 20:00", html)
+        self.assertIn("10k 41:40", html)
+
+    def test_writes_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "pb.png"
+
+            result = plot_pb_progressions(
+                self._progressions(),
+                str(output),
+            )
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+    def test_empty_progressions_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_pb_progressions(
+                    [],
+                    str(Path(tmp) / "pb.png"),
+                )
 
 
 class RaceChartTests(unittest.TestCase):

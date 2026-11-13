@@ -19,6 +19,7 @@ RACE_BUCKETS = (
 OTHER_BUCKET = "Other"
 TRAIL_BUCKET = "Trail"
 BUCKET_ORDER = ("5k", "10k", "HM", "M", TRAIL_BUCKET, OTHER_BUCKET)
+PB_DISTANCE_TOLERANCE = 0.02
 STANDARD_DISTANCES = {
     "5k": 5000.0,
     "10k": 10000.0,
@@ -78,10 +79,19 @@ def race_results(activities: list[Activity]) -> list[RaceResult]:
 
 
 def personal_bests(results: list[RaceResult]) -> list[RaceResult]:
-    """Fastest race in each bucket, in bucket order."""
+    """Fastest race in each bucket, in bucket order.
+
+    Standard-distance buckets only count races whose measured distance is
+    within ``PB_DISTANCE_TOLERANCE`` of the standard, so a 4.2 km race cannot
+    win the 5k PB. Trail and Other keep the fastest raw time because they have
+    no standard distance.
+    """
     best: dict[str, RaceResult] = {}
 
     for result in results:
+        if not _qualifies_for_pb(result):
+            continue
+
         current = best.get(result.bucket)
 
         if current is None or result.activity.duration_s < current.activity.duration_s:
@@ -91,6 +101,54 @@ def personal_bests(results: list[RaceResult]) -> list[RaceResult]:
         best[bucket]
         for bucket in BUCKET_ORDER
         if bucket in best
+    ]
+
+
+def _qualifies_for_pb(result: RaceResult) -> bool:
+    standard = STANDARD_DISTANCES.get(result.bucket)
+
+    if standard is None:
+        return True
+
+    distance = result.activity.distance_m or 0
+
+    return abs(distance - standard) / standard <= PB_DISTANCE_TOLERANCE
+
+
+@dataclass(frozen=True)
+class PbProgression:
+    """Chronological PB improvements for one bucket."""
+
+    bucket: str
+    steps: tuple[RaceResult, ...]
+
+
+def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
+    """New PBs per bucket, oldest first; equal times do not advance the line."""
+    ordered = sorted(
+        (result for result in results if _qualifies_for_pb(result)),
+        key=lambda result: (
+            result.activity.date,
+            result.activity.duration_s,
+        ),
+    )
+    best: dict[str, RaceResult] = {}
+    steps: dict[str, list[RaceResult]] = {}
+
+    for result in ordered:
+        current = best.get(result.bucket)
+
+        if (
+            current is None
+            or result.activity.duration_s < current.activity.duration_s
+        ):
+            best[result.bucket] = result
+            steps.setdefault(result.bucket, []).append(result)
+
+    return [
+        PbProgression(bucket, tuple(steps[bucket]))
+        for bucket in BUCKET_ORDER
+        if bucket in steps
     ]
 
 

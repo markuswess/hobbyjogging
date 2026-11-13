@@ -11,11 +11,12 @@ from hobbyjogging_core.datasource import DataSource
 from ..analysis import (
     equivalent_times,
     fit_riegel,
+    pb_progressions,
     personal_bests,
     race_results,
     upcoming_races,
 )
-from ..charts import plot_races
+from ..charts import plot_pb_progressions, plot_races
 from ..command_support import activity_start
 from ..format import fmt_clock, format_pace
 from ..html import esc, table
@@ -30,6 +31,7 @@ class PerformanceSection:
     upcoming_html: str
     results_html: str
     pbs_html: str
+    pb_html: str
     chart_html: str
     equivalent_html: str
     race_ids: tuple[str, ...] = ()
@@ -71,6 +73,7 @@ def build_performance_section(
     )
     fit = fit_riegel(results)
     pbs = personal_bests(results)
+    progressions = pb_progressions(results)
     predictions = equivalent_times(results, fit)
 
     summary = (
@@ -146,6 +149,11 @@ def build_performance_section(
         if results
         else '<p class="muted">No races to plot.</p>'
     )
+    pb_html = (
+        plot_pb_progressions(progressions, "", as_html=True)
+        if progressions
+        else '<p class="muted">No PB progression yet.</p>'
+    )
 
     equivalent_html = ""
     if predictions:
@@ -174,6 +182,7 @@ def build_performance_section(
         upcoming_html=upcoming_html,
         results_html=results_html,
         pbs_html=pbs_html,
+        pb_html=pb_html,
         chart_html=chart_html,
         equivalent_html=equivalent_html,
         race_ids=tuple(result.activity.id for result in results),
