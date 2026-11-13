@@ -7,6 +7,7 @@ from pathlib import Path
 from hobbyjogging_report.charts import (
     plot_compare,
     plot_equipment,
+    plot_races,
     plot_compare_pace_hr,
     plot_compare_vo2max,
     plot_load,
@@ -18,8 +19,12 @@ from hobbyjogging_report.charts import (
     plot_vo2max,
     plot_volume,
 )
-from hobbyjogging_report.analysis import EquipmentStat
-from hobbyjogging_core.model import Equipment
+from hobbyjogging_report.analysis import (
+    EquipmentStat,
+    fit_riegel,
+    race_results,
+)
+from hobbyjogging_core.model import Activity, Equipment
 from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
@@ -460,6 +465,36 @@ class PaceHrChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_pace_hr([], str(Path(tmp) / "pace-hr.png"))
+
+
+class RaceChartTests(unittest.TestCase):
+
+    def test_race_chart_shows_points_and_riegel_fit(self):
+        activities = [
+            Activity(
+                id=str(index),
+                date=D + timedelta(days=index),
+                type="run",
+                distance_m=distance,
+                duration_s=distance / 1000 * 300,
+                workout_methods=["race"],
+                workout_targets=["speed"],
+            )
+            for index, distance in enumerate((5000, 10000, 21097))
+        ]
+        results = race_results(activities)
+        fit = fit_riegel(results)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "races.png"
+            result = plot_races(results, fit, str(output))
+
+            self.assertEqual(str(output), result)
+            self.assertTrue(output.exists())
+
+        html = plot_races(results, fit, "", as_html=True)
+        self.assertIn("Riegel", html)
+        self.assertIn('"type":"log"', html)
 
 
 class EquipmentChartTests(unittest.TestCase):

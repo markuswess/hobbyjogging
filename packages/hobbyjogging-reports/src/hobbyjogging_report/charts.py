@@ -18,12 +18,13 @@ warnings.filterwarnings(
 from .analysis import (
     EFFICIENCY_UNIT,
     EquipmentStat,
+    RaceResult,
     SUBT_CATEGORIES,
     pace_hr_efficiency_lines,
     pace_hr_trends,
     recovery_bands,
 )
-from .format import format_pace
+from .format import fmt_time, format_pace
 from .model import (
     AverageWindows,
     DistancePoint,
@@ -1468,6 +1469,95 @@ def plot_compare_pace_hr(
         as_html=as_html,
         width=1650,
         height=1500,
+    )
+
+
+def plot_races(
+    results: list[RaceResult],
+    fit,
+    output: str,
+    title: str = "Race performance",
+    as_html: bool = False,
+) -> str:
+    """Log-log race distance/time scatter with the Riegel fit."""
+    _require_data(results)
+    points = [
+        result for result in results
+        if result.activity.distance_m and result.activity.duration_s
+    ]
+    figure = go.Figure()
+
+    if points:
+        years = [point.activity.date.year for point in points]
+        figure.add_trace(
+            go.Scatter(
+                x=[point.activity.distance_m / 1000 for point in points],
+                y=[point.activity.duration_s / 60 for point in points],
+                mode="markers",
+                name="races",
+                marker={
+                    "color": years,
+                    "colorscale": [
+                        [0.0, "#1f77b4"],
+                        [1.0, "#d62728"],
+                    ],
+                    "size": 8,
+                    "opacity": 0.85,
+                    "showscale": True,
+                    "colorbar": {"title": {"text": "year"}},
+                },
+                text=[
+                    f"{point.activity.date} "
+                    f"{point.activity.name or point.bucket}"
+                    f"<br>{point.activity.distance_m / 1000:.2f} km, "
+                    f"{fmt_time(point.activity.duration_s)}"
+                    for point in points
+                ],
+                hoverinfo="text",
+            )
+        )
+
+    if fit is not None and points:
+        low = min(point.activity.distance_m for point in points)
+        high = max(point.activity.distance_m for point in points)
+        figure.add_trace(
+            go.Scatter(
+                x=[low / 1000, high / 1000],
+                y=[fit.duration_s(low) / 60, fit.duration_s(high) / 60],
+                mode="lines",
+                name=f"Riegel (n={fit.points})",
+                line={"color": "#111111", "width": 2, "dash": "dash"},
+                hoverinfo="skip",
+            )
+        )
+        figure.add_annotation(
+            text=f"time ∝ distance^{fit.exponent:.2f} · R² = {fit.r2:.2f}",
+            xref="paper",
+            yref="paper",
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            showarrow=False,
+            font={"size": 11},
+        )
+
+    figure.update_xaxes(title_text="distance (km)", type="log")
+    figure.update_yaxes(title_text="time (min)", type="log")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=700,
+        margin={"l": 60, "r": 30, "t": 70, "b": 100},
+        legend=_legend_below(),
+        hovermode="closest",
+    )
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1100,
     )
 
 

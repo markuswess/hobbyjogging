@@ -8,6 +8,7 @@ from unittest.mock import patch
 from hobbyjogging_core.model import (
     Equipment,
     Event,
+    Lap,
     EventZoneTime,
     ReviewItem,
     WellnessDay,
@@ -85,6 +86,18 @@ def _source():
                 needs_review=True,
             ),
             activity(
+                id="race1",
+                date=TODAY - timedelta(days=10),
+                name="Spring 5k",
+                duration_s=1200,
+                distance_m=5000,
+                avg_hr=175,
+                training_load=40,
+                pace_zone_times=[0, 0, 300, 900],
+                workout_methods=["race"],
+                workout_targets=["speed"],
+            ),
+            activity(
                 id="old",
                 date=TODAY - timedelta(days=20),
                 name="Old run",
@@ -138,6 +151,12 @@ def _source():
                 name="Travel note",
             ),
         ],
+        laps={
+            "race1": [
+                Lap(index=1, duration_s=600, distance_m=2500, avg_hr=172),
+                Lap(index=2, duration_s=610, distance_m=2500, avg_hr=178),
+            ],
+        },
         wellness=[
             WellnessDay(
                 date=TODAY - timedelta(days=1),
@@ -196,6 +215,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertTrue((target / "recovery.html").exists())
             self.assertTrue((target / "health.html").exists())
             self.assertTrue((target / "docs.html").exists())
+            self.assertTrue((target / "performance.html").exists())
             self.assertFalse((target / "reports.html").exists())
             self.assertTrue((target / "activity" / "run1.html").exists())
             self.assertTrue((target / ".hobbyjogging-dashboard").exists())
@@ -235,9 +255,6 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Daily Training Report", index)
             self.assertIn("Planned Workouts", index)
             self.assertIn("Z3+4 uses each event's planned zone kind", index)
-            self.assertIn("Upcoming races", index)
-            self.assertIn("Autumn Marathon", index)
-            self.assertIn("42.2 km", index)
             self.assertNotIn("Plan vs actual", index)
             self.assertNotIn("Training load", index)
             self.assertNotIn("Quality sessions", index)
@@ -248,6 +265,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn(">Data Health</a>", index)
             self.assertIn(">Docs</a>", index)
             self.assertIn(">Lab</a>", index)
+            self.assertIn(">Performance</a>", index)
             self.assertIn(">Gear</a>", index)
 
             recovery = (target / "recovery.html").read_text()
@@ -361,6 +379,22 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("hr_efficiency_line.py", lab)
             self.assertIn("Experiment scripts", lab)
 
+            performance = (target / "performance.html").read_text()
+            self.assertIn(">Performance</a>", performance)
+            self.assertIn("Upcoming races", performance)
+            self.assertIn("Autumn Marathon", performance)
+            self.assertIn("42.20 km", performance)
+            self.assertIn("Spring 5k", performance)
+            self.assertIn("Personal bests", performance)
+            self.assertIn("Riegel estimate", performance)
+            self.assertIn("race/race1.html", performance)
+            self.assertTrue((target / "race" / "race1.html").exists())
+
+            race = (target / "race" / "race1.html").read_text()
+            self.assertIn("Race 2026-10-30", race)
+            self.assertIn("Race execution", race)
+            self.assertIn("Pace zones", race)
+
             gear = (target / "gear.html").read_text()
             self.assertIn(">Gear</a>", gear)
             self.assertIn("Demo Shoe", gear)
@@ -381,6 +415,7 @@ class DashboardBuildTests(unittest.TestCase):
             )
 
             self.assertTrue((target / "docs.html").exists())
+            self.assertTrue((target / "performance.html").exists())
             self.assertFalse((target / "reports.html").exists())
 
     def test_unknown_markdown_report_is_rejected(self):

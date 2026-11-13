@@ -44,6 +44,8 @@ from .report_commands import (
     run_compare_command,
     run_daily_command,
     run_equipment_command,
+    run_race_command,
+    run_races_command,
     run_dashboard_command,
     run_demo_command,
     run_debug_command,
@@ -76,6 +78,14 @@ class Command:
         "this command manages its own files and does not open the "
         "canonical database"
     )
+
+
+def _parse_race(argv: list[str]):
+    if len(argv) != 1:
+        raise ValueError(
+            "usage: python -m hobbyjogging_report race ACTIVITY_ID"
+        )
+    return argv[0]
 
 
 def _parse_session(argv: list[str]):
@@ -184,6 +194,21 @@ COMMANDS = {
         ("reports.sh subt-report --days 90",),
         parse=partial(parse_report_args, default_days=90),
         run=run_subt_report_command,
+    ),
+    "races": Command(
+        "races",
+        "Race results, PBs, upcoming races, and Riegel estimates",
+        "races",
+        ("reports.sh races",),
+        run=run_races_command,
+    ),
+    "race": Command(
+        "race",
+        "Race-day report with splits and plan execution",
+        "race ACTIVITY_ID",
+        ("reports.sh race <activity-id>",),
+        parse=_parse_race,
+        run=run_race_command,
     ),
     "equipment": Command(
         "equipment",

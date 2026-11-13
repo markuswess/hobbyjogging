@@ -475,7 +475,8 @@ class DemoGeneratorTests(unittest.TestCase):
 
             index = (site / "index.html").read_text()
             self.assertIn("Synthetic demo data", index)
-            self.assertIn("Upcoming races", index)
+            performance = (site / "performance.html").read_text()
+            self.assertIn("Upcoming races", performance)
 
             health = (site / "health.html").read_text()
             self.assertIn("The review queue is empty.", health)

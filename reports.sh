@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|overview|recovery-report|equipment|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities] [args...]
+  ./reports.sh [daily|overview|recovery-report|equipment|races|race|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities] [args...]
   ./reports.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the daily report. The generated Markdown is copied to
@@ -21,6 +21,8 @@ Examples:
   ./reports.sh overview --future-days 21
   ./reports.sh recovery-report
   ./reports.sh equipment
+  ./reports.sh races
+  ./reports.sh race <activity-id>
   ./reports.sh subt-ewma-report
   ./reports.sh report --days 90
   ./reports.sh report --from 2026-01-01 --to 2026-03-31
@@ -71,7 +73,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    daily|overview|recovery-report|equipment|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities)
+    daily|overview|recovery-report|equipment|races|race|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities)
         ;;
     *)
         usage >&2

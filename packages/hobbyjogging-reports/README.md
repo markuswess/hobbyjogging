@@ -39,6 +39,12 @@ HTML dashboard:
   category column.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
+- **races** — Race results, personal bests per distance bucket (5k, 10k,
+  HM, M, trail, other with short-course tolerance), upcoming races, a
+  Riegel log-log fit, and equivalent-time predictions.
+- **race <activity-id>** — One race-day report: splits, first/second-half
+  pace, planned-vs-actual zones and duration/distance when a race event
+  exists on the same date.
 - **equipment** — Gear mileage and use from `equipment` →
   `activity_equipment` → activities: sessions, km, km/month, last used,
   target/wear, coverage per year, and retirement candidates. Shoes without
@@ -645,8 +651,9 @@ Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
-  the next 14 days; the main overview chart; the daily report; upcoming
-  races in the next 180 days; and the planned workouts for the next 14 days.
+  the next 14 days; the main overview chart; the daily report; and the
+  planned workouts for the next 14 days. Upcoming races live on the
+  Performance tab.
   The EWMA overview, the daily report, and the planned section are the
   rendered `overview`, `daily`, and `planned` Markdown reports; the chart
   uses the last 182 days plus the next 14 by default.
@@ -674,6 +681,9 @@ Pages:
   targets, zone times, description, the raw segment table, and subT/LT1
   work reps),
   exactly as `reports.sh session` renders it.
+- `performance.html` (Performance) — upcoming races, race results, personal
+  bests, a log-log race chart with the Riegel fit, and equivalent times.
+  Results and PBs link to per-race pages with splits and execution details.
 - `gear.html` (Gear) — gear mileage bars with target markers, the gear
   table, per-year coverage with and without gear, and retirement candidates.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,

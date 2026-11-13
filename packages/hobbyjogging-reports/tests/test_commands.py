@@ -20,6 +20,8 @@ EXPECTED = {
     "subt-ewma-report",
     "recovery-report",
     "equipment",
+    "race",
+    "races",
     "planned",
     "session",
     "classify",

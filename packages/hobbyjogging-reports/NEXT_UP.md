@@ -156,6 +156,13 @@ Current focus: the dashboard's gear/devices and race work.
   the existing intervals/work reps. `DataSource.activity_laps` exposes the
   existing repository query, and dashboard detail pages pass the same context
   (including per-day events and wellness) as the CLI.
+- **Race report and Performance tab.** `reports.sh races` lists results,
+  personal bests per bucket, upcoming races, and Riegel equivalent times;
+  `reports.sh race ACTIVITY_ID` renders splits, half-pace, planned zones, and
+  plan deltas. `performance.html` shows the tables, a log-log race chart with
+  the fitted exponent, and per-race detail pages. Race matching uses race
+  methods/targets on the same date until `event_activity_links` lands. The
+  overview race cards moved to this tab.
 - **Gear report and Gear tab.** `reports.sh equipment` aggregates
   `equipment` → `activity_equipment` → activities into sessions, km,
   km/month, last use, target/wear, and active/retired status. It also shows
@@ -184,44 +191,25 @@ Current focus: the dashboard's gear/devices and race work.
    device changes on the VO2max chart so a step is attributable to the watch,
    and add a `- Device:` line to the session report.
 
-2. **Race report and Performance tab.** Depends on the root
-   `event_activity_links` item; until that lands, use activities whose methods
-   contain `race`.
-   - `reports.sh races`: past results (date, name, distance, time, pace,
-     category, HR, load), **PBs per distance bucket** (5k/10k/HM/M/trail, with
-     a tolerance — the 4.20 km and 4.91 km "5k" rows need it), upcoming races
-     with countdown, and the planned-vs-actual line for linked races.
-   - `reports.sh race <id>`: race-day report — splits from laps, HR/zone
-     execution against the event's planned zones, positive/negative split, and
-     the plan delta.
-   - **Analysis**: pace-vs-distance scatter (log-log) with a Riegel exponent,
-     an equivalent-time table (what today's 10k predicts), and best-effort
-     trends.
-   - **Dashboard Performance tab**: upcoming races, results table, PB table,
-     the performance trend chart, and race-day cards. Supersedes the overview
-     race cards.
-   - **Tests**: PB selection per bucket, planned-vs-actual delta, `-` when a
-     race has no link, race-day split rendering.
-
-3. **Weather and max HR in the reports.** Once the data lands: show max HR in
+2. **Weather and max HR in the reports.** Once the data lands: show max HR in
    the session report and use it for HR-zone checks; annotate pace, HR and
    efficiency charts with temperature and wind; add a per-year data-coverage
    line for both.
 
-4. **Route grouping.** Group activities by route so pace, HR and efficiency
+3. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. Depends
    on the root route item.
 
-5. **Wellness extras.** A readiness view (readiness, sleep score, stress,
+4. **Wellness extras.** A readiness view (readiness, sleep score, stress,
    respiration, spO2) plus a weight trend, once the columns land.
 
-6. **Threshold trend and era-correct zones.** A chart of LTHR, threshold pace
+5. **Threshold trend and era-correct zones.** A chart of LTHR, threshold pace
    and max HR over the years beside VO2max; normalize activity zones with each
    activity's zone config; compare subT work-rep pace with the period's
    threshold pace. If the race-derived series lands, show it against the
    stamped values so a divergence is visible.
 
-7. **Fartlek as its own category.** Show `quality/fartlek` in the breakdown
+6. **Fartlek as its own category.** Show `quality/fartlek` in the breakdown
    and the category column, and keep it out of the subT rep-length buckets and
    every rep-count/duration analysis — a fartlek has no reps to measure. The
    read-time `tempo` fallback must not turn it into `intervals`. Depends on

@@ -23,6 +23,7 @@ from .analysis import AnalysisSection
 from .compare import CompareSection
 from .docs import DocsSection
 from .gear import GearSection
+from .performance import PerformanceSection
 from .lab import LabSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
@@ -53,37 +54,6 @@ def _event_load(event) -> str:
     return "-" if event.training_load is None else f"{event.training_load:.0f}"
 
 
-def _races_card(races: list[Event]) -> str:
-    rows = [
-        [
-            esc(event.date),
-            esc(event.name or "-"),
-            esc(
-                f"{event.distance_m / 1000:.1f} km"
-                if event.distance_m
-                else "-"
-            ),
-            esc(
-                "-"
-                if event.training_load is None
-                else f"{event.training_load:.0f}"
-            ),
-            esc(event.zone_kind.title() if event.zone_kind else "-"),
-        ]
-        for event in races
-    ]
-
-    return card(
-        "Upcoming races",
-        table(
-            ["Date", "Race", "Distance", "Load", "Zone kind"],
-            rows,
-            numeric=(2, 3),
-            empty="No upcoming races.",
-        ),
-    )
-
-
 def overview_page(
     *,
     generated_at: str,
@@ -94,7 +64,6 @@ def overview_page(
     overview_html: str,
     daily_html: str,
     planned_html: str,
-    races: list[Event],
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_series: ZoneGroupSeries,
@@ -136,7 +105,6 @@ def overview_page(
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Daily running minutes", volume_html)
         + card(None, f'<div class="report">{daily_html}</div>')
-        + (_races_card(races) if races else "")
         + card(None, f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
@@ -511,6 +479,65 @@ def health_page(
         ),
         demo_label=demo_label,
         active="health",
+    )
+
+
+def performance_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    demo_label: str | None = None,
+    section: PerformanceSection,
+) -> str:
+    """Render race results, personal bests, upcoming races, and the fit."""
+    body = (
+        card(None, section.summary_html)
+        + card("Upcoming races", section.upcoming_html)
+        + card("Results", section.results_html)
+        + card("Personal bests", section.pbs_html)
+        + card("Race performance", section.chart_html)
+        + card("Equivalent times", section.equivalent_html)
+    )
+
+    return page(
+        title="Performance",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="performance",
+        plotly=True,
+    )
+
+
+def race_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    demo_label: str | None = None,
+    report_html: str,
+) -> str:
+    """Render one race-day report."""
+    body = (
+        f'<p>{link("performance.html", "← Performance")}</p>'
+        + card(None, f'<div class="report">{report_html}</div>')
+    )
+
+    return page(
+        title="Race",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="performance",
     )
 
 

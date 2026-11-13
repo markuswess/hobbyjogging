@@ -26,6 +26,7 @@ from ..links import resolve_activity_links
 from ..model import AverageWindows
 from ..overview import overview_report
 from ..planned import planned_report
+from ..race_report import race_report
 from ..recovery_report import recovery_report
 from ..review import exclude_review
 from .charts import plotly_js
@@ -41,6 +42,8 @@ from .pages import (
     compare_page,
     health_page,
     nsa_page,
+    performance_page,
+    race_page,
     overview_page,
     recovery_page,
     docs_page,
@@ -49,6 +52,7 @@ from .pages import (
 )
 from .docs import build_docs_section
 from .gear import build_gear_section
+from .performance import build_performance_section
 from .lab import build_lab_section
 from .reports import REPORT_NAMES, build_report
 from ..zone_groups import (
@@ -216,6 +220,11 @@ def build_dashboard(
         include_review=include_review,
     )
 
+    performance_section = build_performance_section(
+        source,
+        today=today,
+        include_review=include_review,
+    )
     overview_html = markdown_to_html(
         overview_report(
             source,
@@ -243,11 +252,6 @@ def build_dashboard(
         ),
         demote=1,
     )
-    races = [
-        event
-        for event in source.events(today, today + timedelta(days=RACE_DAYS))
-        if "race" in set(event.workout_methods) | set(event.workout_targets)
-    ]
 
     health = collect_health(
         raw_activities,
@@ -293,7 +297,6 @@ def build_dashboard(
             overview_html=overview_html,
             daily_html=daily_html,
             planned_html=planned_html,
-            races=races,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,
@@ -344,6 +347,13 @@ def build_dashboard(
             report_html=recovery_html,
             start=recovery_start,
             end=today,
+        ),
+        "performance.html": performance_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            section=performance_section,
         ),
         "gear.html": gear_page(
             generated_at=generated_at,
@@ -437,8 +447,27 @@ def build_dashboard(
             report_html=markdown_to_html(report, demote=1),
         )
 
+    race_pages = {}
+
+    for activity_id in performance_section.race_ids:
+        race_pages[f"race/{activity_filename(activity_id)}"] = race_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            report_html=markdown_to_html(
+                race_report(
+                    activity_id,
+                    source,
+                    include_review=include_review,
+                    today=today,
+                ),
+                demote=1,
+            ),
+        )
+
     target = resolve_output_dir(output)
-    _write_site(target, pages | detail_pages)
+    _write_site(target, pages | detail_pages | race_pages)
 
     return target
 
