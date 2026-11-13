@@ -5,13 +5,27 @@ source importers, and source-independent reports.
 
 ## Session scope convention
 
-- **Root sessions** (this directory) handle architecture, planning, schema or
-  model changes, cross-package contracts, docs/roadmap, and real-DB strategy.
-- **Package sessions** (`packages/<pkg>`) handle changes confined to that
-  package: features, bug fixes, tests, and package docs.
+The project runs three kinds of sessions:
+
+- **Root** (this directory) — general planning and cross-package coding:
+  architecture, schema or model changes, cross-package contracts, docs and
+  roadmap, and real-DB strategy.
+- **Package** (`packages/<pkg>`) — work confined to one package: features, bug
+  fixes, tests, and package docs. One session per package.
+- **Lab** — exploring metrics and analysis before they enter a package:
+  `./lab.sh` sessions, `experiments/` scripts, and candidate cards in
+  `docs/METRICS.md`. The lab may read the whole repo and write experiments and
+  docs, but it does not change package code; promotion happens in the package
+  session once an idea passes the gate in `docs/METRICS.md` (see
+  `docs/ARCHITECTURE.md`).
+
+Rules:
+
 - If a package change needs a core API or schema change, settle or implement
   the core part in a root session first, then consume it in the package.
-- Package sessions may read the whole repo; only *changes* stay in their lane.
+- Sessions may read the whole repo; only *changes* stay in their lane.
+- `experiments/` belongs to the lab; package sessions consume what the lab
+  promoted rather than writing new experiments.
 - Commit scope follows session scope. Never stage unrelated in-progress edits
   (check `git status` before committing).
 - Do not push; the user pushes manually.
