@@ -55,7 +55,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Efficiency vs duration (start-up + drift) | Is session efficiency duration-dependent, and do a start-up term and drift explain it? | parked | `efficiency_duration.py` | 2026-11-13 |
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? | candidate | — | 2026-11-13 |
-| Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? | experimenting | `aerobic_threshold.py` | 2026-11-13 |
+| Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
 | Garmin VO2max jumps | Why do the readings jump — sport-specific values, terrain, or device history? (revisit with canonical elevation data) | parked | `vo2max_jumps.py` | 2026-11-13 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
@@ -78,3 +78,14 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
   (raw-frontier correlation with quarter n was −0.19, not positive). The
   frontier is a stable level shift, not additional signal. Evidence:
   `git show 143267d:experiments/efficiency_frontier.py`.
+
+### Parked notes
+
+- **Aerobic-threshold pace trend** — the fixed-HR index improved by roughly
+  20–25 s/km at 140 bpm (5:11 to 4:08, 2022Q4–2026Q4), but 140 bpm was outside
+  the observed steady-run HR range in 5 of 17 quarters, and the quarterly
+  index correlates −0.55 to −0.71 with duration and −0.55 with resting HR.
+  The trend survives a 40–75 min restriction (+0.188 m/s per year), so it is
+  not only a mix artifact, but the index is not clean enough to promote.
+  Revisit with tempo/threshold efforts that cover the reference HR, or with
+  streams. Evidence: `experiments/aerobic_threshold.py`.
