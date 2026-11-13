@@ -61,13 +61,10 @@ Current focus: the dashboard's gear/devices and race work.
   the API's `RACE_A`/`RACE_B`/`RACE_C` event categories onto the `race`
   method during event sync, so an existing database needs a fresh event
   sync before its races show up.
-- **Fixed chart axes.** Charts no longer autoscale: volume 0–130 km, time
-  0–10 h (both panels), load 0–150 with the RPE axis on the right at 0–6 so
-  one RPE point lines up with 25 load units, subT pace 3:15–4:20 min/km
-  (faster up), subT HR 140–180 bpm. Bars that exceed a fixed limit are
-  marked with a "clipped above …" triangle instead of being hidden. The RPE
-  axis extends in whole points (and the load axis with it) if a session-RPE
-  EWMA ever passes 6.
+- **Bounded chart axes.** subT pace stays at 3:15–4:20 min/km (faster up) and
+  subT HR at 140–180 bpm; the volume, time, load, and overview axes follow the
+  data instead (see *Data-driven chart ceilings*). Bars above any axis are
+  marked with a "clipped above …" triangle instead of being hidden.
 - **Compare tab and chart.** `compare.html` renders one EWMA line per
   calendar year over a fixed Jan–Dec axis (metric and window chosen with
   `--compare-metric volume|time|load|runs` and `--compare-window N`,

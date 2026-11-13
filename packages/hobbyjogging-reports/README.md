@@ -93,7 +93,8 @@ those Markdown reports are already embedded on their relevant pages. The Docs
 tab renders the README; the Lab tab renders the experiments notebook, scripts
 and metric registry.
 
-The main chart shows daily running **minutes** on a **0–90 minute** axis,
+The main chart shows daily running **minutes** on an axis sized to the
+typical day (see *Chart axes* below),
 stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
 **unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
 running, with the hard lines in reds at the base and the total lines in blues
@@ -109,6 +110,16 @@ kaleido, and the dashboard embeds the exact same figures as HTML, so the
 overview can be zoomed and panned. The pages remain static snapshots: there
 is no client-side data fetching and no server-side report process.
 `plotly.min.js` is bundled into the generated site so it works offline.
+
+Chart axes follow the data instead of a fixed template: each y-axis drops the
+top few percent of the plotted values, adds a little headroom and rounds up to
+a step suited to the chart (20 km, 1 h, 25 load, 15 min for the overview).
+That keeps the axis fitted to a normal training week, so one ultra or a
+24-hour day cannot flatten a year of training. Bars above the axis are drawn
+clipped and marked with a grey triangle; hover shows the real value. The
+42/182-day averages are included when choosing the axis, the 7-day average is
+not, so a single spike can briefly leave the top instead of stretching the
+whole chart.
 
 Generation builds a temporary directory and atomically swaps it into place.
 It refuses to replace a non-empty directory unless it is a previous
@@ -218,24 +229,23 @@ database `DataSource` and produces the Markdown reports and charts:
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
-  daily running minutes on a 0–90 minute axis, stacked hard (Z3+Z4) /
-  easy (Z1+Z2) / unzoned, with hard and total 7/42/182-day EWMAs and
-  hatched planned days, plus the Garmin VO2max standing value as a black
-  line on a second axis on the right. Bars above 90 minutes are marked
-  and clipped.
+  daily running minutes, stacked hard (Z3+Z4) / easy (Z1+Z2) / unzoned,
+  with hard and total 7/42/182-day EWMAs and hatched planned days, plus the
+  Garmin VO2max standing value as a black line on a second axis on the
+  right. Long days above the axis are marked and clipped.
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
-  default. The axis is fixed at 0–130 km/week; larger weeks are marked.
+  default. Bigger weeks above the axis are marked and clipped.
 - **load** — Daily training load with 182-day base, 42-day fitness,
   and 7-day fatigue exponentially weighted averages, plus planned load and
   the three session-RPE EWMAs on a right-hand axis (RPE carries the last
-  rated value between sessions). The axis is fixed at 0–150 load with the
-  RPE axis at 0–6, so one RPE point lines up with 25 load units.
+  rated value between sessions). The RPE axis is scaled to the load axis
+  instead of a fixed ratio, so the overlay always fits.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
   at the bottom; Z1/Z2 in blues and Z3/Z4 in reds), with 182/42/7-day time
   averages, a share-of-week panel, a per-zone EWMA panel, and planned weekly
-  time including planned pace zone distributions. The axis is fixed at
-  0–10 h/week; larger weeks are marked.
+  time including planned pace zone distributions. Bigger weeks above the
+  axis are marked and clipped.
 - **recovery** — HRV, resting HR, and sleep trends with a rolling
   calendar-day average and planned-workout markers. Readiness bands shade
   the background using a robust 365-day baseline computed at the end of the

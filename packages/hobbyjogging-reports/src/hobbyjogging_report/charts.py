@@ -42,6 +42,8 @@ from .model import (
     ZoneAveragePoint,
 )
 from .style import (
+    AXIS_HEADROOM,
+    AXIS_TAIL,
     CLIPPED_COLOR,
     EASY_COLOR,
     EASY_EDGE,
@@ -52,21 +54,26 @@ from .style import (
     HARD_PLANNED_COLOR,
     LINE_STYLES,
     LINE_WIDTHS,
-    LOAD_Y_MAX,
+    LOAD_Y_MIN,
+    LOAD_Y_STEP,
+    MINUTES_Y_MIN,
+    MINUTES_Y_STEP,
     PLANNED_PATTERN,
     PROJECTED_OPACITY,
     RECOVERY_BAND_COLORS,
     RECOVERY_BAND_MARKERS,
+    RPE_AXIS_MIN,
     RPE_LINE_COLORS,
-    RPE_PER_LOAD,
     SUBT_HR_RANGE,
     SUBT_PACE_RANGE,
-    TIME_Y_MAX,
+    TIME_Y_MIN,
+    TIME_Y_STEP,
     TOTAL_LINE_COLORS,
     UNZONED_COLOR,
     UNZONED_EDGE,
     UNZONED_PLANNED_COLOR,
-    VOLUME_Y_MAX,
+    VOLUME_Y_MIN,
+    VOLUME_Y_STEP,
 )
 from .zone_groups import ZoneGroupSeries
 
@@ -292,20 +299,46 @@ def _planned_total_bars(figure, values, *, label: str = "planned"):
     )
 
 
+def _axis_ceiling(
+    values,
+    *,
+    step: float,
+    floor: float,
+    tail: float = AXIS_TAIL,
+) -> float:
+    """Round an axis ceiling up from the bulk of the values, not the peak.
+
+    The top ``tail`` share of the values is dropped (always at least one), so a
+    single ultra week or long day cannot set the axis; what is left gets a
+    little headroom and rounds up to ``step``, which leaves the typical bar
+    comfortably inside the frame. Later values above the result are drawn
+    clipped and marked.
+    """
+    ordered = sorted(value for value in values if value is not None)
+
+    if not ordered:
+        return floor
+
+    dropped = max(1, round(tail * (len(ordered) - 1)))
+    upper = ordered[max(0, len(ordered) - 1 - dropped)]
+
+    return max(floor, step * math.ceil(upper * AXIS_HEADROOM / step))
+
+
 def _clipped_markers(
     figure,
-    x,
-    values,
+    points: list[tuple[object, float]],
     limit: float,
     unit: str,
     *,
     row: int | None = None,
     col: int | None = None,
+    number: str = ".2f",
 ):
-    """Mark bars that exceed a fixed axis limit instead of hiding them."""
+    """Mark values that exceed the axis ceiling instead of hiding them."""
     clipped = [
-        (day, value)
-        for day, value in zip(x, values)
+        (where, value)
+        for where, value in points
         if value > limit
     ]
 
@@ -315,7 +348,7 @@ def _clipped_markers(
     _add(
         figure,
         go.Scatter(
-            x=[day for day, _ in clipped],
+            x=[where for where, _ in clipped],
             y=[limit * 0.98] * len(clipped),
             mode="markers",
             marker={
@@ -325,7 +358,7 @@ def _clipped_markers(
             },
             name=f"clipped above {limit:g} {unit}",
             hovertext=[
-                f"{value:.2f} {unit} (bar clipped)"
+                f"{value:{number}} {unit} (bar clipped)"
                 for _, value in clipped
             ],
             hoverinfo="text",
@@ -389,14 +422,31 @@ def plot_volume(
             label=lambda attribute, days: f"{days}d avg (weekly)",
         )
 
+    ceiling = max(
+        _axis_ceiling(
+            [value for _, value in data]
+            + [value for _, value in planned_distance or []],
+            step=VOLUME_Y_STEP,
+            floor=VOLUME_Y_MIN,
+        ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) * distance_scale
+                for point in distance_points or []
+                for attribute in ("base", "fitness")
+            ],
+            step=VOLUME_Y_STEP,
+            floor=VOLUME_Y_MIN,
+        ),
+    )
+
     _clipped_markers(
         figure,
-        weeks,
-        [value for _, value in data],
-        VOLUME_Y_MAX,
+        list(data) + list(planned_distance or []),
+        ceiling,
         "km",
     )
-    figure.update_yaxes(range=[0, VOLUME_Y_MAX], dtick=20)
+    figure.update_yaxes(range=[0, ceiling], dtick=20)
 
     axis_weeks = sorted(
         set(weeks) | {week for week, _ in planned_distance or []}
@@ -619,21 +669,32 @@ def plot_time(
                 for bottom, value in zip(planned_bottoms, values)
             ]
 
-    _clipped_markers(
-        figure,
-        week_dates,
-        [total for total in totals],
-        TIME_Y_MAX,
-        "h",
-        row=1,
-        col=1,
-    )
-
     planned_totals = [
         (week, seconds / 3600)
         for week, seconds in planned_time or []
         if week not in planned_zone_dates
     ]
+    planned_weeks = [
+        (week.week, (sum(week.zones) + week.unzoned) / 3600)
+        for week in planned_zone_weeks
+    ] + planned_totals
+
+    ceiling = max(
+        _axis_ceiling(
+            totals + [value for _, value in planned_weeks],
+            step=TIME_Y_STEP,
+            floor=TIME_Y_MIN,
+        ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) * time_scale / 3600
+                for point in time_points or []
+                for attribute in ("base", "fitness")
+            ],
+            step=TIME_Y_STEP,
+            floor=TIME_Y_MIN,
+        ),
+    )
 
     if planned_totals:
         _add(
@@ -651,6 +712,15 @@ def plot_time(
             row=1,
             col=1,
         )
+
+    _clipped_markers(
+        figure,
+        list(zip(week_dates, totals)) + planned_weeks,
+        ceiling,
+        "h",
+        row=1,
+        col=1,
+    )
 
     if time_points:
         _plot_average_lines(
@@ -752,7 +822,7 @@ def plot_time(
 
         figure.update_yaxes(
             title_text=ylabel,
-            range=[0, TIME_Y_MAX],
+            range=[0, ceiling],
             dtick=2,
             row=3,
             col=1,
@@ -778,7 +848,7 @@ def plot_time(
     )
     figure.update_yaxes(
         title_text=ylabel,
-        range=[0, TIME_Y_MAX],
+        range=[0, ceiling],
         dtick=2,
         row=1,
         col=1,
@@ -1125,6 +1195,8 @@ def plot_load(
         marker_color="lightgrey",
     )
 
+    planned = []
+
     if planned_load:
         actual_days = {
             point.date for point in actual if point.load > 0
@@ -1170,30 +1242,31 @@ def plot_load(
             )
         )
 
-    if rpe:
-        highest = max(
-            max(
+    ceiling = max(
+        _axis_ceiling(
+            [point.load for point in actual]
+            + [value for _, value in planned],
+            step=LOAD_Y_STEP,
+            floor=LOAD_Y_MIN,
+        ),
+        _axis_ceiling(
+            [
                 getattr(point, attribute)
-                for point in rpe
-                for attribute in ("base", "fitness", "fatigue")
-            ),
-            0.0,
-        )
-        load_max = max(
-            LOAD_Y_MAX,
-            math.ceil(highest) * RPE_PER_LOAD,
-        )
-    else:
-        load_max = LOAD_Y_MAX
+                for point in points
+                for attribute in ("base", "fitness")
+            ],
+            step=LOAD_Y_STEP,
+            floor=LOAD_Y_MIN,
+        ),
+    )
 
     _clipped_markers(
         figure,
-        [point.date for point in actual],
-        [point.load for point in actual],
-        load_max,
+        [(point.date, point.load) for point in actual],
+        ceiling,
         "load",
     )
-    figure.update_yaxes(range=[0, load_max], dtick=25)
+    figure.update_yaxes(range=[0, ceiling], dtick=LOAD_Y_STEP)
 
     _base_layout(
         figure,
@@ -1203,13 +1276,18 @@ def plot_load(
     )
 
     if rpe:
+        highest = max(
+            getattr(point, attribute)
+            for point in rpe
+            for attribute in ("base", "fitness", "fatigue")
+        )
         figure.update_layout(
             yaxis2={
                 "title": "RPE",
                 "overlaying": "y",
                 "side": "right",
                 "showgrid": False,
-                "range": [0, load_max / RPE_PER_LOAD],
+                "range": [0, float(max(RPE_AXIS_MIN, math.ceil(highest)))],
                 "dtick": 1,
             },
         )
@@ -2309,32 +2387,35 @@ def plot_overview(
                     )
                 )
 
-    y_max = 90.0
-    clipped = [
-        (row[0], sum(row[1:]) / 60)
-        for row in (*actual_bars, *planned_bars)
-        if sum(row[1:]) / 60 > y_max
-    ]
+    y_max = max(
+        _axis_ceiling(
+            [sum(row[1:]) / 60 for row in (*actual_bars, *planned_bars)],
+            step=MINUTES_Y_STEP,
+            floor=MINUTES_Y_MIN,
+            tail=0.10,
+        ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) / 60
+                for point in zone_series.points
+                for attribute in ("total_42", "total_182")
+            ],
+            step=MINUTES_Y_STEP,
+            floor=MINUTES_Y_MIN,
+            tail=0.10,
+        ),
+    )
 
-    if clipped:
-        figure.add_trace(
-            go.Scatter(
-                x=[day.isoformat() for day, _ in clipped],
-                y=[y_max - 2] * len(clipped),
-                mode="markers",
-                marker={
-                    "symbol": "triangle-up",
-                    "size": 9,
-                    "color": "#7f7f7f",
-                },
-                name=f"clipped above {y_max:.0f} min",
-                hovertext=[
-                    f"{minutes:.0f} min (bar clipped)"
-                    for _, minutes in clipped
-                ],
-                hoverinfo="text",
-            )
-        )
+    _clipped_markers(
+        figure,
+        [
+            (row[0].isoformat(), sum(row[1:]) / 60)
+            for row in (*actual_bars, *planned_bars)
+        ],
+        y_max,
+        "min",
+        number=".0f",
+    )
 
     vo2max = [
         point
@@ -2373,7 +2454,7 @@ def plot_overview(
         "yaxis": {
             "title": "minutes",
             "range": [0, y_max],
-            "dtick": 15,
+            "dtick": MINUTES_Y_STEP,
         },
         "xaxis": {"range": [start.isoformat(), end.isoformat()]},
         "legend": _legend_below(font_size=9),

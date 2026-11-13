@@ -39,11 +39,21 @@ PLANNED_HATCH = "//"
 PLANNED_PATTERN = "/"
 PROJECTED_OPACITY = 0.55
 
-# Fixed axes keep periods comparable instead of autoscaling.
-VOLUME_Y_MAX = 130.0
-TIME_Y_MAX = 10.0
-LOAD_Y_MAX = 150.0
-RPE_PER_LOAD = 25.0  # one RPE point maps to 25 load units on the right axis
+# Axis ceilings follow the bulk of the plotted values, not the peak: the top
+# ``AXIS_TAIL`` share is dropped before the axis rounds up to its step, so one
+# ultra cannot flatten a year of training. Values above it are drawn clipped
+# and marked.
+AXIS_TAIL = 0.05
+AXIS_HEADROOM = 1.1
+VOLUME_Y_STEP = 20.0
+VOLUME_Y_MIN = 20.0
+TIME_Y_STEP = 1.0
+TIME_Y_MIN = 2.0
+LOAD_Y_STEP = 25.0
+LOAD_Y_MIN = 25.0
+MINUTES_Y_STEP = 15.0
+MINUTES_Y_MIN = 45.0
+RPE_AXIS_MIN = 6.0  # the RPE overlay gets its own scale, fitted to the chart
 SUBT_PACE_RANGE = (260.0, 195.0)  # 4:20 .. 3:15 min/km, slow at the bottom
 SUBT_HR_RANGE = (140.0, 180.0)
 CLIPPED_COLOR = "#7f7f7f"

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     PACE_HR_SYMBOLS,
+    _axis_ceiling,
     compare_color,
     plot_compare,
     plot_equipment,
@@ -360,31 +361,105 @@ class OverviewChartTests(unittest.TestCase):
         self.assertIn("Plotly.newPlot", result)
 
 
-class FixedRangeTests(unittest.TestCase):
+class AxisCeilingTests(unittest.TestCase):
 
-    def test_charts_use_stable_axes(self):
-        load_html = plot_load(
-            [LoadPoint(D, 50, 40, 45, 48)],
+    def test_empty_sample_falls_back_to_the_floor(self):
+        self.assertEqual(20.0, _axis_ceiling([], step=20, floor=20))
+
+    def test_the_ultra_value_is_dropped_before_rounding(self):
+        # 60 each week, plus one 188 km week -> 60 -> 66 -> 80
+        self.assertEqual(
+            80.0,
+            _axis_ceiling([60.0] * 12 + [188.0], step=20, floor=20),
+        )
+
+    def test_steady_values_only_round_up_to_the_next_step(self):
+        self.assertEqual(
+            60.0,
+            _axis_ceiling([40.0] * 12, step=20, floor=20),
+        )
+        self.assertEqual(
+            20.0,
+            _axis_ceiling([2.0, 3.0], step=20, floor=20),
+        )
+
+    def test_a_short_sample_cannot_be_trimmed_below_one_value(self):
+        self.assertEqual(60.0, _axis_ceiling([52.0], step=20, floor=20))
+
+
+class AdaptiveAxisTests(unittest.TestCase):
+    """The axis follows the bulk; rare extremes are clipped and marked."""
+
+    def test_volume_axis_ignores_one_huge_week(self):
+        weeks = [
+            (D + timedelta(days=7 * index), 60.0)
+            for index in range(12)
+        ]
+        weeks.append((D + timedelta(days=7 * 12), 188.0))
+
+        html = plot_volume(weeks, "", as_html=True)
+
+        self.assertIn('"range":[0,80.0]', html)
+        self.assertIn("clipped above 80 km", html)
+        self.assertIn("188.00 km (bar clipped)", html)
+
+    def test_volume_without_outliers_clips_nothing(self):
+        weeks = [
+            (D + timedelta(days=7 * index), 40.0 + index)
+            for index in range(12)
+        ]
+
+        html = plot_volume(weeks, "", as_html=True)
+
+        self.assertNotIn("clipped above", html)
+        self.assertIn('"range":[0,60.0]', html)
+
+    def test_volume_axis_grows_with_the_sustained_average(self):
+        points = [
+            DistancePoint(D, 20.0, 15.0, 15.0, 15.0)
+            for _ in range(2)
+        ]
+
+        html = plot_volume(
+            [(D, 40.0)],
             "",
-            rpe_points=[RpePoint(D, 3.0, 2.8, 2.9, 3.0)],
+            distance_points=points,
             as_html=True,
         )
 
-        self.assertIn('"range":[0,150.0]', load_html)
-        self.assertIn('"range":[0,6.0]', load_html)
+        # The bars alone would fit in 60 km; the 182-day line needs the room.
+        self.assertIn('"range":[0,120.0]', html)
 
-        volume_html = plot_volume([(D, 60.0)], "", as_html=True)
-        self.assertIn('"range":[0,130.0]', volume_html)
-
-        time_html = plot_time(
-            [TimeZoneWeek(D, [3600, 1800, 0, 0], 0)],
-            "",
-            as_html=True,
+    def test_time_axis_and_share_panel(self):
+        weeks = [
+            TimeZoneWeek(D + timedelta(days=7 * index), [3600, 1800, 0, 0])
+            for index in range(12)
+        ]
+        weeks.append(
+            TimeZoneWeek(D + timedelta(days=7 * 12), [22.3 * 3600, 0, 0, 0])
         )
-        self.assertIn('"range":[0,10.0]', time_html)
-        self.assertIn('"range":[0,100]', time_html)
 
-    def test_rpe_axis_extends_with_the_load_axis(self):
+        html = plot_time(weeks, "", as_html=True)
+
+        self.assertIn('"range":[0,2.0]', html)
+        self.assertIn('"range":[0,100]', html)
+        self.assertIn("clipped above 2 h", html)
+
+    def test_load_axis_ignores_the_ultra_day(self):
+        points = [
+            LoadPoint(D + timedelta(days=index), 40.0, 35.0, 38.0, 40.0)
+            for index in range(30)
+        ]
+        points.append(
+            LoadPoint(D + timedelta(days=30), 349.0, 40.0, 42.0, 60.0)
+        )
+
+        html = plot_load(points, "", as_html=True)
+
+        self.assertIn('"range":[0,50.0]', html)
+        self.assertIn("349.00 load (bar clipped)", html)
+
+    def test_rpe_overlay_gets_its_own_scale(self):
         html = plot_load(
             [LoadPoint(D, 50, 40, 45, 48)],
             "",
@@ -392,17 +467,51 @@ class FixedRangeTests(unittest.TestCase):
             as_html=True,
         )
 
-        # RPE 7.8 rounds up to 8 -> load 0-200, RPE 0-8; gridlines align
-        # every 25 load units with one RPE point.
-        self.assertIn('"range":[0,200.0]', html)
+        # The load axis follows the load; the RPE axis covers its own values.
+        self.assertIn('"range":[0,75.0]', html)
         self.assertIn('"range":[0,8.0]', html)
 
-    def test_clipped_bars_are_marked(self):
-        html = plot_volume([(D, 187.0)], "", as_html=True)
+    def test_overview_axis_ignores_the_long_day(self):
+        actual_bars = [
+            (D + timedelta(days=index), 300.0, 200.0, 0.0)
+            for index in range(30)
+        ]
+        actual_bars.append((D + timedelta(days=30), 24 * 3600.0, 0.0, 0.0))
+        series = ZoneGroupSeries(
+            points=[
+                ZoneGroupPoint(
+                    date=day,
+                    easy_s=300.0,
+                    hard_s=200.0,
+                    unzoned_s=0.0,
+                    easy_7=300.0,
+                    easy_42=300.0,
+                    easy_182=300.0,
+                    hard_7=200.0,
+                    hard_42=200.0,
+                    hard_182=200.0,
+                    total_7=500.0,
+                    total_42=500.0,
+                    total_182=500.0,
+                )
+                for day, _, _, _ in actual_bars
+            ]
+        )
 
-        self.assertIn("clipped above 130 km", html)
-        self.assertIn("187.00 km (bar clipped)", html)
+        html = plot_overview(
+            actual_bars,
+            [],
+            series,
+            "",
+            start=D,
+            end=D + timedelta(days=30),
+            today=D,
+            as_html=True,
+        )
 
+        self.assertIn('"range":[0,45.0]', html)
+        self.assertIn("clipped above 45 min", html)
+        self.assertIn("1440 min (bar clipped)", html)
 
 
 class PaceHrChartTests(unittest.TestCase):
