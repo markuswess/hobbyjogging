@@ -232,6 +232,24 @@ Current focus: the dashboard's gear/devices and race work.
      aggregates in different bands are not compared; the band label renders.
    - Card: `docs/METRICS.md` Efficiency "Duration" and "Comparability".
 
+8. **Category symbols on the pace/HR chart.** The scatter draws every run in
+   one trace, so a long run, an interval session and a recovery jog are
+   indistinguishable and the aerobic cloud mixes protocols. Give each run
+   category its own marker symbol.
+   - `PaceHrPoint` has no category today; add it and fill it in
+     `pace_hr_points` from `classify(activity, intervals)` (the display kind,
+     `quality/fartlek` included). `pace_hr_points` needs the intervals to do
+     that, so check the three call sites.
+   - Split the scatter into one trace per category with a fixed symbol map
+     (easy, recovery, intervals, longrun, race, tempo, fartlek), keeping
+     **color = date** so the year gradient survives: each trace carries the
+     same colorscale and a shared colorbar, and the legend lists the symbols.
+   - Use the same symbol map in the compare pace/HR chart so two periods stay
+     readable, and keep the regression and efficiency lines unchanged.
+   - Tests: the symbol map is stable and covers every category; a fartlek and
+     an interval session get different symbols; the date colorbar stays
+     shared.
+
 ## Tests and docs
 
 Covered now:
