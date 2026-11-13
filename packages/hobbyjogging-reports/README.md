@@ -374,6 +374,11 @@ to print raw Markdown.
 When stdout is a terminal, the direct CLI also displays reports with
 the same formatting. Redirected or piped output remains raw Markdown.
 
+## Charts
+
+Every chart is a plotly figure from the same shared layer the dashboard embeds,
+so a PNG and a dashboard panel always show the same thing.
+
 ### Quick charts
 
 `charts.sh` wraps the chart commands and prints the generated file path:
@@ -585,58 +590,25 @@ derived from the same work reps used by the classification and charts.
 
 ## Efficiency (m/excess beat)
 
-Efficiency is metres covered per heartbeat above rest:
+Metres per heartbeat above resting:
+`distance_m / ((avg_hr - resting_hr) × duration_min)`. The definition, the
+365-day resting baseline, the validation numbers and the caveats live in the
+[metric card](https://github.com/markuswess/hobbyjogging/blob/main/docs/METRICS.md#efficiency-mexcess-beat).
 
-    distance_m / ((avg_hr - resting_hr) * duration_min)
-
-Higher is better and the metric is linear. Subtracting the resting baseline
-removes the heart-rate offset: a fit on the real data gives
-`HR ≈ 52.5 + 26.2 * v` (R² = 0.54), with the intercept matching the median
-resting HR. Raw `v / HR` spreads 11.3% across speed quartiles, while
-`v / (HR - RHR)` spreads only 3.3%, so paces become comparable.
-
-The baseline is the median resting HR over the trailing 365 days, with an
-expanding median when there is less history and no value when there is no
-resting-HR data at all. Do not shorten the window: the Feb–Mar 2026 illness
-moved RHR 51 → 59 → 47, and a 42-day median still read ~57 in March. That
-made March efficiency read 2.40 instead of 2.22 (+8%), larger than the 3.3%
-pace bias the baseline exists to remove. 180-day, 365-day, and fixed
-medians agree within 0.01 on the whole series.
-
-Sampling rules:
-
-- Aggregates are always `sum(distance) / sum(excess beats)`, never the mean
-  of per-sample ratios.
-- A session needs HR, distance, duration, and a baseline with
-  `avg_hr - resting_hr >= 10`; otherwise efficiency is `-`.
-- Runs only. Rest days in the compare series carry the previous value.
-- Report aggregates use a steady duration band: non-quality runs from
-  45–75 min. Unknown/unclassified runs count as steady; intervals, races,
-  long runs, progressions and fartlek do not. The band is printed next to
-  every aggregate and is never mixed with another band.
-- Session and daily efficiency stay raw per-activity numbers, not banded
-  aggregates.
-- RHR noise propagates (about 5% for a 5 bpm error on a ~90 bpm difference);
-  treat it as a trend signal, not a per-run score. HR lag still understates
-  short reps.
-
-Which number uses which runs:
+Which runs feed which number:
 
 - Session report, daily compact line, `eff` activities column: one raw
-  per-activity value, no band.
+  per-activity value, no duration band.
 - Period/category, overview and compare aggregates: steady non-quality runs
-  in the 45–75 min band, with the band printed next to the number.
-- Pace/HR chart: the scatter shows every run; only the dashed efficiency
-  lines use steady 45–75 min runs, whose points carry a dark outline.
+  from 45–75 min, with the band printed next to the number.
+- Pace/HR chart: every run in the scatter; only the dashed efficiency lines
+  use steady 45–75 min runs, whose points carry a dark outline.
 - subT chart and summary tables: work-rep efficiency, not steady runs.
 
-Efficiency appears in the session report, the optional `eff` activities
-column, the steady totals in the period/category reports and overview, the
-subT work-rep lines and summary/block tables (work-rep efficiency), the subT
-EWMA report, the subT chart's third panel, and the compare tab. The subT chart
-and compare series use a weighted rolling mean, not an EWMA of ratios.
-Because resting HR starts in Sep 2022 in the current database, older years
-have no baseline and are left out of the compare efficiency chart.
+Aggregates are always `Σdistance / Σexcess beats`, never the mean of
+per-sample ratios. Resting HR starts in Sep 2022 in the current database, so
+older years have no baseline and are left out of the compare efficiency
+chart.
 
 ## Activities table
 
@@ -728,35 +700,13 @@ cross-training
 unknown
 ```
 
-Weekly, monthly and yearly reports include a **category breakdown**
-table: sessions, time, load, and each category's share of the period.
-SubT sessions are refined by rep length when interval data is available.
+The heuristic lives in `hobbyjogging_core.classify`; its module docstring is
+the reference. It prefers the stored method/target sets and falls back to
+name, RPE and intensity when an activity is unclassified.
 
-Rules (`hobbyjogging_core.classify`):
-
-- **quality**: RPE > 3. RPE exactly 3 can also be quality when the
-  session has explicit quality content (race/subT/LT1/tempo) or its
-  intensity/zones indicate quality. If RPE is missing, infer from
-  intensity (IF >= 0.85 or >= 25% of time in Z3+); if impossible ->
-  `unknown`.
-- **longrun**: activity longer than 90 min, even with low RPE —
-  unless race/subt/lt1/tempo content takes precedence.
-- **recovery**: RPE = 1 and shorter than 40 min.
-- **race-support**: race warm-ups and cool-downs, identified by name
-  (`warm up` / `cool down`); overrides the RPE rule, since they are
-  usually RPE 1–3.
-- **cross-training**: any non-run activity (hiking, cycling, kayaking).
-- Sub-type keywords come from the activity **name** only; descriptions
-  often mention alternatives (e.g. "did 3x10@LT1 instead of subT").
-  Execution (RPE/intensity) normally decides *whether* the session was
-  quality; at RPE 3, explicit content (or a sustained block) can tip it
-  into quality.
-- **LT1 wins over subT** when both appear in the name.
-- Rep length ignores work intervals shorter than 60 s (strides).
-- Older activities may label warm-up, cool-down and recovery jogs as
-  `WORK`. Work reps are detected as the fast pace cluster (strides and
-  GPS artifacts ignored, slow low-HR warm-ups removed), so
-  classification, reports and the subT chart use the same reps.
+Reports add two things on top: weekly, monthly and yearly reports include a
+**category breakdown** (sessions, time, load and share per category), and subT
+sessions are refined by rep length when interval data is available.
 
 ## Feel ratings
 

@@ -62,7 +62,8 @@ scan, dashboard:
   `sync.sh` keeps them current.
 - **Review.** Conflicts and odd data land in a queue; the interactive walk
   fixes, resolves or excludes them.
-- **Look.** Markdown reports, charts and a static dashboard.
+- **Look.** A static dashboard, plus the Markdown reports and charts behind
+  it.
 
 Importing and reviewing are documented in
 [`hobbyjogging-import`](packages/hobbyjogging-import/README.md), reporting in
