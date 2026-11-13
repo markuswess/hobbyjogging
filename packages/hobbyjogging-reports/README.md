@@ -5,8 +5,152 @@ This package is part of the
 commands below from the repository root. The demo dashboard renders this README
 on its Docs tab, so it has to read well in a browser too.
 
-Generate daily, weekly and monthly summaries from the canonical hobbyjogging
-database.
+Produces the static training dashboard and the Markdown reports behind it,
+from the canonical hobbyjogging database. The dashboard is the main view; the
+Markdown reports carry the same numbers for the terminal.
+
+## Dashboard
+
+A self-contained static site, generated from the same analysis layer as the
+Markdown reports.
+
+`dashboard` writes it to
+`$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, or to
+`data/dashboard` otherwise. `--output DIR` overrides the location exactly.
+`./dashboard.sh` prints the generated directory and opens the browser;
+`./sync.sh` regenerates it after a successful sync without opening a browser.
+
+    ./dashboard.sh
+    ./dashboard.sh --days 30 --activities 100
+    ./dashboard.sh --chart-days 90 --future-days 21
+    ./dashboard.sh --output /tmp/dashboard
+    ./dashboard.sh --demo-label "Synthetic demo data"
+    ./dashboard.sh --timing
+
+The build wraps the source in a read-only per-build cache: activity ranges
+are memoized and narrower ranges are served from a covering block, while
+intervals and laps are cached by activity id. `--timing` prints per-phase
+seconds and the number of cache misses.
+
+Pages:
+
+- `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
+  cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
+  the next 14 days; the main overview chart; the daily report; and the
+  planned workouts for the next 14 days. Upcoming races live on the
+  Performance tab.
+  The EWMA overview, the daily report, and the planned section are the
+  rendered `overview`, `daily`, and `planned` Markdown reports; the chart
+  uses the last 182 days plus the next 14 by default.
+- `activities.html` — the recent activity table (default 50) with workout
+  methods and targets, linked to per-activity pages.
+- `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
+  charts, plus the pace-vs-heart-rate scatter with its two regression halves
+  and two dashed efficiency lines, over the last two years
+  (`--analysis-days`, default 731).
+- `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
+  and efficiency EWMAs per category), the subT/LT1 chart, and the
+  `subT Report` over the last year.
+- `compare.html` — volume (km/week), time (hours/week), and efficiency EWMA lines
+  per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
+  182), with dashed projected volume/time lines that follow actual values
+  through today and then the plan, a Garmin VO2max line plot with one raw
+  value per activity, a pace-vs-heart-rate scatter coloured by year, plus the
+  year and month comparison reports (which include the period average
+  Garmin VO2max and a weighted efficiency column). All charts show only the
+  five most recent years by default; older years remain available from the
+  legend. The efficiency chart drops years with
+  fewer than 20 HR-backed runs and years without a resting-HR baseline
+  (currently 2022–2026 only, because resting HR starts in Sep 2022).
+- `activity/<id>.html` — the session report body (metrics, workout methods and
+  targets, zone times, description, the raw segment table, and subT/LT1
+  work reps),
+  exactly as `reports.sh session` renders it.
+- `performance.html` (Performance) — upcoming races, race results, personal
+  bests, a per-bucket PB progression chart, a log-log race chart with the
+  Riegel fit, and equivalent times. Results and PBs link to per-race pages
+  with splits and execution details.
+- `gear.html` (Gear) — gear mileage bars with target markers, the gear
+  table, per-year coverage with and without gear, and retirement candidates.
+- `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
+  the 365-day baseline column, and the last four nights), then HRV, resting
+  HR, and sleep as interactive plotly panels over the last 182 days
+  (`--recovery-days`) with 7-day averages, readiness bands, and a
+  data-completeness note.
+- `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML
+  with a table of contents. The overview, daily, planned, recovery, NSA, and
+  compare reports are embedded on their own pages, so there is no separate
+  Reports tab.
+- `lab.html` (Lab) — the experiments notebook from `experiments/README.md`,
+  the list of current experiment scripts with their one-line summaries, and
+  the metric registry from `docs/METRICS.md`, each with a contents list.
+- `health.html` (Data Health) — the open review queue (severity, category,
+  detail, linked activity, reported date), the activities hidden by review,
+  and missing-data counts.
+
+The `--reports` dashboard option is accepted as a compatibility no-op;
+those Markdown reports are already embedded on their relevant pages. The Docs
+tab renders the README; the Lab tab renders the experiments notebook, scripts
+and metric registry.
+
+The main chart shows daily running **minutes** on a **0–90 minute** axis,
+stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
+**unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
+running, with the hard lines in reds at the base and the total lines in blues
+above them, and the Garmin VO2max standing value as a black line on a second
+axis on the right. It defaults to **182 days back and 14 days forward**;
+`--chart-days` and `--future-days` change those. Planned workouts appear as
+hatched bars on days without a recorded run, including today, so an
+uncompleted planned session is visible; once a run is recorded, the actual bar
+replaces the plan bar. Events without pace zones count as unzoned.
+
+Charts are plotly figures built by one shared layer: the CLI writes PNGs via
+kaleido, and the dashboard embeds the exact same figures as HTML, so the
+overview can be zoomed and panned. The pages remain static snapshots: there
+is no client-side data fetching and no server-side report process.
+`plotly.min.js` is bundled into the generated site so it works offline.
+
+Generation builds a temporary directory and atomically swaps it into place.
+It refuses to replace a non-empty directory unless it is a previous
+dashboard (marked with `.hobbyjogging-dashboard`).
+
+The data-health banner counts activities with open review items, missing
+load, missing pace zones, missing HR, and missing distance. The individual
+queue is available through `DataSource.review_items(status="open",
+category=...)`, which returns `ReviewItem` objects; rendering the categories
+is a follow-up.
+
+## Synthetic demo database
+
+`demo-db` writes a complete, deterministic training database with an
+invented athlete: 4 years of periodized activities, intervals, zone
+times, wellness, planned workouts, two future races, five completed
+5k/10k/half races with PB improvements, and four shoes. Easy
+and long runs stay in zones 1–2 while workouts carry the hard zones;
+Garmin-style VO2max is one smooth value per day; and the 16-week future
+plan mirrors the last four complete weeks. It never reads the canonical
+database or any personal data.
+
+    python -m hobbyjogging_report demo-db --out build/demo.db
+
+    # optional: smaller/larger, reproducible seed, fixed build date,
+    # a couple of review items for screenshots, or overwrite
+    python -m hobbyjogging_report demo-db --out build/demo.db \
+        --months 12 --seed 7 --today 2026-11-12 \
+        --with-review-items --force
+
+`--out` is required and an existing file is refused without `--force`;
+the canonical `HOBBYJOGGING_DB` is never used. The file is normally about
+2 MB and contains no raw source payloads.
+
+Build the demo site from it with an explicit database path and the
+synthetic-data badge:
+
+    HOBBYJOGGING_DB=build/demo.db ./dashboard.sh \
+        --demo-label "Synthetic demo data — not a real athlete"
+
+`--demo-label` is opt-in and prints a banner on every page; normal
+dashboard builds are unchanged.
 
 ## Data sources
 
@@ -15,11 +159,10 @@ only adapter is `DatabaseSource`, which reads the canonical SQLite database;
 raw payloads stay in `source_records`, so there is no live API path to keep
 in sync with the importers.
 
-## What it does
+## Reports and charts
 
 Reads activity, wellness and planned-session data through the canonical
-database `DataSource` and produces Markdown training reports plus a static
-HTML dashboard:
+database `DataSource` and produces the Markdown reports and charts:
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
@@ -33,9 +176,6 @@ HTML dashboard:
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
-- **dashboard** — Generate the static HTML dashboard (weekly overview,
-  recovery and health, activity list, activity detail pages, data health);
-  writes a directory and prints its path.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`), with the same weighted steady efficiency
   total and category column.
@@ -78,9 +218,6 @@ HTML dashboard:
   reps, and Intervals/Garmin Connect links when the source knows them.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
-- **demo-db** — Write a deterministic synthetic database for the public
-  demo. No personal data and no `source_records`; see
-  “Synthetic demo database” below.
 - **overview-chart** — the main training chart (`./charts.sh overview`):
   daily running minutes on a 0–90 minute axis, stacked hard (Z3+Z4) /
   easy (Z1+Z2) / unzoned, with hard and total 7/42/182-day EWMAs and
@@ -636,146 +773,6 @@ separately. The scale is reversed compared with some watches:
 | 3 | Normal |
 | 4 | Poor |
 | 5 | Weak |
-
-## Synthetic demo database
-
-`demo-db` writes a complete, deterministic training database with an
-invented athlete: 4 years of periodized activities, intervals, zone
-times, wellness, planned workouts, two future races, five completed
-5k/10k/half races with PB improvements, and four shoes. Easy
-and long runs stay in zones 1–2 while workouts carry the hard zones;
-Garmin-style VO2max is one smooth value per day; and the 16-week future
-plan mirrors the last four complete weeks. It never reads the canonical
-database or any personal data.
-
-    python -m hobbyjogging_report demo-db --out build/demo.db
-
-    # optional: smaller/larger, reproducible seed, fixed build date,
-    # a couple of review items for screenshots, or overwrite
-    python -m hobbyjogging_report demo-db --out build/demo.db \
-        --months 12 --seed 7 --today 2026-11-12 \
-        --with-review-items --force
-
-`--out` is required and an existing file is refused without `--force`;
-the canonical `HOBBYJOGGING_DB` is never used. The file is normally about
-2 MB and contains no raw source payloads.
-
-Build the demo site from it with an explicit database path and the
-synthetic-data badge:
-
-    HOBBYJOGGING_DB=build/demo.db ./dashboard.sh \
-        --demo-label "Synthetic demo data — not a real athlete"
-
-`--demo-label` is opt-in and prints a banner on every page; normal
-dashboard builds are unchanged.
-
-## Static dashboard
-
-`dashboard` writes a self-contained static HTML site to
-`$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is set, or to
-`data/dashboard` otherwise. `--output DIR` overrides the location exactly.
-`./dashboard.sh` prints the generated directory and opens the browser;
-`./sync.sh` regenerates it after a successful sync without opening a browser.
-
-    ./dashboard.sh
-    ./dashboard.sh --days 30 --activities 100
-    ./dashboard.sh --chart-days 90 --future-days 21
-    ./dashboard.sh --output /tmp/dashboard
-    ./dashboard.sh --demo-label "Synthetic demo data"
-    ./dashboard.sh --timing
-
-The build wraps the source in a read-only per-build cache: activity ranges
-are memoized and narrower ranges are served from a covering block, while
-intervals and laps are cached by activity id. `--timing` prints per-phase
-seconds and the number of cache misses.
-
-Pages:
-
-- `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
-  cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
-  the next 14 days; the main overview chart; the daily report; and the
-  planned workouts for the next 14 days. Upcoming races live on the
-  Performance tab.
-  The EWMA overview, the daily report, and the planned section are the
-  rendered `overview`, `daily`, and `planned` Markdown reports; the chart
-  uses the last 182 days plus the next 14 by default.
-- `activities.html` — the recent activity table (default 50) with workout
-  methods and targets, linked to per-activity pages.
-- `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
-  charts, plus the pace-vs-heart-rate scatter with its two regression halves
-  and two dashed efficiency lines, over the last two years
-  (`--analysis-days`, default 731).
-- `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
-  and efficiency EWMAs per category), the subT/LT1 chart, and the
-  `subT Report` over the last year.
-- `compare.html` — volume (km/week), time (hours/week), and efficiency EWMA lines
-  per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
-  182), with dashed projected volume/time lines that follow actual values
-  through today and then the plan, a Garmin VO2max line plot with one raw
-  value per activity, a pace-vs-heart-rate scatter coloured by year, plus the
-  year and month comparison reports (which include the period average
-  Garmin VO2max and a weighted efficiency column). All charts show only the
-  five most recent years by default; older years remain available from the
-  legend. The efficiency chart drops years with
-  fewer than 20 HR-backed runs and years without a resting-HR baseline
-  (currently 2022–2026 only, because resting HR starts in Sep 2022).
-- `activity/<id>.html` — the session report body (metrics, workout methods and
-  targets, zone times, description, the raw segment table, and subT/LT1
-  work reps),
-  exactly as `reports.sh session` renders it.
-- `performance.html` (Performance) — upcoming races, race results, personal
-  bests, a per-bucket PB progression chart, a log-log race chart with the
-  Riegel fit, and equivalent times. Results and PBs link to per-race pages
-  with splits and execution details.
-- `gear.html` (Gear) — gear mileage bars with target markers, the gear
-  table, per-year coverage with and without gear, and retirement candidates.
-- `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
-  the 365-day baseline column, and the last four nights), then HRV, resting
-  HR, and sleep as interactive plotly panels over the last 182 days
-  (`--recovery-days`) with 7-day averages, readiness bands, and a
-  data-completeness note.
-- `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML
-  with a table of contents. The overview, daily, planned, recovery, NSA, and
-  compare reports are embedded on their own pages, so there is no separate
-  Reports tab.
-- `lab.html` (Lab) — the experiments notebook from `experiments/README.md`,
-  the list of current experiment scripts with their one-line summaries, and
-  the metric registry from `docs/METRICS.md`, each with a contents list.
-- `health.html` (Data Health) — the open review queue (severity, category,
-  detail, linked activity, reported date), the activities hidden by review,
-  and missing-data counts.
-
-The `--reports` dashboard option is accepted as a compatibility no-op;
-those Markdown reports are already embedded on their relevant pages. The Docs
-tab renders the README; the Lab tab renders the experiments notebook, scripts
-and metric registry.
-
-The main chart shows daily running **minutes** on a **0–90 minute** axis,
-stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
-**unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
-running, with the hard lines in reds at the base and the total lines in blues
-above them, and the Garmin VO2max standing value as a black line on a second
-axis on the right. It defaults to **182 days back and 14 days forward**;
-`--chart-days` and `--future-days` change those. Planned workouts appear as
-hatched bars on days without a recorded run, including today, so an
-uncompleted planned session is visible; once a run is recorded, the actual bar
-replaces the plan bar. Events without pace zones count as unzoned.
-
-Charts are plotly figures built by one shared layer: the CLI writes PNGs via
-kaleido, and the dashboard embeds the exact same figures as HTML, so the
-overview can be zoomed and panned. The pages remain static snapshots: there
-is no client-side data fetching and no server-side report process.
-`plotly.min.js` is bundled into the generated site so it works offline.
-
-Generation builds a temporary directory and atomically swaps it into place.
-It refuses to replace a non-empty directory unless it is a previous
-dashboard (marked with `.hobbyjogging-dashboard`).
-
-The data-health banner counts activities with open review items, missing
-load, missing pace zones, missing HR, and missing distance. The individual
-queue is available through `DataSource.review_items(status="open",
-category=...)`, which returns `ReviewItem` objects; rendering the categories
-is a follow-up.
 
 ## Architecture
 
