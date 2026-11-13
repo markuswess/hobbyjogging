@@ -67,3 +67,14 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (needs canonical weight and max HR) | parked | — | 2026-11-13 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (needs canonical temperature; wind/rain/clouds are empty) | parked | — | 2026-11-13 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs canonical elevation) | parked | — | 2026-11-13 |
+
+### Rejected
+
+- **Efficiency frontier (best-run envelope)** — top-quartile quarterly
+  efficiency (equal-n, 590 steady runs, 2022Q4–2026Q4) is smoother in level
+  (SD 0.073 vs 0.086) but less reliable (split-half 0.60 vs 0.75) and tracks
+  the trend less well (slope 0.024 vs 0.042 per year, R² 0.18 vs 0.39); no
+  top-share from 10% to 50% beats the average. Sample-size bias was absent
+  (raw-frontier correlation with quarter n was −0.19, not positive). The
+  frontier is a stable level shift, not additional signal. Evidence:
+  `git show 143267d:experiments/efficiency_frontier.py`.
