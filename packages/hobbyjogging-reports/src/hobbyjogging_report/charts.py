@@ -1740,7 +1740,10 @@ def plot_pb_progressions(
                 marker={
                     "symbol": "circle-open",
                     "size": 6,
-                    "color": "#666666",
+                    "color": [
+                        PB_COLORS[bucket]
+                        for _step, _pace, bucket in visible
+                    ],
                 },
                 text=[
                     f"{step.activity.date} {step.activity.name or bucket}"
@@ -1763,7 +1766,10 @@ def plot_pb_progressions(
                 marker={
                     "symbol": "triangle-up",
                     "size": 9,
-                    "color": CLIPPED_COLOR,
+                    "color": [
+                        PB_COLORS[bucket]
+                        for _step, _pace, bucket in above
+                    ],
                 },
                 hovertext=[
                     f"{step.activity.date} {step.activity.name or bucket}"

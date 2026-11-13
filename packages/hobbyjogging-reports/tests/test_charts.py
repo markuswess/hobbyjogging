@@ -7,6 +7,7 @@ from pathlib import Path
 
 from hobbyjogging_report.charts import (
     PACE_HR_SYMBOLS,
+    PB_COLORS,
     _axis_ceiling,
     compare_color,
     plot_compare,
@@ -747,6 +748,7 @@ class PbProgressionChartTests(unittest.TestCase):
 
         self.assertEqual("markers", others["mode"])
         self.assertEqual("circle-open", others["marker"]["symbol"])
+        self.assertEqual([PB_COLORS["5k"]], others["marker"]["color"])
         self.assertNotIn("line", others)
         self.assertEqual(["2025-07-01"], others["x"])
         self.assertIn("20:50", others["text"][0])
@@ -768,6 +770,7 @@ class PbProgressionChartTests(unittest.TestCase):
         )
 
         self.assertEqual("triangle-up", above["marker"]["symbol"])
+        self.assertEqual([PB_COLORS["5k"]], above["marker"]["color"])
         self.assertEqual(["2025-08-01"], above["x"])
         self.assertIn("4:30/km, above the axis", above["hovertext"][0])
 

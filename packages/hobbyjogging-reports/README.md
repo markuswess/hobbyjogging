@@ -68,8 +68,8 @@ Pages:
   exactly as `reports.sh session` renders it.
 - `performance.html` (Performance) — upcoming races, race results, personal
   bests, a per-bucket PB progression chart in pace (5k/10k/HM/M only, with
-  the races that missed the line as hollow dots and slow ones above the
-  axis marked), a
+  the races that missed the line as hollow dots in the bucket's colour and
+  slow ones above the axis marked), a
   log-log race chart whose dashed Riegel line passes through the reference
   race and produces the equivalent times, and those times as a table.
   Results and PBs link to per-race pages
