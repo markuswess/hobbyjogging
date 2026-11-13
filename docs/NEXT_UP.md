@@ -145,6 +145,11 @@ Updated 2026-11-12.
   ride values differ by **+1.70 on average (range −0.52 .. +3.67)**, so they
   are a different series, not noise — yet the reports draw one VO2max line and
   the audit rules read one value.
+  - **Lab evidence** (`experiments/vo2max_jumps.py`): of all jumps of at least
+    1 ml/kg/min, **62 % are sport switches** — run→ride **+0.59**, ride→run
+    **−0.57** on average — and running-only jumps are **93 of 106 in
+    2019–2022**, which points at the older device era rather than at the
+    training.
   - **Investigate**: message 140 carries ~30 fields in a run file and ~60 in a
     ride file (`unknown_43..67` appear only for cycling), so the sport-specific
     value may be identifiable there; also check whether Intervals exposes more
@@ -431,6 +436,12 @@ Updated 2026-11-12.
      activity.
    - Start with the four with the best signal-to-noise — readiness,
      sleepScore, stress, respiration — and leave the rest behind a flag.
+   - **Canonical weight needs its own decision**: `weight` arrives in the
+     Intervals wellness payload and the sheet's `Gewicht nachher`, but nothing
+     decides it as a canonical field. If the lab's HR/economy VO2max idea is
+     ever pursued, weight and max HR are its blockers — max HR is item 6, so
+     weight needs an explicit choice of unit (kg), owner and source before it
+     feeds any derived metric.
 
 10. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
