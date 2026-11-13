@@ -2,7 +2,7 @@
 
 How hobbyjogging is put together and where it is heading. For the staged plan
 see [ROADMAP.md](ROADMAP.md); for working conventions see
-[../AGENTS.md](../AGENTS.md).
+[AGENTS.md](AGENTS.md).
 
 ## Goals
 
@@ -586,7 +586,8 @@ dashboard: the view models make it cheap to add later.
 ## Working conventions
 
 - Package-scoped changes happen in package sessions; cross-package contracts,
-  schema, and architecture happen at the repo root. Details in `AGENTS.md`.
+  schema, and architecture happen at the repo root. Details in
+  [AGENTS.md](AGENTS.md).
 - Tests are `unittest` (pytest is not installed) and run per package from its
   tests directory. All four suites must stay green for cross-package changes.
 - Commits follow session scope; the user pushes manually.
