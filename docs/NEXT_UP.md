@@ -136,6 +136,31 @@ Updated 2026-11-12.
   added the 2009–2021 log (1,292 activities, 10 equipment items, 1,842 shoe
   links). The review queue is empty.
 
+## Bugs
+
+- **VO2max is per sport, we store one series.** Garmin reports VO2max per sport,
+  but `activities.vo2max_garmin` is filled from FIT message 140 field 7 on
+  **every** activity regardless of sport: 482 rides, 22 swims, 21 trail runs,
+  plus walks, skis and a sail carry a value. Measured against nearby runs, the
+  ride values differ by **+1.70 on average (range −0.52 .. +3.67)**, so they
+  are a different series, not noise — yet the reports draw one VO2max line and
+  the audit rules read one value.
+  - **Investigate**: message 140 carries ~30 fields in a run file and ~60 in a
+    ride file (`unknown_43..67` appear only for cycling), so the sport-specific
+    value may be identifiable there; also check whether Intervals exposes more
+    than its single `VO2MaxGarmin`, and whether `vo2max_runalyze` is a running
+    value by definition.
+  - **Fix**: record the sport the value describes (`vo2max_garmin_sport`, or a
+    per-sport key) and attach a value only to an activity whose sport it
+    actually describes. Running stays the primary series; cycling becomes its
+    own.
+  - **Backfill**: re-key or clear the values on non-running activities once the
+    sport discriminator is known.
+  - **Reports**: label the series "Running VO2max", keep it to running
+    activities, and add the cycling series when it exists.
+  - **Tests**: a ride no longer inherits the running value, the run series is
+    unchanged, and the chart labels the sport.
+
 ## Next
 
 1. **Activity editing, CLI first** (core + import). The only manual write
