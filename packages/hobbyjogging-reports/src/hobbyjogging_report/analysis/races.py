@@ -124,18 +124,21 @@ def _qualifies_for_pb(result: RaceResult) -> bool:
 
 @dataclass(frozen=True)
 class PbProgression:
-    """Chronological PB improvements for one bucket."""
+    """Chronological PB improvements for one bucket, and the other races."""
 
     bucket: str
     steps: tuple[RaceResult, ...]
+    others: tuple[RaceResult, ...] = ()
 
 
 def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
     """Standard-distance PB improvements per bucket, oldest first.
 
     Only 5k/10k/HM/M produce a line. Trail and Other have no standard
-    distance, so a step there is a distance change, not a PB; their raw
-    times stay in the tables. Equal times do not advance a line.
+    distance, so a level there is a distance change, not a PB; their raw
+    times stay in the tables. Equal times do not advance a line. Every other
+    standard-distance race in the bucket is kept in ``others`` for the chart
+    to draw as a hollow dot.
     """
     ordered = sorted(
         (result for result in results if _qualifies_for_pb(result)),
@@ -146,6 +149,7 @@ def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
     )
     best: dict[str, RaceResult] = {}
     steps: dict[str, list[RaceResult]] = {}
+    others: dict[str, list[RaceResult]] = {}
 
     for result in ordered:
         current = best.get(result.bucket)
@@ -156,9 +160,15 @@ def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
         ):
             best[result.bucket] = result
             steps.setdefault(result.bucket, []).append(result)
+        else:
+            others.setdefault(result.bucket, []).append(result)
 
     return [
-        PbProgression(bucket, tuple(steps[bucket]))
+        PbProgression(
+            bucket,
+            tuple(steps[bucket]),
+            tuple(others.get(bucket, [])),
+        )
         for bucket in STANDARD_BUCKETS
         if bucket in steps
     ]

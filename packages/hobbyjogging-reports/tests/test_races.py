@@ -252,6 +252,42 @@ class RaceAnalysisTests(unittest.TestCase):
             [step.activity.duration_s for step in progressions[1].steps],
         )
 
+    def test_pb_progressions_keep_non_pb_races_in_others(self):
+        results = race_results(
+            [
+                _race(id="first", date=D, distance_m=5000, duration_s=1200),
+                _race(
+                    id="slower",
+                    date=D + timedelta(days=1),
+                    distance_m=5000,
+                    duration_s=1300,
+                ),
+                _race(
+                    id="tie",
+                    date=D + timedelta(days=2),
+                    distance_m=5000,
+                    duration_s=1200,
+                ),
+                _race(
+                    id="faster",
+                    date=D + timedelta(days=3),
+                    distance_m=5000,
+                    duration_s=1100,
+                ),
+            ]
+        )
+
+        progression = pb_progressions(results)[0]
+
+        self.assertEqual(
+            ["first", "faster"],
+            [step.activity.id for step in progression.steps],
+        )
+        self.assertEqual(
+            ["slower", "tie"],
+            [step.activity.id for step in progression.others],
+        )
+
     def test_pb_progressions_skip_trail_and_other(self):
         results = race_results(
             [

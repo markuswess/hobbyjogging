@@ -96,10 +96,13 @@ this list keeps the recent decisions only.
   gain is visible beside a marathon line, and only 5k/10k/HM/M get a line:
   Trail and Other have no standard distance, so a level there is a
   distance change, not a PB. Their fastest times stay in the tables as
-  `Trail (raw)` / `Other (raw)`. Equal times do not advance a line; tests
-  cover strict improvements, ties, bucket separation and short-course
-  rejection. The 2% tolerance inside a bucket waits for official race
-  distances (root item 18).
+  `Trail (raw)` / `Other (raw)`. Every other standard-distance race in the
+  bucket is a hollow dot, unconnected to the line, so a PB reads against
+  the races that missed it. The axis follows the PB lines, so a slower race
+  is a triangle at the top rather than stretching the chart. Equal times do
+  not advance a line; tests cover strict improvements, ties, bucket
+  separation and short-course rejection. The 2% tolerance inside a bucket
+  waits for official race distances (root item 18).
 
 ## Bugs
 

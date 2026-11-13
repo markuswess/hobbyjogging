@@ -1697,7 +1697,7 @@ def plot_pb_progressions(
 ) -> str:
     """PB improvements in pace, one connected line per standard bucket."""
     _require_data(progressions)
-    paces = [
+    pb_paces = [
         pace
         for progression in progressions
         for step in progression.steps
@@ -1709,8 +1709,70 @@ def plot_pb_progressions(
         )
         is not None
     ]
-    tickvals, ticktext = _pace_ticks(min(paces), max(paces))
+    others = [
+        (step, pace, progression.bucket)
+        for progression in progressions
+        for step in progression.others
+        if (
+            pace := pace_s_per_km(
+                step.activity.duration_s,
+                step.activity.distance_m,
+            )
+        )
+        is not None
+    ]
+    # The axis follows the PB lines; a slow race above them is marked rather
+    # than allowed to flatten the progression.
+    pad = max((max(pb_paces) - min(pb_paces)) * 0.05, 3.0)
+    top = max(pb_paces) + pad
+    tickvals, ticktext = _pace_ticks(min(pb_paces), top)
+    visible = [row for row in others if row[1] <= top]
+    above = [row for row in others if row[1] > top]
     figure = go.Figure()
+
+    if visible:
+        figure.add_trace(
+            go.Scatter(
+                x=[step.activity.date for step, _pace, _bucket in visible],
+                y=[pace for _step, pace, _bucket in visible],
+                mode="markers",
+                name="non-PB races",
+                marker={
+                    "symbol": "circle-open",
+                    "size": 6,
+                    "color": "#666666",
+                },
+                text=[
+                    f"{step.activity.date} {step.activity.name or bucket}"
+                    f"<br>{step.activity.distance_m / 1000:.2f} km, "
+                    f"{fmt_clock(step.activity.duration_s)}"
+                    f" · {format_pace(pace)}/km"
+                    for step, pace, bucket in visible
+                ],
+                hoverinfo="text",
+            )
+        )
+
+    if above:
+        figure.add_trace(
+            go.Scatter(
+                x=[step.activity.date for step, _pace, _bucket in above],
+                y=[top * 0.98] * len(above),
+                mode="markers",
+                name=f"{len(above)} races above the axis",
+                marker={
+                    "symbol": "triangle-up",
+                    "size": 9,
+                    "color": CLIPPED_COLOR,
+                },
+                hovertext=[
+                    f"{step.activity.date} {step.activity.name or bucket}"
+                    f"<br>{format_pace(pace)}/km, above the axis"
+                    for step, pace, bucket in above
+                ],
+                hoverinfo="text",
+            )
+        )
 
     for progression in progressions:
         steps = progression.steps
@@ -1757,11 +1819,10 @@ def plot_pb_progressions(
             font={"size": 10, "color": color},
         )
 
-    pad = max((max(paces) - min(paces)) * 0.05, 3.0)
     figure.update_xaxes(title_text="date")
     figure.update_yaxes(
         title_text="pace (min/km)",
-        range=[min(paces) - pad, max(paces) + pad],
+        range=[min(pb_paces) - pad, top],
         tickvals=tickvals,
         ticktext=ticktext,
     )

@@ -677,6 +677,22 @@ class PbProgressionChartTests(unittest.TestCase):
                 workout_methods=["race"],
             ),
             Activity(
+                id="near",
+                date=date(2025, 7, 1),
+                type="run",
+                distance_m=5000,
+                duration_s=1250,
+                workout_methods=["race"],
+            ),
+            Activity(
+                id="slow",
+                date=date(2025, 8, 1),
+                type="run",
+                distance_m=5000,
+                duration_s=1350,
+                workout_methods=["race"],
+            ),
+            Activity(
                 id="trail",
                 date=date(2025, 10, 1),
                 type="trail_run",
@@ -714,6 +730,46 @@ class PbProgressionChartTests(unittest.TestCase):
             "20:00 " + chr(92) + "u00b7 4:00" + slash + "km",
             html,
         )
+
+    def test_non_pb_races_are_hollow_dots_without_a_line(self):
+        html = plot_pb_progressions(
+            self._progressions(),
+            "",
+            as_html=True,
+        )
+        index = html.find("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.find("[", index):]
+        )
+        others = next(
+            trace for trace in data if trace.get("name") == "non-PB races"
+        )
+
+        self.assertEqual("markers", others["mode"])
+        self.assertEqual("circle-open", others["marker"]["symbol"])
+        self.assertNotIn("line", others)
+        self.assertEqual(["2025-07-01"], others["x"])
+        self.assertIn("20:50", others["text"][0])
+
+    def test_slow_non_pb_races_are_marked_above_the_axis(self):
+        html = plot_pb_progressions(
+            self._progressions(),
+            "",
+            as_html=True,
+        )
+        index = html.find("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.find("[", index):]
+        )
+        above = next(
+            trace
+            for trace in data
+            if trace.get("name") == "1 races above the axis"
+        )
+
+        self.assertEqual("triangle-up", above["marker"]["symbol"])
+        self.assertEqual(["2025-08-01"], above["x"])
+        self.assertIn("4:30/km, above the axis", above["hovertext"][0])
 
     def test_writes_file(self):
         with tempfile.TemporaryDirectory() as tmp:
