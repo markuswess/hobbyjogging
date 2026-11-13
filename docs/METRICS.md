@@ -13,6 +13,9 @@ when all four hold:
 3. it beats the naive version on the real data;
 4. it will be looked at weekly.
 
+The candidate list lives in `experiments/README.md`; this file records only
+what was promoted or rejected.
+
 Promotion is staged: pure function in `analysis/` with tests → cheapest
 renderer (a CLI report or one column) → live with it for a week → charts →
 dashboard. The dashboard is the last step, never the first.
@@ -111,10 +114,6 @@ dashboard. The dashboard is the last step, never the first.
   efficiency lines, annotated with `E`, median RHR and the steady band; the
   scatter still shows every run, and outlined points mark the steady-band
   inputs to the lines. The CLI prints the same parameters and the band.
-
-## Candidates
-
-_None._
 
 ## Rejected
 
