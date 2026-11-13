@@ -371,34 +371,24 @@ items 24 and 25. Only **12** and **13** can be done in this package today.
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
-13. **Two-timescale Riegel fit.** `fit_riegel()` fits log time against log
-    distance over every race in the log, so a 2011 5k and last month's 10k carry
-    equal weight: the exponent describes the whole history and the line's level
-    is set by old form. A hard recent window was measured and rejected — the
-    last 24 months hold only 5k/10k/trail races (n=9), so the exponent collapses
-    to 1.011 and extrapolates a marathon to 2:27 from a 2× distance span. Split
-    the two estimates instead.
-    - **Exponent (shape)**: all races, full distance span, optionally
-      age-weighted with a 2-year half-life. Unweighted the real data gives
-      1.059 / R² 0.92; weighted 1.101 / 0.91, which puts the marathon at 2:47:48
-      against a 2:50:32 PB.
-    - **Level (current form)**: with the exponent fixed, take the median of
-      `log t − β log d` over the recent window — the last 12 months, widened
-      until at least three races. The median means one good or bad day moves
-      the level by one rank, not by its magnitude.
-    - **Line and table**: `t = exp(A) · d^β` draws the line *and* produces the
-      equivalent times, so they can no longer disagree — today the table is
-      anchored on the most recent 10k while the line is a free fit.
-    - **Chart**: keep every race in the scatter, emphasise the recent-window
-      points, and label `β from all races (n=12, 5k–M) · level from the last 12
-      months (n=4) · level spread ±1.4%`. The residual spread is the honest
-      uncertainty on current form; the fit's R² describes the shape, not the
-      level.
-    - **PBs** stay all-time and unweighted.
-    - **Tests**: a recent outlier moves the level but not the exponent; an old
-      outlier moves neither much; the window widens when recent races are
-      sparse; the label carries both windows and n; PBs are unchanged; the CLI
+13. **Race plot: draw the prediction line, not the free fit.** The Performance
+    tab's log-log chart draws `fit_riegel()`'s free least-squares line, while the
+    equivalent-time table is anchored at the most recent 10k. Two different
+    lines, so the chart contradicts the table. Draw the line the predictions
+    actually use — through the reference race with the fitted exponent,
+    `t = t_ref · (d/d_ref)^β` — and label it with that race and its date. One
+    line on the chart, not two.
+    - Mark the reference race in the scatter so it is visible which point the
+      line passes through.
+    - The estimator stays as it is for now. The open questions — age-weighting
+      the exponent, splitting shape from level, and the measured collapse of a
+      hard recent window (the last 24 months hold only 5k/10k/trail, n=9, which
+      puts a marathon at 2:27 from a 2× span) — go to the lab as an experiment,
+      not into the report.
+    - Tests: the plotted line passes through the reference race; the line and
+      the equivalent-time table agree at every standard distance; the CLI
       `races` report and the Performance tab agree.
+
 
 ## Tests and docs
 
