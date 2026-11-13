@@ -1,7 +1,7 @@
 # Architecture
 
-How hobbyjogging is put together and where it is heading. For the staged plan
-see [ROADMAP.md](ROADMAP.md); for working conventions see
+How hobbyjogging is put together and where it is heading. For the work queue
+see [NEXT_UP.md](NEXT_UP.md); for working conventions see
 [AGENTS.md](AGENTS.md).
 
 ## Goals
@@ -18,6 +18,24 @@ see [ROADMAP.md](ROADMAP.md); for working conventions see
   independently of the established platforms.
 - Independence from hardware manufacturers and platforms for training
   planning and analysis, while still using the features they offer.
+
+## Stages
+
+The work has moved in six stages. **Canonical pipeline**: one SQLite database
+as the single ground truth, several sources merged into one activity with
+provenance kept and conflicts surfaced, and a review workflow that makes the
+data trustworthy. **Review and editing**: triage, manual overrides that survive
+reimports, durable exclusion, and activity linking. **Reports and dashboard**:
+Markdown reports, charts and a static dashboard over the same analysis layer.
+**More sources**: the FIT archive, Intervals.icu and the Garmin Personal API are
+in, the historical spreadsheet is imported, and Runalyze enrichment waits on API
+details. **Race tracking**: planned races linked to the completed activities,
+official results, and race reports. **Later**: platform independence (owning
+edits, comments, planning and subjective wellness locally), a small front end
+over the database, and a deterministic LLM coaching bundle. The first three are
+done, the fourth and fifth are in progress, and the last is deliberately
+dormant; the stage-level work lives in [NEXT_UP.md](NEXT_UP.md), while this file
+records the structure and the rules.
 
 ## Where the data comes from
 
@@ -551,8 +569,7 @@ dashboard: the view models make it cheap to add later.
   comparison, and the static dashboard; report code is split per report.
 - The review queue is currently empty; reports still hide activities with
   open items by default (`--include-review` shows them).
-- Remaining: Runalyze enrichment (API details), the dashboard's review-queue
-  rendering, and the homelab cutover.
+- Remaining: Runalyze enrichment (API details) and the homelab cutover.
 
 ## Deployment
 

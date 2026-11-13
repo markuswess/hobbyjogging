@@ -578,8 +578,7 @@ Updated 2026-11-12.
    - **Tests**: writer idempotency, `race_results()` returns the stored row,
      PB/bucket/Riegel prefer official values, the GPS fallback is unchanged,
      and the race report shows both values.
-   - **Docs**: the race-tracking section in `ROADMAP.md` and the reports
-     README's race section.
+   - **Docs**: the reports README's race section.
 
 19. **Retire the redundant sheet tags** (core + import + maintenance + reports).
     `activity_tags` still holds the sheet's `Trainigstyp` codes — 890 `w`,
