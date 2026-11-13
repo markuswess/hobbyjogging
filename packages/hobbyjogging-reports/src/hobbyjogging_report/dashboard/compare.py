@@ -80,6 +80,7 @@ def build_compare_section(
             today=today,
             title=f"Year comparison — {metric}, {window}-day EWMA",
             planned_series=compare_year_planned_ewma(
+                activities,
                 events,
                 metric,
                 window,

@@ -163,25 +163,38 @@ def compare_periods(
 
 
 def compare_year_planned_ewma(
+    activities: list[Activity],
     events: list[Event],
     metric: str,
     window: int,
     *,
     today: date | None = None,
 ) -> list[tuple[int, list[tuple[date, float]]]]:
-    """Planned volume/time EWMA per calendar year.
+    """Projected volume/time EWMA: actual history, then the planned future.
 
-    Each year's line starts on its first planned run and ends on the last
-    one, so incomplete historical planning is not padded with months of
-    zeros. When ``today`` is supplied, only the current and future years are
-    returned; older event imports are often incomplete.
+    The line follows the actual EWMA through today and switches to planned
+    values from tomorrow, unless today has no recorded run, in which case
+    today's planned value is used too. The result is what the EWMA would be
+    if the remaining plan were followed exactly. Only current and future
+    years are returned; older event imports are often incomplete.
     """
     if metric not in ("volume", "time"):
         return []
     if window <= 0:
         raise ValueError("window must be positive")
 
-    runs = [
+    today = today or date.today()
+    activity_dates = [
+        activity.date
+        for activity in activities
+        if activity.type in RUN_TYPES
+        and (
+            (activity.distance_m or 0) > 0
+            if metric == "volume"
+            else (activity.duration_s or 0) > 0
+        )
+    ]
+    run_events = [
         event
         for event in events
         if event.type in RUN_TYPES
@@ -191,31 +204,71 @@ def compare_year_planned_ewma(
             else (event.duration_s or 0) > 0
         )
     ]
-    by_year: dict[int, list[Event]] = {}
 
-    for event in runs:
-        by_year.setdefault(event.date.year, []).append(event)
+    if not activity_dates and not run_events:
+        return []
+
+    start_year = (
+        min(day.year for day in activity_dates)
+        if activity_dates
+        else min(event.date.year for event in run_events)
+    )
+    start = date(start_year, 1, 1)
+
+    actual_today = _daily_metric(
+        activities,
+        metric,
+        today,
+        today,
+    )[0][1]
+    actual_end = today if actual_today > 0 else today - timedelta(days=1)
+    actual_daily = (
+        _daily_metric(activities, metric, start, actual_end)
+        if start <= actual_end
+        else []
+    )
+    planned_start = actual_end + timedelta(days=1)
+    planned_end = max(
+        (event.date for event in run_events),
+        default=actual_end,
+    )
+    planned_daily = (
+        _daily_event_metric(
+            run_events,
+            metric,
+            planned_start,
+            planned_end,
+        )
+        if planned_start <= planned_end
+        else []
+    )
+
+    if not planned_daily:
+        return []
+
+    daily = actual_daily + planned_daily
+    values = [value for _, value in daily]
+    smoothed = ewma(
+        values,
+        alpha_from_time_constant(window),
+        initial=values[0],
+    )
+    by_year: dict[int, list[tuple[date, float]]] = {}
+
+    for (day, _), value in zip(daily, smoothed):
+        by_year.setdefault(day.year, []).append((day, value))
 
     series = []
+    close = None
 
-    for year in sorted(by_year):
-        if today is not None and year < today.year:
-            continue
+    for year, points in sorted(by_year.items()):
+        if close is not None:
+            points = [(points[0][0], close), *points[1:]]
 
-        year_events = sorted(by_year[year], key=lambda event: event.date)
-        first = year_events[0].date
-        last = year_events[-1].date
-        daily = _daily_event_metric(year_events, metric, first, last)
-        values = [value for _, value in daily]
-        smoothed = ewma(
-            values,
-            alpha_from_time_constant(window),
-            initial=values[0],
-        )
+        if year >= today.year:
+            series.append((year, points))
 
-        series.append(
-            (year, list(zip([day for day, _ in daily], smoothed)))
-        )
+        close = points[-1][1]
 
     return series
 

@@ -113,8 +113,10 @@ HTML dashboard:
 - **compare** — One EWMA line per calendar year over a fixed Jan–Dec axis;
   `--metric volume|time|load|runs|efficiency` and `--window N` (default 182)
   choose the metric and smoothing. The time chart is in minutes per day.
-  Volume and time also draw dashed planned lines for the current and future
-  years, from the planned events. The EWMA is computed over the whole history, so
+  Volume and time also draw dashed projection lines for the current and
+  future years: actual values through today, then the planned events. If
+  today has no run yet, today's planned value is used. The EWMA is computed
+  over the whole history, so
   each year starts on the previous year's closing value. Only the five most
   recent years are visible by default; older years stay in the legend and can
   be enabled there. The current year is partial and marks today.
@@ -652,8 +654,8 @@ Pages:
   `subT Report` over the last year.
 - `compare.html` — volume, time (minutes/day), and efficiency EWMA lines
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
-  182), with dashed planned lines for the current and future years on volume
-  and time, a
+  182), with dashed projected volume/time lines that follow actual values
+  through today and then the plan, a
   pace-vs-heart-rate scatter coloured by year, plus the year and month
   comparison reports (which now include a weighted efficiency column). All
   four charts show only the five most recent years by default; older years

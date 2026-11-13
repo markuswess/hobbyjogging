@@ -18,45 +18,107 @@ activity = activity_factory()
 
 class ComparePlannedEwmaTests(unittest.TestCase):
 
-    def test_planned_volume_is_zero_filled_and_sliced_by_year(self):
+    def _run(self, day, distance_m=10000, ident=None):
+        return activity(
+            id=ident or f"run-{day}",
+            date=day,
+            duration_s=3600,
+            distance_m=distance_m,
+            avg_hr=150,
+        )
+
+    def test_projection_uses_actuals_until_today_then_the_plan(self):
+        today = date(2026, 1, 3)
+        activities = [
+            self._run(date(2026, 1, 1)),
+            self._run(date(2026, 1, 2)),
+        ]
         events = [
             Event(
-                date=date(2026, 1, 1),
-                type="run",
-                distance_m=10000,
-            ),
-            Event(
-                date=date(2026, 1, 3),
+                date=today,
                 type="run",
                 distance_m=20000,
             ),
             Event(
-                date=date(2027, 1, 2),
+                date=date(2026, 1, 4),
                 type="run",
-                distance_m=12000,
+                distance_m=20000,
             ),
         ]
 
-        series = compare_year_planned_ewma(events, "volume", 42)
-        years = [year for year, _ in series]
-        first = dict(series[0][1])
-        second = dict(series[1][1])
+        projection = dict(
+            compare_year_planned_ewma(
+                activities,
+                events,
+                "volume",
+                42,
+                today=today,
+            )[0][1]
+        )
+        actual = dict(
+            compare_year_ewma(
+                activities,
+                "volume",
+                42,
+                today=today,
+            )[0][1]
+        )
 
-        self.assertEqual([2026, 2027], years)
-        self.assertEqual(10.0, first[date(2026, 1, 1)])
-        self.assertLess(first[date(2026, 1, 2)], 10.0)
-        self.assertGreater(first[date(2026, 1, 3)], first[date(2026, 1, 2)])
-        self.assertGreater(second[date(2027, 1, 2)], 0)
+        # The history before today is unchanged.
+        self.assertEqual(actual[date(2026, 1, 1)], projection[date(2026, 1, 1)])
+        self.assertEqual(actual[date(2026, 1, 2)], projection[date(2026, 1, 2)])
+        # Today had no workout, so the planned 20 km is used.
+        self.assertGreater(
+            projection[date(2026, 1, 3)],
+            actual[date(2026, 1, 3)],
+        )
 
-    def test_planned_series_can_be_limited_to_current_and_future(self):
+    def test_an_actual_workout_today_wins_over_the_plan(self):
+        today = date(2026, 1, 3)
+        activities = [
+            self._run(date(2026, 1, 1)),
+            self._run(date(2026, 1, 2)),
+            self._run(today, distance_m=10000),
+        ]
         events = [
             Event(
-                date=date(2025, 6, 1),
+                date=today,
                 type="run",
-                distance_m=10000,
+                distance_m=50000,
             ),
             Event(
-                date=date(2026, 1, 1),
+                date=date(2026, 1, 4),
+                type="run",
+                distance_m=20000,
+            ),
+        ]
+
+        projection = dict(
+            compare_year_planned_ewma(
+                activities,
+                events,
+                "volume",
+                42,
+                today=today,
+            )[0][1]
+        )
+        actual = dict(
+            compare_year_ewma(
+                activities,
+                "volume",
+                42,
+                today=today,
+            )[0][1]
+        )
+
+        self.assertEqual(actual[date(2026, 1, 3)], projection[date(2026, 1, 3)])
+
+    def test_projection_continues_into_next_year(self):
+        today = date(2026, 12, 31)
+        activities = [self._run(date(2026, 12, 30))]
+        events = [
+            Event(
+                date=today,
                 type="run",
                 distance_m=10000,
             ),
@@ -68,30 +130,34 @@ class ComparePlannedEwmaTests(unittest.TestCase):
         ]
 
         series = compare_year_planned_ewma(
+            activities,
             events,
             "volume",
             42,
-            today=date(2026, 6, 1),
+            today=today,
         )
 
         self.assertEqual([2026, 2027], [year for year, _ in series])
+        self.assertGreater(dict(series[1][1])[date(2027, 1, 2)], 0)
 
     def test_only_volume_and_time_have_planned_series(self):
-        events = [
-            Event(
-                date=date(2026, 1, 1),
-                type="run",
-                distance_m=10000,
-            )
-        ]
-
         self.assertEqual(
             [],
-            compare_year_planned_ewma(events, "efficiency", 42),
+            compare_year_planned_ewma(
+                [],
+                [Event(date=date(2026, 1, 1), type="run", distance_m=10000)],
+                "efficiency",
+                42,
+            ),
         )
         self.assertEqual(
             [],
-            compare_year_planned_ewma(events, "load", 42),
+            compare_year_planned_ewma(
+                [],
+                [Event(date=date(2026, 1, 1), type="run", distance_m=10000)],
+                "load",
+                42,
+            ),
         )
 
 
