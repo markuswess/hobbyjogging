@@ -1967,6 +1967,12 @@ def plot_recovery(
     )
     bands = recovery_bands(baseline_points or points)
     band_sets = (bands.hrv, bands.resting_hr, bands.sleep_s)
+    range_start = min(point.date for point in points)
+    range_end = max(point.date for point in points)
+
+    if planned_dates:
+        range_start = min(range_start, min(planned_dates))
+        range_end = max(range_end, max(planned_dates))
 
     for row, (raw_attr, average_attr, scale, unit, color) in enumerate(
         metrics,
@@ -1996,6 +2002,7 @@ def plot_recovery(
                     marker={"color": color, "size": 4, "opacity": 0.45},
                     name="daily",
                     showlegend=False,
+                    cliponaxis=False,
                 ),
                 row=row,
                 col=1,
@@ -2075,7 +2082,12 @@ def plot_recovery(
                 line={"color": "black", "width": 2},
             )
 
-    figure.update_xaxes(title_text="date", row=3, col=1)
+    figure.update_xaxes(
+        title_text="date",
+        range=[range_start, range_end],
+        row=3,
+        col=1,
+    )
     figure.update_layout(
         template="plotly_white",
         title=title,

@@ -282,6 +282,10 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn('<h3>Night</h3>', recovery)
             self.assertIn("2026-11-08: HRV 60 ms, RHR 45 bpm, Sleep 8h00", recovery)
             self.assertIn("2 of 182 days have wellness data", recovery)
+            self.assertIn(
+                '"range":["2026-11-07","2026-11-08"]',
+                recovery,
+            )
             self.assertIn("Plotly.newPlot", recovery)
             self.assertNotIn('class="grid"', recovery)
 

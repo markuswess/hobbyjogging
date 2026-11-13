@@ -915,6 +915,54 @@ class RecoveryChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
+    def test_recovery_chart_axis_matches_the_points(self):
+        points = [
+            RecoveryPoint(
+                D,
+                hrv=50,
+                resting_hr=45,
+                sleep_s=7 * 3600,
+                hrv_avg=50,
+                resting_hr_avg=45,
+                sleep_avg=7 * 3600,
+            ),
+            RecoveryPoint(
+                date(2026, 1, 3),
+                hrv=55,
+                resting_hr=46,
+                sleep_s=8 * 3600,
+                hrv_avg=52.5,
+                resting_hr_avg=45.5,
+                sleep_avg=7.5 * 3600,
+            ),
+        ]
+
+        html = plot_recovery(points, "", as_html=True)
+
+        self.assertIn('"range":["2026-01-01","2026-01-03"]', html)
+
+    def test_recovery_chart_axis_keeps_planned_dates_visible(self):
+        points = [
+            RecoveryPoint(
+                D,
+                hrv=50,
+                resting_hr=45,
+                sleep_s=7 * 3600,
+                hrv_avg=50,
+                resting_hr_avg=45,
+                sleep_avg=7 * 3600,
+            )
+        ]
+
+        html = plot_recovery(
+            points,
+            "",
+            planned_dates=[date(2026, 1, 10)],
+            as_html=True,
+        )
+
+        self.assertIn('"range":["2026-01-01","2026-01-10"]', html)
+
     def test_recovery_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

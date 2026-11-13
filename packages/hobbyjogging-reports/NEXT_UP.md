@@ -196,6 +196,10 @@ Current focus: the dashboard's gear/devices and race work.
   no-op. A **Lab** tab follows Docs and renders `experiments/README.md`, the
   experiment script index with one-line summaries, and the metric registry
   from `docs/METRICS.md`, with its own contents list.
+- **Recovery chart axis matches the data.** The date axis is pinned to the
+  first and last wellness point instead of Plotly's padded auto-range, so the
+  line fills the panel; planned workout ticks still extend the end when the
+  CLI asks for them.
 - **Recovery window one source of truth.** `RECOVERY_DAYS`, the
   `--recovery-days` default, `dashboard.sh` help, and the README now derive
   from `recovery_report.WINDOWS[-1]` (182), matching the embedded report's
