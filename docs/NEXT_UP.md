@@ -775,6 +775,28 @@ Updated 2026-11-12.
     - **Tests**: bound the query count on the demo database, so a new N+1 fails
       the suite instead of the wall clock.
 
+28. **Periodic cleanup pass** (all packages + docs; recurring). Nothing guards
+    readability today: no linter is configured, and the documentation has
+    started to duplicate itself. Neither is a fire, but both drift in one
+    direction.
+    - **Docs**: the `## Done` sections are 160, 90, 25 and 232 lines in the four
+      `NEXT_UP.md` files and restate git history; trim them to a short "recently
+      landed" list or drop them, keeping only what a reader needs for context.
+      Also sweep for facts stated twice (the reports pointer, the roadmap that
+      was folded into ARCHITECTURE).
+    - **Code**: audit the ~108 names re-exported from
+      `hobbyjogging_report.analysis.__init__` for dead exports, then delete
+      unused helpers, parameters and flags. No `TODO`/`FIXME` markers exist
+      today — keep it that way.
+    - **Mechanical guard**: propose `ruff` (lint and format check) in CI. It
+      would catch unused imports and variables and enforce a line length, but
+      expect a first pass of violations and some config churn; decide whether
+      that is worth it before wiring it into the test job.
+    - **Cadence**: one pass at each release tag (item 22), plus the boy-scout
+      rule already in `AGENTS.md` — leave a file no worse than you found it.
+    - **Acceptance**: no dead exports, no duplicated doc sections, no file that
+      has outgrown its purpose without being split or trimmed.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

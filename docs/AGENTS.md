@@ -50,6 +50,25 @@ Rules:
 - Record a deferral with its reason in that package's `NEXT_UP.md` (for example
   "needs elevation data"), so the next session does not re-discover it.
 
+## Keeping it readable
+
+Neither the code nor the docs may become an unreadable monster. A periodic
+cleanup pass is part of the todo list, not a rewrite project.
+
+- **Delete rather than comment out.** Dead code, unused helpers, unused
+  exports and stale flags go in the same change that notices them.
+- **No speculative abstraction.** Add an indirection when a second caller
+  exists, not before.
+- **One fact, one place.** `NEXT_UP.md` owns the work queue, `METRICS.md` the
+  metric cards, `ARCHITECTURE.md` the structure and rules, `AGENTS.md` the
+  conventions. Do not restate another document's content; point at it.
+- **Keep the Done lists short.** Git history is the changelog; a long `## Done`
+  section is duplication that rots.
+- **Split or trim in the same change.** If a file outgrows its purpose while
+  you are working in it, fix that there — do not leave it for later.
+- **Leave it no worse.** A touch-up is welcome, a drive-by rewrite that mixes
+  concerns with a fix is not.
+
 ## Packages
 
 - `packages/hobbyjogging-core` — canonical model, schema/migrations, sport
