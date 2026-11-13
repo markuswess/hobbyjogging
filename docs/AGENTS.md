@@ -13,11 +13,12 @@ The project runs three kinds of sessions:
 - **Package** (`packages/<pkg>`) — work confined to one package: features, bug
   fixes, tests, and package docs. One session per package.
 - **Lab** — exploring metrics and analysis before they enter a package:
-  `./lab.sh` sessions, `experiments/` scripts, and candidate cards in
-  `docs/METRICS.md`. The lab may read the whole repo and write experiments and
-  docs, but it does not change package code; promotion happens in the package
-  session once an idea passes the gate in `docs/METRICS.md` (see
-  `docs/ARCHITECTURE.md`).
+  `./lab.sh` sessions, `experiments/` scripts, and the candidate list in
+  `experiments/README.md`. The lab may read the whole repo and write
+  experiments and lab docs, but it does not change package code; promotion
+  happens in the package session once an idea passes the gate in
+  `docs/METRICS.md` (see `docs/ARCHITECTURE.md`). The root session writes and
+  commits the promoted/rejected cards in `docs/METRICS.md`.
 
 Rules:
 
