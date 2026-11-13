@@ -155,12 +155,13 @@ COMMANDS = {
         "dashboard",
         "Generate the static HTML dashboard",
         "dashboard [--output DIR] [--days N] [--activities N] "
-        "[--chart-days N] [--future-days N]",
+        "[--chart-days N] [--future-days N] [--timing]",
         (
             "dashboard.sh",
             "dashboard.sh --days 30 --activities 100",
             "dashboard.sh --chart-days 90 --future-days 21",
             "dashboard.sh --output /tmp/dashboard",
+            "dashboard.sh --timing",
         ),
         parse=parse_dashboard_args,
         run=run_dashboard_command,

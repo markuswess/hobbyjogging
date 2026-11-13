@@ -679,6 +679,12 @@ dashboard builds are unchanged.
     ./dashboard.sh --chart-days 90 --future-days 21
     ./dashboard.sh --output /tmp/dashboard
     ./dashboard.sh --demo-label "Synthetic demo data"
+    ./dashboard.sh --timing
+
+The build wraps the source in a read-only per-build cache: activity ranges
+are memoized and narrower ranges are served from a covering block, while
+intervals and laps are cached by activity id. `--timing` prints per-phase
+seconds and the number of cache misses.
 
 Pages:
 

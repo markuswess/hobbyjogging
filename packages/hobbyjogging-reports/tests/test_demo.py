@@ -10,6 +10,7 @@ from hobbyjogging_report.commands import COMMANDS
 from hobbyjogging_report.demo import generate_demo_database
 from hobbyjogging_report.dashboard import build_dashboard
 from hobbyjogging_report.sources import create_source
+from hobbyjogging_report.sources.cache import CachedDataSource
 
 TODAY = date(2026, 11, 12)
 
@@ -448,19 +449,43 @@ class DemoGeneratorTests(unittest.TestCase):
             )
             site = Path(tmp) / "site"
             source = create_source(database_path=summary.path)
+            cached = CachedDataSource(source)
+            timings: dict[str, float] = {}
 
             try:
                 build_dashboard(
-                    source,
+                    cached,
                     site,
                     days=14,
                     activity_limit=20,
                     chart_days=90,
                     today=TODAY,
                     demo_label="Synthetic demo data",
+                    timings=timings,
                 )
             finally:
                 source.close()
+
+            self.assertLessEqual(cached.query_counts["activities"], 10)
+            self.assertLessEqual(
+                cached.query_counts["activity_intervals"],
+                1200,
+            )
+            self.assertLessEqual(cached.query_counts["activity_laps"], 40)
+            self.assertGreaterEqual(
+                set(timings),
+                {
+                    "data",
+                    "recovery",
+                    "analysis",
+                    "nsa",
+                    "compare",
+                    "performance",
+                    "reports",
+                    "health+gear",
+                    "pages",
+                },
+            )
 
             for name in (
                 "index.html",

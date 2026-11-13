@@ -241,6 +241,14 @@ Current focus: the dashboard's gear/devices and race work.
   `docs/ARCHITECTURE.md` records that laps are device splits and intervals
   are Intervals.icu's typed reps.
 
+- **Per-build dashboard cache and timing.** `CachedDataSource` memoizes
+  activity ranges (serving narrower requests from a covering block) plus
+  intervals and laps by id; the dashboard command wraps the source in it.
+  On the real database a build dropped from ~6,800 queries / ~5 s to about
+  3,400 interval, 6 activity-range and 93 lap misses / ~1.4 s. `--timing`
+  prints per-phase seconds and miss counts, and the demo build test bounds
+  the misses.
+
 ## Bugs
 
 _None._
@@ -318,14 +326,6 @@ _None._
    Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
    weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
    Coaching and Metrics tabs once they exist. See root item 26.
-
-14. **Per-build cache and timing.** A dashboard build issues 6,803 queries:
-   4,457 `activity_intervals` calls, 219 `activities()` range loads, 95 lap
-   loads, for ~5 s. Add a read-only per-build cache on `DataSource`
-   (`activities()` by range, intervals and laps by id), a `--timing` summary
-   per phase, and a test bounding the query count on the demo database. Do the
-   cache before touching the analysis code — it removes most of the work
-   without changing any result. See root item 27.
 
 ## Tests and docs
 

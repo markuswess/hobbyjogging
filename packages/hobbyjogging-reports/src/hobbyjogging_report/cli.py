@@ -271,6 +271,7 @@ def parse_dashboard_args(
     )
     parser.add_argument("--analysis-days", type=int, default=731)
     parser.add_argument("--compare-window", type=int, default=182)
+    parser.add_argument("--timing", action="store_true")
     parser.add_argument("--reports")
     parser.add_argument("--demo-label")
     args = parser.parse_args(argv)
@@ -314,6 +315,7 @@ def parse_dashboard_args(
         args.recovery_days,
         args.analysis_days,
         args.compare_window,
+        args.timing,
         reports,
         args.demo_label,
     )

@@ -20,6 +20,7 @@ All options other than --no-open are passed to the dashboard command:
   --recovery-days N  recovery plot history in days (default 182)
   --analysis-days N  analysis tab history in days (default 731)
   --compare-window N compare chart EWMA window in days (default 182)
+  --timing           print per-phase build time and query misses
   --demo-label TEXT  banner on every page (for the synthetic demo)
   --source database|intervals
   --include-review

@@ -1,5 +1,7 @@
 """Report command handlers."""
 
+import sys
+
 from .activity_list import activities_report
 from .command_support import reviewed_range
 from .compare import compare_report
@@ -125,11 +127,16 @@ def run_dashboard_command(parsed, source, include_review):
         recovery_days,
         analysis_days,
         compare_window,
+        timing,
         reports,
         demo_label,
     ) = parsed
+    from .sources.cache import CachedDataSource
+
+    cached = CachedDataSource(source)
+    phases: dict[str, float] = {}
     path = build_dashboard(
-        source,
+        cached,
         output,
         days=days,
         activity_limit=activity_limit,
@@ -141,8 +148,18 @@ def run_dashboard_command(parsed, source, include_review):
         reports=reports,
         include_review=include_review,
         demo_label=demo_label,
+        timings=phases if timing else None,
     )
     print(path)
+
+    if timing:
+        from .dashboard import format_build_timing
+
+        print(
+            format_build_timing(phases, cached.query_counts),
+            file=sys.stderr,
+        )
+
     return None
 
 

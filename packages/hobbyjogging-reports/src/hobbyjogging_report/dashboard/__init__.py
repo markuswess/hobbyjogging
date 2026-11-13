@@ -7,6 +7,7 @@ import shutil
 import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from time import perf_counter
 
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import Event, WellnessDay
@@ -101,8 +102,12 @@ def build_dashboard(
     include_review: bool = False,
     today: date | None = None,
     demo_label: str | None = None,
+    timings: dict[str, float] | None = None,
 ) -> Path:
-    """Build the static dashboard and return its directory."""
+    """Build the static dashboard and return its directory.
+
+    ``timings`` is filled with per-phase wall-clock seconds when supplied.
+    """
     if days <= 0:
         raise ValueError("days must be positive")
     if activity_limit <= 0:
@@ -133,6 +138,11 @@ def build_dashboard(
     analysis_start = today - timedelta(days=analysis_days - 1)
     nsa_start = today - timedelta(days=NSA_DAYS - 1)
 
+    def mark(name: str, started: float) -> None:
+        if timings is not None:
+            timings[name] = perf_counter() - started
+
+    phase = perf_counter()
     raw_activities = source.activities(start, today)
     activities, _ = exclude_review(
         raw_activities,
@@ -181,7 +191,9 @@ def build_dashboard(
         chart_start - timedelta(days=warmup_days),
         chart_end,
     )
+    mark("data", phase)
 
+    phase = perf_counter()
     wellness = source.wellness(
         today - timedelta(days=BASELINE_WINDOW_DAYS + 6),
         today,
@@ -201,30 +213,44 @@ def build_dashboard(
         recovery_report(source, today=today),
         demote=1,
     )
+    mark("recovery", phase)
+
+    phase = perf_counter()
     analysis_section = build_analysis_section(
         source,
         start=analysis_start,
         end=today,
         include_review=include_review,
     )
+    mark("analysis", phase)
+
+    phase = perf_counter()
     nsa_section = build_nsa_section(
         source,
         start=nsa_start,
         end=today,
         include_review=include_review,
     )
+    mark("nsa", phase)
+
+    phase = perf_counter()
     compare_section = build_compare_section(
         source,
         today=today,
         window=compare_window,
         include_review=include_review,
     )
+    mark("compare", phase)
 
+    phase = perf_counter()
     performance_section = build_performance_section(
         source,
         today=today,
         include_review=include_review,
     )
+    mark("performance", phase)
+
+    phase = perf_counter()
     overview_html = markdown_to_html(
         overview_report(
             source,
@@ -252,7 +278,9 @@ def build_dashboard(
         ),
         demote=1,
     )
+    mark("reports", phase)
 
+    phase = perf_counter()
     health = collect_health(
         raw_activities,
         activities,
@@ -287,6 +315,9 @@ def build_dashboard(
         today=today,
         include_review=include_review,
     )
+    mark("health+gear", phase)
+
+    phase = perf_counter()
     pages = {
         "index.html": overview_page(
             generated_at=generated_at,
@@ -468,8 +499,29 @@ def build_dashboard(
 
     target = resolve_output_dir(output)
     _write_site(target, pages | detail_pages | race_pages)
+    mark("pages", phase)
 
     return target
+
+
+def format_build_timing(
+    timings: dict[str, float],
+    query_counts,
+) -> str:
+    """Render the per-phase timing and cache-miss summary."""
+    lines = ["", "Dashboard timing:"]
+
+    for name, seconds in timings.items():
+        lines.append(f"- {name}: {seconds:.2f}s")
+
+    lines.append(f"- total: {sum(timings.values()):.2f}s")
+    counts = ", ".join(
+        f"{name}={count}"
+        for name, count in sorted(query_counts.items())
+    )
+    lines.append(f"- query misses: {counts or 'none'}")
+
+    return "\n".join(lines)
 
 
 def _check_target(target: Path) -> None:
