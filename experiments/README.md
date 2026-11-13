@@ -37,8 +37,9 @@ Rules:
   is for feasibility checks, not the metric.
 - **Stability.** Before proposing promotion, split by year, illness, and
   sparse-data periods, and check outlier and guard sensitivity.
-- **Disposition.** Every idea ends as promote handoff, park (name the missing
-  data or schema), or reject (delete the file). No open-ended results.
+- **Disposition.** Every idea ends as promote handoff, park (tested and
+  deferred; keep the file), block (never started; name the missing
+  prerequisite), or reject (delete the file). No open-ended results.
 - **Cards.** The lab drafts promoted/rejected card text; the root session
   writes and commits the card in `docs/METRICS.md`.
 - **Commits.** Finished experiments are committed here; never stage unrelated
@@ -47,7 +48,15 @@ Rules:
 
 ## Ideas
 
-Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`.
+Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` /
+`rejected`.
+
+- `blocked` — never started; a named prerequisite (data, schema, gear) is
+  missing. No experiment file.
+- `parked` — tested; evidence exists but the result is inconclusive or
+  deferred. The experiment file is kept; revisit when the named condition
+  changes.
+- `rejected` — tested and failed; the file is deleted and a card is drafted.
 
 | Idea | Question | Status | Experiment | Updated |
 |---|---|---|---|---|
@@ -60,13 +69,13 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 | Garmin VO2max jumps | Why do the readings jump — sport-specific values, terrain, or device history? (revisit with canonical elevation data) | parked | `vo2max_jumps.py` | 2026-11-13 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? | candidate | — | 2026-11-13 |
-| Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (needs 2022+ gear) | parked | — | 2026-11-13 |
+| Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (needs 2022+ gear) | blocked | — | 2026-11-13 |
 | Polarization index | How polarized is my zone distribution, and does it beat the Z3+4 share? | candidate | — | 2026-11-13 |
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
-| HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (needs canonical weight and max HR) | parked | — | 2026-11-13 |
-| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (needs canonical temperature; wind/rain/clouds are empty) | parked | — | 2026-11-13 |
-| GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs canonical elevation) | parked | — | 2026-11-13 |
+| HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (needs canonical weight and max HR) | blocked | — | 2026-11-13 |
+| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (needs canonical temperature; wind/rain/clouds are empty) | blocked | — | 2026-11-13 |
+| GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs canonical elevation) | blocked | — | 2026-11-13 |
 
 ### Rejected
 
@@ -81,6 +90,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `rejected`
 
 ### Parked notes
 
+- **Efficiency vs duration** — tested on 980 steady runs: long runs read about
+  4% low at 120 min and 8.5% low at 180 min versus 60 min, while the short-run
+  dip is recovery-run composition, not a warm-up transient. Filtering does not
+  improve the trend (split-half 0.75 → 0.48). The correction is deferred until
+  streams or a heat/fatigue control reduce its uncertainty. Evidence:
+  `experiments/efficiency_duration.py`.
+- **Garmin VO2max jumps** — tested: 62% of all jumps happen at a sport switch
+  (run/ride share one column), running-only jumps are concentrated in
+  2019–2022, and the terrain question needs canonical elevation data before it
+  can be settled. Evidence: `experiments/vo2max_jumps.py`.
 - **Aerobic-threshold pace trend** — the fixed-HR index improved by roughly
   20–25 s/km at 140 bpm (5:11 to 4:08, 2022Q4–2026Q4), but 140 bpm was outside
   the observed steady-run HR range in 5 of 17 quarters, and the quarterly
