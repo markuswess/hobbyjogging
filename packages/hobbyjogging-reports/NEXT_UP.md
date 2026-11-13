@@ -2,7 +2,8 @@
 
 Updated 2026-11-13.
 
-Current focus: the dashboard's gear/devices and race work.
+Current focus: the demo data and the race metrics; every other item waits
+on a core or root change.
 
 ## Done
 
@@ -271,11 +272,20 @@ Current focus: the dashboard's gear/devices and race work.
   full Lab for non-demo builds. The docs README example already uses a neutral
   placeholder path.
 
+- **VO2max is running-only in every chart.** `vo2max_points` and
+  `vo2max_measurements` drop non-running activities, so the rides stop
+  injecting a separate series; the daily chart is titled "Garmin running
+  VO2max" and the compare chart is "Garmin running VO2max by year". The
+  cycling series waits on the core sport column in root's VO2max bug.
+
 ## Bugs
 
 _None._
 
 ## Next
+
+Items 1-8 and 11 need a core or root change first; 9 and 10 need root
+items 24 and 25. Only **12** and **13** can be done in this package today.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -316,32 +326,27 @@ _None._
    description as an annotation, and a link to the activity. Depends on the
    root Strava item and on the notes/description decision in root item 1.
 
-9. **VO2max by sport in the charts.** Label the series "Running VO2max" and
-   keep it to running activities, so the 482 rides stop injecting a different
-   series; add the cycling series when it exists. Depends on the root VO2max
-   bug fix.
-
-10. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+9. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
    races, wellness, tools), one anchor per entry, formulas as plain text or
    code so the site stays self-contained. If the catalogue is generated, the
    tab renders the same source the Markdown does.
 
-11. **Coaching tab.** Render the latest coaching note and an index of past
+10. **Coaching tab.** Render the latest coaching note and an index of past
    ones, through the same Markdown-to-HTML path as Docs, with front matter
    turned into a header (date, period, focus) and the decision sections
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-17. **Season and illness bands.** Once `training_periods` exists (root item
+11. **Season and illness bands.** Once `training_periods` exists (root item
     30), shade seasons on the volume, load and compare charts and illness on
     recovery and efficiency, with the label on the band. Add a seasons table to
     the period report, and decide per metric whether an illness period is
     excluded or only flagged. See the efficiency card's note on the Feb–Mar
     2026 baseline shift.
 
-18. **Demo narrative: Daniels first, then Norwegian singles.** The demo runs one
+12. **Demo narrative: Daniels first, then Norwegian singles.** The demo runs one
     generic periodization (base/build/peak/taper across the whole log) with
     five hard-coded races in the last seven months, so the eras are
     indistinguishable and the race times contradict the sessions (a 21:30 5k
@@ -366,25 +371,29 @@ _None._
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
-19. **Riegel fit from recent races only.** `fit_riegel()` fits log time against
-    log distance over **every** race in the log, so a 2019 5k and last month's
-    marathon carry equal weight and the exponent describes the whole history,
-    not current fitness. The Performance tab then draws that line across the
-    whole scatter and prints it as the equivalent-time basis.
-    - **Window**: fit on races from the last N months (start with 24), widening
-      until there are at least three points and falling back to all races with
-      a note when there are not. PBs stay all-time — only the fit and the
-      equivalent predictions are windowed.
-    - **Chart**: keep every race in the scatter for history, but emphasise the
-      points inside the window (filled vs hollow) so it is visible which races
-      drive the line, and label the fit "last 24 months (n=6)" next to the
+13. **Recency-weighted Riegel fit.** `fit_riegel()` fits log time against log
+    distance over every race in the log, so a 2011 5k and last month's 10k
+    carry equal weight and the exponent describes the whole history, not
+    current fitness. A hard recent window was measured and rejected: the last
+    24 months hold only 5k/10k/trail races (n=9), so the exponent collapses to
+    1.011 and extrapolates a marathon to 2:27 from a 2× distance span. Weight
+    the points by age instead, so every distance still informs the exponent
+    while current form dominates.
+    - **Weighting**: an exponential half-life on the race date, a constant in
+      `analysis/races.py` (start at 2 years). Real data: exponent 1.059 /
+      R² 0.92 unweighted (marathon 2:37:54 against a 2:50:32 PB) versus 1.101 /
+      0.91 at a 2-year half-life (2:47:48), which is closer to the PB. PBs stay
+      all-time and unweighted.
+    - **Chart**: keep every race in the scatter, but mark the points that carry
+      most of the weight (within one half-life) so it is visible which races
+      drive the line, and label the fit with its weighting and n next to the
       exponent and R².
-    - **Equivalent times**: use the same window, and say so when the reference
-      race is older than the window (the current fallback picks the most recent
-      road race of any age).
-    - **Tests**: an old outlier no longer moves the fit; the window widens when
-      there are fewer than three recent races; the label carries the window and
-      n; PBs are unchanged; the CLI `races` report and the tab agree.
+    - **Equivalent times**: use the weighted exponent, and say so when the
+      reference race is older than the weighting's centre (the current
+      fallback picks the most recent road race of any age).
+    - **Tests**: an old outlier moves the fit less than a recent one; the label
+      carries the weighting and n; PBs are unchanged; the CLI `races` report and
+      the Performance tab agree.
 
 ## Tests and docs
 
@@ -393,10 +402,13 @@ Covered now:
 - normalization handles 4/5/7 zones and `SS`;
 - planned zone seconds aggregate per label, kind, and week;
 - empty zone times fall back to the total-time outline;
-- zone EWMA points past the requested end are marked projected.
+- zone EWMA points past the requested end are marked projected;
+- PB selection per distance bucket (tolerance and short-course rejection)
+  and the race-day report;
+- the Docs page render (README content present, nav marks Docs active).
 
 New work should add:
 
-- equipment mileage and device-timeline coverage;
-- PB selection per distance bucket and the race-day report;
-- the Docs page render (README content present, nav marks Docs active).
+- device-timeline coverage, once the field lands;
+- the Riegel weighting: an old outlier moves the fit less, the label
+  carries the weighting and n, and PBs stay unweighted.

@@ -1317,7 +1317,7 @@ def plot_vo2max(
             y=[point.value for point in measured],
             mode="markers",
             marker={"color": "#1f77b4", "size": 6, "opacity": 0.55},
-            name="Garmin VO2max",
+            name="Running VO2max",
         )
     )
     figure.add_trace(
@@ -1927,10 +1927,10 @@ def plot_equipment(
 def plot_compare_vo2max(
     measurements: list[Vo2maxMeasurement],
     output: str,
-    title: str = "Garmin VO2max by year",
+    title: str = "Garmin running VO2max by year",
     as_html: bool = False,
 ) -> str:
-    """Raw Garmin VO2max readings, one marker per activity, by year."""
+    """Raw Garmin running VO2max readings, one marker per activity, by year."""
     _require_data(measurements)
     reference_year = 2001
     reference_start = date(reference_year, 1, 1)
@@ -1976,7 +1976,7 @@ def plot_compare_vo2max(
         dtick="M1",
         tickformat="%b",
     )
-    figure.update_yaxes(title_text="Garmin VO2max")
+    figure.update_yaxes(title_text="Garmin running VO2max")
     figure.update_layout(
         template="plotly_white",
         title=title,

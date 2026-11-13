@@ -338,7 +338,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn('href="compare.html" class="active"', compare)
             self.assertIn("Year comparison", compare)
             self.assertIn("2026 planned", compare)
-            self.assertIn("Garmin VO2max by year", compare)
+            self.assertIn("Garmin running VO2max by year", compare)
             self.assertIn("Pace vs heart rate by year", compare)
             self.assertIn("182-day EWMA", compare)
             self.assertIn("volume", compare)

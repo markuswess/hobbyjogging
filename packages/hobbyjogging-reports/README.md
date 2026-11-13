@@ -54,9 +54,9 @@ Pages:
 - `compare.html` — volume (km/week), time (hours/week), and efficiency EWMA lines
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
   182), with dashed projected volume/time lines that follow actual values
-  through today and then the plan, a Garmin VO2max line plot with one raw
-  value per activity, a pace-vs-heart-rate scatter coloured by year, plus the
-  year and month comparison reports (which include the period average
+  through today and then the plan, a Garmin running VO2max line plot with one
+  raw value per activity, a pace-vs-heart-rate scatter coloured by year, plus
+  the year and month comparison reports (which include the period average
   Garmin VO2max and a weighted efficiency column). All charts show only the
   five most recent years by default; older years remain available from the
   legend. The efficiency chart drops years with

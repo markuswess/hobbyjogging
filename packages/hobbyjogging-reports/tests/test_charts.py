@@ -798,7 +798,7 @@ class CompareVo2maxChartTests(unittest.TestCase):
 
         self.assertIn('"name":"2025"', html)
         self.assertIn('"name":"2026"', html)
-        self.assertIn("Garmin VO2max by year", html)
+        self.assertIn("Garmin running VO2max by year", html)
         self.assertIn('"y":[54.2,54.2]', html)
         self.assertIn('"y":[55.1]', html)
         self.assertIn('"mode":"lines"', html)
