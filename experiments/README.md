@@ -45,6 +45,10 @@ Rules:
 - **Commits.** Finished experiments are committed here; never stage unrelated
   in-progress edits; do not push.
 - **Minimal.** The smallest experiment that settles the question.
+- **Impact per unit of effort.** Pick the highest-impact, lowest-workload idea
+  next; the list order is not a schedule. An idea that unblocks or invalidates
+  other measurements outranks a new one. Blocked items stay out of the queue
+  until their prerequisite lands.
 
 ## Ideas
 
