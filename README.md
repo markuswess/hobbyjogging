@@ -1,53 +1,43 @@
 # hobbyjogging
 
-Training data, imports, and reports.
+A personal training database that belongs to you, not to a platform. Every
+activity, its provenance and your decisions live in one SQLite file; importers
+feed it, reports read it, and no service owns the truth. The goal is a
+trustworthy record of your training that outlives any app.
+
+## The ideas
+
+- **One canonical record.** FIT files, Intervals.icu, the Garmin Personal API
+  and a historical spreadsheet merge into one activity, with the raw source
+  records kept beside it. Sources are interchangeable.
+- **No automatic priority.** The first source to fill a field keeps it; a
+  meaningful disagreement becomes a review item instead of a silent overwrite.
+  Manual values outrank everything and survive reimports.
+- **Three roles.** Importers write facts, maintenance derives stored values,
+  reports compute on read and never write. Delete means durable exclusion,
+  never a hard delete.
+- **Metrics earn their place.** An idea starts in the lab, passes the gate in
+  [`docs/METRICS.md`](docs/METRICS.md), then gets a card, then a renderer — the
+  dashboard is always last.
+- **Independent by design.** The analysis and the data stay yours even if a
+  platform changes its pricing or disappears.
 
 ## Live demo
 
-A public demo built from a synthetic athlete is published at
-<https://markuswess.github.io/hobbyjogging/>. It contains no personal data:
-the database is generated from scratch by `demo-db`, and the site is rebuilt
-by GitHub Actions on every push that can change its output, plus weekly so the
-date-relative views stay current. The deploy is gated on the four test
-suites.
-
-Build it locally:
+A synthetic athlete, no personal data, rebuilt on every relevant push and
+weekly: <https://markuswess.github.io/hobbyjogging/>.
 
 ```bash
 ./demo.sh          # -> build/demo.db and build/site
 ```
 
-## Packages
-
-- `packages/hobbyjogging-core` — canonical training model, database schema,
-  sport vocabulary, and shared helpers.
-- `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
-  importers, plus the review queue and triage. Runalyze enrichment is planned.
-- `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
-  backfills/recomputes.
-- `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
-  activities table.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, data
-flow, and the planned homelab/static-dashboard deployment. Source-specific
-field differences are documented in [docs/SOURCE_NOTES.md](docs/SOURCE_NOTES.md),
-and metric definitions in [docs/METRICS.md](docs/METRICS.md).
-
-Explore a metric before it becomes a report:
-
-```bash
-./lab.sh                                   # interactive, read-only
-uv run --env-file .env python experiments/<name>.py
-```
-
-## Setup
+## Quick start
 
 ```bash
 uv sync
 ```
 
-Create `.env` at the repository root for Intervals.icu credentials and
-optional database and FIT locations:
+`.env` at the repository root holds the credentials and optional paths:
 
 ```bash
 export HOBBYJOGGING_DB=<your/path/databasefile.db>
@@ -57,142 +47,47 @@ export INTERVALS_API_KEY=<your-api-key>
 export GARMIN_PERSONAL_API_KEY=<your-personal-api-key>
 ```
 
-## Import
-
-The canonical database lives at `data/hobbyjogging.db` by default. FIT files
-are read from `data/fit` unless `HOBBYJOGGING_FIT_DIR` is set.
-
-Inspect a FIT file without writing to the database:
-
-```bash
-uv run --env-file .env hobbyjogging-import fit \
-  --inspect data/fit/30285-220489711.fit
-```
-
-Import FIT activity files (start with `--dry-run`):
-
-```bash
-uv run --env-file .env hobbyjogging-import fit --dry-run
-uv run --env-file .env hobbyjogging-import fit
-```
-
-Import Intervals.icu data:
-
-```bash
-uv run --env-file .env hobbyjogging-import intervals --days 90
-```
-
-Fetch new original FIT files from the Garmin Personal API, then ingest them:
-
-```bash
-uv run --env-file .env hobbyjogging-import garmin fetch --since 2026-01-01
-uv run --env-file .env hobbyjogging-import fit --recursive
-```
-
-The Personal API key is valid for 30/90/180/365 days; each run exchanges it
-for a 24 h bearer token. Known activity ids are skipped via a fetch manifest,
-and API-downloaded FITs are byte-identical to the GDPR archive export.
-
-Keep everything current with one command (Garmin fetch, Intervals import,
-FIT scan, quality review scan):
+Then run the whole loop — Garmin fetch, Intervals import, FIT scan, review
+scan, dashboard:
 
 ```bash
 ./sync.sh
-./sync.sh --days 14
-./sync.sh --no-garmin
 ```
 
-Import-conflicts and questionable activities land in the review workflow:
+## What you do with it
 
-```bash
-uv run --env-file .env hobbyjogging-import review list
-```
+- **Import.** FIT files, Intervals.icu, the Garmin API and the spreadsheet;
+  `sync.sh` keeps them current.
+- **Review.** Conflicts and odd data land in a queue; the interactive walk
+  fixes, resolves or excludes them.
+- **Look.** Markdown reports, charts and a static dashboard.
 
-The quickest way through the queue is the interactive triage walk:
+Importing and reviewing are documented in
+[`hobbyjogging-import`](packages/hobbyjogging-import/README.md), reporting in
+[`hobbyjogging-reports`](packages/hobbyjogging-reports/README.md).
 
-```bash
-uv run --env-file .env hobbyjogging-import review triage
-```
+Peek into the database directly with `./db.sh` — a SQLite shell with headers
+and columns enabled.
 
-Each item can be inspected, opened in a browser, fixed by entering valid
-values (``46:20``, ``8.2km``), marked resolved/ignored, or durably excluded
-(soft delete). When sources disagree on a field, nothing is overwritten
-automatically: both values are queued as a ``field_conflict`` and
-``(v) pick value`` chooses the one that stands. ``(t)`` force re-imports the
-linked Intervals activity and lets it take ownership of non-manual fields;
-``(o)`` opens every linked activity, and ``(ci)``/``(cg)`` copy the Intervals
-or Garmin Connect URL. Manual values outrank every import source and survive
-reimports; see `packages/hobbyjogging-import/README.md` for details, or use
-the non-interactive twins `review edit`, `review exclude`, and
-`review restore`.
+## Layout
 
-Reports exclude flagged activities until they are resolved; add
-`--include-review` to see them. Excluded (deleted) activities never appear.
+- `hobbyjogging-core` — canonical model, schema and migrations, sport
+  vocabulary, `TrainingWriter` and `TrainingRepository`.
+- `hobbyjogging-import` — FIT, Intervals.icu, Garmin and spreadsheet importers,
+  the review queue and triage.
+- `hobbyjogging-maintenance` — the schema-evolution runner and registered
+  backfills/recomputes.
+- `hobbyjogging-reports` — analysis, Markdown reports, charts, the dashboard.
 
-## Inspect the database
-
-`db.sh` uses `HOBBYJOGGING_DB` from `.env` and opens the database with
-SQLite headers and columns enabled.
-
-```bash
-./db.sh
-./db.sh ".tables"
-./db.sh ".schema activities"
-./db.sh "SELECT local_date, sport, name FROM activities ORDER BY local_date DESC LIMIT 10;"
-```
-
-## Reports
-
-Reports read the canonical database by default.
-
-```bash
-./reports.sh
-./reports.sh daily
-./reports.sh overview
-./reports.sh report --days 90
-./reports.sh report --from 2026-01-01 --to 2026-03-31
-./reports.sh compare years
-./reports.sh compare months
-./reports.sh planned
-./reports.sh planned --days 56
-./reports.sh weekly
-./reports.sh activities --limit 20
-./reports.sh activities --days 30 --add id,category
-```
-
-The dashboard is generated by `dashboard.sh`, which also opens the browser:
-
-```bash
-./dashboard.sh
-./dashboard.sh --days 30 --activities 100
-./dashboard.sh --chart-days 90 --future-days 21
-./dashboard.sh --reports overview,daily,planned
-./dashboard.sh --no-open
-```
-
-It writes to `$HOBBYJOGGING_DASHBOARD_DIR/dashboard` when that variable is
-set, or to `data/dashboard` otherwise. `./sync.sh` regenerates it after a
-successful sync without opening a browser.
-
-Charts use `charts.sh` and print the generated file path:
-
-```bash
-./charts.sh
-./charts.sh overview
-./charts.sh volume --days 90
-./charts.sh load --days 180
-./charts.sh time --days 90
-./charts.sh recovery --days 90
-./charts.sh subt --days 365
-./charts.sh vo2max --days 365
-```
-
-See `packages/hobbyjogging-reports/README.md` for report and taxonomy details.
+`docs/ARCHITECTURE.md` holds the design and the rules,
+`docs/SOURCE_NOTES.md` the source-specific field quirks, `docs/METRICS.md` the
+metric cards, and `docs/AGENTS.md` the working conventions. Experiments run
+through `./lab.sh` and the scripts in `experiments/`.
 
 ## Tests
 
 ```bash
-(cd packages/hobbyjogging-core/tests && uv run python -m unittest discover -q)
-(cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q)
-(cd packages/hobbyjogging-reports/tests && uv run python -m unittest discover -q)
+for p in core import maintenance reports; do
+  (cd packages/hobbyjogging-$p/tests && uv run python -m unittest discover -q)
+done
 ```
