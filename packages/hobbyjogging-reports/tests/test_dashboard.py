@@ -367,6 +367,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("15", gear)
             self.assertIn("Retirement candidates", gear)
             self.assertIn("Plotly.newPlot", gear)
+            self.assertIn("plotly.min.js", gear)
 
     def test_reports_flag_is_a_compatibility_noop(self):
         with tempfile.TemporaryDirectory() as tmp:

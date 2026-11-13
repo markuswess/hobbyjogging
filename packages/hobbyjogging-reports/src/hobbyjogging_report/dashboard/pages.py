@@ -541,6 +541,7 @@ def gear_page(
         ),
         demo_label=demo_label,
         active="gear",
+        plotly=True,
     )
 
 
