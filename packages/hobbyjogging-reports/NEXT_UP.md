@@ -266,6 +266,23 @@ Current focus: the dashboard's gear/devices and race work.
      an interval session get different symbols; the date colorbar stays
      shared.
 
+9. **Race PB progression chart.** Add a per-bucket PB trajectory to the
+   Performance tab (and optionally the `races` report): one step line per
+   distance bucket connecting improvements over time, with race points on
+   top and the current PB annotated. Use the bucket tolerance and, once the
+   official race-result table lands, the official distance/time pair with the
+   GPS fallback. X is date, Y is race time (`M:SS` / `H:MM:SS`); toggle or
+   separate small multiples for `5k`, `10k`, `HM`, `M`, `Trail`, `Other`.
+   - Tests: only improvements advance the step line; ties do not; buckets stay
+     separate; official values win when present.
+
+10. **Race report filters.** Add `--bucket`, `--year` (or `--from`/`--to`),
+    and `--limit` to `reports.sh races`, applying them to the results and PB
+    tables while leaving the upcoming-race list unfiltered unless explicitly
+    requested. Derive the filter metadata from the existing race buckets; no
+    schema change. Add a short usage note to the README and tests for combined
+    filters and empty results.
+
 ## Tests and docs
 
 Covered now:
