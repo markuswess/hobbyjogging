@@ -512,14 +512,15 @@ Updated 2026-11-12.
       available per field and per year; (2) comments and tags into the chosen
       text home; (3) gear with cross-source identity; (4) race results;
       (5) `vo2max_runalyze` as the second owner; (6) the reports.
-    - **Gear identity**: gear records become `source_records(record_type='gear')`
-      plus `equipment` rows, linked through `activity_equipment` with
-      `source='runalyze'`. Cross-source identity reuses `equipment_source_links`:
-      link a gear record to an existing item when its activities consistently
-      carry the same sheet shoe (co-occurrence), else on a unique normalized
-      brand+model match, else open an `ambiguous_equipment` review item — never
-      guess (the two "Lunge C-Dur" pairs differ only by colour and date).
-      2022+ gear has no sheet counterpart and simply creates new rows.
+    - **Gear identity**: gear records become
+      `source_records(record_type='gear')` plus `equipment` rows, linked
+      through `activity_equipment` with `source='runalyze'`. Cross-source
+      identity reuses `equipment_source_links`: link a gear record to an
+      existing item when its activities consistently carry the same sheet shoe
+      (co-occurrence), else on a unique normalized brand+model match, else open
+      an `ambiguous_equipment` review item — never guess (the two
+      "Lunge C-Dur" pairs differ only by colour and date). 2022+ gear has no
+      sheet counterpart and simply creates new rows.
     - **Matching**: temporal plus distance, since Runalyze exposes no Garmin
       activity id; unmatched rows create activities so the history stays
       complete. Enrichment only — never timing or distance.
@@ -618,8 +619,8 @@ Updated 2026-11-12.
      reports bug asks for a tight distance tolerance or a labelled adjustment.
      The race report shows both the official and GPS values so a mismatch is
      visible. The computed pace uses one consistent pair, never a mix.
-   - **Relationship to race links**: this does not require `event_activity_links`
-     (item 4); the row is keyed by activity. A later link can enrich it with
+   - **Relationship to race links**: this does not require
+     `event_activity_links` (item 4); the row is keyed by activity. A later link can enrich it with
      the event's planned distance/zone metadata.
    - **Tests**: writer idempotency, `race_results()` returns the stored row,
      PB/bucket/Riegel prefer official values, the GPS fallback is unchanged,
