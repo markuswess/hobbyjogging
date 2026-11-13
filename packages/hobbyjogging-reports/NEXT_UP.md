@@ -365,6 +365,26 @@ Current focus: the dashboard's gear/devices and race work.
       the load series shows the busts; the two eras differ in their
       method/target mix; every race time is consistent with its era's pace.
 
+19. **Riegel fit from recent races only.** `fit_riegel()` fits log time against
+    log distance over **every** race in the log, so a 2019 5k and last month's
+    marathon carry equal weight and the exponent describes the whole history,
+    not current fitness. The Performance tab then draws that line across the
+    whole scatter and prints it as the equivalent-time basis.
+    - **Window**: fit on races from the last N months (start with 24), widening
+      until there are at least three points and falling back to all races with
+      a note when there are not. PBs stay all-time — only the fit and the
+      equivalent predictions are windowed.
+    - **Chart**: keep every race in the scatter for history, but emphasise the
+      points inside the window (filled vs hollow) so it is visible which races
+      drive the line, and label the fit "last 24 months (n=6)" next to the
+      exponent and R².
+    - **Equivalent times**: use the same window, and say so when the reference
+      race is older than the window (the current fallback picks the most recent
+      road race of any age).
+    - **Tests**: an old outlier no longer moves the fit; the window widens when
+      there are fewer than three recent races; the label carries the window and
+      n; PBs are unchanged; the CLI `races` report and the tab agree.
+
 ## Tests and docs
 
 Covered now:
