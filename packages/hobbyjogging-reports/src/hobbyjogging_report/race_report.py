@@ -7,7 +7,6 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
-    RaceFilter,
     equivalent_times,
     fit_riegel,
     half_split,
@@ -45,40 +44,66 @@ def _load(value: float | None) -> str:
 def races_report(
     source: DataSource,
     *,
-    filters: RaceFilter | None = None,
+    bucket: str | None = None,
+    start: date | None = None,
+    end: date | None = None,
+    limit: int | None = None,
     today: date | None = None,
     include_review: bool = False,
     future_days: int = 180,
 ) -> str:
     """Render race results, PBs, upcoming races, and Riegel estimates.
 
-    ``filters`` scopes the results and PB tables. A date filter also scopes
-    the upcoming list, because it is an explicit range; bucket and limit
-    never do.
+    ``bucket``, ``start``/``end`` and ``limit`` scope the results and PB
+    tables. A date filter also scopes the upcoming list, because it is an
+    explicit range; bucket and limit never do.
     """
-    race_filter = filters or RaceFilter()
     today = today or date.today()
     activities, excluded = exclude_review(
         source.activities(activity_start(source, today), today),
         include_review=include_review,
     )
-    results = race_filter.filter_results(race_results(activities))
-    shown = race_filter.shown(results)
-    upcoming = race_filter.filter_upcoming(
-        upcoming_races(
-            source.events(today, today + timedelta(days=future_days)),
-            today,
-            days=future_days,
-        )
+    results = [
+        result
+        for result in race_results(activities)
+        if (bucket is None or result.bucket == bucket)
+        and (start is None or result.activity.date >= start)
+        and (end is None or result.activity.date <= end)
+    ]
+    shown = results if limit is None else results[:limit]
+    upcoming = upcoming_races(
+        source.events(today, today + timedelta(days=future_days)),
+        today,
+        days=future_days,
     )
+
+    if start is not None or end is not None:
+        upcoming = [
+            event
+            for event in upcoming
+            if (start is None or event.date >= start)
+            and (end is None or event.date <= end)
+        ]
+
     fit = fit_riegel(results)
     predictions = equivalent_times(results, fit)
 
     lines = ["# Races", f"Through {today}"]
-    summary = race_filter.summary()
+    filters = []
 
-    if summary:
-        lines.append(f"Filter: {summary}")
+    if bucket is not None:
+        filters.append(f"bucket {bucket}")
+    if start is not None and end is not None:
+        filters.append(f"{start} → {end}")
+    elif start is not None:
+        filters.append(f"from {start}")
+    elif end is not None:
+        filters.append(f"through {end}")
+    if limit is not None:
+        filters.append(f"latest {limit}")
+
+    if filters:
+        lines.append(f"Filter: {' · '.join(filters)}")
 
     note = review_note(excluded)
     if note:

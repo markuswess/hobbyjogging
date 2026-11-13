@@ -4,7 +4,6 @@ import unittest
 from contextlib import redirect_stderr
 from datetime import date, timedelta
 
-from hobbyjogging_report.analysis import RaceFilter
 from hobbyjogging_report.cli import (
     date_arg,
     extract_globals,
@@ -536,18 +535,13 @@ class RacesArgsTests(unittest.TestCase):
 
     def test_defaults_are_unfiltered(self):
         self.assertEqual(
-            RaceFilter(),
+            (None, None, None, None),
             parse_races_args([]),
         )
 
     def test_reads_bucket_year_and_limit(self):
         self.assertEqual(
-            RaceFilter(
-                bucket="10k",
-                start=date(2026, 1, 1),
-                end=date(2026, 12, 31),
-                limit=5,
-            ),
+            ("10k", date(2026, 1, 1), date(2026, 12, 31), 5),
             parse_races_args(
                 ["--bucket", "10k", "--year", "2026", "--limit", "5"]
             ),
@@ -555,11 +549,7 @@ class RacesArgsTests(unittest.TestCase):
 
     def test_reads_an_explicit_range(self):
         self.assertEqual(
-            RaceFilter(
-                bucket="5k",
-                start=date(2025, 3, 1),
-                end=date(2025, 6, 30),
-            ),
+            ("5k", date(2025, 3, 1), date(2025, 6, 30), None),
             parse_races_args(
                 ["--bucket", "5k", "--from", "2025-03-01",
                  "--to", "2025-06-30"]
@@ -583,10 +573,7 @@ class RacesArgsTests(unittest.TestCase):
 class DashboardArgsTests(unittest.TestCase):
     def test_defaults(self):
         self.assertEqual(
-            (
-                None, 14, 50, 182, 14, 182, 731, 182,
-                RaceFilter(), (), None,
-            ),
+            (None, 14, 50, 182, 14, 182, 731, 182, (), None),
             parse_dashboard_args([]),
         )
 
@@ -594,14 +581,7 @@ class DashboardArgsTests(unittest.TestCase):
         self.assertEqual(
             (
                 "/tmp/site", 30, 100, 90, 21, 60, 120,
-                7,
-                RaceFilter(
-                    bucket="10k",
-                    start=date(2026, 1, 1),
-                    end=date(2026, 12, 31),
-                    limit=3,
-                ),
-                ("overview", "daily"), None,
+                7, ("overview", "daily"), None,
             ),
             parse_dashboard_args(
                 [
@@ -613,23 +593,10 @@ class DashboardArgsTests(unittest.TestCase):
                     "--recovery-days", "60",
                     "--analysis-days", "120",
                     "--compare-window", "7",
-                    "--race-bucket", "10k",
-                    "--race-year", "2026",
-                    "--race-limit", "3",
                     "--reports", "overview,daily",
                 ]
             ),
         )
-
-    def test_rejects_race_year_with_an_explicit_range(self):
-        with self.assertRaises(ValueError):
-            parse_dashboard_args(
-                ["--race-year", "2026", "--race-from", "2026-01-01"]
-            )
-
-    def test_rejects_non_positive_race_limit(self):
-        with self.assertRaises(ValueError):
-            parse_dashboard_args(["--race-limit", "0"])
 
     def test_rejects_non_positive_days(self):
         with self.assertRaises(ValueError):

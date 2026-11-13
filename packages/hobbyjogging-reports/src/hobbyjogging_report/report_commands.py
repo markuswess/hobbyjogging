@@ -125,7 +125,6 @@ def run_dashboard_command(parsed, source, include_review):
         recovery_days,
         analysis_days,
         compare_window,
-        race_filter,
         reports,
         demo_label,
     ) = parsed
@@ -139,7 +138,6 @@ def run_dashboard_command(parsed, source, include_review):
         recovery_days=recovery_days,
         analysis_days=analysis_days,
         compare_window=compare_window,
-        race_filter=race_filter,
         reports=reports,
         include_review=include_review,
         demo_label=demo_label,
@@ -159,10 +157,14 @@ def run_subt_report_command(parsed, source, include_review):
     )
 
 
-def run_races_command(filters, source, include_review):
+def run_races_command(parsed, source, include_review):
+    bucket, start, end, limit = parsed
     return races_report(
         source,
-        filters=filters,
+        bucket=bucket,
+        start=start,
+        end=end,
+        limit=limit,
         include_review=include_review,
     )
 

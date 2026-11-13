@@ -55,57 +55,6 @@ class RaceResult:
     pace_s_per_km: float | None
 
 
-@dataclass(frozen=True)
-class RaceFilter:
-    """Bucket, date, and row-limit filters for race reports."""
-
-    bucket: str | None = None
-    start: date | None = None
-    end: date | None = None
-    limit: int | None = None
-
-    def filter_results(self, results: list[RaceResult]) -> list[RaceResult]:
-        return [
-            result
-            for result in results
-            if (self.bucket is None or result.bucket == self.bucket)
-            and (self.start is None or result.activity.date >= self.start)
-            and (self.end is None or result.activity.date <= self.end)
-        ]
-
-    def shown(self, results: list[RaceResult]) -> list[RaceResult]:
-        """The rows to print; PBs and the fit still use every match."""
-        return results if self.limit is None else results[:self.limit]
-
-    def filter_upcoming(self, events: list[Event]) -> list[Event]:
-        """Date filters scope upcoming races; bucket and limit never do."""
-        if self.start is None and self.end is None:
-            return events
-
-        return [
-            event
-            for event in events
-            if (self.start is None or event.date >= self.start)
-            and (self.end is None or event.date <= self.end)
-        ]
-
-    def summary(self) -> str:
-        parts = []
-
-        if self.bucket is not None:
-            parts.append(f"bucket {self.bucket}")
-        if self.start is not None and self.end is not None:
-            parts.append(f"{self.start} → {self.end}")
-        elif self.start is not None:
-            parts.append(f"from {self.start}")
-        elif self.end is not None:
-            parts.append(f"through {self.end}")
-        if self.limit is not None:
-            parts.append(f"latest {self.limit}")
-
-        return " · ".join(parts)
-
-
 def race_results(activities: list[Activity]) -> list[RaceResult]:
     """Race activities newest first, with their bucket and pace."""
     results = [

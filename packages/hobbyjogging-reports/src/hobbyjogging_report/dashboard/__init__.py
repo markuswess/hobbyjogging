@@ -14,7 +14,6 @@ from hobbyjogging_core.model import Event, WellnessDay
 from ..activity_list import select_activities
 from ..analysis import (
     BASELINE_WINDOW_DAYS,
-    RaceFilter,
     average_warmup_days,
     recovery_trends,
     vo2max_points,
@@ -98,7 +97,6 @@ def build_dashboard(
     recovery_days: int = RECOVERY_DAYS,
     analysis_days: int = ANALYSIS_DAYS,
     compare_window: int = 182,
-    race_filter: RaceFilter | None = None,
     reports: tuple[str, ...] = (),
     include_review: bool = False,
     today: date | None = None,
@@ -226,7 +224,6 @@ def build_dashboard(
         source,
         today=today,
         include_review=include_review,
-        race_filter=race_filter,
     )
     overview_html = markdown_to_html(
         overview_report(

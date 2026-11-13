@@ -9,7 +9,6 @@ from urllib.parse import quote
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
-    RaceFilter,
     equivalent_times,
     fit_riegel,
     personal_bests,
@@ -58,22 +57,17 @@ def build_performance_section(
     today: date,
     include_review: bool = False,
     future_days: int = 180,
-    race_filter: RaceFilter | None = None,
 ) -> PerformanceSection:
     """Build race results, personal bests, upcoming races, and the chart."""
-    race_filter = race_filter or RaceFilter()
     activities, excluded = exclude_review(
         source.activities(activity_start(source, today), today),
         include_review=include_review,
     )
-    results = race_filter.filter_results(race_results(activities))
-    shown = race_filter.shown(results)
-    upcoming = race_filter.filter_upcoming(
-        upcoming_races(
-            source.events(today, today + timedelta(days=future_days)),
-            today,
-            days=future_days,
-        )
+    results = race_results(activities)
+    upcoming = upcoming_races(
+        source.events(today, today + timedelta(days=future_days)),
+        today,
+        days=future_days,
     )
     fit = fit_riegel(results)
     pbs = personal_bests(results)
@@ -83,15 +77,6 @@ def build_performance_section(
         f"<p>{len(results)} races, {len(pbs)} distance buckets, "
         f"{len(upcoming)} upcoming.</p>"
     )
-    active = race_filter.summary()
-
-    if active:
-        summary += f'<p class="muted">Filter: {esc(active)}</p>'
-    if len(shown) < len(results):
-        summary += (
-            f'<p class="muted">Showing the latest {len(shown)} of '
-            f"{len(results)} matching races.</p>"
-        )
     if excluded:
         summary += (
             f'<p class="muted">{excluded} activities are hidden by import '
@@ -131,7 +116,7 @@ def build_performance_section(
                 "-" if result.activity.training_load is None
                 else f"{result.activity.training_load:.0f}",
             ]
-            for result in shown
+            for result in results
         ],
         numeric=(3, 4, 5, 6, 7),
         empty="No race results.",

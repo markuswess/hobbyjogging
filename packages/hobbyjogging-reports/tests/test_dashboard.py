@@ -14,7 +14,6 @@ from hobbyjogging_core.model import (
     WellnessDay,
 )
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
-from hobbyjogging_report.analysis import RaceFilter
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
 from hobbyjogging_report.zone_groups import (
@@ -460,44 +459,6 @@ class DashboardBuildTests(unittest.TestCase):
             health = (target / "health.html").read_text()
             self.assertIn("bad.html", health)
             self.assertIn("included", health)
-
-    def test_performance_tab_honours_race_filters(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "site"
-
-            build_dashboard(
-                _source(),
-                target,
-                today=TODAY,
-                race_filter=RaceFilter(bucket="10k"),
-            )
-
-            performance = (target / "performance.html").read_text()
-
-            self.assertIn("Filter: bucket 10k", performance)
-            self.assertIn("No race results.", performance)
-            # Bucket filters leave upcoming races alone.
-            self.assertIn("Autumn Marathon", performance)
-            self.assertFalse((target / "race" / "race1.html").exists())
-
-    def test_performance_race_date_filter_scopes_upcoming(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "site"
-
-            build_dashboard(
-                _source(),
-                target,
-                today=TODAY,
-                race_filter=RaceFilter(
-                    start=date(2025, 1, 1),
-                    end=date(2025, 12, 31),
-                ),
-            )
-
-            performance = (target / "performance.html").read_text()
-
-            self.assertIn("No race results.", performance)
-            self.assertNotIn("Autumn Marathon", performance)
 
     def test_recovery_window_can_be_overridden(self):
         with tempfile.TemporaryDirectory() as tmp:
