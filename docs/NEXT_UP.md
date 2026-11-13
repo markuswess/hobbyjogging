@@ -613,11 +613,11 @@ Updated 2026-11-12.
      can be entered now and completed later.
    - **Reports**: PBs, the Riegel fit, and distance buckets use
      `official_distance_m` + `official_time_s` when both exist and fall back to
-     the activity's measured values otherwise. This is the fix for the bucket-PB
-     bug (a 4.2 km race currently wins the 5k PB); until it lands, the reports
-     bug asks for a tight distance tolerance or a labelled adjustment. The race report shows both the
-     official and GPS values so a mismatch is visible. The computed pace uses
-     one consistent pair, never a mix.
+     the activity's measured values otherwise. This is the fix for the
+     bucket-PB bug (a 4.2 km race currently wins the 5k PB); until it lands, the
+     reports bug asks for a tight distance tolerance or a labelled adjustment.
+     The race report shows both the official and GPS values so a mismatch is
+     visible. The computed pace uses one consistent pair, never a mix.
    - **Relationship to race links**: this does not require `event_activity_links`
      (item 4); the row is keyed by activity. A later link can enrich it with
      the event's planned distance/zone metadata.
