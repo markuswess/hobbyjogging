@@ -2,9 +2,7 @@
 
 Updated 2026-11-12.
 
-Current focus: the synthetic demo database for the public GitHub Pages
-dashboard (handoff below); daily planned-zone display and session-level
-planned-vs-actual comparison remain next.
+Current focus: the dashboard's gear/devices and race work, and the Docs tab.
 
 ## Done
 
@@ -167,16 +165,9 @@ planned-vs-actual comparison remain next.
 
 ## Next
 
-1. **Daily planned session.** Show the upcoming/current workout's planned
-   distribution, for example `pace: Z1 27:30, Z3 25:00, Z4 5:00`, labelled
-   with `zone_kind`. Omit the section when the event has no zone times.
-2. **Planned vs actual by session.** Match events to activities by date +
-   sport and compare pace distributions. The time chart and dashboard
-   currently compare by week only. Power comparisons remain impossible until
-   activities store power zone times; do not fake them.
-3. **Optional HR-zone variant.** The time chart is pace-only now. Add
+1. **Optional HR-zone variant.** The time chart is pace-only now. Add
    `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-4. **Equipment report and dashboard tab** — "Gear & devices".
+2. **Equipment report and dashboard tab** — "Gear & devices".
    `reports.sh equipment` plus an **Equipment** dashboard tab, computed from
    `equipment` → `activity_equipment` → `activities.distance_m`, and from the
    device registry once the root device item lands.
@@ -198,7 +189,7 @@ planned-vs-actual comparison remain next.
    - **Tests**: mileage sums, coverage counts, the active/retired split, and
      `-` rendering when an item has no activities.
 
-5. **Race report and Performance tab.** Depends on the root
+3. **Race report and Performance tab.** Depends on the root
    `event_activity_links` item; until that lands, use activities whose methods
    contain `race`.
    - `reports.sh races`: past results (date, name, distance, time, pace,
@@ -217,7 +208,7 @@ planned-vs-actual comparison remain next.
    - **Tests**: PB selection per bucket, planned-vs-actual delta, `-` when a
      race has no link, race-day split rendering.
 
-6. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
+4. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
    (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).
    - **Phase 1**: render `packages/hobbyjogging-reports/README.md` through the
      existing Markdown → HTML renderer inside a `.report` card, with a short
@@ -248,10 +239,6 @@ Covered now:
 
 New work should add:
 
-- daily report coverage for the planned zone section, including the
-  no-zone-times case;
-- date + sport planned-vs-actual matching for pace;
-- no power comparison when activity power zones are absent.
-
-Update `packages/hobbyjogging-reports/README.md` when the daily section or
-session matching lands.
+- equipment mileage and device-timeline coverage;
+- PB selection per distance bucket and the race-day report;
+- the Docs page render (README content present, nav marks Docs active).

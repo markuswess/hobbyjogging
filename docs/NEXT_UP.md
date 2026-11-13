@@ -261,9 +261,9 @@ Updated 2026-11-12.
 6. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 7. **Reports backlog** — handed to the reports session; the list lives in
-   `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
-   vs actual by session, optional HR-zone variant, the equipment report and
-   tab (including devices), and the race report plus Performance tab.
+   `packages/hobbyjogging-reports/NEXT_UP.md`: optional HR-zone variant, the
+   equipment report and tab (including devices), the race report plus
+   Performance tab, and the Docs tab.
 8. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
