@@ -24,10 +24,11 @@ Population and guards
 ---------------------
 Running activities with HR/distance/duration, a resting-HR baseline
 (365-day median, expanding before that), duration 20-240 min, average HR at
-least 10 bpm above resting, and a sane speed. Primary population excludes
-interval/race/progression workouts; the same fit is repeated with them (and
-with trail runs) as sensitivity. RHR starts in Sep 2022, so the analysis is
-limited to that period.
+least 10 bpm above resting, and a sane speed. The primary population excludes
+interval/race/progression workouts; those are analyzed separately as a
+population using their session averages (not single work reps). The same fit
+is also repeated with them (and with trail runs) as sensitivity. RHR starts
+in Sep 2022, so the analysis is limited to that period.
 
 Decision
 --------
@@ -139,6 +140,7 @@ def select(
     include_intervals: bool = False,
     include_trail: bool = False,
     max_minutes: float = MAX_DURATION_MIN,
+    intervals_only: bool = False,
 ) -> list[dict]:
     """Apply the population guards."""
     selected = []
@@ -152,7 +154,11 @@ def select(
             continue
         if not include_trail and row["sport"] == "trail_run":
             continue
-        if not include_intervals and row["methods"] & NON_STEADY_METHODS:
+        non_steady = bool(row["methods"] & NON_STEADY_METHODS)
+        if intervals_only:
+            if not non_steady:
+                continue
+        elif not include_intervals and non_steady:
             continue
         selected.append(row)
 
@@ -605,7 +611,7 @@ def _group(rows: list[dict], low: float, high: float) -> list[dict]:
     return [row for row in rows if low <= row["minutes"] < high]
 
 
-def diagnose(primary: list[dict], activities: list) -> None:
+def diagnose(primary: list[dict], intervals: list[dict], activities: list) -> None:
     """Characterize the 20-30 min runs against the 30-60 min reference."""
     day_count = Counter(activity.date for activity in activities)
     load_by_date: dict[date, float] = defaultdict(float)
@@ -617,7 +623,11 @@ def diagnose(primary: list[dict], activities: list) -> None:
 
     table_rows = []
 
-    for label, chunk in (("20-30", short), ("30-60", reference)):
+    for label, chunk in (
+        ("20-30", short),
+        ("30-60", reference),
+        ("interval (all)", intervals),
+    ):
         quality = [
             is_quality(row["methods"], row["targets"]) for row in chunk
         ]
@@ -724,9 +734,16 @@ def diagnose(primary: list[dict], activities: list) -> None:
         ref_counts = Counter(
             token for row in reference for token in (row[kind] or {None})
         )
+        int_counts = Counter(
+            token for row in intervals for token in (row[kind] or {None})
+        )
         tokens = sorted(
-            set(short_counts) | set(ref_counts),
-            key=lambda token: -(short_counts[token] + ref_counts[token]),
+            set(short_counts) | set(ref_counts) | set(int_counts),
+            key=lambda token: -(
+                short_counts[token]
+                + ref_counts[token]
+                + int_counts[token]
+            ),
         )
         table(
             [
@@ -734,10 +751,11 @@ def diagnose(primary: list[dict], activities: list) -> None:
                     token or "(none)",
                     short_counts[token],
                     ref_counts[token],
+                    int_counts[token],
                 )
                 for token in tokens
             ],
-            headers=[kind[:-1], "20-30", "30-60"],
+            headers=[kind[:-1], "20-30", "30-60", "interval"],
         )
 
     short_tags = Counter(tag for row in short for tag in row["tags"])
@@ -895,6 +913,7 @@ def series_stats(series: list[dict]) -> dict:
 
     return {
         "months": len(series),
+        "eligible": sum(entry["n"] >= 6 for entry in series),
         "n": sum(entry["n"] for entry in series),
         "mean": mean(effs),
         "sd": stdev(effs) if len(effs) > 1 else None,
@@ -924,7 +943,7 @@ def yearly_series(rows: list[dict]) -> dict[int, tuple[int, float]]:
     }
 
 
-def trend_filters(primary: list[dict]) -> None:
+def trend_filters(primary: list[dict], intervals: list[dict]) -> None:
     """Compare all steady runs with length/recovery filters over time."""
     variants = [
         (
@@ -957,6 +976,8 @@ def trend_filters(primary: list[dict]) -> None:
                 and "recovery" not in row["targets"]
             ],
         ),
+        ("interval (overall)", intervals),
+        ("steady + intervals", primary + intervals),
     ]
 
     summary = []
@@ -968,6 +989,7 @@ def trend_filters(primary: list[dict]) -> None:
                 name,
                 stats["n"],
                 stats["months"],
+                stats["eligible"],
                 _fmt(stats["mean"], 2),
                 _fmt(stats["sd"], 3),
                 _fmt(stats["diff_sd"], 3),
@@ -984,6 +1006,7 @@ def trend_filters(primary: list[dict]) -> None:
             "population",
             "n",
             "months",
+            "months >= 6",
             "eff mean",
             "monthly SD",
             "Δ SD",
@@ -1161,10 +1184,14 @@ def main() -> None:
     baseline = resting_hr_baselines(wellness)
     rows = build_rows(activities, baseline)
     primary = select(rows)
-
+    interval_sessions = select(rows, intervals_only=True)
     print(
         f"{len(activities)} activities, {len(wellness)} wellness days; "
         f"{len(rows)} runs with HR, time, distance and an RHR baseline"
+    )
+    print(
+        f"populations: {len(primary)} steady runs, "
+        f"{len(interval_sessions)} interval/race/progression sessions (overall)"
     )
 
     funnel(rows)
@@ -1200,6 +1227,23 @@ def main() -> None:
     table(
         speed_band_table(primary),
         headers=["km/h", "min", "n", "efficiency"],
+    )
+
+    print("\ninterval/race/progression sessions (overall averages):")
+    table(
+        [
+            (
+                label,
+                count,
+                f"{median_minutes:.0f}" if median_minutes else "-",
+                f"{kmh:.1f}" if kmh else "-",
+                f"{efficiency:.2f}" if efficiency else "-",
+            )
+            for label, count, median_minutes, kmh, efficiency in bin_rows(
+                interval_sessions
+            )
+        ],
+        headers=["min", "n", "median", "km/h", "efficiency"],
     )
 
     print("\npredictor correlations (collinearity check):")
@@ -1251,6 +1295,47 @@ def main() -> None:
 
     describe(beta, speed_ref)
 
+    print("\nduration model by population:")
+    population_rows = []
+    for name, chunk in (
+        ("steady", primary),
+        ("interval (overall)", interval_sessions),
+        ("combined", primary + interval_sessions),
+    ):
+        if len(chunk) < 30:
+            population_rows.append((name, len(chunk), "-", "-", "-", "-", "-"))
+            continue
+        population_beta, population_r2, _ = fit(chunk)
+        _, _, c, d = population_beta
+        population_speed = median(row["speed"] for row in chunk)
+        e30 = contributions(population_beta, population_speed, 30.0)[4]
+        e60 = contributions(population_beta, population_speed, 60.0)[4]
+        e120 = contributions(population_beta, population_speed, 120.0)[4]
+        population_rows.append(
+            (
+                name,
+                len(chunk),
+                f"{population_r2:.3f}",
+                f"{c:+.1f}",
+                f"{d:+.4f}",
+                f"{(e30 / e60 - 1) * 100:+.1f}%"
+                if e30 and e60
+                else "-",
+                f"{(e120 / e60 - 1) * 100:+.1f}%"
+                if e120 and e60
+                else "-",
+            )
+        )
+    table(
+        population_rows,
+        headers=["population", "n", "R²", "c", "d", "30 vs 60", "60 vs 120"],
+    )
+    print(
+        "interval sessions are not steady; their model fit is descriptive, "
+        "not a steady-state claim. They have almost no data beyond 90 min, "
+        "so 60 vs 120 there is an extrapolation."
+    )
+
     print("\nmodel comparison (does the duration shape survive curvature?):")
     r2_speed = fit(primary, features_speed)[1]
     beta_quad, r2_quad, _ = fit(primary, features_quadratic)
@@ -1277,10 +1362,10 @@ def main() -> None:
     baseline_180 = resting_hr_baselines(wellness, window_days=180)
     sensitivity(rows, primary, baseline_180)
 
-    diagnose(primary, activities)
+    diagnose(primary, interval_sessions, activities)
 
     print("\ndoes filtering make the evolution more consistent?")
-    trend_filters(primary)
+    trend_filters(primary, interval_sessions)
 
     plot_efficiency(primary, beta)
     plot_contributions(beta)
