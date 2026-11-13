@@ -1,0 +1,798 @@
+"""Experiment: does session efficiency depend on duration?
+
+Hypothesis
+----------
+Session efficiency is ``distance / ((avg_hr - RHR) * minutes)``. Two effects
+push the session average in opposite directions:
+
+- the start-up transient: heart rate takes a few minutes to reach steady
+  state, so short runs carry a larger share of low-HR minutes and look more
+  efficient;
+- cardiac drift: at the same pace, heart rate rises with time, so long runs
+  look less efficient.
+
+Model
+-----
+With session totals only (no laps, no streams)::
+
+    excess = a + b*speed + c/T + d*T
+
+``c < 0`` is the fixed transient (bpm*min deficit), ``d > 0`` the drift
+(bpm/min). Efficiency at speed ``v`` is ``60*v/excess`` m/beat.
+
+Population and guards
+---------------------
+Running activities with HR/distance/duration, a resting-HR baseline
+(365-day median, expanding before that), duration 20-240 min, average HR at
+least 10 bpm above resting, and a sane speed. Primary population excludes
+interval/race/progression workouts; the same fit is repeated with them (and
+with trail runs) as sensitivity. RHR starts in Sep 2022, so the analysis is
+limited to that period.
+
+Decision
+--------
+Both coefficients significant with a meaningful efficiency difference
+(>1% between 30 and 60 min, or >2% between 60 and 120 min) means the existing
+metric has a duration bias and needs a guard or correction. Only ``c`` means
+short runs are the problem; only ``d`` is the durability question; neither
+means reject the correction. This experiment does not promote a metric; it
+sizes the bias.
+
+    uv run --env-file .env python experiments/efficiency_duration.py
+"""
+
+from __future__ import annotations
+
+import random
+from datetime import date
+from statistics import median
+
+import plotly.graph_objects as go
+
+from hobbyjogging_report.analysis import RUN_TYPES
+from hobbyjogging_report.analysis.efficiency import (
+    MIN_EXCESS_HR,
+    resting_hr_baselines,
+)
+from hobbyjogging_report.shell import save, table
+from hobbyjogging_report.sources import create_source
+
+MIN_DURATION_MIN = 20.0
+MAX_DURATION_MIN = 240.0
+MIN_SPEED = 1.5  # 11:07 min/km
+MAX_SPEED = 6.0  # 2:47 min/km
+NON_STEADY_METHODS = {"intervals", "race", "progression"}
+BIN_EDGES = [
+    (20, 30),
+    (30, 45),
+    (45, 60),
+    (60, 90),
+    (90, 120),
+    (120, 180),
+    (180, 240),
+]
+SPEED_BANDS = [(0.0, 10.5), (10.5, 11.5), (11.5, 12.5), (12.5, 99.0)]
+BOOTSTRAP_ITERATIONS = 500
+SEED = 7
+
+
+# --- rows -----------------------------------------------------------------
+
+
+def build_rows(activities, baseline) -> list[dict]:
+    """Per-activity session rows with the values the model needs."""
+    rows = []
+
+    for activity in activities:
+        if activity.type not in RUN_TYPES:
+            continue
+        if activity.duration_s <= 0 or activity.distance_m <= 0:
+            continue
+        if activity.avg_hr is None:
+            continue
+
+        minutes = activity.duration_s / 60.0
+        speed = activity.distance_m / activity.duration_s
+        resting_hr = baseline(activity.date)
+
+        if resting_hr is None:
+            continue
+
+        excess = activity.avg_hr - resting_hr
+
+        rows.append(
+            {
+                "date": activity.date,
+                "name": activity.name,
+                "sport": activity.type,
+                "minutes": minutes,
+                "speed": speed,
+                "excess": excess,
+                "rhr": resting_hr,
+                "distance_m": activity.distance_m,
+                "methods": set(activity.workout_methods),
+                "targets": set(activity.workout_targets),
+                "efficiency": (
+                    activity.distance_m / (excess * minutes)
+                    if excess >= MIN_EXCESS_HR
+                    else None
+                ),
+            }
+        )
+
+    return rows
+
+
+def select(
+    rows: list[dict],
+    *,
+    include_intervals: bool = False,
+    include_trail: bool = False,
+    max_minutes: float = MAX_DURATION_MIN,
+) -> list[dict]:
+    """Apply the population guards."""
+    selected = []
+
+    for row in rows:
+        if row["minutes"] < MIN_DURATION_MIN or row["minutes"] > max_minutes:
+            continue
+        if row["excess"] < MIN_EXCESS_HR:
+            continue
+        if not (MIN_SPEED <= row["speed"] <= MAX_SPEED):
+            continue
+        if not include_trail and row["sport"] == "trail_run":
+            continue
+        if not include_intervals and row["methods"] & NON_STEADY_METHODS:
+            continue
+        selected.append(row)
+
+    return selected
+
+
+def funnel(rows: list[dict]) -> None:
+    """Print how many activities survive each sequential guard."""
+    steps = [
+        ("rows with HR, distance, time and RHR", len(rows)),
+        (
+            "duration 20-240 min",
+            sum(
+                MIN_DURATION_MIN <= r["minutes"] <= MAX_DURATION_MIN
+                for r in rows
+            ),
+        ),
+        (
+            "average HR at least 10 bpm above resting",
+            sum(
+                MIN_DURATION_MIN <= r["minutes"] <= MAX_DURATION_MIN
+                and r["excess"] >= MIN_EXCESS_HR
+                for r in rows
+            ),
+        ),
+        (
+            "sane speed",
+            sum(
+                MIN_DURATION_MIN <= r["minutes"] <= MAX_DURATION_MIN
+                and r["excess"] >= MIN_EXCESS_HR
+                and MIN_SPEED <= r["speed"] <= MAX_SPEED
+                for r in rows
+            ),
+        ),
+        (
+            "not trail",
+            sum(
+                MIN_DURATION_MIN <= r["minutes"] <= MAX_DURATION_MIN
+                and r["excess"] >= MIN_EXCESS_HR
+                and MIN_SPEED <= r["speed"] <= MAX_SPEED
+                and r["sport"] != "trail_run"
+                for r in rows
+            ),
+        ),
+        (
+            "not interval/race/progression (primary)",
+            len(select(rows)),
+        ),
+    ]
+
+    table(steps, headers=["step", "activities"])
+
+
+# --- ordinary least squares ----------------------------------------------
+
+
+def solve(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    """Gaussian elimination for a small dense system."""
+    size = len(vector)
+    work = [row[:] for row in matrix]
+    values = vector[:]
+
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda i: abs(work[i][column]))
+        if abs(work[pivot][column]) < 1e-12:
+            raise ValueError("singular design matrix")
+        work[column], work[pivot] = work[pivot], work[column]
+        values[column], values[pivot] = values[pivot], values[column]
+
+        for row in range(size):
+            if row == column:
+                continue
+            factor = work[row][column] / work[column][column]
+            if factor == 0:
+                continue
+            for k in range(column, size):
+                work[row][k] -= factor * work[column][k]
+            values[row] -= factor * values[column]
+
+    return [values[i] / work[i][i] for i in range(size)]
+
+
+def features_linear(row: dict) -> list[float]:
+    return [1.0, row["speed"], 1.0 / row["minutes"], row["minutes"]]
+
+
+def features_speed(row: dict) -> list[float]:
+    return [1.0, row["speed"]]
+
+
+def features_quadratic(row: dict) -> list[float]:
+    return [
+        1.0,
+        row["speed"],
+        row["speed"] ** 2,
+        1.0 / row["minutes"],
+        row["minutes"],
+    ]
+
+
+def fit(rows: list[dict], features=features_linear):
+    """Fit ``excess = features · beta``; return coefficients, R², RMSE."""
+    width = len(features(rows[0]))
+    xtx = [[0.0] * width for _ in range(width)]
+    xty = [0.0] * width
+
+    for row in rows:
+        x = features(row)
+        y = row["excess"]
+        for i in range(width):
+            xty[i] += x[i] * y
+            for j in range(width):
+                xtx[i][j] += x[i] * x[j]
+
+    beta = solve(xtx, xty)
+
+    mean_y = sum(row["excess"] for row in rows) / len(rows)
+    ss_tot = sum((row["excess"] - mean_y) ** 2 for row in rows)
+    ss_res = 0.0
+
+    for row in rows:
+        predicted = sum(
+            weight * value for weight, value in zip(features(row), beta)
+        )
+        ss_res += (row["excess"] - predicted) ** 2
+
+    r2 = 1.0 - ss_res / ss_tot if ss_tot else 0.0
+    rmse = (ss_res / len(rows)) ** 0.5
+    return beta, r2, rmse
+
+
+def percentile(values: list[float], q: float) -> float:
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * q
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
+def bootstrap(
+    rows: list[dict],
+    features=features_linear,
+    iterations: int = BOOTSTRAP_ITERATIONS,
+):
+    """Coefficient confidence intervals by resampling activities."""
+    rng = random.Random(SEED)
+    count = len(rows)
+    width = len(features(rows[0]))
+    samples = [[] for _ in range(width)]
+
+    for _ in range(iterations):
+        draw = [rows[rng.randrange(count)] for _ in range(count)]
+        try:
+            beta, _, _ = fit(draw, features)
+        except ValueError:
+            continue
+        for index in range(width):
+            samples[index].append(beta[index])
+
+    return [
+        (percentile(values, 0.025), percentile(values, 0.975))
+        for values in samples
+    ]
+
+
+def correlation(xs: list[float], ys: list[float]) -> float:
+    mean_x = sum(xs) / len(xs)
+    mean_y = sum(ys) / len(ys)
+    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    var_x = sum((x - mean_x) ** 2 for x in xs)
+    var_y = sum((y - mean_y) ** 2 for y in ys)
+    return cov / (var_x * var_y) ** 0.5 if var_x and var_y else 0.0
+
+
+# --- reporting ------------------------------------------------------------
+
+
+def weighted_efficiency(rows: list[dict]) -> float | None:
+    distance = sum(row["distance_m"] for row in rows)
+    beats = sum(row["excess"] * row["minutes"] for row in rows)
+    return distance / beats if beats else None
+
+
+def bin_rows(rows: list[dict]) -> list[tuple]:
+    result = []
+
+    for low, high in BIN_EDGES:
+        last = high == BIN_EDGES[-1][1]
+        chunk = [
+            row
+            for row in rows
+            if low <= row["minutes"]
+            and (row["minutes"] <= high if last else row["minutes"] < high)
+        ]
+        if not chunk:
+            result.append((f"{low}-{high}", 0, None, None, None))
+            continue
+        result.append(
+            (
+                f"{low}-{high}",
+                len(chunk),
+                median(row["minutes"] for row in chunk),
+                median(row["speed"] for row in chunk) * 3.6,
+                weighted_efficiency(chunk),
+            )
+        )
+
+    return result
+
+
+def in_duration_bin(minutes: float, low: float, high: float) -> bool:
+    if high == BIN_EDGES[-1][1]:
+        return low <= minutes <= high
+    return low <= minutes < high
+
+
+def speed_band_table(rows: list[dict]) -> list[tuple]:
+    """Efficiency by duration bin within fixed speed bands."""
+    result = []
+
+    for low, high in SPEED_BANDS:
+        for dlow, dhigh in BIN_EDGES:
+            chunk = [
+                row
+                for row in rows
+                if low <= row["speed"] * 3.6 < high
+                and in_duration_bin(row["minutes"], dlow, dhigh)
+            ]
+            if len(chunk) < 3:
+                continue
+            result.append(
+                (
+                    f"{low:.1f}-{high:.1f}" if high < 90 else f"{low:.1f}+",
+                    f"{dlow}-{dhigh}",
+                    len(chunk),
+                    f"{weighted_efficiency(chunk):.2f}",
+                )
+            )
+
+    return result
+
+
+def contributions(beta: list[float], speed_ref: float, minutes: float) -> tuple:
+    _, b, c, d = beta
+    steady = beta[0] + b * speed_ref
+    transient = c / minutes
+    drift = d * minutes
+    excess = steady + transient + drift
+    efficiency = 60.0 * speed_ref / excess if excess > 0 else None
+    return steady, transient, drift, excess, efficiency
+
+
+def describe(beta: list[float], speed_ref: float) -> None:
+    _, _, c, d = beta
+
+    print(
+        f"\nstart-up c = {c:+.1f} bpm*min "
+        f"({c / 60:+.1f} bpm at 60 min, {c / 30:+.1f} bpm at 30 min)"
+    )
+    if c < 0:
+        print("  negative: short runs carry fewer excess beats (warm-up dilution)")
+    else:
+        print(
+            "  positive: short runs carry MORE excess HR at the same speed "
+            "(no warm-up dilution in session averages)"
+        )
+    print(
+        f"drift     d = {d:+.4f} bpm/min "
+        f"({d * 60:+.2f} bpm/h, {d * 120:+.1f} bpm at 120 min)"
+    )
+
+    if c > 0 and d > 0:
+        crossover = (c / d) ** 0.5
+        print(
+            f"crossover T* = {crossover:.0f} min "
+            "(start-up term and drift balance; efficiency peaks here)"
+        )
+    elif c < 0 and d > 0:
+        crossover = None
+        print(
+            "no crossover: the start-up term fades while drift grows, "
+            "so efficiency falls monotonically with duration"
+        )
+    else:
+        crossover = None
+        print("coefficient signs do not describe a transient-plus-drift shape")
+
+    rows = []
+    reference = contributions(beta, speed_ref, 60.0)[4]
+
+    for minutes in (30.0, 60.0, 90.0, 120.0, 180.0):
+        steady, transient, drift, excess, efficiency = contributions(
+            beta, speed_ref, minutes
+        )
+        bias = (
+            (efficiency / reference - 1.0) * 100
+            if efficiency is not None and reference
+            else None
+        )
+        rows.append(
+            (
+                f"{minutes:.0f}",
+                f"{steady:.1f}",
+                f"{transient:+.1f}",
+                f"{drift:+.1f}",
+                f"{excess:.1f}",
+                f"{efficiency:.2f}" if efficiency is not None else "-",
+                f"{bias:+.1f}%" if bias is not None else "-",
+            )
+        )
+
+    table(
+        rows,
+        headers=[
+            "T min",
+            "steady bpm",
+            "start-up",
+            "drift",
+            "excess",
+            "eff",
+            "vs 60 min",
+        ],
+    )
+
+    if crossover:
+        position = (
+            "inside"
+            if MIN_DURATION_MIN < crossover < MAX_DURATION_MIN
+            else "outside"
+        )
+        print(
+            f"data range is {MIN_DURATION_MIN:.0f}-{MAX_DURATION_MIN:.0f} min; "
+            f"crossover {position} it"
+        )
+
+
+def sensitivity(
+    rows: list[dict],
+    primary: list[dict],
+    baseline_180,
+) -> None:
+    variants = [
+        ("primary (steady, no trail)", primary),
+        (
+            "plus interval/race/progression",
+            select(rows, include_intervals=True),
+        ),
+        ("plus trail", select(rows, include_trail=True)),
+        ("cap 180 min", select(rows, max_minutes=180.0)),
+        (
+            "easy/steady only (non-quality)",
+            [
+                row
+                for row in primary
+                if row["methods"] <= {"continuous", "long_run", "strides"}
+                and row["targets"] <= {"base", "recovery", "other"}
+            ],
+        ),
+    ]
+
+    # The 180-day resting-HR baseline needs its own rows.
+    rows_180 = []
+    for row in rows:
+        lookup_row = dict(row)
+        resting_hr = baseline_180(row["date"])
+        if resting_hr is None:
+            continue
+        lookup_row["rhr"] = resting_hr
+        lookup_row["excess"] = row["excess"] + row["rhr"] - resting_hr
+        lookup_row["efficiency"] = (
+            row["distance_m"] / (lookup_row["excess"] * row["minutes"])
+            if lookup_row["excess"] >= MIN_EXCESS_HR
+            else None
+        )
+        rows_180.append(lookup_row)
+
+    variants.append(
+        (
+            "180-day RHR baseline",
+            select(
+                [
+                    row
+                    for row in rows_180
+                    if row["excess"] >= MIN_EXCESS_HR
+                ]
+            ),
+        )
+    )
+
+    table_rows = []
+    for name, chunk in variants:
+        chunk = [
+            row
+            for row in chunk
+            if row["excess"] >= MIN_EXCESS_HR and row["efficiency"] is not None
+        ]
+        if len(chunk) < 30:
+            table_rows.append((name, len(chunk), "-", "-", "-", "-"))
+            continue
+        beta, r2, _ = fit(chunk)
+        _, _, c, d = beta
+        speed_ref = median(row["speed"] for row in chunk)
+        e30 = contributions(beta, speed_ref, 30.0)[4]
+        e60 = contributions(beta, speed_ref, 60.0)[4]
+        e120 = contributions(beta, speed_ref, 120.0)[4]
+        bias_30_60 = (e30 / e60 - 1) * 100 if e30 and e60 else None
+        bias_60_120 = (e120 / e60 - 1) * 100 if e120 and e60 else None
+        table_rows.append(
+            (
+                name,
+                len(chunk),
+                f"{c:+.1f}",
+                f"{d:+.4f}",
+                f"{bias_30_60:+.1f}%" if bias_30_60 is not None else "-",
+                f"{bias_60_120:+.1f}%" if bias_60_120 is not None else "-",
+            )
+        )
+
+    table(
+        table_rows,
+        headers=["variant", "n", "c", "d", "30 vs 60", "60 vs 120"],
+    )
+
+
+def plot_efficiency(rows: list[dict], beta: list[float]) -> None:
+    speed_ref = median(row["speed"] for row in rows)
+    points = [row for row in rows if row["efficiency"] is not None]
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=[row["minutes"] for row in points],
+            y=[row["efficiency"] for row in points],
+            mode="markers",
+            marker={"size": 4, "opacity": 0.25, "color": "#4c78a8"},
+            name="runs",
+        )
+    )
+
+    binned = [row for row in bin_rows(rows) if row[1] and row[4]]
+    figure.add_trace(
+        go.Scatter(
+            x=[row[2] for row in binned],
+            y=[row[4] for row in binned],
+            mode="lines+markers",
+            line={"color": "#e45756", "width": 2},
+            marker={"size": 7},
+            name="weighted by duration bin",
+        )
+    )
+
+    grid = [
+        MIN_DURATION_MIN + (MAX_DURATION_MIN - MIN_DURATION_MIN) * i / 200
+        for i in range(201)
+    ]
+    predicted = [contributions(beta, speed_ref, t)[4] for t in grid]
+    figure.add_trace(
+        go.Scatter(
+            x=grid,
+            y=predicted,
+            mode="lines",
+            line={"color": "#54a24b", "width": 2, "dash": "dash"},
+            name=f"model at {speed_ref * 3.6:.1f} km/h",
+        )
+    )
+
+    figure.update_xaxes(type="log", title_text="duration (min, log scale)")
+    figure.update_yaxes(title_text="efficiency (m/excess beat)")
+    figure.update_layout(
+        title="Session efficiency vs duration",
+        legend={"orientation": "h", "y": -0.2},
+    )
+    save(figure, "efficiency-duration")
+
+
+def plot_contributions(beta: list[float]) -> None:
+    grid = [
+        MIN_DURATION_MIN + (MAX_DURATION_MIN - MIN_DURATION_MIN) * i / 200
+        for i in range(201)
+    ]
+    transient = [beta[2] / t for t in grid]
+    drift = [beta[3] * t for t in grid]
+    total = [a + b for a, b in zip(transient, drift)]
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=grid,
+            y=transient,
+            mode="lines",
+            name="start-up term (c/T)",
+            line={"color": "#4c78a8"},
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=grid,
+            y=drift,
+            mode="lines",
+            name="cardiac drift (d·T)",
+            line={"color": "#e45756"},
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=grid,
+            y=total,
+            mode="lines",
+            name="net effect on avg HR",
+            line={"color": "#333333", "width": 2},
+        )
+    )
+    figure.add_hline(y=0, line={"color": "#999999", "width": 1})
+    figure.update_xaxes(title_text="duration (min)")
+    figure.update_yaxes(title_text="effect on average HR (bpm)")
+    figure.update_layout(
+        title="Transient vs drift over the session",
+        legend={"orientation": "h", "y": -0.2},
+    )
+    save(figure, "efficiency-duration-effects")
+
+
+def main() -> None:
+    with create_source() as source:
+        activities = source.activities(date(2000, 1, 1), date.today())
+        wellness = source.wellness(date(1999, 1, 1), date.today())
+
+    baseline = resting_hr_baselines(wellness)
+    rows = build_rows(activities, baseline)
+    primary = select(rows)
+
+    print(
+        f"{len(activities)} activities, {len(wellness)} wellness days; "
+        f"{len(rows)} runs with HR, time, distance and an RHR baseline"
+    )
+
+    funnel(rows)
+
+    if len(primary) < 100:
+        print(f"only {len(primary)} usable runs; need at least 100")
+        return
+
+    by_year: dict[int, int] = {}
+    for row in primary:
+        by_year[row["date"].year] = by_year.get(row["date"].year, 0) + 1
+    table(
+        [(year, count) for year, count in sorted(by_year.items())],
+        headers=["year", "runs"],
+    )
+
+    print("\nefficiency by duration bin (weighted sum(distance)/sum(beats)):")
+    table(
+        [
+            (
+                label,
+                count,
+                f"{median_minutes:.0f}" if median_minutes else "-",
+                f"{kmh:.1f}" if kmh else "-",
+                f"{efficiency:.2f}" if efficiency else "-",
+            )
+            for label, count, median_minutes, kmh, efficiency in bin_rows(primary)
+        ],
+        headers=["min", "n", "median", "km/h", "efficiency"],
+    )
+
+    print("\nsame, within fixed speed bands:")
+    table(
+        speed_band_table(primary),
+        headers=["km/h", "min", "n", "efficiency"],
+    )
+
+    print("\npredictor correlations (collinearity check):")
+    speeds = [row["speed"] for row in primary]
+    inverse = [1.0 / row["minutes"] for row in primary]
+    minutes = [row["minutes"] for row in primary]
+    table(
+        [
+            ("speed vs 1/T", f"{correlation(speeds, inverse):+.2f}"),
+            ("speed vs T", f"{correlation(speeds, minutes):+.2f}"),
+            ("1/T vs T", f"{correlation(inverse, minutes):+.2f}"),
+        ],
+        headers=["pair", "r"],
+    )
+
+    beta, r2, rmse = fit(primary)
+    intervals = bootstrap(primary)
+    speed_ref = median(speeds)
+
+    print(
+        f"\nOLS on {len(primary)} runs: R² {r2:.3f}, RMSE {rmse:.1f} bpm; "
+        f"reference speed {speed_ref * 3.6:.1f} km/h"
+    )
+    table(
+        [
+            (
+                "a (bpm)",
+                f"{beta[0]:+.1f}",
+                f"[{intervals[0][0]:+.1f}, {intervals[0][1]:+.1f}]",
+            ),
+            (
+                "b (bpm per m/s)",
+                f"{beta[1]:+.1f}",
+                f"[{intervals[1][0]:+.1f}, {intervals[1][1]:+.1f}]",
+            ),
+            (
+                "c (bpm*min)",
+                f"{beta[2]:+.1f}",
+                f"[{intervals[2][0]:+.1f}, {intervals[2][1]:+.1f}]",
+            ),
+            (
+                "d (bpm/min)",
+                f"{beta[3]:+.4f}",
+                f"[{intervals[3][0]:+.4f}, {intervals[3][1]:+.4f}]",
+            ),
+        ],
+        headers=["term", "estimate", "95% bootstrap CI"],
+    )
+
+    describe(beta, speed_ref)
+
+    print("\nmodel comparison (does the duration shape survive curvature?):")
+    r2_speed = fit(primary, features_speed)[1]
+    beta_quad, r2_quad, _ = fit(primary, features_quadratic)
+    table(
+        [
+            ("speed only", f"{r2_speed:.3f}", "-", "-"),
+            (
+                "speed + 1/T + T",
+                f"{r2:.3f}",
+                f"{beta[2]:+.1f}",
+                f"{beta[3]:+.4f}",
+            ),
+            (
+                "speed + speed² + 1/T + T",
+                f"{r2_quad:.3f}",
+                f"{beta_quad[3]:+.1f}",
+                f"{beta_quad[4]:+.4f}",
+            ),
+        ],
+        headers=["model", "R²", "c", "d"],
+    )
+
+    print("\nsensitivity:")
+    baseline_180 = resting_hr_baselines(wellness, window_days=180)
+    sensitivity(rows, primary, baseline_180)
+
+    plot_efficiency(primary, beta)
+    plot_contributions(beta)
+
+
+if __name__ == "__main__":
+    main()
