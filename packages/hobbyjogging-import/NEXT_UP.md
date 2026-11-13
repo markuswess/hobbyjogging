@@ -111,6 +111,10 @@ the API details (below).
     an `ambiguous_equipment` review item — never guess (the two "Lunge C-Dur"
     pairs differ only by colour and date). 2022+ gear has no sheet
     counterpart and simply creates new rows.
+  - **Race results**: Runalyze `race_result` supplies placing, category,
+    participants, conditions and often the proper race name (today's rows are
+    generically named "10k Race"). Store it on the race link/event; the
+    activity already holds time and distance.
 - The dashboard is reports-package work.
 - The planned-event zone display is reports-package work.
 

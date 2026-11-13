@@ -174,7 +174,31 @@ Updated 2026-11-12.
    - **Docs**: the reports README taxonomy section and the ARCHITECTURE
      `classify.py` bullet.
 
-2. **Elevation gain and loss on activities** (core + import + maintenance).
+2. **Link planned races to activities and propagate the `race` method**
+   (core + maintenance). The classifier only reads the name, so the two past
+   planned races are misclassified: the 2026 Linz Marathon (42.45 km, 2:37:49)
+   is `long_run` and the 2025 Baden Stadtlauf 10k is `intervals`, although both
+   have a race event on the same day. Only 8 of the 45 race activities have a
+   same-day event.
+   - **Next migration**: `event_activity_links(event_id, activity_id,
+     match_method, confidence, linked_at)` — a table, not a column, because a
+     race day can also have warmup/cooldown activities.
+   - **Matching** (`race_links_current`, a maintenance recompute): date + sport,
+     then distance within ~5% (42.20 vs 42.45 km), then start-time proximity.
+     Ambiguous candidates open an `ambiguous_race` review item instead of
+     guessing.
+   - **Propagation**: for each linked race event, ensure the activity carries
+     the `race` method with a non-manual source; manual sets always win, so a
+     deliberate change survives.
+   - **Plan vs actual** comes free: the event already stores planned
+     distance/duration/load/zones.
+   - **Split**: core owns the table, migration, model and repository;
+     maintenance owns the recompute; reports consumes the link for the race
+     report.
+   - **Tests**: distance tolerance, ambiguous → review item, manual methods
+     untouched, idempotent, dry-run.
+
+3. **Elevation gain and loss on activities** (core + import + maintenance).
    Per-lap FIT elevation is stored (`activity_laps.elevation_gain_m`, 2,800
    activities), but `activities` has no elevation column. The payloads cover
    81% of activities: Intervals `total_elevation_gain` / `_loss` (2,846), the
@@ -199,19 +223,19 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
      backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
 
-3. **Runalyze enrichment** when the API auth/endpoint details are settled:
+4. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities. The gear half includes cross-source equipment identity
    (`equipment_source_links`, co-occurrence matching, review items for
    ambiguity); see the import `NEXT_UP`.
-4. **Homelab cutover**: DB + importer + dashboard generator + static server,
+5. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-5. **Reports backlog** — handed to the reports session; the list lives in
+6. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
    vs actual by session, optional HR-zone variant, the equipment report and
-   dashboard tab.
-6. **Raw vs derived: document the tiers and add a check** (low priority). The
+   tab, and the race report plus Performance tab.
+7. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable

@@ -194,7 +194,26 @@ planned-vs-actual comparison remain next.
    - **Tests**: mileage sums, coverage counts, the active/retired split, and
      `-` rendering when an item has no activities.
 
-5. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
+5. **Race report and Performance tab.** Depends on the root
+   `event_activity_links` item; until that lands, use activities whose methods
+   contain `race`.
+   - `reports.sh races`: past results (date, name, distance, time, pace,
+     category, HR, load), **PBs per distance bucket** (5k/10k/HM/M/trail, with
+     a tolerance — the 4.20 km and 4.91 km "5k" rows need it), upcoming races
+     with countdown, and the planned-vs-actual line for linked races.
+   - `reports.sh race <id>`: race-day report — splits from laps, HR/zone
+     execution against the event's planned zones, positive/negative split, and
+     the plan delta.
+   - **Analysis**: pace-vs-distance scatter (log-log) with a Riegel exponent,
+     an equivalent-time table (what today's 10k predicts), and best-effort
+     trends.
+   - **Dashboard Performance tab**: upcoming races, results table, PB table,
+     the performance trend chart, and race-day cards. Supersedes the overview
+     race cards.
+   - **Tests**: PB selection per bucket, planned-vs-actual delta, `-` when a
+     race has no link, race-day split rendering.
+
+6. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
    (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).
    - **Phase 1**: render `packages/hobbyjogging-reports/README.md` through the
      existing Markdown → HTML renderer inside a `.report` card, with a short
