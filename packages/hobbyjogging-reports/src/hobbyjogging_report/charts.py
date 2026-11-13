@@ -24,6 +24,7 @@ from .analysis import (
     SUBT_CATEGORIES,
     pace_hr_efficiency_lines,
     pace_hr_trends,
+    pace_s_per_km,
     recovery_bands,
     riegel_reference,
     riegel_time,
@@ -1665,10 +1666,10 @@ def plot_compare_pace_hr(
     )
 
 
-def _duration_ticks(low: float, high: float) -> tuple[list[float], list[str]]:
-    """Sortable time ticks in seconds with ``M:SS`` / ``H:MM:SS`` labels."""
-    span = max(high - low, 60.0)
-    steps = (15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200)
+def _pace_ticks(low: float, high: float) -> tuple[list[float], list[str]]:
+    """Pace ticks in seconds/km with ``M:SS`` labels."""
+    span = max(high - low, 10.0)
+    steps = (5, 10, 15, 30, 60, 120)
     step = next(
         (candidate for candidate in steps if span / candidate <= 8),
         steps[-1],
@@ -1677,7 +1678,7 @@ def _duration_ticks(low: float, high: float) -> tuple[list[float], list[str]]:
     end = int(math.ceil(high / step)) * step
     values = list(range(start, end + step, step))
 
-    return values, [fmt_clock(value) for value in values]
+    return values, [format_pace(value) for value in values]
 
 
 PB_COLORS = {
@@ -1685,8 +1686,6 @@ PB_COLORS = {
     "10k": "#ff7f0e",
     "HM": "#2ca02c",
     "M": "#d62728",
-    "Trail": "#8c564b",
-    "Other": "#7f7f7f",
 }
 
 
@@ -1696,23 +1695,37 @@ def plot_pb_progressions(
     title: str = "PB progression",
     as_html: bool = False,
 ) -> str:
-    """Step lines of PB improvements, one per race bucket."""
+    """Step lines of PB improvements in pace, one per standard bucket."""
     _require_data(progressions)
-    times = [
-        step.activity.duration_s
+    paces = [
+        pace
         for progression in progressions
         for step in progression.steps
+        if (
+            pace := pace_s_per_km(
+                step.activity.duration_s,
+                step.activity.distance_m,
+            )
+        )
+        is not None
     ]
-    tickvals, ticktext = _duration_ticks(min(times), max(times))
+    tickvals, ticktext = _pace_ticks(min(paces), max(paces))
     figure = go.Figure()
 
     for progression in progressions:
         steps = progression.steps
-        color = PB_COLORS.get(progression.bucket, "#7f7f7f")
+        color = PB_COLORS[progression.bucket]
+        step_paces = [
+            pace_s_per_km(
+                step.activity.duration_s,
+                step.activity.distance_m,
+            )
+            for step in steps
+        ]
         figure.add_trace(
             go.Scatter(
                 x=[step.activity.date for step in steps],
-                y=[step.activity.duration_s for step in steps],
+                y=step_paces,
                 mode="lines+markers",
                 name=progression.bucket,
                 line={"shape": "hv", "width": 2, "color": color},
@@ -1723,8 +1736,9 @@ def plot_pb_progressions(
                         f"{step.activity.name or progression.bucket}"
                         f"<br>{step.activity.distance_m / 1000:.2f} km, "
                         f"{fmt_clock(step.activity.duration_s)}"
+                        f" · {format_pace(pace)}/km"
                     )
-                    for step in steps
+                    for step, pace in zip(steps, step_paces)
                 ],
                 hoverinfo="text",
             )
@@ -1732,10 +1746,10 @@ def plot_pb_progressions(
         last = steps[-1]
         figure.add_annotation(
             x=last.activity.date,
-            y=last.activity.duration_s,
+            y=step_paces[-1],
             text=(
                 f"{progression.bucket} "
-                f"{fmt_clock(last.activity.duration_s)}"
+                f"{format_pace(step_paces[-1])}/km"
             ),
             showarrow=False,
             xanchor="left",
@@ -1743,11 +1757,11 @@ def plot_pb_progressions(
             font={"size": 10, "color": color},
         )
 
-    pad = max((max(times) - min(times)) * 0.05, 30.0)
+    pad = max((max(paces) - min(paces)) * 0.05, 3.0)
     figure.update_xaxes(title_text="date")
     figure.update_yaxes(
-        title_text="race time",
-        range=[max(0.0, min(times) - pad), max(times) + pad],
+        title_text="pace (min/km)",
+        range=[min(paces) - pad, max(paces) + pad],
         tickvals=tickvals,
         ticktext=ticktext,
     )

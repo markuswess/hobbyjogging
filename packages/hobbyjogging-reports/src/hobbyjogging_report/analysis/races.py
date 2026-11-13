@@ -26,6 +26,13 @@ STANDARD_DISTANCES = {
     "HM": 21097.5,
     "M": 42195.0,
 }
+STANDARD_BUCKETS = tuple(STANDARD_DISTANCES)
+RAW_BUCKETS = (TRAIL_BUCKET, OTHER_BUCKET)
+
+
+def bucket_label(bucket: str) -> str:
+    """Bucket name, marked raw when it has no standard distance."""
+    return f"{bucket} (raw)" if bucket in RAW_BUCKETS else bucket
 
 
 def is_race(activity: Activity) -> bool:
@@ -124,7 +131,12 @@ class PbProgression:
 
 
 def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
-    """New PBs per bucket, oldest first; equal times do not advance the line."""
+    """Standard-distance PB improvements per bucket, oldest first.
+
+    Only 5k/10k/HM/M produce a line. Trail and Other have no standard
+    distance, so a step there is a distance change, not a PB; their raw
+    times stay in the tables. Equal times do not advance a line.
+    """
     ordered = sorted(
         (result for result in results if _qualifies_for_pb(result)),
         key=lambda result: (
@@ -147,7 +159,7 @@ def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
 
     return [
         PbProgression(bucket, tuple(steps[bucket]))
-        for bucket in BUCKET_ORDER
+        for bucket in STANDARD_BUCKETS
         if bucket in steps
     ]
 

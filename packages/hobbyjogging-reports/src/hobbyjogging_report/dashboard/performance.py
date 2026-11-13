@@ -9,6 +9,7 @@ from urllib.parse import quote
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    bucket_label,
     equivalent_times,
     fit_riegel,
     pb_progressions,
@@ -129,7 +130,7 @@ def build_performance_section(
         ["Bucket", "Date", "Race", "Distance", "Time", "Pace"],
         [
             [
-                esc(result.bucket),
+                esc(bucket_label(result.bucket)),
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'

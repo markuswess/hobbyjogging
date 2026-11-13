@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
+    bucket_label,
     equivalent_times,
     fit_riegel,
     half_split,
@@ -168,7 +169,7 @@ def races_report(
         for result in groups:
             activity = result.activity
             lines.append(
-                f"| {result.bucket} | {activity.date} | "
+                f"| {bucket_label(result.bucket)} | {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
                 f"{_distance(activity.distance_m)} | "
                 f"{fmt_clock(activity.duration_s)} | "

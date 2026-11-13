@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from hobbyjogging_core.model import Event, EventZoneTime, Lap
 from hobbyjogging_report.analysis import (
+    bucket_label,
     equivalent_times,
     fit_riegel,
     half_split,
@@ -251,6 +252,34 @@ class RaceAnalysisTests(unittest.TestCase):
             [step.activity.duration_s for step in progressions[1].steps],
         )
 
+    def test_pb_progressions_skip_trail_and_other(self):
+        results = race_results(
+            [
+                _race(
+                    id="trail",
+                    date=D,
+                    type="trail_run",
+                    distance_m=21000,
+                    duration_s=9000,
+                ),
+                _race(
+                    id="other",
+                    date=D,
+                    distance_m=15000,
+                    duration_s=4000,
+                ),
+                _race(id="5k", date=D, distance_m=5000, duration_s=1200),
+            ]
+        )
+
+        self.assertEqual(["5k"], [p.bucket for p in pb_progressions(results)])
+
+    def test_bucket_label_marks_raw_buckets(self):
+        self.assertEqual("5k", bucket_label("5k"))
+        self.assertEqual("M", bucket_label("M"))
+        self.assertEqual("Trail (raw)", bucket_label("Trail"))
+        self.assertEqual("Other (raw)", bucket_label("Other"))
+
     def test_pb_progressions_ignore_short_course_times(self):
         results = race_results(
             [
@@ -435,6 +464,23 @@ class RaceReportTests(unittest.TestCase):
             text = fmt_clock(predicted)
             self.assertIn(f"| {label} | {text} |", report)
             self.assertIn(text, section.equivalent_html)
+
+    def test_raw_bucket_pb_is_labelled(self):
+        source = FakeSource(
+            [
+                _race(
+                    id="trail",
+                    date=D,
+                    type="trail_run",
+                    distance_m=21000,
+                    duration_s=9000,
+                )
+            ]
+        )
+
+        report = races_report(source, today=D)
+
+        self.assertIn("| Trail (raw) |", report)
 
     def test_bucket_filter_applies_to_results_and_pbs(self):
         report = races_report(self._source(), bucket="10k", today=D)

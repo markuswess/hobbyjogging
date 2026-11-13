@@ -67,9 +67,10 @@ Pages:
   work reps),
   exactly as `reports.sh session` renders it.
 - `performance.html` (Performance) — upcoming races, race results, personal
-  bests, a per-bucket PB progression chart, a log-log race chart whose dashed
-  Riegel line passes through the reference race and produces the equivalent
-  times, and those times as a table. Results and PBs link to per-race pages
+  bests, a per-bucket PB progression chart in pace (5k/10k/HM/M only), a
+  log-log race chart whose dashed Riegel line passes through the reference
+  race and produces the equivalent times, and those times as a table.
+  Results and PBs link to per-race pages
   with splits and execution details.
 - `gear.html` (Gear) — gear mileage bars with target markers, the gear
   table, per-year coverage with and without gear, and retirement candidates.
@@ -199,9 +200,10 @@ database `DataSource` and produces the Markdown reports and charts:
   Riegel exponent fit over every race, and equivalent-time predictions
   scaled from the reference race (the newest road 10k, else the newest road
   race), which the Performance tab's chart line passes through as well.
-  Standard-distance PBs
-  require a measured distance within 2% of the standard, so a 4.2 km race
-  cannot win the 5k PB; Trail and Other use the fastest raw time. Filter with
+  Standard-distance PBs require a measured distance within 2% of the
+  standard, so a 4.2 km race cannot win the 5k PB; Trail and Other are
+  labelled raw, keep the fastest raw time, and get no PB progression line.
+  Filter with
   `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or `--from`/`--to`),
   and `--limit N` for the latest results, e.g.
   `./reports.sh races --bucket 10k --year 2026 --limit 10`. Filters scope

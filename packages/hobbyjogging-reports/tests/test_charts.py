@@ -676,11 +676,19 @@ class PbProgressionChartTests(unittest.TestCase):
                 duration_s=2500,
                 workout_methods=["race"],
             ),
+            Activity(
+                id="trail",
+                date=date(2025, 10, 1),
+                type="trail_run",
+                distance_m=21000,
+                duration_s=9000,
+                workout_methods=["race"],
+            ),
         ]
 
         return pb_progressions(race_results(activities))
 
-    def test_draws_step_lines_with_current_pb_labels(self):
+    def test_draws_step_lines_in_pace_with_current_pb_labels(self):
         html = plot_pb_progressions(
             self._progressions(),
             "",
@@ -691,8 +699,19 @@ class PbProgressionChartTests(unittest.TestCase):
         self.assertIn('"shape":"hv"', html)
         self.assertIn('"name":"5k"', html)
         self.assertIn('"name":"10k"', html)
-        self.assertIn("5k 20:00", html)
-        self.assertIn("10k 41:40", html)
+        self.assertNotIn('"name":"Trail"', html)
+        # The axis, the end labels and the hover all read in min/km.
+        slash = chr(92) + "u002f"
+        self.assertIn("5k 4:00" + slash + "km", html)
+        self.assertIn("10k 4:10" + slash + "km", html)
+        self.assertIn("pace (min" + slash + "km)", html)
+        self.assertIn('"ticktext":["4:00","4:05","4:10"', html)
+        # 20:00 over 5 km is 240 s/km, not 1200 s on the axis.
+        self.assertIn('"y":[260.0,240.0]', html)
+        self.assertIn(
+            "20:00 " + chr(92) + "u00b7 4:00" + slash + "km",
+            html,
+        )
 
     def test_writes_file(self):
         with tempfile.TemporaryDirectory() as tmp:
