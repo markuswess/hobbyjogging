@@ -196,9 +196,14 @@ on.
 
 ## Waiting on
 
-- **Runalyze enrichment** (blocked on API auth/endpoint details): comments
-  merged into `description`, tags in `activity_tags`, gear via the
-  equipment-categories endpoint, and `vo2max_runalyze`.
+- **Runalyze enrichment** (blocked on access, not on design): the Personal API
+  uses a Bearer token from `/settings/personal-api`, but read access is for
+  supporter/premium accounts and the public OpenAPI spec is empty. Check the
+  account tier first; then check whether `runalyze.com/my/exports` (CSV/JSON,
+  like the Strava bulk export) carries comments, tags, gear and race results —
+  if it does, start there and use the API only for incremental sync.
+  Payload: comments into the chosen text home, tags in `activity_tags`, gear
+  via the equipment endpoints, and `vo2max_runalyze`.
   - **Gear / equipment**: gear records become
     `source_records(record_type='gear')` plus `equipment` rows, and activities
     link through `activity_equipment` with `source='runalyze'`. Cross-source

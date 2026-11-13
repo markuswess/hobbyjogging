@@ -476,12 +476,45 @@ Updated 2026-11-12.
    - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
      precedence, backfill idempotency, manual links surviving.
 
-12. **Runalyze enrichment** when the API auth/endpoint details are settled:
-   comments merged into `description`, tags, gear via the
-   equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
-   activities. The gear half includes cross-source equipment identity
-   (`equipment_source_links`, co-occurrence matching, review items for
-   ambiguity); see the import `NEXT_UP`.
+12. **Runalyze enrichment** (core + import + maintenance + reports; milestone).
+    Runalyze is the source that closes the 2022+ gap: gear identity (the sheet
+    ends in 2021, so 2022–2026 has no gear at all), comments, tags, race
+    results and `vo2max_runalyze`. It is not one import but a milestone with
+    its own dependencies.
+    - **Access, re-checked (Nov 2026)**: the Personal API takes
+      `Authorization: Bearer <token>` with tokens from
+      `/settings/personal-api`, but the help page says read access is for
+      supporter/premium accounts — so the first step is confirming the account
+      tier. The public OpenAPI document returns an empty spec, so the read
+      endpoints are not documented anonymously.
+    - **Fallback that may unblock it now**: `runalyze.com/my/exports` offers a
+      CSV/JSON export from the web UI, the same pattern as the Strava bulk
+      export. Check whether it carries comments, tags, gear and race results;
+      if it does, the milestone starts there and the API is only for
+      incremental sync.
+    - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
+      same personal token — relevant to the coaching workflow (item 25), not to
+      bulk import.
+    - **Dependencies**: the notes/description decision (item 1) for comments,
+      official race results (item 18), and the equipment identity work below.
+    - **Phases**: (1) export/API client with a dry run that reports what is
+      available per field and per year; (2) comments and tags into the chosen
+      text home; (3) gear with cross-source identity; (4) race results;
+      (5) `vo2max_runalyze` as the second owner; (6) the reports.
+    - **Gear identity**: gear records become `source_records(record_type='gear')`
+      plus `equipment` rows, linked through `activity_equipment` with
+      `source='runalyze'`. Cross-source identity reuses `equipment_source_links`:
+      link a gear record to an existing item when its activities consistently
+      carry the same sheet shoe (co-occurrence), else on a unique normalized
+      brand+model match, else open an `ambiguous_equipment` review item — never
+      guess (the two "Lunge C-Dur" pairs differ only by colour and date).
+      2022+ gear has no sheet counterpart and simply creates new rows.
+    - **Matching**: temporal plus distance, since Runalyze exposes no Garmin
+      activity id; unmatched rows create activities so the history stays
+      complete. Enrichment only — never timing or distance.
+    - **Reports**: gear coverage per year closes the 2022–2026 gap on the gear
+      page, comments appear where the text home decides, and `vo2max_runalyze`
+      sits beside `vo2max_garmin`.
 13. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 14. **Platform independence** (long-term, dormant; ingestion unchanged). The
