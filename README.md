@@ -21,8 +21,13 @@ trustworthy record of your training that outlives any app.
 - **Metrics earn their place.** An idea starts in the lab, passes the gate in
   [`docs/METRICS.md`](docs/METRICS.md), then gets a card, then a renderer — the
   dashboard is always last.
-- **Independent by design.** The analysis and the data stay yours even if a
-  platform changes its pricing or disappears.
+- **A bench for your own research.** The data and the analysis are yours to
+  question: test a metric before trusting it, implement a method from a paper,
+  keep what proves out and drop what does not. The lab and the gate exist so an
+  experiment never leaks into a report by accident.
+- **Independent by design.** Nothing here needs a platform to keep working: the
+  data is a local file and the analysis runs on your machine, even if a service
+  changes its pricing or disappears.
 
 ## Live demo
 

@@ -14,8 +14,9 @@ see [NEXT_UP.md](NEXT_UP.md); for working conventions see
 - Reports and dashboards that read the canonical data only and are cheap to
   render anywhere: terminal, laptop browser, phone, wall screen.
 - A deterministic data bundle for LLM coaching conversations.
-- Advanced and experimental analysis tools, so analysis can evolve
-  independently of the established platforms.
+- A personal research bench: implement a published method or an idea of your
+  own, test it against the full history, and keep only what proves out — so the
+  analysis evolves independently of the established platforms.
 - Independence from hardware manufacturers and platforms for training
   planning and analysis, while still using the features they offer.
 
