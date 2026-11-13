@@ -46,7 +46,8 @@ from __future__ import annotations
 import random
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
-from statistics import median
+from math import sqrt
+from statistics import mean, median, stdev
 
 import plotly.graph_objects as go
 
@@ -822,6 +823,238 @@ def diagnose(primary: list[dict], activities: list) -> None:
     )
 
 
+def month_key(day: date) -> tuple[int, int]:
+    return day.year, day.month
+
+
+def monthly_series(rows: list[dict]) -> list[dict]:
+    groups: dict[tuple[int, int], list[dict]] = defaultdict(list)
+    for row in rows:
+        groups[month_key(row["date"])].append(row)
+
+    series = []
+    for key in sorted(groups):
+        chunk = groups[key]
+        series.append(
+            {
+                "key": key,
+                "label": f"{key[0]}-{key[1]:02d}",
+                "n": len(chunk),
+                "rows": chunk,
+                "eff": weighted_efficiency(chunk),
+                "minutes": median(row["minutes"] for row in chunk),
+                "recovery": sum(
+                    "recovery" in row["targets"] for row in chunk
+                )
+                / len(chunk),
+            }
+        )
+    return series
+
+
+def split_half(series: list[dict], repeats: int = 200) -> float | None:
+    """Average correlation of two random halves of each month's runs."""
+    rng = random.Random(SEED)
+    eligible = [entry for entry in series if entry["n"] >= 6]
+
+    if len(eligible) < 6:
+        return None
+
+    values = []
+
+    for _ in range(repeats):
+        left = []
+        right = []
+        for entry in eligible:
+            chunk = entry["rows"][:]
+            rng.shuffle(chunk)
+            half = len(chunk) // 2
+            first = weighted_efficiency(chunk[:half])
+            second = weighted_efficiency(chunk[half:])
+            if first and second:
+                left.append(first)
+                right.append(second)
+        if len(left) >= 6:
+            values.append(correlation(left, right))
+
+    return mean(values) if values else None
+
+
+def series_stats(series: list[dict]) -> dict:
+    effs = [entry["eff"] for entry in series]
+    diffs = [second - first for first, second in zip(effs, effs[1:])]
+    residuals = []
+
+    for index in range(1, len(series) - 1):
+        window = series[index - 1 : index + 2]
+        pooled = weighted_efficiency(
+            [row for entry in window for row in entry["rows"]]
+        )
+        if pooled:
+            residuals.append(series[index]["eff"] - pooled)
+
+    return {
+        "months": len(series),
+        "n": sum(entry["n"] for entry in series),
+        "mean": mean(effs),
+        "sd": stdev(effs) if len(effs) > 1 else None,
+        "diff_sd": stdev(diffs) if len(diffs) > 1 else None,
+        "residual_pct": (
+            100 * stdev(residuals) / mean(effs)
+            if len(residuals) > 1
+            else None
+        ),
+        "split_half": split_half(series),
+        "r_minutes": correlation(
+            effs, [entry["minutes"] for entry in series]
+        ),
+        "r_recovery": correlation(
+            effs, [entry["recovery"] for entry in series]
+        ),
+    }
+
+
+def yearly_series(rows: list[dict]) -> dict[int, tuple[int, float]]:
+    groups: dict[int, list[dict]] = defaultdict(list)
+    for row in rows:
+        groups[row["date"].year].append(row)
+    return {
+        year: (len(chunk), weighted_efficiency(chunk))
+        for year, chunk in groups.items()
+    }
+
+
+def trend_filters(primary: list[dict]) -> None:
+    """Compare all steady runs with length/recovery filters over time."""
+    variants = [
+        (
+            "all (20-240)",
+            primary,
+        ),
+        (
+            "30-90, with recovery",
+            [row for row in primary if 30 <= row["minutes"] <= 90],
+        ),
+        (
+            "no recovery (20-240)",
+            [row for row in primary if "recovery" not in row["targets"]],
+        ),
+        (
+            "30-90, no recovery",
+            [
+                row
+                for row in primary
+                if 30 <= row["minutes"] <= 90
+                and "recovery" not in row["targets"]
+            ],
+        ),
+        (
+            "30-120, no recovery",
+            [
+                row
+                for row in primary
+                if 30 <= row["minutes"] <= 120
+                and "recovery" not in row["targets"]
+            ],
+        ),
+    ]
+
+    summary = []
+    for name, chunk in variants:
+        series = monthly_series(chunk)
+        stats = series_stats(series)
+        summary.append(
+            (
+                name,
+                stats["n"],
+                stats["months"],
+                _fmt(stats["mean"], 2),
+                _fmt(stats["sd"], 3),
+                _fmt(stats["diff_sd"], 3),
+                _fmt(stats["residual_pct"], 1),
+                _fmt(stats["split_half"], 2),
+                _fmt(stats["r_minutes"], 2),
+                _fmt(stats["r_recovery"], 2),
+            )
+        )
+
+    table(
+        summary,
+        headers=[
+            "population",
+            "n",
+            "months",
+            "eff mean",
+            "monthly SD",
+            "Δ SD",
+            "resid %",
+            "split-half r",
+            "r(duration)",
+            "r(recovery)",
+        ],
+    )
+    print(
+        "lower SD / Δ SD / residual % means a smoother series; higher "
+        "split-half r means the monthly values are more reliable; "
+        "correlations near 0 mean less composition leakage."
+    )
+
+    years = sorted(
+        {row["date"].year for row in primary}
+    )
+    year_rows = []
+    for name, chunk in variants:
+        yearly = yearly_series(chunk)
+        year_rows.append(
+            (
+                name,
+                *[
+                    (
+                        f"{yearly[year][1]:.2f} ({yearly[year][0]})"
+                        if year in yearly
+                        else "-"
+                    )
+                    for year in years
+                ],
+            )
+        )
+    table(
+        year_rows,
+        headers=["population", *[str(year) for year in years]],
+    )
+    print(
+        "year cells are weighted efficiency with the run count in "
+        "parentheses."
+    )
+
+    figure = go.Figure()
+    colors = ["#4c78a8", "#f58518", "#e45756", "#54a24b", "#b279a2"]
+
+    for index, (name, chunk) in enumerate(variants):
+        series = monthly_series(chunk)
+        figure.add_trace(
+            go.Scatter(
+                x=[
+                    datetime(entry["key"][0], entry["key"][1], 15)
+                    for entry in series
+                ],
+                y=[entry["eff"] for entry in series],
+                mode="lines+markers",
+                name=f"{name} (n={len(chunk)})",
+                line={"color": colors[index % len(colors)], "width": 1.5},
+                marker={"size": 4},
+            )
+        )
+
+    figure.update_yaxes(title_text="efficiency (m/excess beat)")
+    figure.update_xaxes(title_text="month")
+    figure.update_layout(
+        title="Monthly efficiency under different filters",
+        legend={"orientation": "h", "y": -0.25},
+    )
+    save(figure, "efficiency-trend-filters")
+
+
 def plot_efficiency(rows: list[dict], beta: list[float]) -> None:
     speed_ref = median(row["speed"] for row in rows)
     points = [row for row in rows if row["efficiency"] is not None]
@@ -1045,6 +1278,9 @@ def main() -> None:
     sensitivity(rows, primary, baseline_180)
 
     diagnose(primary, activities)
+
+    print("\ndoes filtering make the evolution more consistent?")
+    trend_filters(primary)
 
     plot_efficiency(primary, beta)
     plot_contributions(beta)
