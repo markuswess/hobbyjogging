@@ -174,16 +174,41 @@ Updated 2026-11-12.
    - **Docs**: the reports README taxonomy section and the ARCHITECTURE
      `classify.py` bullet.
 
-2. **Runalyze enrichment** when the API auth/endpoint details are settled:
+2. **Elevation gain and loss on activities** (core + import + maintenance).
+   Per-lap FIT elevation is stored (`activity_laps.elevation_gain_m`, 2,800
+   activities), but `activities` has no elevation column. The payloads cover
+   81% of activities: Intervals `total_elevation_gain` / `_loss` (2,846), the
+   sheet's `m bergauf` (839, gain only), and FIT session `total_ascent`
+   (parsed, not stored; `total_descent` not parsed at all). FIT and Intervals
+   agree closely — median 0.4%, p90 5.3% on the 2,755 activities with both —
+   so there is no authority fight.
+   - **Schema v11**: `activities.elevation_gain_m` and
+     `activities.elevation_loss_m`, both nullable.
+   - **Importers**: FIT session `total_ascent` / `total_descent` (parse the
+     descent), Intervals `total_elevation_gain` / `_loss`, sheet `m bergauf`
+     (gain only).
+   - **Ownership**: owner-based like distance, with a wide tolerance (10% or
+     20 m) because the sources are estimates; manual wins. Intervals authority
+     is the fallback if conflicts turn out to be noisy.
+   - **Backfill `activity_elevation_v1`** (maintenance): fill existing rows
+     from the stored payloads (Intervals, sheet) and from summed FIT laps, no
+     network, idempotent, `--dry-run`.
+   - **Uses**: the trail suggestion rule (9 candidates at ≥40 m/km), climb per
+     km in the session report and activity list, coarse grade-adjusted pace
+     from per-lap gain, and route difficulty on the dashboard.
+   - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
+     backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
+
+3. **Runalyze enrichment** when the API auth/endpoint details are settled:
    comments merged into `description`, tags, gear via the
    equipment-categories endpoint, `vo2max_runalyze`. Unmatched rows create
    activities.
-3. **Homelab cutover**: DB + importer + dashboard generator + static server,
+4. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
-4. **Reports backlog** — handed to the reports session; the list lives in
+5. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md`: daily planned session, planned
    vs actual by session, optional HR-zone variant, shoe mileage.
-5. **Raw vs derived: document the tiers and add a check** (low priority). The
+6. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
    but the invariant is implicit: a derived stored value is always recomputable
