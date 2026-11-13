@@ -21,6 +21,7 @@ from ..html import card, chart, esc, link, page, stat_grid, table
 from ..model import RecoveryPoint, Vo2maxPoint
 from .analysis import AnalysisSection
 from .compare import CompareSection
+from .docs import DocsSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
 from ..zone_groups import ZoneGroupSeries
@@ -511,29 +512,23 @@ def health_page(
     )
 
 
-def reports_page(
+def docs_page(
     *,
     generated_at: str,
     health: DataHealth,
     include_review: bool,
     demo_label: str | None = None,
-    sections: list[str],
+    section: DocsSection,
 ) -> str:
-    """Render the selected Markdown reports as HTML sections."""
-    if not sections:
-        body = (
-            '<p class="muted">No Markdown reports selected. Use '
-            "<code>dashboard.sh --reports overview,daily,planned</code>."
-            "</p>"
-        )
-    else:
-        body = "".join(
-            card(None, f'<div class="report">{html}</div>')
-            for html in sections
-        )
+    """Render the package README and metric registry."""
+    body = (
+        card(None, f'<div class="report">{section.intro_html}</div>')
+        + card("Reports guide", f'<div class="report">{section.readme_html}</div>')
+        + card("Metrics", f'<div class="report">{section.metrics_html}</div>')
+    )
 
     return page(
-        title="Reports",
+        title="Docs",
         body=body,
         generated_at=generated_at,
         health_html=banner(
@@ -541,5 +536,7 @@ def reports_page(
             include_review=include_review,
         ),
         demo_label=demo_label,
-        active="reports",
+        active="docs",
     )
+
+

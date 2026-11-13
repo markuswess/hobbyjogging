@@ -2,14 +2,14 @@
 
 Updated 2026-11-12.
 
-Current focus: the dashboard's gear/devices and race work, and the Docs tab.
+Current focus: the dashboard's gear/devices and race work.
 
 ## Done
 
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
   overview (7/42/182-day hard/total EWMAs, running volume by intensity group,
   load, plan vs actual), recovery and health charts, activity list and detail
-  pages, selected Markdown reports converted to HTML, and a canonical
+  pages, a Docs tab (README plus the metric registry), and a canonical
   data-health banner; it opens the browser. `sync.sh` regenerates the same
   site after a successful sync without opening a browser. Charts use bundled
   plotly; generation is atomic.
@@ -156,6 +156,12 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
   the existing intervals/work reps. `DataSource.activity_laps` exposes the
   existing repository query, and dashboard detail pages pass the same context
   (including per-day events and wellness) as the CLI.
+- **Docs tab instead of Reports.** `docs.html` replaces the old Reports tab
+  and renders the reports README plus `docs/METRICS.md`, with a contents list
+  and prefixed heading anchors. The nav order is Overview, Activities,
+  Recovery and Health, NSA, Analysis, Compare, Docs, Data Health. Embedded
+  reports already live on their pages; `--reports` remains a compatibility
+  no-op.
 - **One segment table in the session report.** The report now prints typed
   intervals when there is more than one, otherwise device laps when there is
   more than one, and nothing when there is a single segment on each side.
@@ -206,27 +212,7 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
    - **Tests**: PB selection per bucket, planned-vs-actual delta, `-` when a
      race has no link, race-day split rendering.
 
-3. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
-   (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).
-   - **Phase 1**: render `packages/hobbyjogging-reports/README.md` through the
-     existing Markdown → HTML renderer inside a `.report` card, with a short
-     intro and a table of contents. Nav becomes Overview, Activities, Recovery
-     and Health, NSA, Analysis, Compare, **Docs**, Data Health.
-   - **Phase 2 (planned)**: per-metric explanations — definition, formula,
-     baseline, thresholds, caveats — generated from `docs/METRICS.md`, which is
-     already the metric registry. Link metric names in the dashboard to their
-     Docs section.
-   - **The embedded Markdown reports** currently on that tab (`--reports LIST`)
-     already appear elsewhere (overview embeds overview/daily/planned,
-     recovery embeds recovery-report, nsa embeds subt-report). Move any
-     remaining ones to their page, then retire `--reports` or keep it as a
-     no-op for compatibility.
-   - **Tests**: the page builds, contains the README heading, the nav marks
-     Docs active, the demo label still applies, and no `reports.html` is left
-     behind.
-   - **Docs**: the reports README dashboard section.
-
-4. **Weather and max HR in the reports.** Once the data lands: show max HR in
+3. **Weather and max HR in the reports.** Once the data lands: show max HR in
    the session report and use it for HR-zone checks; annotate pace, HR and
    efficiency charts with temperature and wind; add a per-year data-coverage
    line for both.

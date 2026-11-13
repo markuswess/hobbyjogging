@@ -182,7 +182,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertTrue((target / "activities.html").exists())
             self.assertTrue((target / "recovery.html").exists())
             self.assertTrue((target / "health.html").exists())
-            self.assertTrue((target / "reports.html").exists())
+            self.assertTrue((target / "docs.html").exists())
+            self.assertFalse((target / "reports.html").exists())
             self.assertTrue((target / "activity" / "run1.html").exists())
             self.assertTrue((target / ".hobbyjogging-dashboard").exists())
             self.assertGreater(
@@ -232,7 +233,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("activities with open review items are hidden", index)
             self.assertIn("Recovery and Health", index)
             self.assertIn(">Data Health</a>", index)
-            self.assertIn(">Reports</a>", index)
+            self.assertIn(">Docs</a>", index)
 
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
@@ -332,13 +333,14 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("hidden", health)
             self.assertIn("Missing data", health)
 
-            reports = (target / "reports.html").read_text()
-            self.assertIn(
-                "No Markdown reports selected",
-                reports,
-            )
+            docs = (target / "docs.html").read_text()
+            self.assertIn(">Docs</a>", docs)
+            self.assertIn("Reports guide", docs)
+            self.assertIn("Metric registry", docs)
+            self.assertIn("Efficiency (m/excess beat)", docs)
+            self.assertIn("class=\"toc\"", docs)
 
-    def test_selected_markdown_reports_are_rendered(self):
+    def test_reports_flag_is_a_compatibility_noop(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "site"
 
@@ -349,11 +351,8 @@ class DashboardBuildTests(unittest.TestCase):
                 reports=("overview", "planned"),
             )
 
-            reports = (target / "reports.html").read_text()
-            self.assertIn("Training Overview — EWMA", reports)
-            self.assertIn("Planned Workouts", reports)
-            self.assertIn("5x5 subT", reports)
-            self.assertIn("<table>", reports)
+            self.assertTrue((target / "docs.html").exists())
+            self.assertFalse((target / "reports.html").exists())
 
     def test_unknown_markdown_report_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

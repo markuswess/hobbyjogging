@@ -197,7 +197,6 @@ The static dashboard has its own wrapper:
 
     ./dashboard.sh
     ./dashboard.sh --days 30 --activities 100
-    ./dashboard.sh --reports overview,daily,planned
     ./dashboard.sh --no-open
 
 `dashboard.sh` also opens the generated `index.html` in the browser. Use
@@ -635,7 +634,6 @@ dashboard builds are unchanged.
     ./dashboard.sh
     ./dashboard.sh --days 30 --activities 100
     ./dashboard.sh --chart-days 90 --future-days 21
-    ./dashboard.sh --reports overview,daily,planned
     ./dashboard.sh --output /tmp/dashboard
     ./dashboard.sh --demo-label "Synthetic demo data"
 
@@ -677,18 +675,17 @@ Pages:
   HR, and sleep as interactive plotly panels over the last 186 days
   (`--recovery-days`) with 7-day averages, readiness bands, and a
   data-completeness note.
-- `reports.html` — the Markdown reports selected with `--reports`, rendered
-  as HTML with the same content as `reports.sh`.
+- `docs.html` (Docs) — the `hobbyjogging-reports` README and the metric
+  registry from `docs/METRICS.md`, rendered as HTML with a table of contents.
+  The overview, daily, planned, recovery, NSA, and compare reports are embedded
+  on their own pages, so there is no separate Reports tab.
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, linked activity, reported date), the activities hidden by review,
   and missing-data counts.
 
-`--reports` accepts a comma-separated list of Markdown reports:
-`overview`, `recovery-report`, `daily`, `weekly`, `monthly`, `yearly`,
-`report`, `planned`, `subt-report`, `compare-years`, and `compare-months`.
-The same report code used by `reports.sh` is converted to HTML and embedded,
-so changing a report also changes the dashboard. Select no reports to leave
-the Reports page empty.
+The `--reports` dashboard option is accepted as a compatibility no-op;
+those Markdown reports are already embedded on their relevant pages. The Docs
+tab always renders the README and metric registry.
 
 The main chart shows daily running **minutes** on a **0–90 minute** axis,
 stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and

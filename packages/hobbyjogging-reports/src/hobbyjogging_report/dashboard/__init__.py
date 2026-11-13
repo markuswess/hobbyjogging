@@ -43,8 +43,9 @@ from .pages import (
     nsa_page,
     overview_page,
     recovery_page,
-    reports_page,
+    docs_page,
 )
+from .docs import build_docs_section
 from .reports import REPORT_NAMES, build_report
 from ..zone_groups import (
     daily_zone_groups,
@@ -243,19 +244,6 @@ def build_dashboard(
         for event in source.events(today, today + timedelta(days=RACE_DAYS))
         if "race" in set(event.workout_methods) | set(event.workout_targets)
     ]
-    report_sections = [
-        markdown_to_html(
-            build_report(
-                name,
-                source,
-                today=today,
-                future_days=future_days,
-                include_review=include_review,
-            ),
-            demote=1,
-        )
-        for name in reports
-    ]
 
     health = collect_health(
         raw_activities,
@@ -348,12 +336,12 @@ def build_dashboard(
             start=recovery_start,
             end=today,
         ),
-        "reports.html": reports_page(
+        "docs.html": docs_page(
             generated_at=generated_at,
             health=health,
             demo_label=demo_label,
             include_review=include_review,
-            sections=report_sections,
+            section=build_docs_section(),
         ),
         "health.html": health_page(
             generated_at=generated_at,

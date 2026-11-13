@@ -231,6 +231,10 @@ pre.description {
 }
 .report code { font-size: 0.9em; }
 .report table { margin: 10px 0; }
+.toc { margin: 8px 0 0; }
+.toc h3 { margin-top: 14px; }
+.toc ul { columns: 2; margin: 6px 0 0 20px; padding: 0; }
+.toc li { break-inside: avoid; margin: 3px 0; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
 footer {
@@ -245,11 +249,11 @@ footer {
 NAV = (
     ("overview", "index.html", "Overview"),
     ("activities", "activities.html", "Activities"),
-    ("analysis", "analysis.html", "Analysis"),
-    ("nsa", "nsa.html", "NSA"),
-    ("compare", "compare.html", "Compare"),
     ("recovery", "recovery.html", "Recovery and Health"),
-    ("reports", "reports.html", "Reports"),
+    ("nsa", "nsa.html", "NSA"),
+    ("analysis", "analysis.html", "Analysis"),
+    ("compare", "compare.html", "Compare"),
+    ("docs", "docs.html", "Docs"),
     ("health", "health.html", "Data Health"),
 )
 
