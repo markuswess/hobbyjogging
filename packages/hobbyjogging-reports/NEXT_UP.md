@@ -319,6 +319,13 @@ Current focus: the dashboard's gear/devices and race work.
     `coaching/` directory when a demo label is set, or ship a synthetic
     example note. See root item 25.
 
+15. **Demo coverage check.** `demo-db --check` (or a test) builds the synthetic
+    database and asserts every report and dashboard tab renders non-empty
+    content, so a feature that adds a field without demo data fails loudly.
+    Then keep `demo.py` in step with new fields and tabs — max HR, elevation,
+    weather, devices, routes, Strava notes, thresholds/zones, fartlek, and the
+    Coaching and Metrics tabs once they exist. See root item 26.
+
 ## Tests and docs
 
 Covered now:

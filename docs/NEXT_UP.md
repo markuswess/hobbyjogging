@@ -732,6 +732,26 @@ Updated 2026-11-12.
       or per week; JSON, Markdown or both for the bundle; and whether the tab
       is "Coaching" or part of "Docs".
 
+26. **Keep the demo data current** (reports; recurring). The synthetic demo is
+    now both the public face and a smoke test — it builds in CI on every
+    relevant push. But `demo.py` predates the newest features, so a tab or chart
+    that reads a new field (max HR, elevation, weather, devices, routes, Strava
+    notes, thresholds and zones, fartlek) renders empty and the demo stops
+    proving the feature works.
+    - **Rule**: a change that adds a user-visible field, chart or tab updates
+      `demo.py` in the same work; the demo build is part of the acceptance
+      check, and it already runs in CI.
+    - **Coverage check**: a `demo-db --check` (or a test) asserting that every
+      report and dashboard tab renders non-empty content from the demo
+      database, so a feature without demo data fails loudly instead of showing
+      a blank card.
+    - **Recurring review**: at each release tag (item 22) and schema bump,
+      re-read the feature list against the demo and fill the gaps. Keep the seed
+      fixed so the output stays deterministic and diffable.
+    - **Open**: how realistic the synthetic athlete should be — a plausible
+      build, a taper, a race, a couple of devices — versus how much to leave
+      empty so the "no data" paths stay exercised.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
