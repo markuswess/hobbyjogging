@@ -635,9 +635,10 @@ Updated 2026-11-12.
     `DataSource`, the synthetic demo. What is personal is the defaults.
     - **Blocking**: no `init`/`doctor` (a new user must infer that the first
       import creates and migrates the DB, and nothing checks the paths,
-      credentials or schema version up front); no test CI (only `pages.yml`
-      exists); `requires-python >= 3.14` with no 3.14-only syntax found, so the
-      floor can likely drop to 3.12.
+      credentials or schema version up front); test CI only covers pushes to
+      `main` through the demo workflow, so there is no pull-request check;
+      `requires-python >= 3.14` with no 3.14-only syntax found, so the floor
+      can likely drop to 3.12.
     - **Personal constants in the analysis**: fixed chart ceilings
       (`VOLUME_Y_MAX`, `TIME_Y_MAX`, `LOAD_Y_MAX` — a 130 km/week axis for a
       40 km/week athlete), `COMPARE_VISIBLE_YEARS = 5`, the 2009 colour anchor,
@@ -654,9 +655,9 @@ Updated 2026-11-12.
       export, or Intervals-only).
     - **Out of scope, state it**: multi-athlete (one athlete per DB), imperial
       units, a hosted service, arbitrary platforms.
-    - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, test
-      CI, the README first-run path; then the data-driven ceilings and the
-      sheet-code move; then the Python floor.
+    - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, a
+      pull-request test workflow, the README first-run path; then the
+      data-driven ceilings and the sheet-code move; then the Python floor.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.

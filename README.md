@@ -7,7 +7,9 @@ Training data, imports, and reports.
 A public demo built from a synthetic athlete is published at
 <https://markuswess.github.io/hobbyjogging/>. It contains no personal data:
 the database is generated from scratch by `demo-db`, and the site is rebuilt
-weekly by GitHub Actions.
+by GitHub Actions on every push that can change its output, plus weekly so the
+date-relative views stay current. The deploy is gated on the four test
+suites.
 
 Build it locally:
 

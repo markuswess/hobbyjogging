@@ -1,21 +1,57 @@
 name: Demo dashboard
 
+# Rebuild the public demo on every push that can change its output, and weekly
+# so the "today"-relative views (upcoming races, rolling windows) stay current.
+# Docs-only pushes are filtered out.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "demo.sh"
+      - ".github/workflows/pages.yml"
   schedule:
     - cron: "0 5 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
+  # A green demo build does not prove the analysis is correct, so the deploy is
+  # gated on the test suites.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
+      - run: uv sync --frozen
+
+      - name: Test core
+        run: cd packages/hobbyjogging-core/tests && uv run python -m unittest discover -q
+
+      - name: Test import
+        run: cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q
+
+      - name: Test maintenance
+        run: cd packages/hobbyjogging-maintenance/tests && uv run python -m unittest discover -q
+
+      - name: Test reports
+        run: cd packages/hobbyjogging-reports/tests && uv run python -m unittest discover -q
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +72,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
