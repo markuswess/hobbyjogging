@@ -389,7 +389,6 @@ items 24 and 25. Only **12** and **13** can be done in this package today.
       the equivalent-time table agree at every standard distance; the CLI
       `races` report and the Performance tab agree.
 
-
 ## Tests and docs
 
 Covered now:
