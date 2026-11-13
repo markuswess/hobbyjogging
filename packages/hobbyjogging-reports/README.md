@@ -1,7 +1,9 @@
 # hobbyjogging-reports
 
-This package is part of the `hobbyjogging` workspace. Run the commands below
-from the repository root.
+This package is part of the [`hobbyjogging`](../../README.md) workspace; run the
+commands below from the repository root. It is also the README the demo
+dashboard renders on its Docs tab, so it has to read well in a browser — the
+project overview is at <https://markuswess.github.io/hobbyjogging/>.
 
 Generate daily, weekly and monthly summaries from the canonical hobbyjogging
 database.

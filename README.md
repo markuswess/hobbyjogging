@@ -1,7 +1,9 @@
 # hobbyjogging
 
-A personal training database that belongs to you, not to a platform. Every
-activity, its provenance and your decisions live in one SQLite file; importers
+A personal training database that belongs to you, not to a platform. Its main
+job is to reconcile diverging sources — a watch's FIT files, a training
+platform, a spreadsheet — and gather the information scattered across them into
+one SQLite file: every activity, its provenance and your decisions. Importers
 feed it, reports read it, and no service owns the truth. The goal is a
 trustworthy record of your training that outlives any app.
 
