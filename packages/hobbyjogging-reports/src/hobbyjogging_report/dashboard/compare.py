@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource
 
-from ..analysis import compare_year_ewma, pace_hr_points
+from ..analysis import (
+    compare_year_ewma,
+    compare_year_planned_ewma,
+    pace_hr_points,
+)
 from ..charts import plot_compare, plot_compare_pace_hr
 from ..command_support import activity_start, resting_hr_lookup
 from ..compare import compare_report
@@ -48,6 +52,7 @@ def build_compare_section(
     )
 
     baseline = resting_hr_lookup(source, start, today)
+    events = source.events(start, today + timedelta(days=366))
     pace_hr = pace_hr_points(
         activities,
         start,
@@ -74,6 +79,12 @@ def build_compare_section(
             window=window,
             today=today,
             title=f"Year comparison — {metric}, {window}-day EWMA",
+            planned_series=compare_year_planned_ewma(
+                events,
+                metric,
+                window,
+                today=today,
+            ),
             as_html=True,
         )
 

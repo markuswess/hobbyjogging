@@ -617,12 +617,13 @@ def run_compare_chart(
     include_review: bool = False,
 ) -> None:
     """Render the year-over-year EWMA comparison chart."""
-    from .analysis import compare_year_ewma
+    from .analysis import compare_year_ewma, compare_year_planned_ewma
     from .charts import plot_compare
     from .command_support import resting_hr_lookup
 
     start = activity_start(source, today)
     activities = reviewed_range(source, start, today, include_review)
+    events = source.events(start, today + timedelta(days=366))
     series = compare_year_ewma(
         activities,
         metric,
@@ -638,6 +639,12 @@ def run_compare_chart(
         window=window,
         today=today,
         title=f"Year comparison — {metric}, {window}-day EWMA",
+        planned_series=compare_year_planned_ewma(
+            events,
+            metric,
+            window,
+            today=today,
+        ),
     )
     print(path)
 

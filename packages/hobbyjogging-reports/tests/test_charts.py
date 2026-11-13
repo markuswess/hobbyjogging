@@ -522,6 +522,28 @@ class CompareChartTests(unittest.TestCase):
         self.assertIn("2001-11-11", html)
         self.assertIn("today", html)
 
+    def test_compare_chart_draws_dashed_planned_lines(self):
+        series = [
+            (2026, [(date(2026, 1, 1), 10.0), (date(2026, 1, 2), 12.0)])
+        ]
+        planned = [
+            (2026, [(date(2026, 1, 1), 8.0), (date(2026, 1, 2), 9.0)])
+        ]
+
+        html = plot_compare(
+            series,
+            "",
+            metric="volume",
+            window=42,
+            today=date(2026, 11, 11),
+            planned_series=planned,
+            as_html=True,
+        )
+
+        self.assertIn('"name":"2026 planned"', html)
+        self.assertIn('"dash":"dash"', html)
+        self.assertIn('"y":[8.0,9.0]', html)
+
     def test_compare_chart_hides_older_years_in_the_legend(self):
         series = [
             (year, [(date(year, 1, 1), float(year - 2000))])

@@ -1464,8 +1464,9 @@ def plot_compare(
     today: date,
     title: str = "Year comparison",
     as_html: bool = False,
+    planned_series: list[tuple[int, list[tuple[date, float]]]] | None = None,
 ) -> str:
-    """One EWMA line per calendar year over a fixed Jan-Dec axis."""
+    """One EWMA line per year, plus dashed planned lines when supplied."""
     _require_data(series)
     reference_year = 2001
     reference_start = date(reference_year, 1, 1)
@@ -1477,12 +1478,25 @@ def plot_compare(
         "efficiency": "m / excess beat",
     }
     scale = 60.0 if metric == "time" else 1.0
-    figure = go.Figure()
-    visible_from = max(year for year, _ in series) - (
-        COMPARE_VISIBLE_YEARS - 1
+    planned_series = planned_series or []
+    planned_by_year = dict(planned_series)
+    all_years = sorted(
+        {year for year, _ in series}
+        | {year for year, _ in planned_series}
     )
+    visible_from = max(all_years) - (COMPARE_VISIBLE_YEARS - 1)
+    color_for = {
+        year: COMPARE_COLORS[index % len(COMPARE_COLORS)]
+        for index, year in enumerate(all_years)
+    }
+    figure = go.Figure()
 
-    for index, (year, points) in enumerate(series):
+    def add_line(
+        year: int,
+        points: list[tuple[date, float]],
+        *,
+        planned: bool,
+    ) -> None:
         year_start = date(year, 1, 1)
         figure.add_trace(
             go.Scatter(
@@ -1493,16 +1507,27 @@ def plot_compare(
                 ],
                 y=[value * scale for _, value in points],
                 mode="lines",
-                name=str(year),
-                visible=True if year >= visible_from else "legendonly",
+                name=f"{year} planned" if planned else str(year),
+                visible=(
+                    True if year >= visible_from else "legendonly"
+                ),
                 line={
-                    "color": COMPARE_COLORS[
-                        index % len(COMPARE_COLORS)
-                    ],
-                    "width": 2,
+                    "color": color_for[year],
+                    "width": 1.5 if planned else 2,
+                    "dash": "dash" if planned else "solid",
                 },
             )
         )
+
+    for year, points in series:
+        add_line(year, points, planned=False)
+
+        planned_points = planned_by_year.pop(year, None)
+        if planned_points is not None:
+            add_line(year, planned_points, planned=True)
+
+    for year, points in sorted(planned_by_year.items()):
+        add_line(year, points, planned=True)
 
     if any(year == today.year for year, _ in series):
         moment = reference_start + timedelta(

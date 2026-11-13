@@ -33,6 +33,7 @@ from .compare import (
     COMPARE_MODES,
     compare_periods,
     compare_year_ewma,
+    compare_year_planned_ewma,
 )
 from .common import (
     CATEGORY_LONG,
@@ -133,6 +134,7 @@ __all__ = [
     "classify_interval",
     "compare_periods",
     "compare_year_ewma",
+    "compare_year_planned_ewma",
     "daily_planned_distance",
     "daily_planned_load",
     "daily_planned_time",

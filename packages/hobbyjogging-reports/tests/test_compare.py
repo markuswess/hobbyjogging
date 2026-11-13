@@ -2,14 +2,97 @@ import math
 import unittest
 from datetime import date, timedelta
 
-from hobbyjogging_report.analysis import compare_periods, compare_year_ewma
+from hobbyjogging_report.analysis import (
+    compare_periods,
+    compare_year_ewma,
+    compare_year_planned_ewma,
+)
 from hobbyjogging_report.analysis.compare import EFFICIENCY_MIN_RUNS
 from hobbyjogging_report.compare import compare_report
 from support import FakeSource, activity_factory
-from hobbyjogging_core.model import WellnessDay
+from hobbyjogging_core.model import Event, WellnessDay
 
 D = date(2026, 10, 1)
 activity = activity_factory()
+
+
+class ComparePlannedEwmaTests(unittest.TestCase):
+
+    def test_planned_volume_is_zero_filled_and_sliced_by_year(self):
+        events = [
+            Event(
+                date=date(2026, 1, 1),
+                type="run",
+                distance_m=10000,
+            ),
+            Event(
+                date=date(2026, 1, 3),
+                type="run",
+                distance_m=20000,
+            ),
+            Event(
+                date=date(2027, 1, 2),
+                type="run",
+                distance_m=12000,
+            ),
+        ]
+
+        series = compare_year_planned_ewma(events, "volume", 42)
+        years = [year for year, _ in series]
+        first = dict(series[0][1])
+        second = dict(series[1][1])
+
+        self.assertEqual([2026, 2027], years)
+        self.assertEqual(10.0, first[date(2026, 1, 1)])
+        self.assertLess(first[date(2026, 1, 2)], 10.0)
+        self.assertGreater(first[date(2026, 1, 3)], first[date(2026, 1, 2)])
+        self.assertGreater(second[date(2027, 1, 2)], 0)
+
+    def test_planned_series_can_be_limited_to_current_and_future(self):
+        events = [
+            Event(
+                date=date(2025, 6, 1),
+                type="run",
+                distance_m=10000,
+            ),
+            Event(
+                date=date(2026, 1, 1),
+                type="run",
+                distance_m=10000,
+            ),
+            Event(
+                date=date(2027, 1, 2),
+                type="run",
+                distance_m=12000,
+            ),
+        ]
+
+        series = compare_year_planned_ewma(
+            events,
+            "volume",
+            42,
+            today=date(2026, 6, 1),
+        )
+
+        self.assertEqual([2026, 2027], [year for year, _ in series])
+
+    def test_only_volume_and_time_have_planned_series(self):
+        events = [
+            Event(
+                date=date(2026, 1, 1),
+                type="run",
+                distance_m=10000,
+            )
+        ]
+
+        self.assertEqual(
+            [],
+            compare_year_planned_ewma(events, "efficiency", 42),
+        )
+        self.assertEqual(
+            [],
+            compare_year_planned_ewma(events, "load", 42),
+        )
 
 
 class ComparePeriodsTests(unittest.TestCase):

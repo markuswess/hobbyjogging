@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from hobbyjogging_core.model import Activity
+from hobbyjogging_core.model import Activity, Event
 
 from ..model import ComparePeriod
 from ..series import alpha_from_time_constant, ewma
@@ -162,10 +162,96 @@ def compare_periods(
     return result
 
 
+def compare_year_planned_ewma(
+    events: list[Event],
+    metric: str,
+    window: int,
+    *,
+    today: date | None = None,
+) -> list[tuple[int, list[tuple[date, float]]]]:
+    """Planned volume/time EWMA per calendar year.
+
+    Each year's line starts on its first planned run and ends on the last
+    one, so incomplete historical planning is not padded with months of
+    zeros. When ``today`` is supplied, only the current and future years are
+    returned; older event imports are often incomplete.
+    """
+    if metric not in ("volume", "time"):
+        return []
+    if window <= 0:
+        raise ValueError("window must be positive")
+
+    runs = [
+        event
+        for event in events
+        if event.type in RUN_TYPES
+        and (
+            (event.distance_m or 0) > 0
+            if metric == "volume"
+            else (event.duration_s or 0) > 0
+        )
+    ]
+    by_year: dict[int, list[Event]] = {}
+
+    for event in runs:
+        by_year.setdefault(event.date.year, []).append(event)
+
+    series = []
+
+    for year in sorted(by_year):
+        if today is not None and year < today.year:
+            continue
+
+        year_events = sorted(by_year[year], key=lambda event: event.date)
+        first = year_events[0].date
+        last = year_events[-1].date
+        daily = _daily_event_metric(year_events, metric, first, last)
+        values = [value for _, value in daily]
+        smoothed = ewma(
+            values,
+            alpha_from_time_constant(window),
+            initial=values[0],
+        )
+
+        series.append(
+            (year, list(zip([day for day, _ in daily], smoothed)))
+        )
+
+    return series
+
+
 COMPARE_METRICS = ("volume", "time", "load", "runs", "efficiency")
 # A year needs enough HR-backed runs for its efficiency line to mean
 # something; sparse years would only show a carried-forward flat line.
 EFFICIENCY_MIN_RUNS = 20
+
+
+def _daily_event_metric(
+    events: list[Event],
+    metric: str,
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Daily planned totals for volume or time, zero-filled for rest days."""
+    if metric not in ("volume", "time"):
+        raise ValueError(f"no planned compare metric: {metric}")
+
+    by_day: dict[date, float] = {}
+
+    for event in events:
+        if event.type not in RUN_TYPES:
+            continue
+        if not (start <= event.date <= end):
+            continue
+
+        if metric == "volume":
+            value = (event.distance_m or 0.0) / 1000
+        else:
+            value = (event.duration_s or 0.0) / 3600
+
+        by_day[event.date] = by_day.get(event.date, 0.0) + value
+
+    return [(day, by_day.get(day, 0.0)) for day in _date_range(start, end)]
 
 
 def _daily_metric(

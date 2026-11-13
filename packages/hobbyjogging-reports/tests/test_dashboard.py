@@ -293,6 +293,7 @@ class DashboardBuildTests(unittest.TestCase):
             compare = (target / "compare.html").read_text()
             self.assertIn('href="compare.html" class="active"', compare)
             self.assertIn("Year comparison", compare)
+            self.assertIn("2026 planned", compare)
             self.assertIn("Pace vs heart rate by year", compare)
             self.assertIn("182-day EWMA", compare)
             self.assertIn("volume", compare)
