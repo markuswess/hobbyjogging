@@ -165,9 +165,7 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
 
 ## Next
 
-1. **Optional HR-zone variant.** The time chart is pace-only now. Add
-   `--zone-kind hr` (or a separate chart) if the old HR view is still wanted.
-2. **Equipment report and dashboard tab** — "Gear & devices".
+1. **Equipment report and dashboard tab** — "Gear & devices".
    `reports.sh equipment` plus an **Equipment** dashboard tab, computed from
    `equipment` → `activity_equipment` → `activities.distance_m`, and from the
    device registry once the root device item lands.
@@ -189,7 +187,7 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
    - **Tests**: mileage sums, coverage counts, the active/retired split, and
      `-` rendering when an item has no activities.
 
-3. **Race report and Performance tab.** Depends on the root
+2. **Race report and Performance tab.** Depends on the root
    `event_activity_links` item; until that lands, use activities whose methods
    contain `race`.
    - `reports.sh races`: past results (date, name, distance, time, pace,
@@ -208,7 +206,7 @@ Current focus: the dashboard's gear/devices and race work, and the Docs tab.
    - **Tests**: PB selection per bucket, planned-vs-actual delta, `-` when a
      race has no link, race-day split rendering.
 
-4. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
+3. **Docs tab instead of Reports.** Replace the dashboard's "Reports" tab
    (`reports.html`, `reports_page`) with a **Docs** tab (`docs.html`).
    - **Phase 1**: render `packages/hobbyjogging-reports/README.md` through the
      existing Markdown → HTML renderer inside a `.report` card, with a short
