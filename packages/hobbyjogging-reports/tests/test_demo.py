@@ -113,8 +113,8 @@ class DemoGeneratorTests(unittest.TestCase):
                 today=TODAY,
             )
 
-            self.assertGreaterEqual(summary.activities, 1000)
-            self.assertLessEqual(summary.activities, 1300)
+            self.assertGreaterEqual(summary.activities, 1200)
+            self.assertLessEqual(summary.activities, 1500)
             self.assertGreater(summary.wellness_days, 500)
             self.assertGreaterEqual(summary.events, 20)
             self.assertEqual(4, summary.equipment)
@@ -235,14 +235,17 @@ class DemoGeneratorTests(unittest.TestCase):
                     all(row[1] == row[2] for row in rows)
                 )
 
-                values = [row[1] for row in rows]
-                self.assertLessEqual(
-                    max(
-                        abs(values[index + 1] - values[index])
-                        for index in range(len(values) - 1)
-                    ),
-                    0.2,
-                )
+                for previous, current in zip(rows, rows[1:]):
+                    gap = (
+                        date.fromisoformat(current[0])
+                        - date.fromisoformat(previous[0])
+                    ).days
+                    # A smooth daily value: a gap in the log (rest, injury)
+                    # may still hide more than one day of drift.
+                    self.assertLessEqual(
+                        abs(current[1] - previous[1]),
+                        0.25 * max(gap, 1),
+                    )
             finally:
                 connection.close()
 
@@ -254,20 +257,35 @@ class DemoGeneratorTests(unittest.TestCase):
             )
             connection = open_database(summary.path)
             try:
+                hard_times = {
+                    row["id"]: row["hard"]
+                    for row in connection.execute(
+                        """
+                        SELECT activity_id AS id,
+                               COALESCE(
+                                   SUM(
+                                       CASE WHEN zone_index > 2
+                                            THEN seconds ELSE 0 END
+                                   ),
+                                   0
+                               ) AS hard
+                        FROM activity_zone_times
+                        WHERE kind = 'pace'
+                        GROUP BY activity_id
+                        """
+                    ).fetchall()
+                }
                 rows = connection.execute(
                     """
                     SELECT
                         a.id,
                         GROUP_CONCAT(DISTINCT m.method) AS methods,
-                        SUM(
-                            CASE WHEN z.zone_index > 2
-                                 THEN z.seconds ELSE 0 END
-                        ) AS hard
+                        GROUP_CONCAT(DISTINCT t.target) AS targets
                     FROM activities a
-                    JOIN activity_zone_times z
-                      ON z.activity_id = a.id AND z.kind = 'pace'
                     LEFT JOIN activity_workout_methods m
                       ON m.activity_id = a.id
+                    LEFT JOIN activity_workout_targets t
+                      ON t.activity_id = a.id
                     WHERE a.sport IN ('run', 'trail_run')
                     GROUP BY a.id
                     """
@@ -275,15 +293,27 @@ class DemoGeneratorTests(unittest.TestCase):
 
                 easy = 0
                 quality = 0
+                hard_targets = {
+                    "threshold",
+                    "subthreshold",
+                    "speed",
+                    "vo2max",
+                }
 
                 for row in rows:
                     methods = (row["methods"] or "").split(",")
+                    targets = set((row["targets"] or "").split(","))
+                    hard = hard_times[row["id"]]
 
-                    if "intervals" in methods or "race" in methods:
-                        self.assertGreater(row["hard"], 0)
+                    if (
+                        "intervals" in methods
+                        or "race" in methods
+                        or targets & hard_targets
+                    ):
+                        self.assertGreater(hard, 0)
                         quality += 1
                     else:
-                        self.assertEqual(0, row["hard"])
+                        self.assertEqual(0, hard)
                         easy += 1
 
                 self.assertGreater(easy, 100)
@@ -308,7 +338,7 @@ class DemoGeneratorTests(unittest.TestCase):
                         WHERE local_date BETWEEN ? AND ?
                         """,
                         (
-                            (TODAY - timedelta(days=28)).isoformat(),
+                            (TODAY - timedelta(days=35)).isoformat(),
                             TODAY.isoformat(),
                         ),
                     )
@@ -424,7 +454,7 @@ class DemoGeneratorTests(unittest.TestCase):
                 today=TODAY,
             )
 
-            self.assertLess(summary.path.stat().st_size, 5 * 1024 * 1024)
+            self.assertLess(summary.path.stat().st_size, 6 * 1024 * 1024)
 
     def test_existing_file_is_refused_without_force(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -469,7 +499,7 @@ class DemoGeneratorTests(unittest.TestCase):
             self.assertLessEqual(cached.query_counts["activities"], 10)
             self.assertLessEqual(
                 cached.query_counts["activity_intervals"],
-                1200,
+                1600,
             )
             self.assertLessEqual(cached.query_counts["activity_laps"], 40)
             self.assertGreaterEqual(
@@ -553,6 +583,225 @@ class DemoGeneratorTests(unittest.TestCase):
                 "<h2>Metrics</h2>",
             ):
                 self.assertNotIn(leaked, lab)
+
+
+class DemoStoryTests(unittest.TestCase):
+    """The demo athlete follows the documented storyline."""
+
+    def _races(self, connection):
+        return connection.execute(
+            """
+            SELECT a.local_date, a.name, a.distance_m, a.duration_s,
+                   a.vo2max_garmin
+            FROM activities a
+            JOIN activity_workout_methods m
+              ON m.activity_id = a.id AND m.method = 'race'
+            ORDER BY a.local_date
+            """
+        ).fetchall()
+
+    @staticmethod
+    def _times(races, low, high):
+        return [
+            race["duration_s"]
+            for race in races
+            if low <= race["distance_m"] <= high
+        ]
+
+    def test_races_progress_from_a_first_5k_to_the_threshold_era(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                races = self._races(connection)
+            finally:
+                connection.close()
+
+        five = self._times(races, 4900, 5100)
+        ten = self._times(races, 9900, 10100)
+        half = self._times(races, 21000, 21200)
+        marathon = self._times(races, 42000, 42500)
+
+        self.assertGreater(five[0], 20 * 60)
+        self.assertLess(five[0], 21 * 60)
+        self.assertLess(min(five), 19 * 60)
+
+        self.assertGreater(ten[0], 39 * 60)
+        self.assertLess(ten[0], 41 * 60)
+        self.assertLess(min(ten), 38 * 60)
+
+        self.assertGreater(half[0], 93 * 60)
+        self.assertLess(half[0], 97 * 60)
+        self.assertLess(min(half), 86 * 60)
+
+        self.assertGreater(marathon[0], 200 * 60)
+        self.assertLess(marathon[0], 210 * 60)
+        self.assertLess(min(marathon), 182 * 60)
+
+    def test_vo2max_tracks_race_form(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                races = self._races(connection)
+            finally:
+                connection.close()
+
+        values = [race["vo2max_garmin"] for race in races]
+
+        self.assertGreaterEqual(min(values), 40.0)
+        self.assertLessEqual(max(values), 56.0)
+        self.assertGreater(values[-1] - values[0], 6.0)
+        # The first 5k is around 20:30, the last 10k near 37:00.
+        self.assertLess(values[0], 45.0)
+        self.assertGreater(values[-1], 49.0)
+
+    def test_intro_is_only_continuous_running(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                first_race = self._races(connection)[0]["local_date"]
+                rows = connection.execute(
+                    """
+                    SELECT
+                        GROUP_CONCAT(DISTINCT m.method) AS methods,
+                        GROUP_CONCAT(DISTINCT t.target) AS targets
+                    FROM activities a
+                    LEFT JOIN activity_workout_methods m
+                      ON m.activity_id = a.id
+                    LEFT JOIN activity_workout_targets t
+                      ON t.activity_id = a.id
+                    WHERE a.local_date < ?
+                    GROUP BY a.id
+                    """,
+                    (first_race,),
+                ).fetchall()
+            finally:
+                connection.close()
+
+        self.assertGreaterEqual(len(rows), 8)
+
+        for row in rows:
+            methods = set((row["methods"] or "").split(","))
+            targets = set((row["targets"] or "").split(","))
+
+            self.assertIn("continuous", methods)
+            self.assertNotIn("intervals", methods)
+            self.assertEqual({"base"}, targets)
+
+    def test_rest_and_injury_leave_gaps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                def count(start, end):
+                    return connection.execute(
+                        "SELECT COUNT(*) FROM activities "
+                        "WHERE local_date BETWEEN ? AND ?",
+                        (start.isoformat(), end.isoformat()),
+                    ).fetchone()[0]
+
+                first_race = self._races(connection)[0]["local_date"]
+                race_day = date.fromisoformat(first_race)
+                self.assertEqual(
+                    0,
+                    count(
+                        race_day + timedelta(days=1),
+                        race_day + timedelta(days=7),
+                    ),
+                )
+
+                half = date.fromisoformat("2023-04-30")
+                self.assertEqual(
+                    0,
+                    count(
+                        half + timedelta(days=1),
+                        half + timedelta(days=10),
+                    ),
+                )
+                self.assertGreater(
+                    count(half + timedelta(days=11), half + timedelta(days=14)),
+                    0,
+                )
+            finally:
+                connection.close()
+
+    def test_norwegian_era_has_double_threshold_days(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                rows = connection.execute(
+                    """
+                    SELECT a.local_date, COUNT(*) AS sessions
+                    FROM activities a
+                    JOIN activity_workout_targets t
+                      ON t.activity_id = a.id
+                     AND t.target = 'subthreshold'
+                    GROUP BY a.local_date
+                    HAVING sessions >= 2
+                    ORDER BY a.local_date
+                    """
+                ).fetchall()
+            finally:
+                connection.close()
+
+        self.assertGreaterEqual(len(rows), 10)
+
+    def test_recent_subthreshold_reps_match_the_recent_10k(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                ten = self._races(connection)[-1]
+                tempo = [
+                    row["duration_s"] / row["distance_m"] * 1000
+                    for row in connection.execute(
+                        """
+                        SELECT i.duration_s, i.distance_m
+                        FROM activity_intervals i
+                        JOIN activities a ON a.id = i.activity_id
+                        JOIN activity_workout_targets t
+                          ON t.activity_id = a.id
+                         AND t.target = 'subthreshold'
+                        WHERE i.type = 'WORK' AND a.local_date >= ?
+                        """,
+                        (
+                            (
+                                date.fromisoformat(ten["local_date"])
+                                - timedelta(days=180)
+                            ).isoformat(),
+                        ),
+                    ).fetchall()
+                ]
+            finally:
+                connection.close()
+
+        self.assertTrue(tempo)
+        race_pace = ten["duration_s"] / ten["distance_m"] * 1000
+        self.assertLess(
+            abs(sorted(tempo)[len(tempo) // 2] - race_pace) / race_pace,
+            0.10,
+        )
 
 
 class DemoCommandTests(unittest.TestCase):

@@ -111,6 +111,18 @@ this list keeps the recent decisions only.
   min/km pace (`EquivalentTime`). The `races` report and the Performance
   tab print the same rows.
 
+- **The demo athlete follows a story.** Four weeks of continuous running
+  and a first 5k (20:30), a rest week, a classical build to 10k (40:10) and
+  half (1:34), a 10-day injury and a four-week return, down weeks, a taper
+  and a first marathon (3:27), six boom-and-bust weeks with a slow comeback
+  10k, then a threshold-focused Norwegian block that ramps from ~70 to
+  ~110 km/week with double-threshold days and PBs down to
+  18:10 / 37:00 / 1:24 / 2:59. One fitness curve (5k pace plus an endurance
+  factor per distance) drives every race time and training pace, and VO2max
+  follows it (42 to 53) with a slow wobble, so the log reads as one athlete.
+  13 races across four years replace the five in the last seven months; the
+  demo database grows to ~5.2 MB.
+
 ## Bugs
 
 _None._
@@ -118,7 +130,7 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Only **12** is reports-only.
+items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -179,30 +191,12 @@ items 24 and 25. Only **12** is reports-only.
     excluded or only flagged. See the efficiency card's note on the Feb–Mar
     2026 baseline shift.
 
-12. **Demo narrative: Daniels first, then Norwegian singles.** The demo runs one
-    generic periodization (base/build/peak/taper across the whole log) with
-    five hard-coded races in the last seven months, so the eras are
-    indistinguishable and the race times contradict the sessions (a 21:30 5k
-    next to subT paces that imply 18:00).
-    - **Era 1, Jack Daniels** (first half): E/M/T/I/R paces, two quality
-      sessions a week plus a long run, weekly mileage progressing, and **boom
-      and bust cycles** — two or three build blocks that end in a 2–3 week
-      collapse (illness) and a rebuild, visible in load, volume and VO2max.
-    - **Era 2, Norwegian singles** (second half): double-threshold days (two
-      sub-threshold sessions in a day, twice a week), five or six easy runs,
-      higher weekly hours, almost no VO2max work, and a visibly smoother load
-      series.
-    - **Races across the whole log**: at least one per season from the first
-      year, not five in the last seven months, so the PB progression and the
-      Riegel fit have history to draw on.
-    - **Times that follow the training**: derive each race from the era's
-      fitness — the subT pace of the surrounding sessions, the era's VO2max —
-      not from constants. A 10k time must imply a threshold pace within a few
-      percent of the generated subT sessions, and a bust must show as a slower
-      race before the rebuild.
-    - **Tests**: races in the first and last year; PBs improve across the eras;
-      the load series shows the busts; the two eras differ in their
-      method/target mix; every race time is consistent with its era's pace.
+12. **Periodic demo review.** Recurring upkeep, not a feature: at each
+    release tag and schema bump, re-read the reports against the demo
+    athlete's story — does every tab still show the era it describes, do new
+    fields have demo data, and do the race times, workout paces and VO2max
+    still agree? Keep the seed fixed so the output stays diffable. See root
+    item 26.
 
 ## Tests and docs
 

@@ -139,13 +139,18 @@ activity, date) through `DataSource.review_items(status="open")`.
 ## Synthetic demo database
 
 `demo-db` writes a complete, deterministic training database with an
-invented athlete: 4 years of periodized activities, intervals, zone
-times, wellness, planned workouts, two future races, five completed
-5k/10k/half races with PB improvements, and four shoes. Easy
-and long runs stay in zones 1–2 while workouts carry the hard zones;
-Garmin-style VO2max is one smooth value per day; and the 16-week future
-plan mirrors the last four complete weeks. It never reads the canonical
-database or any personal data.
+invented athlete who follows a four-year story: four weeks of continuous
+running and a first 5k, a rest week, a classical build to 10k and half
+marathon, a 10-day injury and a careful return, a first marathon, six
+boom-and-bust weeks, then a threshold-focused Norwegian singles block with
+double-threshold days. Thirteen races, intervals, zone times, wellness,
+planned workouts, two future races and four shoes. One fitness curve
+(5k pace plus an endurance factor per distance) drives every race time,
+training pace and the Garmin VO2max value, so they stay in line while still
+moving: easy and long runs stay in zones 1–2, workouts carry the hard zones,
+VO2max is one smooth value per day, and the 16-week future plan mirrors the
+last four complete weeks. It never reads the canonical database or any
+personal data.
 
     python -m hobbyjogging_report demo-db --out build/demo.db
 
@@ -156,7 +161,7 @@ database or any personal data.
         --with-review-items --force
 
 `--out` is required and an existing file is refused without `--force`;
-the canonical `HOBBYJOGGING_DB` is never used. The file is about 4.4 MB
+the canonical `HOBBYJOGGING_DB` is never used. The file is about 5.2 MB
 and contains no raw source payloads.
 
 Build the demo site from it with an explicit database path and the
