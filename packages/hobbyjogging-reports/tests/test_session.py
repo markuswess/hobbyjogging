@@ -201,6 +201,26 @@ class SessionReportTests(unittest.TestCase):
         self.assertIn("- ID: b", report)
         self.assertNotIn("- ID: a", report)
 
+    def test_old_session_gets_an_estimated_baseline(self):
+        old = activity(
+            id="old",
+            date=date(2015, 5, 1),
+            type="run",
+            duration_s=3600,
+            distance_m=10000,
+            avg_hr=150,
+        )
+        source = FakeSource(
+            [old],
+            wellness=[
+                WellnessDay(date=date(2022, 9, 1), resting_hr=50),
+            ],
+        )
+
+        report = session_report("old", source, today=date(2026, 10, 5))
+
+        self.assertIn("(estimated baseline)", report)
+
     def test_detailed_report_has_intervals_and_description(self):
         report = session_report("b", self.source)
 

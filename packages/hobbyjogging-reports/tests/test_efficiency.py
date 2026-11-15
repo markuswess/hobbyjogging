@@ -242,6 +242,43 @@ class RestingHrBaselineTests(unittest.TestCase):
         self.assertEqual(50, lookup(D))
         self.assertIsNone(lookup(D - timedelta(days=11)))
 
+    def test_backfill_uses_the_earliest_baseline_for_old_days(self):
+        wellness = self._days(D, 10, 50)
+        lookup = resting_hr_baselines(wellness, backfill=True)
+
+        self.assertEqual(50, lookup(D - timedelta(days=365)))
+        self.assertTrue(lookup.estimated(D - timedelta(days=365)))
+        self.assertFalse(lookup.estimated(D))
+
+    def test_without_backfill_an_old_day_stays_empty_and_unflagged(self):
+        wellness = self._days(D, 10, 50)
+        lookup = resting_hr_baselines(wellness)
+
+        self.assertIsNone(lookup(D - timedelta(days=365)))
+        self.assertFalse(lookup.estimated(D - timedelta(days=365)))
+
+    def test_fallback_applies_only_without_any_sample(self):
+        lookup = resting_hr_baselines([], backfill=True, fallback=50)
+
+        self.assertEqual(50, lookup(D))
+        self.assertTrue(lookup.estimated(D))
+
+    def test_fallback_does_not_apply_before_measured_samples(self):
+        wellness = self._days(D, 10, 50)
+        lookup = resting_hr_baselines(wellness, fallback=50)
+
+        self.assertIsNone(lookup(D - timedelta(days=5)))
+
+    def test_implausible_fallback_is_rejected(self):
+        for value in (0, 200):
+            lookup = resting_hr_baselines(
+                [],
+                backfill=True,
+                fallback=value,
+            )
+
+            self.assertIsNone(lookup(D), value)
+
 
 class SubtEfficiencyTests(unittest.TestCase):
 

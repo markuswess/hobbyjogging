@@ -22,7 +22,7 @@ whole series; 365 days is about six times the episode.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from datetime import date
 
 from hobbyjogging_core.classify import classify as core_classify
@@ -39,6 +39,8 @@ STEADY_MAX_DURATION_S = 75 * 60
 STEADY_DURATION_BAND = (STEADY_MIN_DURATION_S, STEADY_MAX_DURATION_S)
 STEADY_BAND_LABEL = "45–75 min"
 STEADY_EFFICIENCY_LABEL = "Efficiency (45–75 min steady)"
+MIN_RESTING_HR = 35.0
+MAX_RESTING_HR = 70.0
 
 
 def resting_hr_baseline(
@@ -55,26 +57,65 @@ def resting_hr_baseline(
     return resting_hr_baselines(wellness, window_days=window_days)(day)
 
 
+class RestingHRBaselineLookup:
+    """Per-day resting-HR baseline, with an estimated flag for old dates."""
+
+    def __init__(self, lookup, fallback, has_samples):
+        self._lookup = lookup
+        self._fallback = fallback
+        self._has_samples = has_samples
+
+    def __call__(self, day: date) -> float | None:
+        result = self._lookup(day)
+
+        if result is not None:
+            return result.center
+        if not self._has_samples and self._fallback is not None:
+            return self._fallback
+
+        return None
+
+    def estimated(self, day: date) -> bool:
+        """True when no measured baseline covers the day."""
+        result = self._lookup(day)
+
+        if result is not None:
+            return result.estimated
+
+        return not self._has_samples and self._fallback is not None
+
+
 def resting_hr_baselines(
     wellness: Iterable[WellnessDay],
     *,
     window_days: int = RESTING_HR_WINDOW_DAYS,
-) -> Callable[[date], float | None]:
+    backfill: bool = False,
+    fallback: float | None = None,
+) -> RestingHRBaselineLookup:
     """Build a per-day resting-HR baseline lookup from wellness days.
 
     The lookup is pure: callers fetch the wellness (with a year of lead-in)
-    and pass the resulting function through the rendering stack.
+    and pass the resulting function through the rendering stack. With
+    ``backfill`` a day before the first sample uses the earliest baseline,
+    flagged ``estimated``. ``fallback`` applies only when there is no
+    resting HR at all, and is rejected outside a plausible range.
     """
+    entries = list(wellness)
+    has_samples = any(entry.resting_hr is not None for entry in entries)
     lookup = robust_baselines(
-        ((entry.date, entry.resting_hr) for entry in wellness),
+        ((entry.date, entry.resting_hr) for entry in entries),
         window_days=window_days,
+        backfill=backfill,
     )
+    value = None
 
-    def baseline(day: date) -> float | None:
-        result = lookup(day)
-        return None if result is None else result.center
+    if (
+        fallback is not None
+        and MIN_RESTING_HR <= fallback <= MAX_RESTING_HR
+    ):
+        value = float(fallback)
 
-    return baseline
+    return RestingHRBaselineLookup(lookup, value, has_samples)
 
 
 def excess_beats(

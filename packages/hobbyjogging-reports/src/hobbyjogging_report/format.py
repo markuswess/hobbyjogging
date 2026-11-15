@@ -388,6 +388,7 @@ def _activity_metric_lines(
     *,
     detailed: bool = False,
     resting_hr: float | None = None,
+    resting_hr_estimated: bool = False,
 ):
     """Shared metric lines for compact and detailed activity renderers."""
     lines = [f"- Duration: {fmt_time(activity.duration_s)}"]
@@ -414,8 +415,9 @@ def _activity_metric_lines(
     efficiency = activity_efficiency(activity, resting_hr)
 
     if efficiency is not None:
+        note = " (estimated baseline)" if resting_hr_estimated else ""
         lines.append(
-            f"- Efficiency: {efficiency:.2f} {EFFICIENCY_UNIT}"
+            f"- Efficiency: {efficiency:.2f} {EFFICIENCY_UNIT}{note}"
         )
 
     if activity.training_load:
@@ -664,6 +666,7 @@ def format_session_activity(
     *,
     links=None,
     resting_hr: float | None = None,
+    resting_hr_estimated: bool = False,
     planned_events: list[Event] | None = None,
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
@@ -706,6 +709,7 @@ def format_session_activity(
             activity,
             detailed=True,
             resting_hr=resting_hr,
+            resting_hr_estimated=resting_hr_estimated,
         )
     )
     lines.extend(_activity_description_lines(activity, detailed=True))

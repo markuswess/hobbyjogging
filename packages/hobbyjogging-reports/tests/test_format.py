@@ -50,6 +50,32 @@ class Vo2maxLabelTests(unittest.TestCase):
         self.assertIn("- VO2max: 55.0 (Garmin, swim)", lines)
 
 
+class EstimatedBaselineTests(unittest.TestCase):
+
+    def test_estimated_baseline_is_flagged(self):
+        lines = format_session_activity(
+            activity(distance_m=10000, duration_s=3600, avg_hr=150),
+            [],
+            resting_hr=50,
+            resting_hr_estimated=True,
+        )
+
+        self.assertIn(
+            "- Efficiency: 1.67 m/excess beat (estimated baseline)",
+            lines,
+        )
+
+    def test_measured_baseline_has_no_flag(self):
+        lines = format_session_activity(
+            activity(distance_m=10000, duration_s=3600, avg_hr=150),
+            [],
+            resting_hr=50,
+        )
+
+        self.assertIn("- Efficiency: 1.67 m/excess beat", lines)
+        self.assertNotIn("estimated", "\n".join(lines))
+
+
 class SummarizeTrainingTests(unittest.TestCase):
 
     def test_run_and_cross_totals(self):

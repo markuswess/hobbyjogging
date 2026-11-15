@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from statistics import median
 
@@ -27,6 +27,7 @@ class RobustBaseline:
     center: float
     spread: float
     count: int
+    estimated: bool = False
 
 
 def robust_baselines(
@@ -34,12 +35,14 @@ def robust_baselines(
     *,
     window_days: int = BASELINE_WINDOW_DAYS,
     min_values: int = 1,
+    backfill: bool = False,
 ) -> Callable[[date], RobustBaseline | None]:
     """Build a per-day robust-baseline lookup from dated samples.
 
     When the trailing window has fewer than ``min_values`` measurements,
     the lookup expands over all earlier values; it returns ``None`` when
-    even that is not enough.
+    even that is not enough. With ``backfill`` a day before the first sample
+    gets the earliest baseline, flagged ``estimated``.
     """
     if window_days <= 0:
         raise ValueError("window must be positive")
@@ -54,7 +57,7 @@ def robust_baselines(
     days = [point[0] for point in points]
     values = [point[1] for point in points]
 
-    def baseline(day: date) -> RobustBaseline | None:
+    def at(day: date) -> RobustBaseline | None:
         end = bisect_right(days, day)
 
         if not end:
@@ -78,6 +81,22 @@ def robust_baselines(
             spread=MAD_TO_SIGMA * mad,
             count=len(chosen),
         )
+
+    earliest = None
+
+    if backfill and len(points) >= min_values:
+        first = at(days[min_values - 1])
+
+        if first is not None:
+            earliest = replace(first, estimated=True)
+
+    def baseline(day: date) -> RobustBaseline | None:
+        result = at(day)
+
+        if result is not None:
+            return result
+
+        return earliest
 
     return baseline
 

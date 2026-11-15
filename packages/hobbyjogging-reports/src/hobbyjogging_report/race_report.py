@@ -344,17 +344,20 @@ def race_report(
     if note:
         lines.append(f"\n> {note}")
 
+    baseline = resting_hr_lookup(
+        source,
+        day or activity.date,
+        day or activity.date,
+        backfill=True,
+    )
     lines.extend(
         format_session_activity(
             activity,
             intervals,
             category=classify(activity, intervals).path,
             links=resolve_activity_links(source, activity.id),
-            resting_hr=resting_hr_lookup(
-                source,
-                day or activity.date,
-                day or activity.date,
-            )(activity.date),
+            resting_hr=baseline(activity.date),
+            resting_hr_estimated=baseline.estimated(activity.date),
             planned_events=events,
             wellness=wellness,
             review_items=review_items,

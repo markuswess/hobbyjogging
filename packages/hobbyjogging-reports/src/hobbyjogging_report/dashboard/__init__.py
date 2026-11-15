@@ -423,6 +423,7 @@ def build_dashboard(
             source,
             min(activity.date for activity in detail_activities.values()),
             today,
+            backfill=True,
         )
         if detail_activities
         else (lambda _day: None)
@@ -457,6 +458,7 @@ def build_dashboard(
                 category=classify(activity, intervals).path,
                 links=resolve_activity_links(source, activity.id),
                 resting_hr=baseline(activity.date),
+                resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
                 wellness=wellness_day,
                 review_items=[

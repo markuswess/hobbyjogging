@@ -262,6 +262,7 @@ def activities_report(
             source,
             min(activity.date for activity in activities),
             max(activity.date for activity in activities),
+            backfill=True,
         )
         if activities
         else (lambda _day: None)
@@ -273,7 +274,14 @@ def activities_report(
             "eff (m/excess beat)",
             lambda activity: _optional(
                 activity_efficiency(activity, baseline(activity.date)),
-                lambda value: f"{value:.2f}",
+                lambda value: (
+                    f"{value:.2f}"
+                    + (
+                        " (estimated)"
+                        if baseline.estimated(activity.date)
+                        else ""
+                    )
+                ),
             ),
         )
 

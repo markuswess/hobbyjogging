@@ -150,6 +150,16 @@ this list keeps the recent decisions only.
   axis range survives; the demo dashboard test asserts every chart on every
   page carries spikes.
 
+- **Pre-baseline efficiency, flagged.** `robust_baselines(backfill=True)`
+  returns the earliest baseline for days before the first sample and marks
+  it `estimated`; `resting_hr_baselines` exposes the flag and accepts an
+  optional 35-70 bpm fallback used only when there is no sample at all. The
+  session report says `2.23 m/excess beat (estimated baseline)` and the
+  `eff` activities column `2.38 (estimated)`; the period, overview and
+  compare aggregates still require a measured baseline. Backfill mode reads
+  the whole wellness table, because the first sample can be years after an
+  old activity. The metric-card update is root item 33.
+
 ## Bugs
 
 _None._
@@ -317,20 +327,6 @@ root item 31, and 12 is recurring upkeep.
     - **Card**: the efficiency card gains the floor and the second series.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
-
-21. **Efficiency fallback for pre-baseline activities.** `resting_hr_baselines`
-    returns `None` before the first wellness sample, so every activity before
-    Sep 2022 shows `-` (root item 33). Backward-fill the earliest baseline and
-    flag it as estimated.
-    - **Implementation**: `robust_baselines` gains a `backfill` mode (or the
-      efficiency wrapper does), returning the first baseline for earlier dates
-      plus an `estimated` flag; a configured default applies only when no
-      resting HR exists at all.
-    - **Display**: the session report and the `eff` activities column show the
-      value with "estimated baseline"; the compare and overview aggregates keep
-      requiring a measured baseline.
-    - **Tests**: a pre-baseline activity gets a flagged value; the aggregates
-      still exclude it; an implausible fallback is rejected.
 
 ## Tests and docs
 

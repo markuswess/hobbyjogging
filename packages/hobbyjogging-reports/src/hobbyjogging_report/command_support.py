@@ -73,16 +73,26 @@ def warmup_reviewed(
     return display, activities
 
 
-def resting_hr_lookup(source: DataSource, start: date, end: date):
-    """Resting-HR baseline lookup with a year of wellness lead-in."""
+def resting_hr_lookup(
+    source: DataSource,
+    start: date,
+    end: date,
+    *,
+    backfill: bool = False,
+):
+    """Resting-HR baseline lookup with a year of wellness lead-in.
+
+    A backfilled baseline needs the first wellness sample, which can be
+    years after an old session, so that mode reads the whole table.
+    """
     from .analysis import RESTING_HR_WINDOW_DAYS, resting_hr_baselines
 
     wellness = source.wellness(
         start - timedelta(days=RESTING_HR_WINDOW_DAYS),
-        end,
+        date.max if backfill else end,
     )
 
-    return resting_hr_baselines(wellness)
+    return resting_hr_baselines(wellness, backfill=backfill)
 
 
 def subt_session_points(

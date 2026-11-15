@@ -637,8 +637,10 @@ Which runs feed which number:
 
 Aggregates are always `Σdistance / Σexcess beats`, never the mean of
 per-sample ratios. Resting HR starts in Sep 2022 in the current database, so
-older years have no baseline and are left out of the compare efficiency
-chart.
+older years have no measured baseline and are left out of the compare
+efficiency chart. The session report and the `eff` column still show a value
+for those older runs by back-filling the earliest baseline, marked
+`(estimated baseline)`; the trend aggregates never use that estimate.
 
 ## Activities table
 

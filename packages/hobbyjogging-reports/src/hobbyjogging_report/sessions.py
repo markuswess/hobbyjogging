@@ -131,7 +131,12 @@ def session_report(
             lines.append("\n- No activity")
         return "\n".join(lines)
 
-    baseline = resting_hr_lookup(source, day or activities[0].date, day)
+    baseline = resting_hr_lookup(
+        source,
+        day or activities[0].date,
+        day,
+        backfill=True,
+    )
     day_events = source.events(day, day) if day else []
     day_wellness = source.wellness(day, day) if day else []
     wellness_day = day_wellness[0] if day_wellness else None
@@ -152,6 +157,7 @@ def session_report(
                 category=category.path,
                 links=resolve_activity_links(source, activity.id),
                 resting_hr=baseline(activity.date),
+                resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
                 wellness=wellness_day,
                 review_items=[
