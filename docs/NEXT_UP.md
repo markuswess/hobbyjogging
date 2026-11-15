@@ -997,6 +997,34 @@ Updated 2026-11-12.
       estimated flag; the compare and overview aggregates still exclude it; a
       fallback of 0 or 200 is rejected.
 
+34. **Manual-layer export and rebuild check** (maintenance + core; **low
+    priority** — insurance, not a blocker). The raw layer is preserved and
+    SQLite stays readable, so the data does not disappear; what dies with the
+    code is the *meaning*: which values were overridden, which sessions were
+    deliberately excluded, which conflicts were decided. That layer is small —
+    measured on the real DB: 73 manual field overrides (`sport` 38, `avg_hr`
+    28, …), 335 + 209 manual workout method/target rows, 29 exclusions, 33
+    ignored review items — against 14,393 source records and 4,148 activities
+    that are raw or recomputable.
+    - **Phase 1**: `maintenance export-manual` writes JSONL — manual field
+      values, manual sets, manual tags, manual equipment links, exclusions and
+      the ignored/resolved review fingerprints — and `import-manual` re-applies
+      it to a fresh database, idempotently. Human-readable, diffable, a few
+      kilobytes.
+    - **Phase 2**: a `rebuild` check — fresh database, replay the raw layer
+      (`source_records` plus the FIT archive), apply the overlay, then diff the
+      canonical layer against the live database. An empty diff is the proof
+      that raw + overlay + code reproduce everything. Companion to item 17
+      (raw vs derived).
+    - **Placement and cadence**: the overlay lives in `laufen_private` next to
+      the database (item 29) and is exported at each release tag (item 22).
+    - **Not doing**: a CSV/JSON export of the whole canonical database — it
+      duplicates the raw layer and rots with the schema — and not treating the
+      overlay as a backup; a periodic `sqlite3 .backup` remains the safety net.
+    - **Why low**: the raw sources and the database are already safe; this
+      protects the decisions and the design claim, which matters if the project
+      is ever abandoned or handed over.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
