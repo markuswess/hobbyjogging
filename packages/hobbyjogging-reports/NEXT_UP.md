@@ -142,14 +142,13 @@ this list keeps the recent decisions only.
   entry width and names.
 
 - **Crosshair on hover.** `_crosshair()` sets `showspikes`,
-  `spikemode="across"` and a thin grey dotted guide on x and y (and
-  `yaxis2` where present) for the pace/HR scatter (analysis and compare),
-  the race chart, the PB progression and the subT panels. The vertical
-  guide snaps to the nearest day; the horizontal one follows the cursor, so
-  a value can be read anywhere. The stacked volume, time and load charts are
-  left alone, because a horizontal guide there would point into a stack, not
-  at a value. Tests cover the axes, the second axis, the snap modes and that
-  an existing axis range survives.
+  `spikemode="across"` and a thin grey dotted guide on every chart (and
+  `yaxis2` where a chart has one, such as the load RPE overlay and the
+  overview's VO2max). The vertical guide snaps to the nearest day; the
+  horizontal one follows the cursor, so a value can be read anywhere.
+  Tests cover the axes, the second axis, the snap modes and that an existing
+  axis range survives; the demo dashboard test asserts every chart on every
+  page carries spikes.
 
 ## Bugs
 

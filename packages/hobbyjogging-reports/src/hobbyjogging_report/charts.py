@@ -500,6 +500,8 @@ def plot_volume(
         xlabel="week starting (Monday)",
         ylabel=ylabel,
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -902,6 +904,8 @@ def plot_time(
         legend=_legend_below(),
         hovermode="x unified",
     )
+
+    _crosshair(figure)
 
     return _render(
         figure,
@@ -1328,6 +1332,8 @@ def plot_load(
             },
         )
 
+    _crosshair(figure, second_y=True)
+
     return _render(
         figure,
         output,
@@ -1380,6 +1386,8 @@ def plot_vo2max(
         xlabel="date",
         ylabel="VO2max (mL/kg/min)",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -2070,6 +2078,8 @@ def plot_equipment(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -2140,6 +2150,8 @@ def plot_compare_vo2max(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -2256,6 +2268,8 @@ def plot_compare(
         legend=_legend_below(),
         hovermode="x unified",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -2433,6 +2447,8 @@ def plot_recovery(
         legend=_legend_below(),
         hovermode="x unified",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,

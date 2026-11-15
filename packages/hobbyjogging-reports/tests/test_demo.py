@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -573,6 +574,35 @@ class DemoGeneratorTests(unittest.TestCase):
             # The public demo must not publish the lab notebook, the experiment
             # scripts, or the metric registry: they carry this athlete's own
             # results.
+            # Every chart on every page carries the crosshair.
+            for page in site.glob("*.html"):
+                html = page.read_text()
+                position = 0
+
+                while True:
+                    index = html.find("Plotly.newPlot(", position)
+
+                    if index < 0:
+                        break
+
+                    bracket = html.find("[", index)
+                    _data, end = json.JSONDecoder().raw_decode(
+                        html[bracket:]
+                    )
+                    brace = html.find("{", bracket + end)
+                    layout, _ = json.JSONDecoder().raw_decode(
+                        html[brace:]
+                    )
+                    position = index + 10
+                    self.assertTrue(
+                        layout.get("xaxis", {}).get("showspikes"),
+                        page.name,
+                    )
+                    self.assertTrue(
+                        layout.get("yaxis", {}).get("showspikes"),
+                        page.name,
+                    )
+
             lab = (site / "lab.html").read_text()
             for leaked in (
                 "Parked notes",
