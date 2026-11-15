@@ -181,6 +181,11 @@ on.
   real file. A FIT carries timestamps, HR and possibly GPS, so this is a
   privacy call even in a private repo; the alternative is a synthetic encoder
   for the test only.
+- **FIT scan manifest.** The archive has 64,349 files and only 2,855 known
+  activities, so every sync re-reads ~61,500 non-activity files: 18 s in the
+  prefilter alone, ~80 % of the local sync time. Record every scanned file
+  (`path`, `size`, `mtime`, `kind`) and skip unchanged ones; `--full` ignores
+  the manifest. See root item 34.
 - **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
