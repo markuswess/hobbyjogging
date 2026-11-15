@@ -1,9 +1,9 @@
 # Next up: reports package
 
-Updated 2026-11-13.
+Updated 2026-11-15.
 
-Current focus: the demo data; every other item waits on a core or root
-change.
+Current focus: the demo data; item 13 is parked on its page-coverage cost,
+14 needs root items 4 and 30, and the rest need a core or root change.
 
 ## Done
 
@@ -186,7 +186,8 @@ _None._
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
 items 24 and 25. Items 13-14 are reports-only; 15 needs the lab gate in
-root item 31, and 12 is recurring upkeep.
+root item 31, and 12 is recurring upkeep. Item 13 is parked: the click
+handler is small, but every link needs a page for the plotted activity.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -273,7 +274,24 @@ root item 31, and 12 is recurring upkeep.
       missing.
     - **Tests**: the trace carries `customdata`; the rendered HTML contains the
       handler; a chart without ids still renders; the URL is
-      `activity/<id>.html` relative to the page.
+      `activity/<id>.html` (`race/<id>.html` for race points) relative to the
+      page.
+    - **Cost, measured (parked 2026-11-15).** The handler is cheap; coverage
+      is not. The dashboard writes activity pages only for the recent list
+      (50), while the charts reach back years, so a clickable point needs its
+      page written: ~1,300 pages in the demo (~+9 MB, ~+2 s of build) and
+      ~2,800 on the real log (~+20 MB, ~+4-6 s), one lap query each. The
+      detail loop must also batch its per-day wellness and events lookups
+      into two range queries, because it would go from ~50 distinct days to
+      ~2,800.
+    - **Plan when it resumes.** Build the href in Python (`activity_href`
+      moves to `links.py`) and emit one `CHART_LINKS_JS` from `page()` when
+      `plotly=True`, attaching to every `.js-plotly-plot`; take the nearest
+      point that carries `customdata`, because the race and subT charts
+      hover `x unified` and return every trace at that x. Ctrl/cmd-click
+      opens a new tab. Every plotted activity gets a page (the pace/HR
+      scatter and subT panels link to it); races and PB steps open the
+      existing `race/<id>.html` instead, which adds no pages.
 
 14. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
