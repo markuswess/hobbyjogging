@@ -198,6 +198,23 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
+15. **Crosshair on hover.** Plotly draws a vertical line at the hovered x in the
+    `x unified` charts and nothing horizontally, so reading a value off the y
+    axis means following an imaginary line. Add the horizontal spike too, from
+    one layout helper rather than per chart.
+    - **Helper**: `_crosshair(figure)` sets `showspikes`, `spikemode="across"`,
+      a thin grey `spikethickness` and `spikecolor` on both axes, and on
+      `yaxis2` where a chart has one (the overview's VO2max line).
+    - **Where it helps most**: the pace/HR scatter, the race log-log chart, the
+      PB progression and the subT panels — a horizontal line makes a pace or a
+      heart rate readable at a glance.
+    - **Caveat**: on the stacked bar charts (volume, time, load) a horizontal
+      spike follows the cursor, not a stack boundary, so it can point at a
+      meaningless value. Use `spikesnap="data"` there or skip those charts.
+    - **Tests**: the helper sets spikes on x, y and yaxis2 when present; a
+      chart that already sets an axis range keeps it; the HTML contains
+      `showspikes`.
+
 ## Tests and docs
 
 Covered now:
