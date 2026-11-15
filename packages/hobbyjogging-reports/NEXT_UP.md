@@ -80,7 +80,8 @@ this list keeps the recent decisions only.
   `vo2max_measurements` drop non-running activities, so the rides stop
   injecting a separate series; the daily chart is titled "Garmin running
   VO2max" and the compare chart is "Garmin running VO2max by year". The
-  cycling series waits on the core sport column in root's VO2max bug.
+  cycling series is not planned; `activities.sport` is the discriminator and no
+  core column is needed (root VO2max bug).
 
 - **The race chart draws the prediction line.** `plot_races()` draws
   `t = t_ref · (d/d_ref)^β` through the reference race instead of the free
@@ -324,6 +325,14 @@ root item 31, and 12 is recurring upkeep.
     - **Card**: the efficiency card gains the floor and the second series.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
+
+14. **Qualify VO2max on non-runs in the session report.** `_vo2max_line()`
+    still prints `VO2max: 64.6 (Garmin)` on any activity, but a ride carries its
+    own cycling estimate (root VO2max bug). Print
+    `VO2max: 64.6 (Garmin, cycling)` on non-running activities — or omit the
+    line there — and keep the plain label on runs. The charts are already
+    running-only; this is the last piece of the bug.
+    - **Tests**: a ride renders the qualified label, a run the plain one.
 
 ## Tests and docs
 

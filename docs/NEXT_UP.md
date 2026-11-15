@@ -145,9 +145,18 @@ Updated 2026-11-12.
   October both read 65.07. 482 rides, 22 swims and 21 trail runs therefore hold
   valid values, and **no backfill is needed** — `activities.sport` is the
   discriminator.
-  - **Already correct**: the VO2max chart filters to running
-    (`vo2max_measurements` / `vo2max_points` use `RUN_TYPES`), so there is no
-    mixed line.
+  - **Already correct**: the charts are running-only
+    (`vo2max_measurements` / `vo2max_points` use `RUN_TYPES`) and titled
+    "Garmin running VO2max", so there is no mixed line.
+  - **Residual jumps (separate, parked)**: three 2026 dips survive the sport
+    split and are transient session artefacts, not fitness —
+    2026-07-18 Berglauf Muckenkogel (trail, HR 177) **61.91 → 63.88** the next
+    day; 2026-08-02 Dachstein easy run (HR 122) **63.37 → 64.09**; 2026-08-05 a
+    17-minute second run **62.11 → 63.93**. The lab's parked entry
+    (`experiments/vo2max_jumps.py`, `CASE_DATES`) already lists these three
+    dates; no new lab work is queued. A future fix would be a trend rule —
+    qualify sessions, a persistence filter, or a rolling median — never a data
+    change.
   - **Wrong**: the session report prints `VO2max: 64.6 (Garmin)` on a ride,
     where the number is cycling, so a reader takes it for the athlete's VO2max.
   - **Fix**: qualify the line by sport on non-runs (or omit it), document
