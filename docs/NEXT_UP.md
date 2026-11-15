@@ -215,7 +215,7 @@ Updated 2026-11-12.
      — and the edit CLI edits it with `--description`. **No `activity_notes`
      table**: the field inventory shows one training text and one social text
      per activity, so a notes table would be the speculative abstraction the
-     rules warn about. The social text lives in `activity_strava` (item 16).
+     rules warn about. The social text lives in `activity_social` (item 16).
    - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
      new_json, source, note, created_at)`, append-only, written in the same
      transaction as the edit. `activity_field_sources` is a snapshot, not a
@@ -563,21 +563,24 @@ Updated 2026-11-12.
 15. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
    than duplicated here.
-16. **Strava titles, descriptions and links** (core + import + reports; low
-    priority). Strava is the social layer: the title is a pun, the description
-    sometimes a note, while the Intervals title is the workout name. Both are
-    worth keeping, and they must not compete — `name` is deliberately not a
-    conflict field, so a Strava import writing it would be ignored (Intervals
-    names are never blank) or open thousands of review items.
-    - **Schema**: `activity_strava(activity_id PRIMARY KEY, external_id,
-      title, description, source, source_record_id, is_manual, updated_at)` —
-      a table like `activity_equipment` and the planned device/weather/route
-      tables, not columns on `activities`: source-specific metadata, not a
-      canonical metric. `external_id` is the Strava activity id, from which
-      `https://www.strava.com/activities/<id>` is derived for the link.
-    - **Writes only `activity_strava`**: the pun title and its description
+16. **Social titles, descriptions and links** (core + import + reports; low
+    priority). Strava is the first social layer, but not the only possible one:
+    the title is a pun, the description sometimes a note, while the Intervals
+    title is the workout name. Both are worth keeping, and they must not
+    compete — `name` is deliberately not a conflict field, so a social import
+    writing it would be ignored (Intervals names are never blank) or open
+    thousands of review items.
+    - **Schema**: `activity_social(activity_id, source, title, description,
+      external_id, url, source_record_id, is_manual, updated_at)`, keyed by
+      `(activity_id, source)` — a table like `activity_equipment` and the
+      planned device/weather/route tables, not columns on `activities`:
+      source-specific metadata, not a canonical metric. The table is
+      deliberately not named after Strava, so another user can map a different
+      social import into it; `source` is data, not schema. `url` is stored
+      rather than derived, because only Strava has a predictable activity URL.
+    - **Writes only `activity_social`**: the pun title and its description
       never touch `activities.name`, `activities.description` or `classify()`.
-      The training notes stay canonical (item 1); Strava is social text.
+      The training notes stay canonical (item 1); this is social text.
     - **Classifier isolation**: the Strava title never enters `classify()` — a
       pun ("Race you to the bakery") must not match the `race`/`tempo`/`lt1`
       keywords. Keeping it out of `activities.name` makes that structural.

@@ -292,8 +292,9 @@ Text fields have fixed roles:
 - `description` — the training notes: how the session went, the feeling, the
   intervals and paces. Intervals and the historical sheet fill it, Runalyze may
   only fill a blank, and a manual edit outranks both.
-- `activity_strava` (planned) — the social text: the pun title and its
-  continuation. It never enters `description` and never reaches `classify()`.
+- `activity_social` (planned) — the social text: the pun title and its
+  continuation, one row per source (`source` is data, so any social import can
+  map into it). It never enters `description` and never reaches `classify()`.
 
 There is one training-notes text per activity, not a list; a notes table is
 added only if per-note timestamps ever become a need.
