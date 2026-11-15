@@ -319,6 +319,20 @@ root item 31, and 12 is recurring upkeep.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
 
+21. **Efficiency fallback for pre-baseline activities.** `resting_hr_baselines`
+    returns `None` before the first wellness sample, so every activity before
+    Sep 2022 shows `-` (root item 33). Backward-fill the earliest baseline and
+    flag it as estimated.
+    - **Implementation**: `robust_baselines` gains a `backfill` mode (or the
+      efficiency wrapper does), returning the first baseline for earlier dates
+      plus an `estimated` flag; a configured default applies only when no
+      resting HR exists at all.
+    - **Display**: the session report and the `eff` activities column show the
+      value with "estimated baseline"; the compare and overview aggregates keep
+      requiring a measured baseline.
+    - **Tests**: a pre-baseline activity gets a flagged value; the aggregates
+      still exclude it; an implausible fallback is rejected.
+
 ## Tests and docs
 
 Covered now:

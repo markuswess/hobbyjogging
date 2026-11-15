@@ -969,6 +969,27 @@ Updated 2026-11-12.
       check should compare the parenthetical title with the root item's title
       (fragile — probably not).
 
+33. **Efficiency fallback when no resting-HR baseline exists** (reports + card).
+    `robust_baselines` returns `None` for a date before the first wellness
+    sample, so `excess_beats` yields `None` and efficiency is `-` for the whole
+    pre-Sep-2022 log — eleven years of activities.
+    - **Backward fill**: for a date before the first sample, use the earliest
+      available 365-day median (the first baseline) instead of `None`. It is
+      data-driven and continuous at the boundary, with no invented number.
+    - **Last resort**: a configured default (for example 50 bpm) only when the
+      wellness table has no resting HR at all, printed as an assumption.
+    - **Mark it estimated**: the lookup returns the value plus an `estimated`
+      flag, so the session report and the activities column can say "estimated
+      baseline" while the trend aggregates keep using measured baselines only —
+      an estimated period must not look measured.
+    - **Guard**: keep `avg_hr − rhr ≥ 10` and reject a fallback outside a
+      plausible 35–70 bpm range; a too-low fallback inflates efficiency.
+    - **Card**: the efficiency card records the fallback, when it applies, and
+      why the trends stay measured-only.
+    - **Tests**: an activity before the first wellness day gets a value with the
+      estimated flag; the compare and overview aggregates still exclude it; a
+      fallback of 0 or 200 is rejected.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
