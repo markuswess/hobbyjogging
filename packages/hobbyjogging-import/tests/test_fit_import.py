@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from datetime import date
@@ -281,6 +282,131 @@ class FitImporterTests(unittest.TestCase):
         self.assertEqual(1, summary.files_seen)
         self.assertEqual(0, summary.files_skipped)
         self.assertEqual(1, summary.files_imported)
+        self.assertEqual(
+            {str(path.resolve())},
+            set(self.importer.writer.fit_scan_manifest()),
+        )
+
+    def test_non_activity_files_are_manifested_and_skipped(self):
+        path = self._file("monitoring.fit", b"mon")
+
+        with patch(
+            "hobbyjogging_import.fit_import.read_fit_file_id",
+            return_value={"type": "monitoring"},
+        ):
+            first = self.importer.import_paths(
+                [self.fit_dir],
+                skip_known=True,
+            )
+
+        self.assertEqual(1, first.files_skipped)
+        key = str(path.resolve())
+        manifest = self.importer.writer.fit_scan_manifest()
+        self.assertEqual("other", manifest[key][2])
+
+        with patch(
+            "hobbyjogging_import.fit_import.read_fit_file_id"
+        ) as read_fit, patch(
+            "hobbyjogging_import.fit_import.parse_fit_file"
+        ) as parse_fit:
+            second = self.importer.import_paths(
+                [self.fit_dir],
+                skip_known=True,
+            )
+
+        self.assertEqual(0, read_fit.call_count)
+        self.assertEqual(0, parse_fit.call_count)
+        self.assertEqual(1, second.files_skipped)
+
+    def test_known_activity_is_seeded_without_opening_it(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+        self.conn.execute("DELETE FROM fit_scan_files")
+        self.conn.commit()
+
+        with patch(
+            "hobbyjogging_import.fit_import.read_fit_file_id"
+        ) as read_fit, patch(
+            "hobbyjogging_import.fit_import.parse_fit_file"
+        ) as parse_fit:
+            summary = self.importer.import_paths(
+                [self.fit_dir],
+                skip_known=True,
+            )
+
+        self.assertEqual(0, read_fit.call_count)
+        self.assertEqual(0, parse_fit.call_count)
+        self.assertEqual(1, summary.files_skipped)
+        manifest = self.importer.writer.fit_scan_manifest()
+        key = str(path.resolve())
+        self.assertEqual("activity", manifest[key][2])
+        self.assertEqual(path.stat().st_size, manifest[key][0])
+
+    def test_changed_size_reimports_the_file(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        path.write_bytes(b"one-updated")
+        summary = self._import([_summary(path)], skip_known=True)
+
+        self.assertEqual(1, summary.files_seen)
+        self.assertEqual(0, summary.files_skipped)
+        self.assertEqual(1, summary.files_imported)
+
+    def test_changed_mtime_reimports_the_file(self):
+        path = self._file("one.fit", b"one")
+        self._import([_summary(path)])
+
+        stat = path.stat()
+        os.utime(
+            path,
+            ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000),
+        )
+        summary = self._import([_summary(path)], skip_known=True)
+
+        self.assertEqual(1, summary.files_seen)
+        self.assertEqual(0, summary.files_skipped)
+        self.assertEqual(1, summary.files_imported)
+
+    def test_deleted_file_is_forgotten(self):
+        one = self._file("one.fit", b"one")
+        two = self._file("two.fit", b"two")
+        self._import([_summary(one), _summary(two)])
+
+        two.unlink()
+        self._import([_summary(one)], skip_known=True)
+
+        self.assertEqual(
+            {str(one.resolve())},
+            set(self.importer.writer.fit_scan_manifest()),
+        )
+
+    def test_out_of_range_files_are_not_manifested(self):
+        path = self._file("one.fit", b"one")
+
+        self._import(
+            [_summary(path)],
+            start=date(2026, 11, 1),
+            end=date(2026, 11, 30),
+        )
+
+        self.assertEqual({}, self.importer.writer.fit_scan_manifest())
+
+        summary = self._import(
+            [_summary(path)],
+            start=date(2026, 10, 1),
+            end=date(2026, 10, 31),
+            skip_known=True,
+        )
+        self.assertEqual(1, summary.files_imported)
+
+    def test_dry_run_does_not_write_the_manifest(self):
+        path = self._file("one.fit", b"one")
+
+        summary = self._import([_summary(path)], dry_run=True)
+
+        self.assertEqual(1, summary.files_seen)
+        self.assertEqual({}, self.importer.writer.fit_scan_manifest())
 
     def test_reimport_resolves_old_conflict_when_values_agree(self):
         path = self._file("one.fit", b"one")

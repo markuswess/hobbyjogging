@@ -113,6 +113,7 @@ class FitImporter:
             files_seen=len(discovered),
         )
         known_paths = self._known_fit_paths() if skip_known else set()
+        manifest = self.writer.fit_scan_manifest()
 
         if not dry_run:
             summary.run_id = self.writer.start_import_run(
@@ -128,12 +129,13 @@ class FitImporter:
             )
 
         try:
-            activity_files = self._prefilter(
+            activity_files, verdicts = self._prefilter(
                 discovered,
                 summary,
                 limit,
                 skip_known=skip_known,
                 known_paths=known_paths,
+                manifest=manifest,
             )
 
             if dry_run:
@@ -144,21 +146,32 @@ class FitImporter:
                         start,
                         end,
                         dry_run=True,
-                        skip_known=skip_known,
-                        known_paths=known_paths,
                     )
             else:
                 with self.connection:
                     for path in activity_files:
-                        self._import_file(
+                        kind = self._import_file(
                             path,
                             summary,
                             start,
                             end,
                             dry_run=False,
-                            skip_known=skip_known,
-                            known_paths=known_paths,
                         )
+                        key = _manifest_key(path)
+                        size_bytes, mtime_ns, _ = verdicts[key]
+                        if kind == "out_of_range":
+                            verdicts.pop(key, None)
+                        else:
+                            verdicts[key] = (size_bytes, mtime_ns, kind)
+
+                    self._record_scan_manifest(verdicts)
+                    removed = _stale_manifest_paths(
+                        manifest,
+                        discovered,
+                        paths,
+                    )
+                    if removed:
+                        self.writer.forget_fit_scan_files(removed)
 
                 self.writer.finish_import_run(
                     summary.run_id,
@@ -191,19 +204,55 @@ class FitImporter:
         *,
         skip_known: bool = False,
         known_paths: set[str] | None = None,
-    ) -> list[Path]:
-        if limit is not None and limit <= 0:
-            return []
+        manifest: dict[str, tuple[int, int, str]] | None = None,
+    ) -> tuple[list[Path], dict[str, tuple[int, int, str]]]:
+        """Classify files and return the activity ones plus scan verdicts.
 
+        With ``skip_known`` a file whose path, size and mtime match the scan
+        manifest is skipped without opening it, whether it became an activity
+        or not. Known activity paths without a manifest row are seeded from
+        their stat only, so the first routine scan after the manifest lands
+        does not re-read the whole archive.
+        """
         activity_files: list[Path] = []
+        verdicts: dict[str, tuple[int, int, str]] = {}
+
+        if limit is not None and limit <= 0:
+            return activity_files, verdicts
+
+        manifest = manifest or {}
 
         for path in paths:
+            key = _manifest_key(path)
+            try:
+                stat = path.stat()
+            except OSError as exc:
+                summary.files_skipped += 1
+                summary.errors.append(f"{path}: {exc}")
+                continue
+
+            size_bytes = stat.st_size
+            mtime_ns = stat.st_mtime_ns
+            entry = manifest.get(key)
+
             if (
                 skip_known
+                and entry is not None
+                and entry[0] == size_bytes
+                and entry[1] == mtime_ns
+                and entry[2] != "error"
+            ):
+                summary.files_skipped += 1
+                continue
+
+            if (
+                skip_known
+                and entry is None
                 and known_paths
                 and _path_known(path, known_paths)
             ):
                 summary.files_skipped += 1
+                verdicts[key] = (size_bytes, mtime_ns, "activity")
                 continue
 
             try:
@@ -211,18 +260,33 @@ class FitImporter:
             except Exception as exc:
                 summary.files_skipped += 1
                 summary.errors.append(f"{path}: {exc}")
+                verdicts[key] = (size_bytes, mtime_ns, "error")
                 continue
 
             if str(file_id.get("type") or "") != "activity":
                 summary.files_skipped += 1
+                verdicts[key] = (size_bytes, mtime_ns, "other")
                 continue
 
             activity_files.append(path)
+            verdicts[key] = (size_bytes, mtime_ns, "activity")
 
             if limit is not None and len(activity_files) >= limit:
                 break
 
-        return activity_files
+        return activity_files, verdicts
+
+    def _record_scan_manifest(
+        self,
+        verdicts: dict[str, tuple[int, int, str]],
+    ) -> None:
+        for path, (size_bytes, mtime_ns, kind) in verdicts.items():
+            self.writer.record_fit_scan_file(
+                path=path,
+                size_bytes=size_bytes,
+                mtime_ns=mtime_ns,
+                kind=kind,
+            )
 
     def _known_fit_paths(self) -> set[str]:
         rows = self.connection.execute(
@@ -242,30 +306,27 @@ class FitImporter:
         end: date | None,
         *,
         dry_run: bool,
-        skip_known: bool = False,
-        known_paths: set[str] | None = None,
-    ) -> None:
-        if (
-            skip_known
-            and known_paths
-            and _path_known(path, known_paths)
-        ):
-            summary.files_skipped += 1
-            return
+    ) -> str:
+        """Import one activity FIT file and return its scan verdict.
 
+        ``activity`` means the file is safe to skip next time; ``out_of_range``
+        means every session was outside the requested range, so it must be
+        re-read when the range widens; ``error`` is a parse failure.
+        """
         try:
             fit_summary = parse_fit_file(path)
         except Exception as exc:
             summary.files_skipped += 1
             summary.errors.append(f"{path}: {exc}")
-            return
+            return "error"
 
         if not fit_summary.sessions:
             summary.files_skipped += 1
-            return
+            return "activity"
 
         checksum = _file_checksum(path)
         imported_any = False
+        outside_range = False
 
         for session in fit_summary.sessions:
             local_date = _session_local_date(session)
@@ -286,6 +347,7 @@ class FitImporter:
                 (start is not None and local_date < start)
                 or (end is not None and local_date > end)
             ):
+                outside_range = True
                 summary.activities_skipped += 1
                 summary.actions.append(
                     FitImportAction(
@@ -311,6 +373,8 @@ class FitImporter:
 
         if imported_any:
             summary.files_imported += 1
+
+        return "out_of_range" if outside_range else "activity"
 
     def _import_session(
         self,
@@ -633,6 +697,46 @@ def _session_payload(
         separators=(",", ":"),
         default=str,
     )
+
+
+def _manifest_key(path: Path) -> str:
+    """Canonical scan-manifest key: the resolved absolute path."""
+    try:
+        return str(path.resolve())
+    except OSError:
+        return str(path)
+
+
+def _stale_manifest_paths(
+    manifest: dict[str, tuple[int, int, str]],
+    discovered: list[Path],
+    roots: list[str | Path],
+) -> list[str]:
+    """Return manifest paths under a scanned root that no longer exist."""
+    current = {_manifest_key(path) for path in discovered}
+    resolved_roots: list[Path] = []
+
+    for value in roots:
+        path = Path(value).expanduser()
+        try:
+            resolved_roots.append(path.resolve())
+        except OSError:
+            resolved_roots.append(path)
+
+    stale: list[str] = []
+    for key in manifest:
+        if key in current:
+            continue
+        try:
+            candidate = Path(key)
+            if any(
+                candidate.is_relative_to(root)
+                for root in resolved_roots
+            ):
+                stale.append(key)
+        except (OSError, ValueError):
+            continue
+    return stale
 
 
 def _path_known(path: Path, known_paths: set[str]) -> bool:

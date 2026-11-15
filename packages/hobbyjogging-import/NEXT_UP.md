@@ -5,6 +5,13 @@ on.
 
 ## Done
 
+- **FIT scan manifest.** Routine scans (`sync`) skip files whose resolved
+  path, size and mtime match the `fit_scan_files` manifest, so non-activity
+  FITs are not re-read. Deleted files are pruned, `--full` ignores the
+  manifest, and known activities are seeded from stat on the first run.
+  Measured on the real archive: 18.3 s → 2.7 s over 64,349 files (61,470
+  recorded as non-activity). Out-of-range files stay unrecorded so a wider
+  range still imports them.
 - **Quality review dedupe.** Quality fingerprints no longer include
   `source_record_id`; `record_review_item` dedupes by
   `(category, fingerprint, activity_id)`. The source record stays on the item
@@ -181,12 +188,6 @@ on.
   real file. A FIT carries timestamps, HR and possibly GPS, so this is a
   privacy call even in a private repo; the alternative is a synthetic encoder
   for the test only.
-- **FIT scan manifest.** The archive has 64,349 files and only 2,855 known
-  activities, so every sync re-reads ~61,500 non-activity files: 18 s in the
-  prefilter alone, ~80 % of the local sync time. The core side has landed
-  (schema v11): use `TrainingWriter.record_fit_scan_file`,
-  `fit_scan_manifest()` and `forget_fit_scan_files` to skip unchanged files
-  and to drop deleted ones; `--full` ignores the manifest. See root item 34.
 - **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
