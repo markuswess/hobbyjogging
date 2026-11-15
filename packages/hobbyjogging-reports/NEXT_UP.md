@@ -277,6 +277,35 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
+19. **Overview chart: bigger and better readable.** The main chart on the
+    overview tab is 520 px tall with a 9 px legend, ten legend entries (three
+    stack segments, six EWMAs, the VO2max line) and the title hidden because the
+    card carries it. Give it room and calm the legend.
+    - **Size**: raise the layout height to about 700 px and the legend and tick
+      fonts to 10–11 px; the HTML chart fills the container width, so height and
+      fonts are the levers.
+    - **Legend**: name the entries compactly (`hard 7d`, `total 42d`, …) and lay
+      it out in two columns below the plot; plotly already lets a reader hide a
+      trace by clicking it, so the defaults just have to be legible.
+    - **Rename**: the card heading reads "Daily running minutes"; call it
+      "Overview" so the tab's main chart is named after the tab.
+    - **Tests**: the card heading, the layout height and the legend font are
+      set; the chart still renders in the dashboard and the PNG.
+
+20. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
+    use non-quality runs in 45–75 min, so a 40-minute easy run and every long
+    run are invisible to the trend (root item 31).
+    - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration
+      model's `+135/T` term makes a 40-minute run about 1.5 % lower than a
+      60-minute one; print the band so the bias is visible. Raises n without
+      mixing protocols, and it can ship on its own.
+    - **All-runs series**: only after the lab passes it — a second labelled line
+      over every run with HR, distance and duration, never merged into the
+      steady aggregate. Both lines carry their own label.
+    - **Card**: the efficiency card gains the floor and the second series.
+    - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
+      session does not; the all-runs line includes it; both labels render.
+
 ## Tests and docs
 
 Covered now:

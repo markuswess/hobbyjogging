@@ -941,6 +941,9 @@ Updated 2026-11-12.
       `docs/METRICS.md`.
     - **Card**: if it lands, the efficiency card gains the 40 min floor, the
       all-runs series and the reason they are not merged.
+    - **Split**: the implementation lives in the reports list (item 20); the
+      lab files the candidate row in `experiments/README.md` and runs the
+      split-half comparison. The root session updates the card.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
