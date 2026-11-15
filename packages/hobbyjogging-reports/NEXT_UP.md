@@ -236,6 +236,26 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       handler; a chart without ids still renders; the URL is
       `activity/<id>.html` relative to the page.
 
+17. **Planned workouts on the activities tab.** The tab is a list of completed
+    activities, so a missed session or tomorrow's workout is invisible there and
+    the plan lives only on the overview and in the `planned` report. Make the
+    tab a training log that carries the plan.
+    - **Append, do not merge**: keep the activity rows as they are and add a row
+      for every planned event with no matching activity — same date and sport
+      for now, replaced by `event_activity_links` once root item 4 lands. A
+      "Status" column reads `done`, `planned` or `missed` (past date, no
+      activity), which is the whole point of the change.
+    - **Columns**: planned rows fill date, sport, name, methods/targets and the
+      planned duration/distance/load; pace, HR and feel stay empty because
+      nothing was recorded. No link — there is no event page yet.
+    - **Window**: the table shows the recent past plus the next 14 days, so
+      tomorrow's session appears without the tab becoming a calendar.
+    - **Not the CLI**: `reports.sh activities` stays activity-only; this is the
+      dashboard tab.
+    - **Tests**: a matched event does not duplicate its activity; an unmatched
+      past event shows `missed`; a future event shows `planned`; the demo's
+      planned workouts appear in the tab and the coverage test still passes.
+
 ## Tests and docs
 
 Covered now:
