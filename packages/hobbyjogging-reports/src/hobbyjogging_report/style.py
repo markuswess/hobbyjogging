@@ -26,7 +26,7 @@ HARD_LINE_COLORS = {
     182: "#7f1d1d",
 }
 LINE_STYLES = {7: "solid", 42: "dash", 182: "dashdot"}
-LINE_WIDTHS = {7: 1.8, 42: 1.8, 182: 2.4}
+LINE_WIDTHS = {7: 2.0, 42: 2.2, 182: 2.6}
 RPE_LINE_COLORS = {
     7: "#2ca02c",
     42: "#1b7837",

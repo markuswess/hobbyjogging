@@ -135,7 +135,10 @@ this list keeps the recent decisions only.
   (`hard 7d`, `total 42d`, `planned hard`, ...), a two-row legend, and the
   card heading "Overview" instead of "Daily running minutes". A wrapped
   horizontal legend fills in reverse trace order, so the layout sets
-  `traceorder: normal`; tests pin the height, font, entry width and names.
+  `traceorder: normal`. The EWMA lines draw after the bars and carry a pale
+  outline (all outlines first, then all lines, so a crossing does not cut an
+  earlier line), and are 2.0-2.6 px wide; tests pin the order, height, font,
+  entry width and names.
 
 ## Bugs
 

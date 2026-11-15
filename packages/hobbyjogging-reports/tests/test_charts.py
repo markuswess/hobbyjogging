@@ -409,6 +409,32 @@ class OverviewReadabilityTests(unittest.TestCase):
         self.assertIn('"name":"hard 7d"', html)
         self.assertIn('"tickfont":{"size":10}', html)
 
+        index = html.find("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.find("[", index):]
+        )
+        # Bars first, then the pale outlines, then the lines themselves.
+        first_bar = next(
+            i for i, trace in enumerate(data) if trace.get("type") == "bar"
+        )
+        last_bar = max(
+            i for i, trace in enumerate(data) if trace.get("type") == "bar"
+        )
+        outlines = [
+            i
+            for i, trace in enumerate(data)
+            if (trace.get("line") or {})
+            .get("color", "")
+            .startswith("rgba(255, 255, 255")
+        ]
+        hard_7d = next(
+            i for i, trace in enumerate(data) if trace.get("name") == "hard 7d"
+        )
+
+        self.assertLess(first_bar, min(outlines))
+        self.assertLess(last_bar, min(outlines))
+        self.assertLess(max(outlines), hard_7d)
+
 
 class AxisCeilingTests(unittest.TestCase):
 

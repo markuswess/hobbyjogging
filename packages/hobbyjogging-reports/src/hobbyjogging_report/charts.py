@@ -2410,6 +2410,20 @@ def plot_recovery(
     )
 
 
+def _outline(figure, x: list, y: list, width: float) -> None:
+    """A pale halo under an EWMA line so it reads over the bars."""
+    figure.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="lines",
+            line={"color": "rgba(255, 255, 255, 0.85)", "width": width + 2.5},
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+
 def plot_overview(
     actual_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
@@ -2467,6 +2481,8 @@ def plot_overview(
     actual = [point for point in zone_series.points if not point.projected]
     projected = [point for point in zone_series.points if point.projected]
 
+    series = []
+
     for family, colors in (
         ("hard", HARD_LINE_COLORS),
         ("total", TOTAL_LINE_COLORS),
@@ -2480,35 +2496,46 @@ def plot_overview(
             }
 
             if actual:
-                figure.add_trace(
-                    go.Scatter(
-                        x=[point.date.isoformat() for point in actual],
-                        y=[
-                            getattr(point, attribute) / 60
-                            for point in actual
-                        ],
-                        mode="lines",
-                        name=f"{family} {window}d",
-                        line=style,
-                    )
-                )
+                series.append((
+                    [point.date.isoformat() for point in actual],
+                    [getattr(point, attribute) / 60 for point in actual],
+                    f"{family} {window}d",
+                    style,
+                    1.0,
+                    True,
+                ))
 
             if projected:
                 bridge = actual[-1:] + projected
-                figure.add_trace(
-                    go.Scatter(
-                        x=[point.date.isoformat() for point in bridge],
-                        y=[
-                            getattr(point, attribute) / 60
-                            for point in bridge
-                        ],
-                        mode="lines",
-                        name=f"{family} {window}d",
-                        line=style,
-                        opacity=PROJECTED_OPACITY,
-                        showlegend=False,
-                    )
-                )
+                series.append((
+                    [point.date.isoformat() for point in bridge],
+                    [
+                        getattr(point, attribute) / 60
+                        for point in bridge
+                    ],
+                    f"{family} {window}d",
+                    style,
+                    PROJECTED_OPACITY,
+                    False,
+                ))
+
+    # Bars are already drawn; all outlines go down before any line so a
+    # later halo cannot cut an earlier line at a crossing.
+    for x, y, _name, style, _opacity, _show in series:
+        _outline(figure, x, y, style["width"])
+
+    for x, y, name, style, opacity, showlegend in series:
+        figure.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                name=name,
+                line=style,
+                opacity=opacity,
+                showlegend=showlegend,
+            )
+        )
 
     y_max = max(
         _axis_ceiling(
