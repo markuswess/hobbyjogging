@@ -256,6 +256,27 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       past event shows `missed`; a future event shows `planned`; the demo's
       planned workouts appear in the tab and the coverage test still passes.
 
+18. **Calendar view** (idea). A month grid where each day carries that day's
+    sessions — completed, planned, missed — plus races, illness and season
+    shading, and optionally wellness markers. The activities tab and the
+    overview are chronological but not spatial; a calendar is how the shape of
+    a week or a block is normally read.
+    - **Shape**: one static page per month (`calendar/2026-11.html`) with
+      previous/next links, or a single year page with twelve grids. The first
+      navigates better on a phone, the second is one file.
+    - **Cell content**: sport and name, duration/distance, load; done versus
+      planned styling; a `missed` marker for a past plan with no activity; a
+      race badge; a review flag. Clicking an activity opens its page.
+    - **Cheap alternative first**: a year heat map — one square per day, coloured
+      by load or distance, with a hover tooltip — shows the training shape in a
+      single page with no navigation. Worth trying before the full grid.
+    - **Depends on**: `event_activity_links` (root item 4) for done/planned/
+      missed, and `training_periods` (root item 30) for illness and season
+      shading. Without them it can only show activities and raw events.
+    - **Open**: month grid or heat map first; wellness markers in the cells
+      (they crowd it); whether it complements or replaces the activities tab;
+      and how it degrades on a phone.
+
 ## Tests and docs
 
 Covered now:
