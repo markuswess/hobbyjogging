@@ -169,6 +169,15 @@ this list keeps the recent decisions only.
   recovery weeks again). Tests cover the grid, the plateaus, the bust drop
   and the empty rides.
 
+- **The activities tab is a training log.** It keeps every completed
+  activity row and appends a row for each planned event in the shown range
+  and the next 14 days that has no matching activity (same date and sport
+  for now). A Status column reads `done`, `planned` or `missed`; planned
+  rows carry methods, targets, planned time, distance and load, and stay
+  unlinked. Events without a sport and matched events never add a row.
+  The `activities` CLI report is unchanged. Tests cover a matched event, a
+  missed one, a future one and the demo's planned sessions.
+
 ## Bugs
 
 _None._
@@ -176,7 +185,7 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Items 13-15 are reports-only; 16 needs the lab gate in
+items 24 and 25. Items 13-14 are reports-only; 15 needs the lab gate in
 root item 31, and 12 is recurring upkeep.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
@@ -266,27 +275,7 @@ root item 31, and 12 is recurring upkeep.
       handler; a chart without ids still renders; the URL is
       `activity/<id>.html` relative to the page.
 
-14. **Planned workouts on the activities tab.** The tab is a list of completed
-    activities, so a missed session or tomorrow's workout is invisible there and
-    the plan lives only on the overview and in the `planned` report. Make the
-    tab a training log that carries the plan.
-    - **Append, do not merge**: keep the activity rows as they are and add a row
-      for every planned event with no matching activity — same date and sport
-      for now, replaced by `event_activity_links` once root item 4 lands. A
-      "Status" column reads `done`, `planned` or `missed` (past date, no
-      activity), which is the whole point of the change.
-    - **Columns**: planned rows fill date, sport, name, methods/targets and the
-      planned duration/distance/load; pace, HR and feel stay empty because
-      nothing was recorded. No link — there is no event page yet.
-    - **Window**: the table shows the recent past plus the next 14 days, so
-      tomorrow's session appears without the tab becoming a calendar.
-    - **Not the CLI**: `reports.sh activities` stays activity-only; this is the
-      dashboard tab.
-    - **Tests**: a matched event does not duplicate its activity; an unmatched
-      past event shows `missed`; a future event shows `planned`; the demo's
-      planned workouts appear in the tab and the coverage test still passes.
-
-15. **Calendar view** (idea). A month grid where each day carries that day's
+14. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -308,7 +297,7 @@ root item 31, and 12 is recurring upkeep.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-16. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
+15. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
     use non-quality runs in 45–75 min, so a 40-minute easy run and every long
     run are invisible to the trend (root item 31).
     - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration

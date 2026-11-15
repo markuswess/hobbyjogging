@@ -295,6 +295,17 @@ def build_dashboard(
         include_review=include_review,
         today=today,
     )
+    plan_events = [
+        event
+        for event in source.events(
+            min(
+                (activity.date for activity in listed_activities),
+                default=today - timedelta(days=14),
+            ),
+            today + timedelta(days=14),
+        )
+        if event.type
+    ]
 
     detail_activities = {
         activity.id: activity
@@ -342,6 +353,8 @@ def build_dashboard(
             include_review=include_review,
             activities=listed_activities,
             excluded=listed_excluded,
+            events=plan_events,
+            today=today,
         ),
         "analysis.html": analysis_page(
             generated_at=generated_at,

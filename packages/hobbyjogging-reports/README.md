@@ -42,8 +42,12 @@ Pages:
   The EWMA overview, the daily report, and the planned section are the
   rendered `overview`, `daily`, and `planned` Markdown reports; the chart
   uses the last 182 days plus the next 14 by default.
-- `activities.html` — the recent activity table (default 50) with workout
-  methods and targets, linked to per-activity pages.
+- `activities.html` — a training log: the recent activities (default 50) with
+  workout methods and targets, linked to per-activity pages, plus a row for
+  every planned event in the shown range and the next 14 days that has no
+  matching activity. The Status column reads `done`, `planned` or `missed`
+  (past date, no activity); planned rows show the target time, distance and
+  load and stay unlinked, since an event has no page.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter with its two regression halves
   and two dashed efficiency lines, over the last two years

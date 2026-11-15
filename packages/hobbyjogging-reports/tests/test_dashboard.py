@@ -151,6 +151,16 @@ def _source():
                 date=TODAY + timedelta(days=2),
                 name="Travel note",
             ),
+            Event(
+                date=TODAY - timedelta(days=1),
+                name="Matched easy",
+                type="run",
+            ),
+            Event(
+                date=TODAY - timedelta(days=5),
+                name="Missed tempo",
+                type="run",
+            ),
         ],
         laps={
             "race1": [
@@ -295,6 +305,15 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Bike", activities)
             self.assertIn("Old run", activities)
             self.assertIn("Methods", activities)
+            self.assertIn("Status", activities)
+            self.assertIn("planned", activities)
+            self.assertIn("missed", activities)
+            self.assertIn("Missed tempo", activities)
+            self.assertIn("5x5 subT", activities)
+            # A matched event is not duplicated, and a typed-less note is not
+            # a workout row.
+            self.assertNotIn("Matched easy", activities)
+            self.assertNotIn("Travel note", activities)
             self.assertIn("Continuous", activities)
             self.assertIn("Base", activities)
             self.assertIn("activities are hidden by import review", activities)

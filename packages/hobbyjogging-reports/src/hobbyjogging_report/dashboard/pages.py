@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date
 from urllib.parse import quote
 
@@ -131,31 +132,69 @@ def activities_page(
     demo_label: str | None = None,
     activities: list[Activity],
     excluded: int,
+    events: list[Event] | None = None,
+    today: date | None = None,
 ) -> str:
-    rows = []
+    """Completed activities plus the planned sessions that have no match."""
+    today = today or date.today()
+    rows: list[tuple[date, list[str]]] = []
+    unmatched = Counter(
+        (activity.date, activity.type) for activity in activities
+    )
 
     for activity in activities:
         href = activity_href(activity.id)
         name = activity.name or sport_label(activity)
-        rows.append([
-            link(href, str(activity.date)),
-            esc(sport_label(activity)),
-            link(href, name),
-            esc(format_methods(activity)),
-            esc(format_targets(activity)),
-            esc(fmt_time(activity.duration_s)),
-            esc(_km_cell(activity.distance_m)),
-            esc(_pace_cell(activity)),
-            esc(_hr(activity.avg_hr)),
-            esc(_event_load(activity)),
-            esc(format_feel(activity.feel)),
-        ])
+        rows.append((
+            activity.date,
+            [
+                link(href, str(activity.date)),
+                "done",
+                esc(sport_label(activity)),
+                link(href, name),
+                esc(format_methods(activity)),
+                esc(format_targets(activity)),
+                esc(fmt_time(activity.duration_s)),
+                esc(_km_cell(activity.distance_m)),
+                esc(_pace_cell(activity)),
+                esc(_hr(activity.avg_hr)),
+                esc(_event_load(activity)),
+                esc(format_feel(activity.feel)),
+            ],
+        ))
+
+    for event in events or []:
+        key = (event.date, event.type)
+
+        if unmatched[key]:
+            unmatched[key] -= 1
+            continue
+
+        rows.append((
+            event.date,
+            [
+                esc(str(event.date)),
+                "missed" if event.date < today else "planned",
+                esc(sport_label(event)),
+                esc(event.name or sport_label(event)),
+                esc(format_methods(event)),
+                esc(format_targets(event)),
+                esc(fmt_time(event.duration_s)) if event.duration_s else "-",
+                esc(_km_cell(event.distance_m)),
+                "-",
+                "-",
+                esc(_event_load(event)),
+                "-",
+            ],
+        ))
+
+    rows.sort(key=lambda row: row[0], reverse=True)
 
     body = table(
-        ["Date", "Sport", "Name", "Methods", "Targets", "Time", "Distance",
-         "Pace", "Avg HR", "Load", "Feel"],
-        rows,
-        numeric=(5, 6, 7, 8, 9),
+        ["Date", "Status", "Sport", "Name", "Methods", "Targets", "Time",
+         "Distance", "Pace", "Avg HR", "Load", "Feel"],
+        [row for _day, row in rows],
+        numeric=(6, 7, 8, 9, 10),
         empty="No activities found.",
     )
 
