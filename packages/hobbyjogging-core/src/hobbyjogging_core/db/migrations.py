@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -193,6 +193,23 @@ CREATE INDEX idx_maintenance_runs_task
 ON maintenance_runs(task, started_at);
 """
 
+MIGRATION_11_SQL = """
+-- Scan manifest for the FIT archive. Every file the importer has classified
+-- gets a row, whether or not it became an activity, so a routine scan only
+-- reads new or changed files. ``kind`` is the scan's verdict (``activity``,
+-- ``other``, ``error``); the importer owns the values.
+CREATE TABLE fit_scan_files (
+    path TEXT PRIMARY KEY,
+    size_bytes INTEGER NOT NULL,
+    mtime_ns INTEGER NOT NULL,
+    kind TEXT NOT NULL DEFAULT '',
+    seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_fit_scan_files_seen ON fit_scan_files(seen_at);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -204,6 +221,7 @@ MIGRATIONS: dict[int, str] = {
     8: MIGRATION_8_SQL,
     9: MIGRATION_9_SQL,
     10: MIGRATION_10_SQL,
+    11: MIGRATION_11_SQL,
 }
 
 

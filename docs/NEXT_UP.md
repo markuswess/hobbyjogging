@@ -1005,7 +1005,10 @@ Updated 2026-11-12.
     - **Fix**: a scan manifest — one row per file the scan has classified,
       `fit_scan_files(path, size, mtime, kind, seen_at)` — so a file is skipped
       when its path, size and mtime are unchanged, whether or not it became an
-      activity. `--full` ignores it, as today.
+      activity. `--full` ignores it, as today. **Schema landed (v11)**: the
+      table and the writer API (`record_fit_scan_file`, `fit_scan_manifest`,
+      `forget_fit_scan_files`) are in core; the scan itself is the import
+      side.
     - **Why a table, not a sidecar file**: the repo keeps derived state in the
       database; a JSON manifest would drift from the DB and be lost with it.
       The rows are tiny (path + three numbers) and prunable.

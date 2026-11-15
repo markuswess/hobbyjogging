@@ -25,6 +25,7 @@ EXPECTED_TABLES = {
     "event_workout_targets",
     "event_zone_times",
     "events",
+    "fit_scan_files",
     "import_runs",
     "maintenance_runs",
     "source_records",

@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -1811,6 +1812,60 @@ class TrainingWriter:
                 [(activity_id, value) for value in cleaned],
             )
         return len(cleaned)
+
+    def record_fit_scan_file(
+        self,
+        *,
+        path: str,
+        size_bytes: int,
+        mtime_ns: int,
+        kind: str,
+    ) -> None:
+        """Record what the FIT scan decided about one file.
+
+        The manifest lets a routine scan skip unchanged files whether or not
+        they became an activity. ``kind`` is the scan's verdict (``activity``,
+        ``other``, ``error``).
+        """
+        if not path:
+            raise ValueError("path must not be empty")
+
+        self.connection.execute(
+            """
+            INSERT INTO fit_scan_files (path, size_bytes, mtime_ns, kind)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(path) DO UPDATE SET
+                size_bytes = excluded.size_bytes,
+                mtime_ns = excluded.mtime_ns,
+                kind = excluded.kind,
+                seen_at = CURRENT_TIMESTAMP
+            """,
+            (path, int(size_bytes), int(mtime_ns), kind),
+        )
+
+    def fit_scan_manifest(self) -> dict[str, tuple[int, int, str]]:
+        """Return the scan manifest as ``path -> (size, mtime_ns, kind)``."""
+        rows = self.connection.execute(
+            "SELECT path, size_bytes, mtime_ns, kind FROM fit_scan_files"
+        ).fetchall()
+
+        return {
+            row["path"]: (row["size_bytes"], row["mtime_ns"], row["kind"])
+            for row in rows
+        }
+
+    def forget_fit_scan_files(self, paths: Iterable[str]) -> int:
+        """Drop manifest rows for files that no longer exist."""
+        entries = [(path,) for path in paths]
+
+        if not entries:
+            return 0
+
+        cursor = self.connection.executemany(
+            "DELETE FROM fit_scan_files WHERE path = ?",
+            entries,
+        )
+        return cursor.rowcount
 
     def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
         row = self.connection.execute(

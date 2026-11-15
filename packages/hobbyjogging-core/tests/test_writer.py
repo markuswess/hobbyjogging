@@ -1781,5 +1781,83 @@ class EquipmentTests(unittest.TestCase):
             self.writer.upsert_equipment("", type="shoe", name="x")
 
 
+
+class FitScanManifestTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+
+    def test_records_and_reads_the_manifest(self):
+        self.writer.record_fit_scan_file(
+            path="/fit/a.fit",
+            size_bytes=1024,
+            mtime_ns=111,
+            kind="activity",
+        )
+        self.writer.record_fit_scan_file(
+            path="/fit/b.fit",
+            size_bytes=2048,
+            mtime_ns=222,
+            kind="other",
+        )
+
+        self.assertEqual(
+            {
+                "/fit/a.fit": (1024, 111, "activity"),
+                "/fit/b.fit": (2048, 222, "other"),
+            },
+            self.writer.fit_scan_manifest(),
+        )
+
+    def test_re_recording_updates_size_and_mtime(self):
+        self.writer.record_fit_scan_file(
+            path="/fit/a.fit",
+            size_bytes=1024,
+            mtime_ns=111,
+            kind="other",
+        )
+        self.writer.record_fit_scan_file(
+            path="/fit/a.fit",
+            size_bytes=4096,
+            mtime_ns=999,
+            kind="activity",
+        )
+
+        self.assertEqual(
+            {"/fit/a.fit": (4096, 999, "activity")},
+            self.writer.fit_scan_manifest(),
+        )
+
+    def test_forget_drops_missing_files(self):
+        for name in ("a", "b", "c"):
+            self.writer.record_fit_scan_file(
+                path=f"/fit/{name}.fit",
+                size_bytes=1,
+                mtime_ns=1,
+                kind="other",
+            )
+
+        removed = self.writer.forget_fit_scan_files(["/fit/b.fit"])
+
+        self.assertEqual(1, removed)
+        self.assertEqual(
+            ["/fit/a.fit", "/fit/c.fit"],
+            sorted(self.writer.fit_scan_manifest()),
+        )
+        self.assertEqual(0, self.writer.forget_fit_scan_files([]))
+
+    def test_rejects_an_empty_path(self):
+        with self.assertRaises(ValueError):
+            self.writer.record_fit_scan_file(
+                path="",
+                size_bytes=1,
+                mtime_ns=1,
+                kind="other",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

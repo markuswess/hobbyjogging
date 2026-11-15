@@ -229,7 +229,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 10.
+SQLite, forward-only migrations. Schema version 11.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
@@ -266,6 +266,9 @@ SQLite, forward-only migrations. Schema version 10.
 - `event_zone_times` — the planned zone distribution for an event
   (`zone_label`, `zone_index`, `seconds`), e.g. `Z1`–`Z7` or `SS`.
 - `import_runs` — one row per import with parameters and outcome.
+- `fit_scan_files` (v11) — the FIT archive scan manifest: path, size,
+  modification time and the scan's verdict, so a routine scan reads only new
+  or changed files whether or not they became an activity.
 - `data_migrations` (v10) — which registered backfills have been applied.
 - `maintenance_runs` (v10) — one row per maintenance task run, dry or real.
 - `review_items` — the review queue: category, severity, detail, context,

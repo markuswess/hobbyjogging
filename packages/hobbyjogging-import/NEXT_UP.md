@@ -183,9 +183,10 @@ on.
   for the test only.
 - **FIT scan manifest.** The archive has 64,349 files and only 2,855 known
   activities, so every sync re-reads ~61,500 non-activity files: 18 s in the
-  prefilter alone, ~80 % of the local sync time. Record every scanned file
-  (`path`, `size`, `mtime`, `kind`) and skip unchanged ones; `--full` ignores
-  the manifest. See root item 34.
+  prefilter alone, ~80 % of the local sync time. The core side has landed
+  (schema v11): use `TrainingWriter.record_fit_scan_file`,
+  `fit_scan_manifest()` and `forget_fit_scan_files` to skip unchanged files
+  and to drop deleted ones; `--full` ignores the manifest. See root item 34.
 - **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
