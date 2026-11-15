@@ -144,11 +144,12 @@ this list keeps the recent decisions only.
 - **Crosshair on hover.** `_crosshair()` sets `showspikes`,
   `spikemode="across"` and a thin grey dotted guide on x and y (and
   `yaxis2` where present) for the pace/HR scatter (analysis and compare),
-  the race chart, the PB progression and the subT panels; the overview
-  snaps the guide to the data day. The stacked volume, time and load charts
-  are left alone, because a horizontal guide there follows the cursor, not
-  a stack boundary. Tests cover the axes, the second axis and that an
-  existing axis range survives.
+  the race chart, the PB progression and the subT panels. The vertical
+  guide snaps to the nearest day; the horizontal one follows the cursor, so
+  a value can be read anywhere. The stacked volume, time and load charts are
+  left alone, because a horizontal guide there would point into a stack, not
+  at a value. Tests cover the axes, the second axis, the snap modes and that
+  an existing axis range survives.
 
 ## Bugs
 

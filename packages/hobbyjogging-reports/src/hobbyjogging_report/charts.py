@@ -210,13 +210,8 @@ def _legend_below(
     return legend
 
 
-def _crosshair(
-    figure,
-    *,
-    second_y: bool = False,
-    snap: bool = False,
-) -> None:
-    """Draw horizontal and vertical spikes at the hovered point."""
+def _crosshair(figure, *, second_y: bool = False) -> None:
+    """A vertical guide on the nearest day and a horizontal one at the cursor."""
     spikes = {
         "showspikes": True,
         "spikemode": "across",
@@ -225,14 +220,15 @@ def _crosshair(
         "spikedash": "dot",
     }
 
-    if snap:
-        spikes["spikesnap"] = "data"
-
-    figure.update_xaxes(**spikes)
-    figure.update_yaxes(**spikes)
+    # x snaps to the data so a day stays marked; y follows the pointer so a
+    # value can be read anywhere, not only at a plotted point.
+    figure.update_xaxes(**spikes, spikesnap="data")
+    figure.update_yaxes(**spikes, spikesnap="cursor")
 
     if second_y:
-        figure.update_layout(yaxis2=dict(spikes))
+        figure.update_layout(
+            yaxis2={**spikes, "spikesnap": "cursor"},
+        )
 
 
 def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
@@ -2667,7 +2663,7 @@ def plot_overview(
         }
 
     figure.update_layout(**layout)
-    _crosshair(figure, second_y=True, snap=True)
+    _crosshair(figure, second_y=True)
 
     return _render(
         figure,

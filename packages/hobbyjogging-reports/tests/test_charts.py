@@ -460,6 +460,8 @@ class CrosshairTests(unittest.TestCase):
         self.assertTrue(layout["xaxis"]["showspikes"])
         self.assertTrue(layout["yaxis"]["showspikes"])
         self.assertEqual("across", layout["xaxis"]["spikemode"])
+        self.assertEqual("data", layout["xaxis"]["spikesnap"])
+        self.assertEqual("cursor", layout["yaxis"]["spikesnap"])
 
     def test_overview_spikes_reach_the_second_axis(self):
         bars = [(D, 300.0, 200.0, 0.0)]
@@ -496,6 +498,8 @@ class CrosshairTests(unittest.TestCase):
         layout = _layout_of(html)
 
         self.assertTrue(layout["yaxis2"]["showspikes"])
+        self.assertEqual("cursor", layout["yaxis2"]["spikesnap"])
+        self.assertEqual("cursor", layout["yaxis"]["spikesnap"])
         self.assertEqual("data", layout["xaxis"]["spikesnap"])
         # The axis ceiling survives the spike update.
         self.assertEqual([0, 45.0], layout["yaxis"]["range"])
