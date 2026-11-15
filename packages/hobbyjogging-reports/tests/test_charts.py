@@ -436,6 +436,93 @@ class OverviewReadabilityTests(unittest.TestCase):
         self.assertLess(max(outlines), hard_7d)
 
 
+def _layout_of(html: str) -> dict:
+    index = html.find("Plotly.newPlot(")
+    bracket = html.find("[", index)
+    _data, end = json.JSONDecoder().raw_decode(html[bracket:])
+    brace = html.find("{", bracket + end)
+    layout, _ = json.JSONDecoder().raw_decode(html[brace:])
+    return layout
+
+
+class CrosshairTests(unittest.TestCase):
+    """Both spikes, so a value can be read off either axis."""
+
+    def test_pace_hr_scatter_has_both_spikes(self):
+        layout = _layout_of(
+            plot_pace_hr(
+                [PaceHrPoint(D, 300.0, 150.0, "Easy")],
+                "",
+                as_html=True,
+            )
+        )
+
+        self.assertTrue(layout["xaxis"]["showspikes"])
+        self.assertTrue(layout["yaxis"]["showspikes"])
+        self.assertEqual("across", layout["xaxis"]["spikemode"])
+
+    def test_overview_spikes_reach_the_second_axis(self):
+        bars = [(D, 300.0, 200.0, 0.0)]
+        series = ZoneGroupSeries(
+            points=[
+                ZoneGroupPoint(
+                    D,
+                    easy_s=200.0,
+                    hard_s=300.0,
+                    unzoned_s=0.0,
+                    easy_7=200.0,
+                    easy_42=200.0,
+                    easy_182=200.0,
+                    hard_7=300.0,
+                    hard_42=300.0,
+                    hard_182=300.0,
+                    total_7=500.0,
+                    total_42=500.0,
+                    total_182=500.0,
+                )
+            ]
+        )
+        html = plot_overview(
+            bars,
+            [],
+            series,
+            "",
+            start=D,
+            end=D,
+            today=D,
+            vo2max_points=[Vo2maxPoint(D, 52.0, 52.0, 52.0)],
+            as_html=True,
+        )
+        layout = _layout_of(html)
+
+        self.assertTrue(layout["yaxis2"]["showspikes"])
+        self.assertEqual("data", layout["xaxis"]["spikesnap"])
+        # The axis ceiling survives the spike update.
+        self.assertEqual([0, 45.0], layout["yaxis"]["range"])
+
+    def test_pb_progression_keeps_its_pace_range(self):
+        activities = [
+            Activity(
+                id=str(index),
+                date=D + timedelta(days=index),
+                type="run",
+                distance_m=5000,
+                duration_s=1200 + index * 20,
+                workout_methods=["race"],
+            )
+            for index in range(3)
+        ]
+        html = plot_pb_progressions(
+            pb_progressions(race_results(activities)),
+            "",
+            as_html=True,
+        )
+        layout = _layout_of(html)
+
+        self.assertTrue(layout["yaxis"]["showspikes"])
+        self.assertIn("range", layout["yaxis"])
+
+
 class AxisCeilingTests(unittest.TestCase):
 
     def test_empty_sample_falls_back_to_the_floor(self):

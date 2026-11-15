@@ -125,7 +125,8 @@ That keeps the axis fitted to a normal training week, so one ultra or a
 clipped and marked with a grey triangle; hover shows the real value. The
 42/182-day averages are included when choosing the axis, the 7-day average is
 not, so a single spike can briefly leave the top instead of stretching the
-whole chart.
+whole chart. Hovering a line or scatter chart draws a thin horizontal and
+vertical guide to its axes; the overview snaps the guide to the data day.
 
 Generation builds a temporary directory and atomically swaps it into place.
 It refuses to replace a non-empty directory unless it is a previous

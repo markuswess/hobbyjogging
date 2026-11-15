@@ -67,6 +67,7 @@ from .style import (
     RECOVERY_BAND_MARKERS,
     RPE_AXIS_MIN,
     RPE_LINE_COLORS,
+    SPIKE_COLOR,
     SUBT_HR_RANGE,
     SUBT_PACE_RANGE,
     TIME_Y_MIN,
@@ -207,6 +208,31 @@ def _legend_below(
         legend["traceorder"] = "normal"
 
     return legend
+
+
+def _crosshair(
+    figure,
+    *,
+    second_y: bool = False,
+    snap: bool = False,
+) -> None:
+    """Draw horizontal and vertical spikes at the hovered point."""
+    spikes = {
+        "showspikes": True,
+        "spikemode": "across",
+        "spikethickness": 1,
+        "spikecolor": SPIKE_COLOR,
+        "spikedash": "dot",
+    }
+
+    if snap:
+        spikes["spikesnap"] = "data"
+
+    figure.update_xaxes(**spikes)
+    figure.update_yaxes(**spikes)
+
+    if second_y:
+        figure.update_layout(yaxis2=dict(spikes))
 
 
 def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
@@ -1177,6 +1203,8 @@ def plot_subt(
         legend=_legend_below(),
         hovermode="x unified",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -1573,6 +1601,8 @@ def plot_pace_hr(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -1666,6 +1696,8 @@ def plot_compare_pace_hr(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -1849,6 +1881,8 @@ def plot_pb_progressions(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -1969,6 +2003,8 @@ def plot_races(
         legend=_legend_below(),
         hovermode="closest",
     )
+    _crosshair(figure)
+
     return _render(
         figure,
         output,
@@ -2631,6 +2667,8 @@ def plot_overview(
         }
 
     figure.update_layout(**layout)
+    _crosshair(figure, second_y=True, snap=True)
+
     return _render(
         figure,
         output,

@@ -57,6 +57,7 @@ RPE_AXIS_MIN = 6.0  # the RPE overlay gets its own scale, fitted to the chart
 SUBT_PACE_RANGE = (260.0, 195.0)  # 4:20 .. 3:15 min/km, slow at the bottom
 SUBT_HR_RANGE = (140.0, 180.0)
 CLIPPED_COLOR = "#7f7f7f"
+SPIKE_COLOR = "#7f7f7f"
 
 # Recovery readiness bands (background fills and legend markers).
 RECOVERY_BAND_COLORS = {
