@@ -947,9 +947,10 @@ Updated 2026-11-12.
       `docs/METRICS.md`.
     - **Card**: if it lands, the efficiency card gains the 40 min floor, the
       all-runs series and the reason they are not merged.
-    - **Split**: the implementation lives in the reports list (item 20); the
-      lab files the candidate row in `experiments/README.md` and runs the
-      split-half comparison. The root session updates the card.
+    - **Split**: the implementation lives in the reports list, under the
+      efficiency-scope item; the lab files the candidate row in
+      `experiments/README.md` and runs the split-half comparison. The root
+      session updates the card.
 
 32. **Explicit ownership on the todo lists** (docs + tools). Each package has
     its own `NEXT_UP.md` and the root list tags items with their packages, but
