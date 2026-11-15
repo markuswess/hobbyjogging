@@ -213,7 +213,7 @@ class DemoGeneratorTests(unittest.TestCase):
                 for left, right in zip(middle, middle[1:]):
                     self.assertNotEqual(left, right)
 
-    def test_vo2max_is_a_smooth_daily_value(self):
+    def test_vo2max_is_a_stepped_watch_value(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(
                 Path(tmp) / "demo.db",
@@ -230,25 +230,54 @@ class DemoGeneratorTests(unittest.TestCase):
                     ORDER BY local_date
                     """
                 ).fetchall()
-
-                self.assertTrue(rows)
-                self.assertTrue(
-                    all(row[1] == row[2] for row in rows)
-                )
-
-                for previous, current in zip(rows, rows[1:]):
-                    gap = (
-                        date.fromisoformat(current[0])
-                        - date.fromisoformat(previous[0])
-                    ).days
-                    # A smooth daily value: a gap in the log (rest, injury)
-                    # may still hide more than one day of drift.
-                    self.assertLessEqual(
-                        abs(current[1] - previous[1]),
-                        0.25 * max(gap, 1),
-                    )
+                rides = connection.execute(
+                    """
+                    SELECT COUNT(*),
+                           SUM(vo2max_garmin IS NOT NULL)
+                    FROM activities
+                    WHERE sport = 'ride'
+                    """
+                ).fetchone()
             finally:
                 connection.close()
+
+        self.assertTrue(rows)
+        self.assertTrue(all(row[1] == row[2] for row in rows))
+
+        values = [row[1] for row in rows]
+        # Quantized to the watch's 0.1 grid, with plateaus between updates.
+        self.assertTrue(
+            all(
+                abs(value * 10 - round(value * 10)) < 1e-9
+                for value in values
+            )
+        )
+        self.assertGreater(
+            sum(1 for a, b in zip(values, values[1:]) if a == b),
+            100,
+        )
+        self.assertLess(len(set(values)), len(values) // 2)
+
+        # The bust drops the estimate and the rebuild recovers it.
+        before = next(
+            value
+            for day, value in (
+                (row[0], row[1]) for row in rows
+            )
+            if day >= "2023-11-20"
+        )
+        bust = min(
+            value
+            for day, value in (
+                (row[0], row[1]) for row in rows
+            )
+            if "2023-11-27" <= day <= "2024-01-31"
+        )
+        self.assertGreater(before - bust, 1.0)
+
+        # Rides carry the cycling estimate, not the running one.
+        self.assertGreater(rides[0], 0)
+        self.assertEqual(0, rides[1])
 
     def test_easy_runs_use_only_z1_and_z2(self):
         with tempfile.TemporaryDirectory() as tmp:

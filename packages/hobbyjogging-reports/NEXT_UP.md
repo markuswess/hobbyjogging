@@ -160,6 +160,15 @@ this list keeps the recent decisions only.
   the whole wellness table, because the first sample can be years after an
   old activity. The metric-card update is root item 33.
 
+- **The demo VO2max is a watch step, not a daily wobble.** `_vo2max_value()`
+  interpolates a dedicated curve (42.6 to 51.4) instead of the sine: it
+  drops through the 10-day injury and the boom-bust and climbs more slowly
+  after the switch to threshold work. The value is written only on quality
+  and long run days, quantized to 0.1 and held in between, so the chart has
+  plateaus; rides carry no running VO2max (the demo has an easy ride on the
+  recovery weeks again). Tests cover the grid, the plateaus, the bust drop
+  and the empty rides.
+
 ## Bugs
 
 _None._
@@ -167,7 +176,7 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Items 13-16 are reports-only; 17 needs the lab gate in
+items 24 and 25. Items 13-15 are reports-only; 16 needs the lab gate in
 root item 31, and 12 is recurring upkeep.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
@@ -236,22 +245,7 @@ root item 31, and 12 is recurring upkeep.
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
-13. **Demo: a realistic VO2max curve.** The demo's VO2max is a smooth daily
-    function — `45 + (240 − p5k)·0.3` plus a 120-day sine — so it carries a
-    value every day and wobbles continuously, which no watch does. Garmin
-    updates the estimate only after a qualifying run and holds it in between.
-    - **Step function**: sample the underlying fitness curve on quality and
-      long days only, hold the value in between, and quantize to 0.1 so the
-      line has plateaus instead of a daily wiggle.
-    - **Story**: drop through each injury and bust and rebuild over two or three
-      weeks; flatten in the Norwegian era, because threshold work moves VO2max
-      less than intervals do.
-    - **Runs only**: no value on rides or cross-training, which also matches the
-      per-sport fix in the root bug list.
-    - **Tests**: the curve has repeated values, drops at a bust, and carries no
-      value on a ride; the demo coverage test still passes.
-
-14. **Click a point to open its activity.** The charts are the place an outlier
+13. **Click a point to open its activity.** The charts are the place an outlier
     is noticed, but the activity page is only reachable from the activities
     table, so inspecting a strange pace/HR point means searching for the date
     by hand. Make single-activity points clickable.
@@ -272,7 +266,7 @@ root item 31, and 12 is recurring upkeep.
       handler; a chart without ids still renders; the URL is
       `activity/<id>.html` relative to the page.
 
-15. **Planned workouts on the activities tab.** The tab is a list of completed
+14. **Planned workouts on the activities tab.** The tab is a list of completed
     activities, so a missed session or tomorrow's workout is invisible there and
     the plan lives only on the overview and in the `planned` report. Make the
     tab a training log that carries the plan.
@@ -292,7 +286,7 @@ root item 31, and 12 is recurring upkeep.
       past event shows `missed`; a future event shows `planned`; the demo's
       planned workouts appear in the tab and the coverage test still passes.
 
-16. **Calendar view** (idea). A month grid where each day carries that day's
+15. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -314,7 +308,7 @@ root item 31, and 12 is recurring upkeep.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-17. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
+16. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
     use non-quality runs in 45–75 min, so a 40-minute easy run and every long
     run are invisible to the trend (root item 31).
     - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration

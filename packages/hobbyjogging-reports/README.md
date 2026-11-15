@@ -150,8 +150,9 @@ planned workouts, two future races and four shoes. One fitness curve
 (5k pace plus an endurance factor per distance) drives every race time,
 training pace and the Garmin VO2max value, so they stay in line while still
 moving: easy and long runs stay in zones 1–2, workouts carry the hard zones,
-VO2max is one smooth value per day, and the 16-week future plan mirrors the
-last four complete weeks. It never reads the canonical database or any
+the Garmin VO2max estimate only updates on a quality or long run (held on a
+0.1 grid in between, and absent on rides), and the 16-week future plan mirrors
+the last four complete weeks. It never reads the canonical database or any
 personal data.
 
     python -m hobbyjogging_report demo-db --out build/demo.db

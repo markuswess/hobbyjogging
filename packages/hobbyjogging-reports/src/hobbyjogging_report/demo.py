@@ -11,17 +11,18 @@ an injury and a careful return, a marathon block and a first marathon, six
 boom-and-bust weeks, then a threshold-focused Norwegian singles block with
 double-threshold days and a long sustainable climb.
 
-One fitness curve (a 5k pace plus an endurance factor per distance) drives
-every race time, training pace and the Garmin VO2max value, so the log moves
-as one athlete: easy runs stay in zones 1-2, workouts carry the hard zones,
-race times progress, and VO2max tracks the races with a slow daily wobble.
-The future plan copies the last four complete weeks.
+One fitness curve (a 5k pace plus an endurance profile per distance) drives
+every race time and training pace, and a separate watch curve drives VO2max.
+The estimate only updates on a quality or long run, holds between them, sits
+on a 0.1 grid, drops through the injury and the bust and climbs more slowly
+once the threshold block replaces intervals. Easy and long runs stay in zones
+1-2, workouts carry the hard zones, and rides carry no running VO2max. The
+future plan copies the last four complete weeks.
 """
 
 from __future__ import annotations
 
 import calendar
-import math
 import random
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
@@ -46,6 +47,11 @@ _EASY_NAMES = (
     "Easy + strides",
     "Recovery jog",
     "Neighbourhood loop",
+)
+_CROSS_NAMES = (
+    "Easy ride",
+    "Spin",
+    "Cross-training ride",
 )
 _LONG_NAMES = (
     "Long run",
@@ -254,12 +260,52 @@ def _fitness(day: date, start: date) -> Fitness:
     return Fitness(*points[-1][1:])
 
 
-def _vo2max_value(day: date, start: date) -> float:
-    """Garmin-like VO2max: follows race form, with a slow wobble."""
-    fitness = _fitness(day, start)
-    wave = 0.4 * math.sin((day - start).days / 120.0 * math.tau)
+# (week, VO2max) — one curve for the story. It falls through the 10-day
+# injury and the boom-bust, and climbs more slowly once the Norwegian block
+# replaces intervals with threshold work.
+_VO2MAX_POINTS = (
+    (0.0, 42.6),
+    (3.0, 43.4),
+    (5.0, 43.2),
+    (15.0, 46.2),
+    (24.0, 47.8),
+    (25.0, 47.6),
+    (26.5, 46.2),
+    (30.0, 47.0),
+    (35.0, 47.8),
+    (54.0, 48.6),
+    (55.5, 48.2),
+    (57.0, 46.4),
+    (60.0, 47.0),
+    (61.0, 47.5),
+    (90.0, 48.8),
+    (120.0, 49.8),
+    (140.0, 50.4),
+    (150.0, 50.6),
+    (180.0, 51.0),
+    (208.0, 51.4),
+)
 
-    return round(45 + (240 - fitness.p5k) * 0.3 + wave, 1)
+
+def _vo2max_value(day: date, start: date) -> float:
+    """The watch's VO2max estimate for a day, on a 0.1 grid."""
+    week = (day - start).days / 7.0
+    points = _VO2MAX_POINTS
+
+    if week <= points[0][0]:
+        value = points[0][1]
+    elif week >= points[-1][0]:
+        value = points[-1][1]
+    else:
+        value = points[-1][1]
+
+        for (left, before), (right, after) in zip(points, points[1:]):
+            if left <= week <= right:
+                share = (week - left) / (right - left)
+                value = before + (after - before) * share
+                break
+
+    return round(value, 1)
 
 
 def _phase_for_week(week: int) -> str:
@@ -341,6 +387,12 @@ def _write_activities(
         elif week + 1 in long_race_weeks:
             plan = [(1, "easy"), (3, "easy"), (5, "easy")]
 
+        update_days = {
+            monday + timedelta(days=weekday)
+            for weekday, kind in plan
+            if kind in ("long", "tempo", "intervals", "subthreshold")
+        }
+
         for weekday, kind in plan:
             day = monday + timedelta(days=weekday)
 
@@ -359,7 +411,9 @@ def _write_activities(
                 fitness=fitness,
                 phase=phase,
                 week=week,
-                start=start,
+                vo2max_value=(
+                    _vo2max_value(day, start) if day in update_days else None
+                ),
                 index=len(generated),
                 shoe_periods=shoe_periods,
                 slot=slot,
@@ -473,20 +527,20 @@ def _weekly_plan(phase: str, week: int, rng: random.Random) -> list[tuple[int, s
         return [
             (0, "intervals"),
             (2, "tempo"),
-            (4, "easy"),
+            (4, "cross" if week % 4 == 3 else "easy"),
             (6, "long"),
         ]
 
     if phase == "marathon" and week % 4 == 3:
         # Every fourth week backs off after a block of work.
-        return [(1, "easy"), (3, "easy"), (5, "easy")]
+        return [(1, "easy"), (3, "easy"), (5, "cross")]
 
     if phase in ("build", "marathon"):
         return [
             (0, "intervals"),
             (1, "easy"),
             (3, "tempo"),
-            (4, "easy"),
+            (4, "cross" if week % 4 == 3 else "easy"),
             (6, "long"),
         ]
 
@@ -515,7 +569,7 @@ def _make_session(
     fitness: Fitness,
     phase: str,
     week: int,
-    start: date,
+    vo2max_value: float | None,
     index: int,
     shoe_periods: list[tuple[date, date, str]],
     slot: int = 0,
@@ -526,7 +580,18 @@ def _make_session(
     intervals: list[Interval] = []
     progress = min(week / 208.0, 1.0)
 
-    if kind == "long":
+    if kind == "cross":
+        name = rng.choice(_CROSS_NAMES)
+        duration = rng.choice((45, 55, 60)) * 60.0
+        pace = None
+        avg_hr = rng.randint(118, 132)
+        methods = ["continuous"]
+        targets = ["other"]
+        zone_shares = (0.35, 0.45, 0.15, 0.05)
+        distance_m = 0.0
+        sport = "ride"
+        vo2max_value = None
+    elif kind == "long":
         name = rng.choice(_LONG_NAMES)
         duration = _long_minutes(phase, rng) * 60.0
         duration *= _volume_ramp(phase, week)
@@ -681,7 +746,11 @@ def _make_session(
             "rpe": rpe,
             "feel": feel,
             "intensity": round(min(max(intensity, 0.45), 0.95), 2),
-            "vo2max_garmin": round(_vo2max_value(day, start), 1),
+            "vo2max_garmin": (
+                round(vo2max_value, 1)
+                if vo2max_value is not None
+                else None
+            ),
         },
         "methods": methods,
         "targets": targets,
@@ -761,6 +830,7 @@ def _training_load(kind: str, duration_s: float, phase: str) -> float:
         "easy": 0.72,
         "recovery": 0.55,
         "long": 0.86,
+        "cross": 0.62,
         "quality": 1.05,
         "tempo": 1.02,
         "intervals": 1.08,
@@ -790,7 +860,7 @@ def _feel(rng: random.Random) -> int:
 def _start_time(kind: str, slot: int = 0) -> time:
     if slot:
         return time(17, 0)
-    if kind in ("long",):
+    if kind in ("long", "cross"):
         return time(9, 30)
     return time(16, 45)
 
@@ -849,7 +919,9 @@ def _shoe_for(
     day: date,
     sport: str,
     periods: list[tuple[date, date, str]],
-) -> str:
+) -> str | None:
+    if sport == "ride":
+        return None
     if sport == "trail_run":
         return "demo-shoe-4"
 
