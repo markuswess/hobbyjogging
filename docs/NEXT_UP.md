@@ -942,6 +942,24 @@ Updated 2026-11-12.
       lab files the candidate row in `experiments/README.md` and runs the
       split-half comparison. The root session updates the card.
 
+32. **Explicit ownership on the todo lists** (docs + tools). Each package has
+    its own `NEXT_UP.md` and the root list tags items with their packages, but
+    ownership is prose: an item says what blocks it, not who owns it, and the
+    numbered cross-references break silently when the root list is renumbered —
+    which happened twice in one session.
+    - **Check (done)**: `tools/check_todos.py` fails when a package list
+      references a root item that does not exist, or when a root number appears
+      twice. It runs in the CI test job, so a renumbering cannot land with a
+      dangling pointer.
+    - **Convention**: `AGENTS.md` says a package session starts from its own
+      list and treats root items as dependencies, not work.
+    - **Target format** for new or edited package items: one line —
+      `Owner: <pkg> · Needs: root #N (title) · Status: blocked|ready` — so the
+      state is visible to an agent that only reads the package list.
+    - **Open**: whether the root items also get an owner line, and whether the
+      check should compare the parenthetical title with the root item's title
+      (fragile — probably not).
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

@@ -50,6 +50,9 @@ jobs:
       - name: Test reports
         run: cd packages/hobbyjogging-reports/tests && uv run python -m unittest discover -q
 
+      - name: Check the todo lists
+        run: uv run python tools/check_todos.py
+
   build:
     needs: test
     runs-on: ubuntu-latest

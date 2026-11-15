@@ -40,6 +40,10 @@ Rules:
   size. What already exists must be correct before more is added to it.
 - Pick by **impact per unit of effort**, not by list order: the highest-impact,
   lowest-workload item first. The numbering is not a schedule.
+- **Start from your own list.** A package session works from its
+  `NEXT_UP.md`; root items are dependencies, not work. Reference a root item by
+  number (`root item 4`) and run `uv run python tools/check_todos.py` after any
+  renumbering, so the pointer cannot rot.
 - **Stay inside the package as long as possible.** If an item can be solved
   within the package, do that before asking for a core, schema or cross-package
   change; escalate only when the package genuinely cannot express the fix.
