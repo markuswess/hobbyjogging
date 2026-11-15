@@ -921,6 +921,27 @@ Updated 2026-11-12.
     - **Tests**: SEASON_START maps to a season range, SICK to a day marker, a
       manual end survives a reimport, overlapping periods are allowed.
 
+31. **Efficiency over all activities, with a 40-minute floor** (lab first, then
+    reports and the card). The aggregates only use non-quality runs inside the
+    45–75 min band (`STEADY_DURATION_BAND`), so a 40-minute easy run or a steady
+    long run contributes nothing to the trend. Two changes to evaluate, in this
+    order:
+    - **Lower the floor to 40 min.** The duration model gives `+135/T` bpm, so a
+      40-minute run reads about 1.5 % lower than a 60-minute one; inside a
+      40–75 min band that spread is acceptable *if the band is printed*. It
+      raises n without mixing protocols — the cheap half of the idea.
+    - **An all-runs series.** Every run with HR, distance and duration, as a
+      second labelled line beside the steady aggregate — never merged into it.
+      The card's Comparability caveat says whole-session interval averages are
+      not comparable to steady runs, so the two have to stay visually distinct
+      and separately labelled.
+    - **Lab first**: does the all-runs series track the steady one, and is it
+      more reliable (more n) or noisier (protocols mixed)? Split-half
+      reliability and a year-by-year comparison, per the gate in
+      `docs/METRICS.md`.
+    - **Card**: if it lands, the efficiency card gains the 40 min floor, the
+      all-runs series and the reason they are not merged.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
