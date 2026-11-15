@@ -160,7 +160,8 @@ on.
   carries the estimate for the activity's own sport (a ride's value differs
   from the adjacent runs), so `vo2max_garmin` is correct as written and there
   is nothing to detect or clear. The remaining work is in the consumers: the
-  session report must qualify the value on non-runs (see the root VO2max bug).
+  session report qualifies the value on non-runs; the charts are running-only
+  and `docs/SOURCE_NOTES.md` records the per-sport semantics.
 - **Max HR and weather capture.** Write the FIT session max HR, Intervals
   `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
   (`average_temp`, `average_feels_like`, `average_wind_speed`,

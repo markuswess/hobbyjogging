@@ -81,7 +81,8 @@ this list keeps the recent decisions only.
   injecting a separate series; the daily chart is titled "Garmin running
   VO2max" and the compare chart is "Garmin running VO2max by year". The
   cycling series is not planned; `activities.sport` is the discriminator and no
-  core column is needed (root VO2max bug).
+  core column is needed, and the session report qualifies the label on
+  non-runs.
 
 - **The race chart draws the prediction line.** `plot_races()` draws
   `t = t_ref · (d/d_ref)^β` through the reference race instead of the free

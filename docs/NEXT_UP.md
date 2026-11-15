@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **VO2max is per sport, and the report now says so.** Message 140 carries the
+  estimate for the activity's own sport, so `vo2max_garmin` on a ride is the
+  cycling value — the data was right and no backfill was needed. The charts
+  were already running-only; the session report now qualifies the label
+  (`VO2max: 64.6 (Garmin, cycling)`), and `docs/SOURCE_NOTES.md` records the
+  per-sport semantics. The residual 2026 dips (a trail race, an altitude easy
+  run, a 17-minute second run) are transient session artefacts and stay with
+  the lab's parked entry.
 - **FIT scan manifest (schema v11).** `fit_scan_files` records every archive
   file the scan has classified, activity or not, so a routine sync skips
   unchanged ones: measured on the real archive, 18.3 s → 2.7 s over 64,349
@@ -144,39 +152,7 @@ Updated 2026-11-12.
 
 ## Bugs
 
-- **VO2max is per sport; the session report does not say so.** Garmin's FIT
-  message 140 field 7 carries the estimate for the **activity's own sport**, so
-  `activities.vo2max_garmin` on a ride is the cycling estimate, not a stale
-  running one: the 2026-10-07 ride reads 64.55 while the runs on 6 and 8
-  October both read 65.07. 482 rides, 22 swims and 21 trail runs therefore hold
-  valid values, and **no backfill is needed** — `activities.sport` is the
-  discriminator.
-  - **Already correct**: the charts are running-only
-    (`vo2max_measurements` / `vo2max_points` use `RUN_TYPES`) and titled
-    "Garmin running VO2max", so there is no mixed line.
-  - **Residual jumps (separate, parked)**: three 2026 dips survive the sport
-    split and are transient session artefacts, not fitness —
-    2026-07-18 Berglauf Muckenkogel (trail, HR 177) **61.91 → 63.88** the next
-    day; 2026-08-02 Dachstein easy run (HR 122) **63.37 → 64.09**; 2026-08-05 a
-    17-minute second run **62.11 → 63.93**. The lab's parked entry
-    (`experiments/vo2max_jumps.py`, `CASE_DATES`) already lists these three
-    dates; no new lab work is queued. A future fix would be a trend rule —
-    qualify sessions, a persistence filter, or a rolling median — never a data
-    change.
-  - **Wrong**: the session report prints `VO2max: 64.6 (Garmin)` on a ride,
-    where the number is cycling, so a reader takes it for the athlete's VO2max.
-  - **Fix**: qualify the line by sport on non-runs (or omit it), document
-    `vo2max_garmin` as "the Garmin estimate for this activity's sport" in
-    `docs/SOURCE_NOTES.md`, and make the future consistency audit's vo2max rule
-    filter to runs.
-  - **Not doing**: a separate cycling VO2max series for now.
-  - **Lab evidence** (`experiments/vo2max_jumps.py`): of all jumps of at least
-    1 ml/kg/min, **62 % are sport switches** — run→ride **+0.59**, ride→run
-    **−0.57** on average — and running-only jumps are **93 of 106 in
-    2019–2022**, which points at the older device era rather than at the
-    training.
-  - **Tests**: a ride shows its value qualified as cycling, a run keeps the
-    plain label, and the chart still contains running activities only.
+_None._
 
 ## Next
 
