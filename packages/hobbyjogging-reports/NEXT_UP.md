@@ -54,9 +54,9 @@ this list keeps the recent decisions only.
 - **Demo coverage check.** A test builds the synthetic database and asserts
   every embedded report plus the races, equipment, subT EWMA, session and
   race-day reports render their key sections; the dashboard test checks all
-  eleven tabs and their markers. The demo now includes five completed
-  5k/10k/half races with PB improvements, so the Performance tab has
-  results, PBs, a PB progression and a Riegel fit instead of empty states.
+  eleven tabs and their markers. The demo now carries races across the
+  whole log, so the Performance tab has results, PBs, a PB progression and
+  a Riegel fit instead of empty states.
 
 - **Data-driven chart ceilings.** `_axis_ceiling` drops the top few percent
   of the plotted values (so one ultra cannot set the axis), adds headroom and

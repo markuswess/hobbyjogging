@@ -27,6 +27,7 @@ def summarize_training(activities: list[Activity]):
         "quality": [],
         "z3_z4_time": 0,
         "rpe": 0,
+        "run_rpe_count": 0,
 
         "run_feel": 0,
         "run_feel_count": 0,
@@ -45,6 +46,9 @@ def summarize_training(activities: list[Activity]):
             result["run_distance"] += distance
             result["run_load"] += load
             result["rpe"] += rpe
+
+            if activity.rpe is not None:
+                result["run_rpe_count"] += 1
 
             if activity.feel is not None:
                 result["run_feel"] += activity.feel

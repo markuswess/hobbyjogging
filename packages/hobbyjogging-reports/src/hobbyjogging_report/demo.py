@@ -982,13 +982,13 @@ def _write_events(
     count = 0
     race_days = {
         today + timedelta(weeks=4): (
-            "Spring 10k",
+            "Planned 10k",
             10000.0,
             42 * 60,
             72.0,
         ),
         today + timedelta(weeks=12): (
-            "City Half Marathon",
+            "Planned Half Marathon",
             21097.5,
             92 * 60,
             95.0,

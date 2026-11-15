@@ -255,8 +255,8 @@ database `DataSource` and produces the Markdown reports and charts:
 - **load** — Daily training load with 182-day base, 42-day fitness,
   and 7-day fatigue exponentially weighted averages, plus planned load and
   the three session-RPE EWMAs on a right-hand axis (RPE carries the last
-  rated value between sessions). The RPE axis is scaled to the load axis
-  instead of a fixed ratio, so the overlay always fits.
+  rated value between sessions). The RPE axis is scaled to the RPE series
+  (minimum 6), not to the load axis, so the overlay always fits.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
   at the bottom; Z1/Z2 in blues and Z3/Z4 in reds), with 182/42/7-day time
   averages, a share-of-week panel, a per-zone EWMA panel, and planned weekly

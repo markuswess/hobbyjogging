@@ -85,6 +85,19 @@ class EfficiencyReportTests(unittest.TestCase):
             report,
         )
 
+    def test_period_report_averages_the_session_rpe(self):
+        source = FakeSource(
+            [
+                activity(name="Easy", rpe=4),
+                activity(name="Hard", rpe=8),
+            ]
+        )
+
+        report = period_report(D1, D1, "Test Report", source)
+
+        self.assertIn("- RPE: 6.0 avg", report)
+        self.assertNotIn("- RPE: 12", report)
+
     def test_period_report_has_weighted_total_and_category_cell(self):
         report = period_report(
             D1,

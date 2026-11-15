@@ -122,10 +122,11 @@ def period_report(
         f"{training['run_load']/ndays*7:.0f}"
     )
 
-    lines.append(
-        f"- RPE: "
-        f"{training['rpe']/ndays*7:.0f}"
-    )
+    if training["run_rpe_count"]:
+        lines.append(
+            f"- RPE: "
+            f"{training['rpe']/training['run_rpe_count']:.1f} avg"
+        )
 
     if training["run_feel_count"]:
         lines.append(

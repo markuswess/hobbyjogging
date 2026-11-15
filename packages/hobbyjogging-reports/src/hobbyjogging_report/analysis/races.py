@@ -209,7 +209,6 @@ class RiegelFit:
     """Log-log duration fit: time grows as distance ** exponent."""
 
     exponent: float
-    intercept: float
     r2: float
     points: int
 
@@ -236,6 +235,8 @@ def fit_riegel(results: list[RaceResult]) -> RiegelFit | None:
         return None
 
     exponent = sxy / sxx
+    # Only the R² needs the intercept; the prediction line is anchored on
+    # the reference race, not on the free fit.
     intercept = mean_y - exponent * mean_x
     ss_tot = sum((y - mean_y) ** 2 for y in ys)
     ss_res = sum(
@@ -246,7 +247,6 @@ def fit_riegel(results: list[RaceResult]) -> RiegelFit | None:
 
     return RiegelFit(
         exponent=exponent,
-        intercept=intercept,
         r2=r2,
         points=len(points),
     )
