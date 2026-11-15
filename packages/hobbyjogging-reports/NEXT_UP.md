@@ -267,9 +267,10 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     - **Cell content**: sport and name, duration/distance, load; done versus
       planned styling; a `missed` marker for a past plan with no activity; a
       race badge; a review flag. Clicking an activity opens its page.
-    - **Cheap alternative first**: a year heat map — one square per day, coloured
-      by load or distance, with a hover tooltip — shows the training shape in a
-      single page with no navigation. Worth trying before the full grid.
+    - **Cheap alternative first**: a year heat map — one square per day,
+      coloured by load or distance, with a hover tooltip — shows the training
+      shape in a single page with no navigation. Worth trying before the full
+      grid.
     - **Depends on**: `event_activity_links` (root item 4) for done/planned/
       missed, and `training_periods` (root item 30) for illness and season
       shading. Without them it can only show activities and raw events.
