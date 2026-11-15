@@ -366,10 +366,13 @@ _None._
    (766). Weather is the biggest pace/HR confounder we ignore today.
    - **Explore first, in the lab**: how much temperature and wind explain pace
      and HR variance, and whether an "adjusted pace" is worth it.
-   - **If it earns its place**: a small `activity_weather` row per activity
-     (`temp_c`, `feels_like_c`, `wind_speed_ms`, `wind_gust_ms`, `clouds_pct`,
-     `source`) rather than five columns on `activities`; importers write it and
-     `activity_weather_v1` backfills from the payloads.
+   - **If it earns its place**: a small `activity_weather` row per activity —
+     `temp_c`, `feels_like_c`, `humidity_pct`, `wind_speed_ms`, `wind_gust_ms`,
+     `wind_chill_c`, `heat_index_c`, `air_pressure_hpa`, `clouds_pct`, `source`
+     — rather than columns on `activities`; importers write it and
+     `activity_weather_v1` backfills from the payloads. The humidity, wind
+     chill, heat index and pressure fields exist only in Runalyze's dataset
+     keys today, so the row is shaped for both sources from the start.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
@@ -490,6 +493,11 @@ _None._
       export. Check whether it carries comments, tags, gear and race results;
       if it does, the milestone starts there and the API is only for
       incremental sync.
+    - **Schema is public, only read access is gated**: the database model is in
+      the open-source repository (`Runalyze/Runalyze`, branch `support/4.3.x`):
+      the 60 per-activity dataset keys in `inc/core/Dataset/Keys/` and the
+      entities in `src/CoreBundle/Entity/`. Design against it now — it already
+      shaped the race-result and weather schemas (items 18 and 7).
     - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
       same personal token — relevant to the coaching workflow (item 25), not to
       bulk import.
@@ -603,11 +611,17 @@ _None._
    official race metadata. `events.distance_m` is a planned/announced
    distance, not a result, and `activities.distance_m` is the measured
    GPS value — neither should be overwritten.
-   - **Future schema**: `race_results(id, activity_id, event_id,
-     official_distance_m, official_time_s, placing, participants, notes,
-     source, source_record_id, excluded_at, created_at, updated_at)`, with
-     `UNIQUE(activity_id)`; both official columns are nullable. Race results
+   - **Future schema**: `race_results(id, activity_id, event_id, name,
+     official_distance_m, official_time_s, officially_measured,
+     place_total, place_gender, place_ageclass,
+     participants_total, participants_gender, participants_ageclass,
+     notes, source, source_record_id, excluded_at, created_at, updated_at)`,
+     with `UNIQUE(activity_id)`; the measured columns are nullable. Race results
      get their own record so the official and measured values stay separate.
+     The extra columns come from Runalyze's `Raceresult` entity
+     (`official_distance`, `official_time`, `officially_measured`, `name`,
+     `place_*`, `participants_*`), so the schema does not need a second
+     migration once that import lands.
    - **Core**: model + `DataSource.race_results()` +
      `TrainingWriter.upsert_race_result` (replace or insert; provenance and
      exclusion rules follow the usual canonical pattern).
