@@ -322,6 +322,16 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
 
+14. **Qualify VO2max on non-runs in the session report.** `_vo2max_line()`
+    prints `VO2max: 64.6 (Garmin)` on any activity, but a ride carries its own
+    cycling estimate (root bug). Print `VO2max: 64.6 (Garmin, cycling)` on
+    non-running
+    activities — or omit the line if it adds no value there — and keep the
+    plain label on runs. The chart already filters to running, so nothing
+    changes there.
+    - **Tests**: a ride renders the qualified label, a run the plain one, and
+      the chart still contains running activities only.
+
 ## Tests and docs
 
 Covered now:

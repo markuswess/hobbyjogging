@@ -138,33 +138,30 @@ Updated 2026-11-12.
 
 ## Bugs
 
-- **VO2max is per sport, we store one series.** Garmin reports VO2max per sport,
-  but `activities.vo2max_garmin` is filled from FIT message 140 field 7 on
-  **every** activity regardless of sport: 482 rides, 22 swims, 21 trail runs,
-  plus walks, skis and a sail carry a value. Measured against nearby runs, the
-  ride values differ by **+1.70 on average (range −0.52 .. +3.67)**, so they
-  are a different series, not noise — yet the reports draw one VO2max line and
-  the audit rules read one value.
+- **VO2max is per sport; the session report does not say so.** Garmin's FIT
+  message 140 field 7 carries the estimate for the **activity's own sport**, so
+  `activities.vo2max_garmin` on a ride is the cycling estimate, not a stale
+  running one: the 2026-10-07 ride reads 64.55 while the runs on 6 and 8
+  October both read 65.07. 482 rides, 22 swims and 21 trail runs therefore hold
+  valid values, and **no backfill is needed** — `activities.sport` is the
+  discriminator.
+  - **Already correct**: the VO2max chart filters to running
+    (`vo2max_measurements` / `vo2max_points` use `RUN_TYPES`), so there is no
+    mixed line.
+  - **Wrong**: the session report prints `VO2max: 64.6 (Garmin)` on a ride,
+    where the number is cycling, so a reader takes it for the athlete's VO2max.
+  - **Fix**: qualify the line by sport on non-runs (or omit it), document
+    `vo2max_garmin` as "the Garmin estimate for this activity's sport" in
+    `docs/SOURCE_NOTES.md`, and make the future consistency audit's vo2max rule
+    filter to runs.
+  - **Not doing**: a separate cycling VO2max series for now.
   - **Lab evidence** (`experiments/vo2max_jumps.py`): of all jumps of at least
     1 ml/kg/min, **62 % are sport switches** — run→ride **+0.59**, ride→run
     **−0.57** on average — and running-only jumps are **93 of 106 in
     2019–2022**, which points at the older device era rather than at the
     training.
-  - **Investigate**: message 140 carries ~30 fields in a run file and ~60 in a
-    ride file (`unknown_43..67` appear only for cycling), so the sport-specific
-    value may be identifiable there; also check whether Intervals exposes more
-    than its single `VO2MaxGarmin`, and whether `vo2max_runalyze` is a running
-    value by definition.
-  - **Fix**: record the sport the value describes (`vo2max_garmin_sport`, or a
-    per-sport key) and attach a value only to an activity whose sport it
-    actually describes. Running stays the primary series; cycling becomes its
-    own.
-  - **Backfill**: re-key or clear the values on non-running activities once the
-    sport discriminator is known.
-  - **Reports**: label the series "Running VO2max", keep it to running
-    activities, and add the cycling series when it exists.
-  - **Tests**: a ride no longer inherits the running value, the run series is
-    unchanged, and the chart labels the sport.
+  - **Tests**: a ride shows its value qualified as cycling, a run keeps the
+    plain label, and the chart still contains running activities only.
 
 ## Next
 

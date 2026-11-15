@@ -35,10 +35,6 @@ This file records what the package is still waiting on.
   activities (date + sport, then distance within ~5%, then start proximity),
   write `event_activity_links`, open an `ambiguous_race` item for genuine
   ambiguity, and never touch a manual link. See root item 4.
-- **`vo2max_garmin_sport_v1`** (backfill). Once the sport discriminator is
-  known, re-key or clear the values on non-running activities (482 rides, 22
-  swims, 21 trail runs) and report the count per sport. See the root VO2max
-  bug.
 - **`drop_classification_tags_v1`** (backfill). Remove the sheet's
   `Trainigstyp` codes from `activity_tags`, keeping manual tags and orthogonal
   labels (`hills`, `bad data`); idempotent, dry-run. See root item 19.

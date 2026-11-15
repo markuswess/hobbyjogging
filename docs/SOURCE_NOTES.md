@@ -61,6 +61,16 @@ trimmed vs full recording, sensor dropouts). Small differences are normal;
 beyond **5 bpm** the values are treated as a real conflict. A maximum HR above
 about 205 bpm suggests a strap/sensor fault, making the average untrustworthy.
 
+### VO2max is per sport
+
+Garmin's FIT message 140 field 7 carries the estimate for the **activity's own
+sport**, so `activities.vo2max_garmin` on a ride is the cycling estimate, on a
+swim the swimming one, and only on a run the running series. The field is
+correct as written; `activities.sport` is the discriminator. Consumers that
+present one athlete-level series — the VO2max chart, any trend — must filter to
+running, and the session report qualifies the value on non-runs. Intervals
+exposes a single `VO2MaxGarmin`, which is the running value.
+
 ### Trimmed or reprocessed uploads
 
 One source may cover a different span of the same activity (a trimmed FIT
