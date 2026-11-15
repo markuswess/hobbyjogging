@@ -123,6 +123,13 @@ this list keeps the recent decisions only.
   13 races across four years replace the five in the last seven months; the
   demo database grows to ~5.2 MB.
 
+- **VO2max says which sport it belongs to.** The session report printed
+  `VO2max: 59.1 (Garmin)` on a ride, where that is the cycling estimate.
+  Non-running activities now qualify it from their own sport — `(Garmin,
+  cycling)`, `(Garmin, swim)`, `(Garmin, strength training)` — while runs
+  keep the plain label. The chart already filtered to running. The value's
+  true sport still waits on the core column in the root VO2max bug.
+
 ## Bugs
 
 _None._
@@ -130,7 +137,7 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
+items 24 and 25. Items 13-19 are reports-only; 12 is recurring upkeep.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -213,7 +220,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     - **Tests**: the curve has repeated values, drops at a bust, and carries no
       value on a ride; the demo coverage test still passes.
 
-15. **Crosshair on hover.** Plotly draws a vertical line at the hovered x in the
+14. **Crosshair on hover.** Plotly draws a vertical line at the hovered x in the
     `x unified` charts and nothing horizontally, so reading a value off the y
     axis means following an imaginary line. Add the horizontal spike too, from
     one layout helper rather than per chart.
@@ -230,7 +237,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       chart that already sets an axis range keeps it; the HTML contains
       `showspikes`.
 
-16. **Click a point to open its activity.** The charts are the place an outlier
+15. **Click a point to open its activity.** The charts are the place an outlier
     is noticed, but the activity page is only reachable from the activities
     table, so inspecting a strange pace/HR point means searching for the date
     by hand. Make single-activity points clickable.
@@ -251,7 +258,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       handler; a chart without ids still renders; the URL is
       `activity/<id>.html` relative to the page.
 
-17. **Planned workouts on the activities tab.** The tab is a list of completed
+16. **Planned workouts on the activities tab.** The tab is a list of completed
     activities, so a missed session or tomorrow's workout is invisible there and
     the plan lives only on the overview and in the `planned` report. Make the
     tab a training log that carries the plan.
@@ -271,7 +278,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       past event shows `missed`; a future event shows `planned`; the demo's
       planned workouts appear in the tab and the coverage test still passes.
 
-18. **Calendar view** (idea). A month grid where each day carries that day's
+17. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -293,7 +300,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-19. **Overview chart: bigger and better readable.** The main chart on the
+18. **Overview chart: bigger and better readable.** The main chart on the
     overview tab is 520 px tall with a 9 px legend, ten legend entries (three
     stack segments, six EWMAs, the VO2max line) and the title hidden because the
     card carries it. Give it room and calm the legend.
@@ -308,7 +315,7 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     - **Tests**: the card heading, the layout height and the legend font are
       set; the chart still renders in the dashboard and the PNG.
 
-20. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
+19. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
     use non-quality runs in 45–75 min, so a 40-minute easy run and every long
     run are invisible to the trend (root item 31).
     - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration
@@ -321,16 +328,6 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     - **Card**: the efficiency card gains the floor and the second series.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
-
-14. **Qualify VO2max on non-runs in the session report.** `_vo2max_line()`
-    prints `VO2max: 64.6 (Garmin)` on any activity, but a ride carries its own
-    cycling estimate (root bug). Print `VO2max: 64.6 (Garmin, cycling)` on
-    non-running
-    activities — or omit the line if it adds no value there — and keep the
-    plain label on runs. The chart already filters to running, so nothing
-    changes there.
-    - **Tests**: a ride renders the qualified label, a run the plain one, and
-      the chart still contains running activities only.
 
 ## Tests and docs
 

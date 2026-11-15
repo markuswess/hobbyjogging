@@ -13,6 +13,7 @@ from hobbyjogging_core.model import (
     ReviewItem,
     WellnessDay,
 )
+from hobbyjogging_core.sports import RIDE_SPORTS
 from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 
 from .analysis import (
@@ -352,11 +353,27 @@ def get_work_summary(
     )
 
 
+def _vo2max_qualifier(activity: Activity) -> str:
+    """Sport the Garmin estimate belongs to, for a non-run label."""
+    if activity.type in RIDE_SPORTS:
+        return "cycling"
+
+    return sport_label(activity).lower()
+
+
 def _vo2max_line(activity: Activity) -> str | None:
     parts = []
 
     if activity.vo2max_garmin is not None:
-        parts.append(f"{activity.vo2max_garmin:.1f} (Garmin)")
+        qualifier = ""
+
+        if activity.type not in RUN_TYPES:
+            sport = _vo2max_qualifier(activity)
+
+            if sport:
+                qualifier = f", {sport}"
+
+        parts.append(f"{activity.vo2max_garmin:.1f} (Garmin{qualifier})")
     if activity.vo2max_runalyze is not None:
         parts.append(f"{activity.vo2max_runalyze:.1f} (Runalyze)")
 

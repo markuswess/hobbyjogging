@@ -237,7 +237,9 @@ database `DataSource` and produces the Markdown reports and charts:
   Next 28 days by default.
 - **session [date|id|last]** — Detailed report for one session, chosen by
   date, activity id, or `last` (the default): category, workout methods and
-  targets, tags, VO2max, review status and open items, totals including
+  targets, tags, VO2max (qualified with the sport on a non-run, because
+  Garmin keeps one estimate per sport), review status and open items, totals
+  including
   efficiency (m/excess beat), zones, description, the day's planned workout
   and wellness, one raw segment table (typed intervals when there is more
   than one, otherwise device laps when there is more than one), subT/LT1 work

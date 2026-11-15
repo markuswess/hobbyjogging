@@ -7,6 +7,7 @@ from hobbyjogging_report.format import (
     format_category_table,
     format_feel,
     format_methods,
+    format_session_activity,
     format_targets,
     last_four_nights,
     pace,
@@ -19,6 +20,34 @@ from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
 activity = activity_factory()
+
+
+class Vo2maxLabelTests(unittest.TestCase):
+    """The Garmin estimate is per sport, so non-runs say which."""
+
+    def test_run_keeps_the_plain_garmin_label(self):
+        lines = format_session_activity(
+            activity(type="run", vo2max_garmin=52.3),
+            [],
+        )
+
+        self.assertIn("- VO2max: 52.3 (Garmin)", lines)
+
+    def test_ride_qualifies_the_garmin_label_as_cycling(self):
+        lines = format_session_activity(
+            activity(type="ride", vo2max_garmin=64.6),
+            [],
+        )
+
+        self.assertIn("- VO2max: 64.6 (Garmin, cycling)", lines)
+
+    def test_other_sport_uses_its_own_name(self):
+        lines = format_session_activity(
+            activity(type="swim", vo2max_garmin=55.0),
+            [],
+        )
+
+        self.assertIn("- VO2max: 55.0 (Garmin, swim)", lines)
 
 
 class SummarizeTrainingTests(unittest.TestCase):
