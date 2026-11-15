@@ -130,6 +130,13 @@ this list keeps the recent decisions only.
   keep the plain label. The chart already filtered to running. The value's
   true sport still waits on the core column in the root VO2max bug.
 
+- **A bigger, calmer overview chart.** The main chart is 700 px tall
+  instead of 520, with 10 px ticks and legend, compact trace names
+  (`hard 7d`, `total 42d`, `planned hard`, ...), a two-row legend, and the
+  card heading "Overview" instead of "Daily running minutes". A wrapped
+  horizontal legend fills in reverse trace order, so the layout sets
+  `traceorder: normal`; tests pin the height, font, entry width and names.
+
 ## Bugs
 
 _None._
@@ -137,7 +144,8 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Items 13-19 are reports-only; 12 is recurring upkeep.
+items 24 and 25. Items 13-17 are reports-only; 18 needs the lab gate in
+root item 31, and 12 is recurring upkeep.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -300,22 +308,7 @@ items 24 and 25. Items 13-19 are reports-only; 12 is recurring upkeep.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-18. **Overview chart: bigger and better readable.** The main chart on the
-    overview tab is 520 px tall with a 9 px legend, ten legend entries (three
-    stack segments, six EWMAs, the VO2max line) and the title hidden because the
-    card carries it. Give it room and calm the legend.
-    - **Size**: raise the layout height to about 700 px and the legend and tick
-      fonts to 10–11 px; the HTML chart fills the container width, so height and
-      fonts are the levers.
-    - **Legend**: name the entries compactly (`hard 7d`, `total 42d`, …) and lay
-      it out in two columns below the plot; plotly already lets a reader hide a
-      trace by clicking it, so the defaults just have to be legible.
-    - **Rename**: the card heading reads "Daily running minutes"; call it
-      "Overview" so the tab's main chart is named after the tab.
-    - **Tests**: the card heading, the layout height and the legend font are
-      set; the chart still renders in the dashboard and the PNG.
-
-19. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
+18. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
     use non-quality runs in 45–75 min, so a 40-minute easy run and every long
     run are invisible to the trend (root item 31).
     - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration

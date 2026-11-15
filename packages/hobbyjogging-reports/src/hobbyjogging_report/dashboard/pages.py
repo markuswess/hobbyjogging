@@ -94,7 +94,7 @@ def overview_page(
         else f"the last {volume_days} days"
     )
     volume_html += (
-        f'<p class="muted">Daily running minutes over {range_text}, stacked '
+        f'<p class="muted">Running minutes over {range_text}, stacked '
         "hard → easy → unzoned; lines are 7/42/182-day EWMAs for hard and "
         "total running, plus the black Garmin VO2max line on the right "
         "axis. Planned workouts appear as hatched bars on days "
@@ -103,7 +103,7 @@ def overview_page(
 
     body = (
         card(None, f'<div class="report">{overview_html}</div>')
-        + card("Daily running minutes", volume_html)
+        + card("Overview", volume_html)
         + card(None, f'<div class="report">{daily_html}</div>')
         + card(None, f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'

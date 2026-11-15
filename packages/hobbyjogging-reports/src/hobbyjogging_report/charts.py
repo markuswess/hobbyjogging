@@ -186,7 +186,11 @@ def _add(figure, trace, *, row: int | None = None, col: int | None = None):
         figure.add_trace(trace, row=row, col=col)
 
 
-def _legend_below(*, font_size: int | None = None) -> dict:
+def _legend_below(
+    *,
+    font_size: int | None = None,
+    columns: int | None = None,
+) -> dict:
     legend = {
         "orientation": "h",
         "y": -0.07,
@@ -196,6 +200,11 @@ def _legend_below(*, font_size: int | None = None) -> dict:
 
     if font_size is not None:
         legend["font"] = {"size": font_size}
+    if columns:
+        legend["entrywidth"] = round(1 / columns, 4)
+        legend["entrywidthmode"] = "fraction"
+        # A wrapped horizontal legend otherwise fills in reverse trace order.
+        legend["traceorder"] = "normal"
 
     return legend
 
@@ -2430,7 +2439,7 @@ def plot_overview(
         figure.add_bar(
             x=[row[0].isoformat() for row in actual_bars],
             y=values,
-            name=label.title(),
+            name=label,
             marker_color=color,
         )
 
@@ -2479,7 +2488,7 @@ def plot_overview(
                             for point in actual
                         ],
                         mode="lines",
-                        name=f"{family.title()} {window}d",
+                        name=f"{family} {window}d",
                         line=style,
                     )
                 )
@@ -2494,7 +2503,7 @@ def plot_overview(
                             for point in bridge
                         ],
                         mode="lines",
-                        name=f"{family.title()} {window}d",
+                        name=f"{family} {window}d",
                         line=style,
                         opacity=PROJECTED_OPACITY,
                         showlegend=False,
@@ -2560,8 +2569,8 @@ def plot_overview(
     layout = {
         "template": "plotly_white",
         "title": title,
-        "height": 520,
-        "margin": {"l": 50, "r": 20, "t": 95, "b": 100},
+        "height": 700,
+        "margin": {"l": 50, "r": 20, "t": 95, "b": 110},
         "barmode": "stack",
         "bargap": 0.1,
         "hovermode": "x unified",
@@ -2569,9 +2578,13 @@ def plot_overview(
             "title": "minutes",
             "range": [0, y_max],
             "dtick": MINUTES_Y_STEP,
+            "tickfont": {"size": 10},
         },
-        "xaxis": {"range": [start.isoformat(), end.isoformat()]},
-        "legend": _legend_below(font_size=9),
+        "xaxis": {
+            "range": [start.isoformat(), end.isoformat()],
+            "tickfont": {"size": 10},
+        },
+        "legend": _legend_below(font_size=10, columns=7),
     }
 
     if vo2max:
@@ -2587,6 +2600,7 @@ def plot_overview(
             "showgrid": False,
             "range": [low - pad, high + pad],
             "dtick": 0.5 if span <= 4 else 1,
+            "tickfont": {"size": 10},
         }
 
     figure.update_layout(**layout)

@@ -366,6 +366,50 @@ class OverviewChartTests(unittest.TestCase):
         self.assertIn("Plotly.newPlot", result)
 
 
+class OverviewReadabilityTests(unittest.TestCase):
+
+    def test_overview_is_tall_with_a_two_row_legend_in_compact_names(self):
+        bars = [(D, 300.0, 200.0, 0.0)]
+        series = ZoneGroupSeries(
+            points=[
+                ZoneGroupPoint(
+                    D,
+                    easy_s=200.0,
+                    hard_s=300.0,
+                    unzoned_s=0.0,
+                    easy_7=200.0,
+                    easy_42=200.0,
+                    easy_182=200.0,
+                    hard_7=300.0,
+                    hard_42=300.0,
+                    hard_182=300.0,
+                    total_7=500.0,
+                    total_42=500.0,
+                    total_182=500.0,
+                )
+            ]
+        )
+
+        html = plot_overview(
+            bars,
+            [],
+            series,
+            "",
+            start=D,
+            end=D,
+            today=D,
+            as_html=True,
+        )
+
+        self.assertIn('"height":700', html)
+        self.assertIn('"font":{"size":10}', html)
+        self.assertIn('"entrywidth":0.1429', html)
+        self.assertIn('"traceorder":"normal"', html)
+        self.assertIn('"name":"hard"', html)
+        self.assertIn('"name":"hard 7d"', html)
+        self.assertIn('"tickfont":{"size":10}', html)
+
+
 class AxisCeilingTests(unittest.TestCase):
 
     def test_empty_sample_falls_back_to_the_floor(self):
