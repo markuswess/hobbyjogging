@@ -4,6 +4,12 @@ Updated 2026-11-12.
 
 ## Done
 
+- **FIT scan manifest (schema v11).** `fit_scan_files` records every archive
+  file the scan has classified, activity or not, so a routine sync skips
+  unchanged ones: measured on the real archive, 18.3 s → 2.7 s over 64,349
+  files, 61,470 of them non-activity. Core owns the table and the writer API;
+  the import package owns the scan, prunes deleted files, and `--full` still
+  re-imports everything.
 - **Canonical pipeline.** FIT archive, Intervals.icu, and Garmin Personal API
   import into one SQLite database with raw-source provenance, temporal
   matching, and owner-based field precedence (no per-source priority).
@@ -990,33 +996,6 @@ Updated 2026-11-12.
     - **Tests**: an activity before the first wellness day gets a value with the
       estimated flag; the compare and overview aggregates still exclude it; a
       fallback of 0 or 200 is rejected.
-
-34. **Make `sync.sh` stop re-reading the FIT archive** (import + core). The
-    local sync is dominated by the FIT scan: the archive holds **64,349 files**
-    but only **2,855** are known activities, and the scan re-reads the other
-    ~61,500 every run because only imported activities are recorded as known.
-    Measured on the real data: discovery 1.2 s, prefilter **18 s** with
-    `skip_known`, maintenance recomputes 2 × 0.5 s, review scan 0.2 s,
-    dashboard 1.8 s — so the scan is ~80 % of the local time, before any
-    network call.
-    - **Cause**: `FitImporter._known_fit_paths()` is built from
-      `source_records`, so a non-activity FIT (monitoring, daily file) is never
-      known and is opened and header-parsed on every sync.
-    - **Fix**: a scan manifest — one row per file the scan has classified,
-      `fit_scan_files(path, size, mtime, kind, seen_at)` — so a file is skipped
-      when its path, size and mtime are unchanged, whether or not it became an
-      activity. `--full` ignores it, as today. **Schema landed (v11)**: the
-      table and the writer API (`record_fit_scan_file`, `fit_scan_manifest`,
-      `forget_fit_scan_files`) are in core; the scan itself is the import
-      side.
-    - **Why a table, not a sidecar file**: the repo keeps derived state in the
-      database; a JSON manifest would drift from the DB and be lost with it.
-      The rows are tiny (path + three numbers) and prunable.
-    - **Expected**: a routine sync reads only the handful of new files, so the
-      local phase drops from ~22 s to ~2 s.
-    - **Tests**: a second scan over the same archive opens no file; a changed
-      mtime or size re-reads that file; a deleted file is dropped from the
-      manifest; `--full` still re-imports everything.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
