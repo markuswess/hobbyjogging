@@ -198,6 +198,21 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
+13. **Demo: a realistic VO2max curve.** The demo's VO2max is a smooth daily
+    function — `45 + (240 − p5k)·0.3` plus a 120-day sine — so it carries a
+    value every day and wobbles continuously, which no watch does. Garmin
+    updates the estimate only after a qualifying run and holds it in between.
+    - **Step function**: sample the underlying fitness curve on quality and
+      long days only, hold the value in between, and quantize to 0.1 so the
+      line has plateaus instead of a daily wiggle.
+    - **Story**: drop through each injury and bust and rebuild over two or three
+      weeks; flatten in the Norwegian era, because threshold work moves VO2max
+      less than intervals do.
+    - **Runs only**: no value on rides or cross-training, which also matches the
+      per-sport fix in the root bug list.
+    - **Tests**: the curve has repeated values, drops at a bust, and carries no
+      value on a ride; the demo coverage test still passes.
+
 15. **Crosshair on hover.** Plotly draws a vertical line at the hovered x in the
     `x unified` charts and nothing horizontally, so reading a value off the y
     axis means following an imaginary line. Add the horizontal spike too, from
