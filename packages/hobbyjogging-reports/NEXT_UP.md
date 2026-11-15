@@ -215,6 +215,27 @@ items 24 and 25. Only **12** is reports-only, and it is recurring upkeep.
       chart that already sets an axis range keeps it; the HTML contains
       `showspikes`.
 
+16. **Click a point to open its activity.** The charts are the place an outlier
+    is noticed, but the activity page is only reachable from the activities
+    table, so inspecting a strange pace/HR point means searching for the date
+    by hand. Make single-activity points clickable.
+    - **Mechanism**: carry the activity id in `customdata` and attach a
+      `plotly_click` handler that navigates to `activity/<id>.html` — through
+      `to_html(post_script=...)` or one small bundled script, so it stays a
+      single implementation. Ctrl/cmd/middle click opens a new tab; the hover
+      text says "click to open".
+    - **Scope**: charts where one point is one activity — the pace/HR scatter
+      (analysis and compare), the race log-log chart, the PB progression steps,
+      and the subT panels (a work rep links to its session). The stacked bars
+      (volume, time, load, overview) are daily or weekly aggregates and are
+      left alone; linking one arbitrary activity of the day would be a lie.
+    - **Static constraint**: the site still does no data fetching — this is
+      navigation only, and it must degrade to a plain chart when the id is
+      missing.
+    - **Tests**: the trace carries `customdata`; the rendered HTML contains the
+      handler; a chart without ids still renders; the URL is
+      `activity/<id>.html` relative to the page.
+
 ## Tests and docs
 
 Covered now:
