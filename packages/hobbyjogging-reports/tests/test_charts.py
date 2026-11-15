@@ -1114,6 +1114,7 @@ class CompareVo2maxChartTests(unittest.TestCase):
         self.assertIn('"y":[54.2,54.2]', html)
         self.assertIn('"y":[55.1]', html)
         self.assertIn('"mode":"lines"', html)
+        self.assertIn('"hovermode":"x unified"', html)
 
     def test_empty_measurements_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

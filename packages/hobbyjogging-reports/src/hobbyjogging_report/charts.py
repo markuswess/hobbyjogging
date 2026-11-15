@@ -2005,7 +2005,9 @@ def plot_races(
         height=700,
         margin={"l": 60, "r": 30, "t": 70, "b": 100},
         legend=_legend_below(),
-        hovermode="closest",
+        # The rest of the compare tab is x-unified; match it so a year can be
+        # read across the same month here too.
+        hovermode="x unified",
     )
     _crosshair(figure)
 
@@ -2148,7 +2150,9 @@ def plot_compare_vo2max(
         height=700,
         margin={"l": 60, "r": 30, "t": 70, "b": 100},
         legend=_legend_below(),
-        hovermode="closest",
+        # The rest of the compare tab is x-unified; match it so a year can be
+        # read across the same month here too.
+        hovermode="x unified",
     )
     _crosshair(figure)
 
