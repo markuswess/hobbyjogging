@@ -230,12 +230,13 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 11.
+SQLite, forward-only migrations. Schema version 12.
 
 - `activities` — canonical values: dates, sport, name, description, recording
-  time (`duration_s`), elapsed time, moving time (`moving_s`), distance, heart
-  rate, training load, subjective fields, both VO2max values
-  (`vo2max_garmin`, `vo2max_runalyze`), exclusion timestamp.
+  time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
+  elevation gain/loss (v12), heart rate (average and maximum, v12), training
+  load, subjective fields, both VO2max values (`vo2max_garmin`,
+  `vo2max_runalyze`), exclusion timestamp.
 - `source_records` — raw imported payloads with checksums and provenance
   (`source`, `record_type`, `external_id`, `raw_path`, `payload_json`,
   exclusion timestamp).

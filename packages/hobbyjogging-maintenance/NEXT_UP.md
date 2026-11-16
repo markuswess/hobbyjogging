@@ -4,6 +4,11 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`activity_elevation_v1` and `activity_max_hr_v1`.** Filled the v12 columns
+  from the stored payloads in import order (Intervals, FIT, sheet), through the
+  writer so ownership and tolerances hold. Applied to the real DB: 3,287
+  activities with elevation (2,802 with loss), 3,394 with max HR; 62 and 29
+  source disagreements counted, not queued.
 - **`drop_classification_tags_v1`.** Removed the sheet's `Trainigstyp` codes
   from `activity_tags`, keeping manual tags and the training-area labels.
   Applied to the real DB: 874 tags from 869 activities; 1,015 area tags remain.
@@ -35,9 +40,6 @@ This file records what the package is still waiting on.
 
 ## Next
 
-- **`activity_elevation_v1`** (backfill). Fill `activities.elevation_gain_m`
-  / `_loss` from the stored payloads (Intervals, sheet gain-only) and from
-  summed FIT laps; no network, idempotent, dry-run.
 - **`race_links_current`** (recompute). Match planned race events to completed
   activities (date + sport, then distance within ~5%, then start proximity),
   write `event_activity_links`, open an `ambiguous_race` item for genuine
@@ -57,10 +59,6 @@ This file records what the package is still waiting on.
   dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
-- **`activity_max_hr_v1`** (backfill). Fill `activities.max_hr` from the
-  stored payloads (FIT session, Intervals `max_heartrate`, sheet `max. Hf`),
-  owner-based with a 2 bpm tolerance, manual untouched. Idempotent, dry-run,
-  and it reports coverage per source and year.
 - **`activity_weather_v1`** (backfill). Create `activity_weather` rows from the
   Intervals weather block and the sheet's `Temperatur in °C`, idempotent,
   dry-run.

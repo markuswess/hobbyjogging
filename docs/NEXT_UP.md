@@ -4,6 +4,15 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Elevation and max HR are stored (schema v12).** `activities` gains
+  `elevation_gain_m`, `elevation_loss_m` and `max_hr`, owner-based with a wide
+  elevation tolerance (10 % or 20 m) and 2 bpm for max HR. FIT parses
+  `total_descent` and writes ascent/descent/max HR, Intervals maps
+  `total_elevation_gain`/`_loss` and `max_heartrate`, the sheet maps
+  `m bergauf` and `max. Hf`. The backfills filled 3,287 activities with
+  elevation (2,802 with loss) and 3,394 with max HR; 62 and 29 source
+  disagreements were counted, not queued. The reports views (climb per km,
+  session line) remain on the reports list.
 - **The redundant sheet tags are gone.** The sheet import no longer writes the
   `Trainigstyp` code as a tag — the method/target sets carry it — and
   `drop_classification_tags_v1` removed 874 code tags from 869 activities,
@@ -273,48 +282,6 @@ one takes the next free number, so cross-references stay valid.
      report.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
-
-5. **Elevation gain and loss on activities** (core + import + maintenance).
-   Per-lap FIT elevation is stored (`activity_laps.elevation_gain_m`, 2,800
-   activities), but `activities` has no elevation column. The payloads cover
-   81% of activities: Intervals `total_elevation_gain` / `_loss` (2,846), the
-   sheet's `m bergauf` (839, gain only), and FIT session `total_ascent`
-   (parsed, not stored; `total_descent` not parsed at all). FIT and Intervals
-   agree closely — median 0.4%, p90 5.3% on the 2,755 activities with both —
-   so there is no authority fight.
-   - **Future schema**: `activities.elevation_gain_m` and
-     `activities.elevation_loss_m`, both nullable.
-   - **Importers**: FIT session `total_ascent` / `total_descent` (parse the
-     descent), Intervals `total_elevation_gain` / `_loss`, sheet `m bergauf`
-     (gain only).
-   - **Ownership**: owner-based like distance, with a wide tolerance (10% or
-     20 m) because the sources are estimates; manual wins. Intervals authority
-     is the fallback if conflicts turn out to be noisy.
-   - **Runalyze keeps corrected and file values**: `elevation_up`/`_down` are
-     corrected, `elevation_up_file`/`_down_file` the raw FIT sums, with an
-     `elevation_source`. Store the corrected pair and keep the file pair as
-     provenance (the raw payload already holds it); do not average them.
-   - **Backfill `activity_elevation_v1`** (maintenance): fill existing rows
-     from the stored payloads (Intervals, sheet) and from summed FIT laps, no
-     network, idempotent, `--dry-run`.
-   - **Uses**: the trail suggestion rule (9 candidates at ≥40 m/km), climb per
-     km in the session report and activity list, coarse grade-adjusted pace
-     from per-lap gain, and route difficulty on the dashboard.
-   - **Tests**: FIT/Intervals/sheet parsing, the tolerance agreement, the
-     backfill idempotency, and `loss` staying `NULL` for sheet-only rows.
-
-6. **Maximum HR per activity** (core + import + maintenance). There is no
-   canonical column today, though Intervals `max_heartrate`, the FIT session
-   and the sheet's `max. Hf` (1,233 rows) all carry it.
-   - **Next migration**: `activities.max_hr`, nullable, owner-based with a
-     small tolerance (2 bpm); manual wins.
-   - **Import**: FIT session max HR, Intervals `max_heartrate`, sheet
-     `max. Hf`.
-   - **Backfill `activity_max_hr_v1`** from the stored payloads.
-   - **Uses**: HR-zone accuracy, interval intensity, and the existing >205 bpm
-     sensor-fault cause reading the canonical value; a session-report line.
-   - **Coverage**: report how many activities gain it, per source and year,
-     before deciding whether the column earns its place.
 
 7. **Per-activity weather** (core + import + maintenance + reports).
    Intervals carries `average_temp`, `average_weather_temp`,

@@ -123,9 +123,9 @@ on.
   **The exact rule set and thresholds are still to be determined** — the rules
   below are measured candidates, not a committed set; settle them (and the
   90% / 40 m/km / 5 min / 150 bpm / 90 min thresholds) before implementing.
-  **Prerequisites**: the trail rule needs elevation (root item 5), and the
-  vo2max rule must filter to running activities — a ride carries its own
-  cycling estimate, which is valid data, not a running one.
+  **Prerequisites**: elevation is now stored (schema v12), so the trail rule
+  has its evidence; the vo2max rule must filter to running activities — a ride
+  carries its own cycling estimate, which is valid data, not a running one.
   Measured yields:
   - `intervals` but the WORK reps cover >90% of the activity → suggest
     `continuous` (38), or `fartlek` when the reps are irregular.
@@ -161,12 +161,13 @@ on.
   is nothing to detect or clear. The remaining work is in the consumers: the
   session report qualifies the value on non-runs; the charts are running-only
   and `docs/SOURCE_NOTES.md` records the per-sport semantics.
-- **Max HR and weather capture.** Write the FIT session max HR, Intervals
-  `max_heartrate`, the sheet's `max. Hf`, and the Intervals weather block
-  (`average_temp`, `average_feels_like`, `average_wind_speed`,
-  `average_wind_gust`, `average_clouds`) plus the sheet's `Temperatur in °C`.
-  Depends on the core `activities.max_hr` column and the `activity_weather`
-  table.
+- **Weather capture.** Max HR is done (v12: FIT session, Intervals
+  `max_heartrate`, sheet `max. Hf`). What remains is the weather block:
+  Intervals `average_temp`, `average_feels_like`, `average_wind_speed`,
+  `average_wind_gust`, `average_clouds`, the sheet's `Temperatur in °C`, and
+  Runalyze's `temperature`, `humidity`, `wind_speed`, `wind_degree`,
+  `cloud_cover`, `pressure`, `uv_index`, `is_night`, `weather_condition`.
+  Depends on the `activity_weather` table.
 - **Wellness extras and routes.** Map the selected wellness keys into the new
   columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
   migrations land.
