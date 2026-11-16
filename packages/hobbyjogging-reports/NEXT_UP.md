@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 2's max-HR half, 5's threshold trend and 6's
-fartlek check are open, 13 is parked, and the rest need a core or root change
-or the lab gate.
+Current focus: the demo data; 2's max-HR half, 5's threshold trend, 6's
+fartlek check and 16's subT ranges are open, 13 is parked, and the rest need a
+core or root change or the lab gate.
 
 ## Done
 
@@ -259,7 +259,7 @@ config ids (item 5's zone normalization), devices (1), routes (3), wellness
 extras (4) and social titles (8). Items 11 and 14 have their data now
 (`training_periods`, schema v18; `event_activity_links`, schema v21), and 15's
 series needs the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
-and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
+16 is a reports-only chart idea, and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
 streaks report and the collapsible lists landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
@@ -405,6 +405,31 @@ streaks report and the collapsible lists landed here.
     - **Card**: the efficiency card gains the second series.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
+
+16. **Min/max in the subT panels, and trends for the extremes.** The pace
+    panel shows each session's average as a dot and its rep range as a thin
+    vertical line, the heart-rate panel ticks the max, and the efficiency panel
+    has only the dot and its weighted EWMA. Give efficiency the same range
+    treatment, then decide whether the extremes deserve trend lines of their
+    own.
+    - **Data**: `_subt_point()` already walks the work reps for the weighted
+      efficiency, so record `lowest_efficiency`/`highest_efficiency` beside it
+      from per-rep `interval_efficiency`, skipping reps without HR or distance.
+      A session with one usable rep has no range; keep the rep count so the
+      chart and hover can say so.
+    - **Chart**: thin low-opacity vertical lines in the efficiency panel in the
+      category colour, like the pace panel, with low/high and rep count in the
+      hover; no range for a single rep.
+    - **Trend lines, if they earn it**: dashed, thinner EWMAs for the low and
+      high series, never merged into the average. Judge per panel: fastest and
+      slowest rep pace and max HR move with rep length and count, so their
+      trends can be protocol drift; efficiency low/high are the better
+      candidates. Name the series so an extreme trend is not read as the mean.
+    - **Axis**: include the new extremes in the efficiency ceiling (or clip
+      with the usual marker) so one bad rep does not flatten the panel.
+    - **Tests**: per-rep min/max (including a single rep and a rep without HR),
+      the range in the third panel, whichever EWMA lines are enabled, the hover
+      values, and the demo coverage test.
 
 ## Tests and docs
 
