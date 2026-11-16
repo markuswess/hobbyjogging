@@ -238,9 +238,9 @@ Schema v12-v16 moved the data under several items, so the picture changed:
 reports-only. What still needs core first: max HR and elevation on `Activity`
 (repository query and model drop them; items 2 and 7), the per-activity zone
 config ids (item 5's zone normalization), devices (1), routes (3), wellness
-extras (4) and social titles (8). Items 9 and 10 need root items 24 and 25,
-11 needs root item 30, 14 needs root items 4 and 30, and 15's series needs
-the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
+extras (4) and social titles (8). Item 11 has its data now (`training_periods`,
+schema v18), 14 still needs `event_activity_links` (root item 4), and 15's
+series needs the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
 and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
 streaks report and the collapsible lists landed here.
 
@@ -303,9 +303,10 @@ streaks report and the collapsible lists landed here.
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-11. **Season and illness bands.** Once `training_periods` exists (root item
-    30), shade seasons on the volume, load and compare charts and illness on
-    recovery and efficiency, with the label on the band. Add a seasons table to
+11. **Season and illness bands.** `training_periods` is stored (schema v18:
+    3 seasons, 25 illness markers, 4 notes), so shade seasons on the volume,
+    load and compare charts and illness on recovery and efficiency, with the
+    label on the band. Add a seasons table to
     the period report, and decide per metric whether an illness period is
     excluded or only flagged. See the efficiency card's note on the Feb–Mar
     2026 baseline shift.
@@ -371,8 +372,9 @@ streaks report and the collapsible lists landed here.
       shape in a single page with no navigation. Worth trying before the full
       grid.
     - **Depends on**: `event_activity_links` (root item 4) for done/planned/
-      missed, and `training_periods` (root item 30) for illness and season
-      shading. Without them it can only show activities and raw events.
+      missed. Illness and season shading can come from `training_periods` now
+      (schema v18); without the links a calendar can only show activities and
+      raw events.
     - **Open**: month grid or heat map first; wellness markers in the cells
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.

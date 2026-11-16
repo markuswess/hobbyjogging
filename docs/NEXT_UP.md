@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Training periods are stored (schema v18).** `training_periods` holds dated
+  spans — season, plan, illness, travel, recovery — and `training_periods_current`
+  derives them from the Intervals event notes: 3 seasons (VCM 23/24/25, each
+  closing the day before the next, the latest open), 25 one-day illness
+  markers and 4 travel/recovery notes. A marker's duration is never inferred;
+  the `period add|list|remove` CLI writes a manual range (an illness end, a
+  plan) and the recompute never removes it. The season/illness bands and the
+  calendar stay on the reports list.
 - **Recording devices are stored (schema v17).** A `devices` table
   (manufacturer, product, serial, name, active dates) and a nullable
   `activities.device_id` — one recorder per activity, so no link table. FIT
@@ -741,44 +749,6 @@ one takes the next free number, so cross-references stay valid.
     - **Related**: item 23 (this is its lab case), item 26 (demo upkeep) and
       item 25 — the coaching notes will live in the same private repo, so the
       dashboard reads both from there.
-
-30. **Training periods: seasons, plans and illness** (core + import +
-    reports). The raw data already carries them and nothing interprets them:
-    Intervals events have `category` = `SEASON_START` (3 — "VCM 23/24/25", each
-    December, the season ending at the Vienna City Marathon), `SICK` (25
-    single-day "krank" / "leicht verkühlt" markers), `NOTE` (4 — travel, wisdom
-    tooth recovery), `TARGET` (9) and `FITNESS_DAYS` (1). The importer stores
-    them as events with `type=''` — 34 rows — so they appear nowhere.
-    - **Schema**: `training_periods(id, kind, label, start_date, end_date,
-      source, source_record_id, notes, excluded_at)`. A period is a range, which
-      an event is not; kinds `season`, `plan`, `illness`, `travel`, `recovery`,
-      `other`. Overlaps are allowed (an illness inside a season).
-    - **Import**: `SEASON_START` → a season beginning on that date and ending
-      before the next one (or at the goal race); `SICK` → an illness marker;
-      `NOTE` → `other` with the label. Store `category` on the period rather
-      than guessing from names, and keep the raw event link.
-    - **Ranges from markers**: a season's end is derivable; an illness's is not
-      — 25 single-day markers say "sick today", not how long. Start with the
-      marker, allow a manual end, and never infer a duration.
-    - **Runalyze `disease` supplies the range**: the API has a health-metric
-      resource for illness with its own start and end, which is exactly what
-      the day markers cannot give. Use it as the illness source when the
-      import lands, with the Intervals markers as a fallback and manual entry
-      always winning.
-    - **Manual entry**: `period add|edit|remove` (manual wins), and the future
-      edit CLI from item 1.
-    - **Reports**: shade seasons and illness on volume, load, recovery and
-      compare charts; a seasons table in the period report; flag or exclude
-      illness from efficiency and trend aggregates — the efficiency card
-      already records that the Feb–Mar 2026 illness moved the resting baseline
-      8%.
-    - **Lab**: the experiments split by illness by hand; canonical periods make
-      that reproducible.
-    - **Open**: `plan_name` / `plan_folder_id` are in every event payload but
-      null today, so Intervals training plans are not in use; store them anyway
-      if plans return.
-    - **Tests**: SEASON_START maps to a season range, SICK to a day marker, a
-      manual end survives a reimport, overlapping periods are allowed.
 
 31. **Efficiency over all activities** (lab first, then reports and the card).
     The steady aggregate stops at 75 min (`STEADY_DURATION_BAND`), so a long run

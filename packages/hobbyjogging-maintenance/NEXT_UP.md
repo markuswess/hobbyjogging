@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`training_periods_current`.** Derives seasons, illness markers and notes
+  from the Intervals event payloads, closing each season the day before the
+  next and never inferring a marker's duration. Applied: 3 seasons, 25 illness
+  markers, 4 notes; runs in `sync.sh`.
 - **`activity_device_v1`.** Created the devices from the FIT
   `file.manufacturer/product/serial_number` and filled `activities.device_id`,
   with Intervals `device_name` only where FIT left it empty. Applied: 2,853

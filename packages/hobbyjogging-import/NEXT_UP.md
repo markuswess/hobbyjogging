@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **`period` command.** `period add|list|remove` writes a manual training
+  period (kind, start, optional end, label, notes), keyed by kind and start so
+  re-adding updates it. The recompute owns the Intervals-derived periods and
+  never removes a manual one.
 - **Device capture.** The FIT importer upserts the device from
   `file.manufacturer/product/serial_number` and sets `activities.device_id`;
   the Intervals importer normalizes `device_name` and fills only what FIT left

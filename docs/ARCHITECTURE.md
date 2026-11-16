@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 17.
+SQLite, forward-only migrations. Schema version 18.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,11 @@ SQLite, forward-only migrations. Schema version 17.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `training_periods` (v18) — dated spans: seasons, plans, illness, travel,
+  recovery. Intervals supplies the season starts (`SEASON_START`) and the
+  sickness/travel notes (`SICK`/`NOTE`); a season ends the day before the next
+  one and the latest stays open, a marker is a one-day period and its duration
+  is never inferred. A manual row is never removed by the recompute.
 - `devices` (v17) — the recording devices: manufacturer, product, serial,
   name and active dates. One recorder per activity, so `activities.device_id`
   is a single nullable foreign key; the serial is what a text column could not
