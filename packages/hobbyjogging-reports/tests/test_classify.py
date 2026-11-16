@@ -3,7 +3,8 @@ from datetime import date
 
 from hobbyjogging_core.model import Activity, Interval
 
-from hobbyjogging_report.classify import category_breakdown
+from hobbyjogging_report.analysis import is_lt1_activity, is_subt_activity
+from hobbyjogging_report.classify import category_breakdown, classify
 
 DEFAULT_DATE = date(2026, 10, 1)
 
@@ -25,6 +26,37 @@ def work(*durations):
         Interval(type="WORK", group_id=str(n), duration_s=s, distance_m=s * 4)
         for n, s in enumerate(durations)
     ]
+
+
+class FartlekTests(unittest.TestCase):
+    """A stored fartlek is its own quality kind, never a rep session."""
+
+    def test_stored_fartlek_is_its_own_quality_category(self):
+        item = activity(
+            name="Fartlek",
+            workout_methods=["fartlek"],
+            workout_targets=["vo2max"],
+        )
+
+        self.assertEqual("quality/fartlek", classify(item).path)
+
+    def test_a_tempo_name_does_not_turn_it_into_intervals(self):
+        item = activity(
+            name="Tempo fartlek",
+            workout_methods=["fartlek"],
+            workout_targets=["threshold"],
+        )
+
+        self.assertEqual("quality/fartlek", classify(item).path)
+
+    def test_a_fartlek_never_enters_the_subt_or_lt1_sets(self):
+        item = activity(
+            name="subT LT1 fartlek",
+            workout_methods=["fartlek"],
+        )
+
+        self.assertFalse(is_subt_activity(item))
+        self.assertFalse(is_lt1_activity(item))
 
 
 class CategoryBreakdownTests(unittest.TestCase):

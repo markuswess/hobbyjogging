@@ -387,10 +387,24 @@ def _write_activities(
         elif week + 1 in long_race_weeks:
             plan = [(1, "easy"), (3, "easy"), (5, "easy")]
 
+        if week == 20:
+            # One unstructured fartlek, so the demo exercises the category
+            # that no other session in the story carries.
+            plan = [
+                (weekday, "fartlek" if kind == "intervals" else kind)
+                for weekday, kind in plan
+            ]
+
         update_days = {
             monday + timedelta(days=weekday)
             for weekday, kind in plan
-            if kind in ("long", "tempo", "intervals", "subthreshold")
+            if kind in (
+                "long",
+                "tempo",
+                "intervals",
+                "subthreshold",
+                "fartlek",
+            )
         }
 
         for weekday, kind in plan:
@@ -607,6 +621,17 @@ def _make_session(
         distance_m = duration / pace * 1000
         if "Trail" in name and rng.random() < 0.5:
             sport = "trail_run"
+    elif kind == "fartlek":
+        name = "Fartlek"
+        duration = rng.choice((45, 50, 55)) * 60.0
+        pace = (
+            fitness.threshold + fitness.easy
+        ) / 2 + rng.uniform(-6, 6)
+        avg_hr = 156 - 4 * progress + rng.randint(-3, 3)
+        methods = ["fartlek"]
+        targets = ["vo2max"]
+        zone_shares = (0.25, 0.35, 0.25, 0.15)
+        distance_m = duration / pace * 1000
     elif kind == "tempo":
         name = "Tempo run"
         duration = rng.choice((30, 35, 40)) * 60.0
@@ -833,6 +858,7 @@ def _training_load(kind: str, duration_s: float, phase: str) -> float:
         "cross": 0.62,
         "quality": 1.05,
         "tempo": 1.02,
+        "fartlek": 1.0,
         "intervals": 1.08,
         "subthreshold": 1.06,
     }.get(kind, 0.8)
@@ -889,7 +915,7 @@ def _zone_times(total_s: float, shares: tuple[float, ...]) -> list[float]:
 
 
 def _description(kind: str, phase: str) -> str:
-    if kind in ("tempo", "intervals", "subthreshold"):
+    if kind in ("tempo", "intervals", "subthreshold", "fartlek"):
         return (
             "Quality session in the invented plan.\n"
             f"Block: {phase}. Reps on the road, recoveries easy."

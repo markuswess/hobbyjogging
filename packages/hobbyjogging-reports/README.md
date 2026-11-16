@@ -163,8 +163,8 @@ invented athlete who follows a four-year story: four weeks of continuous
 running and a first 5k, a rest week, a classical build to 10k and half
 marathon, a 10-day injury and a careful return, a first marathon, six
 boom-and-bust weeks, then a threshold-focused Norwegian singles block with
-double-threshold days. Thirteen races, intervals, zone times, wellness,
-planned workouts, two future races and four shoes. One fitness curve
+double-threshold days. Thirteen races, intervals, a fartlek, zone times,
+wellness, planned workouts, two future races and four shoes. One fitness curve
 (5k pace plus an endurance factor per distance) drives every race time,
 training pace and the Garmin VO2max value, so they stay in line while still
 moving: easy and long runs stay in zones 1–2, workouts carry the hard zones,

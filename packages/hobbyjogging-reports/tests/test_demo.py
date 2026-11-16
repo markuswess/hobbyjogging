@@ -279,6 +279,26 @@ class DemoGeneratorTests(unittest.TestCase):
         self.assertGreater(rides[0], 0)
         self.assertEqual(0, rides[1])
 
+    def test_the_story_has_a_fartlek(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                count = connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM activity_workout_methods
+                    WHERE method = 'fartlek'
+                    """
+                ).fetchone()[0]
+            finally:
+                connection.close()
+
+        self.assertGreaterEqual(count, 1)
+
     def test_easy_runs_use_only_z1_and_z2(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(

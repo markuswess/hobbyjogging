@@ -2,9 +2,8 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 2's max-HR half, 5's threshold trend and 6's
-fartlek check are open, 13 is parked, and the rest need a core or root change
-or the lab gate.
+Current focus: the demo data; 2's max-HR half and 5's threshold trend are
+open, 12 is parked, and the rest need a core or root change or the lab gate.
 
 ## Done
 
@@ -257,6 +256,15 @@ this list keeps the recent decisions only.
   average keeps a line, and fastest/slowest rep pace and max HR never got one
   because rep length and count confound them.
 
+- **Fartlek is its own category, end to end.** The core token and display kind
+  already landed and the category table shows `quality/fartlek` (7 sessions on
+  the real log). `is_subt_activity()`/`is_lt1_activity()` now return False for
+  any activity with a stored `fartlek` method, so a name that says subT or LT1
+  cannot pull it into the rep buckets; classification stays `quality/fartlek`
+  even when the name says "tempo", because stored sets win and no read-time
+  fallback can turn it into intervals. The demo story now carries one fartlek
+  session (week 20), and a demo test checks the method row.
+
 ## Bugs
 
 _None._
@@ -264,14 +272,13 @@ _None._
 ## Next
 
 Schema v12-v16 moved the data under several items, so the picture changed:
-5's threshold trend and 6's fartlek check are reports-only, and 2's weather
-half landed. What still needs core first: max HR and elevation on `Activity`
-(repository query and model drop them; items 2 and 7), the per-activity zone
+5's threshold trend is reports-only, and 2's weather half landed. What still needs core first: max HR and elevation on `Activity`
+(repository query and model drop them; items 2 and 6), the per-activity zone
 config ids (item 5's zone normalization), devices (1), routes (3), wellness
-extras (4) and social titles (8). Items 11 and 14 have their data now
-(`training_periods`, schema v18; `event_activity_links`, schema v21), and 15's
-series needs the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
-and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
+extras (4) and social titles (7). Items 10 and 13 have their data now
+(`training_periods`, schema v18; `event_activity_links`, schema v21), and 14's
+series needs the lab gate in root item 31. Item 12 stays parked on its
+page-coverage cost, and 11 is recurring upkeep. The efficiency floor, the planned-event page, the
 streaks report and the collapsible lists landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
@@ -301,14 +308,7 @@ streaks report and the collapsible lists landed here.
    activity's config needs that config id on the model first: the database
    column exists, but the repository query and `Activity` drop it.
 
-6. **Fartlek as its own category.** The core token and display kind landed:
-   `classify()` returns `quality/fartlek` and the category table already shows
-   it (7 activities on the real log), and a fartlek never enters the subT
-   buckets. What is left is the check: confirm the read-time `tempo` fallback
-   cannot turn it into `intervals`, keep every rep-count/duration analysis off
-   it, and add a fartlek session to the demo, which has none.
-
-7. **Elevation in the reports.** The columns landed (schema v12) but the
+6. **Elevation in the reports.** The columns landed (schema v12) but the
    repository's activity query and the `Activity` model drop
    `elevation_gain_m`/`elevation_loss_m`, so that exposure comes first. Then:
    climb per km in the session report and the activities list, a coarse
@@ -316,24 +316,24 @@ streaks report and the collapsible lists landed here.
    stream, so this is lap-level), trail suggestions from the ≥40 m/km
    evidence, and route difficulty on the dashboard.
 
-8. **Strava in the session report.** A `Strava: …` line with the title, the
+7. **Strava in the session report.** A `Strava: …` line with the title, the
    description as an annotation, and a link to the activity. Depends on the
    root Strava item and on the notes/description decision in root item 1.
 
-9. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+8. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
    races, wellness, tools), one anchor per entry, formulas as plain text or
    code so the site stays self-contained. If the catalogue is generated, the
    tab renders the same source the Markdown does.
 
-10. **Coaching tab.** Render the latest coaching note and an index of past
+9. **Coaching tab.** Render the latest coaching note and an index of past
    ones, through the same Markdown-to-HTML path as Docs, with front matter
    turned into a header (date, period, focus) and the decision sections
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-11. **Season and illness bands.** `training_periods` is stored (schema v18:
+10. **Season and illness bands.** `training_periods` is stored (schema v18:
     3 seasons, 25 illness markers, 4 notes), so shade seasons on the volume,
     load and compare charts and illness on recovery and efficiency, with the
     label on the band. Add a seasons table to
@@ -341,14 +341,14 @@ streaks report and the collapsible lists landed here.
     excluded or only flagged. See the efficiency card's note on the Feb–Mar
     2026 baseline shift.
 
-12. **Periodic demo review.** Recurring upkeep, not a feature: at each
+11. **Periodic demo review.** Recurring upkeep, not a feature: at each
     release tag and schema bump, re-read the reports against the demo
     athlete's story — does every tab still show the era it describes, do new
     fields have demo data, and do the race times, workout paces and VO2max
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
-13. **Click a point to open its activity.** The charts are the place an outlier
+12. **Click a point to open its activity.** The charts are the place an outlier
     is noticed, but the activity page is only reachable from the activities
     table, so inspecting a strange pace/HR point means searching for the date
     by hand. Make single-activity points clickable.
@@ -386,7 +386,7 @@ streaks report and the collapsible lists landed here.
       scatter and subT panels link to it); races and PB steps open the
       existing `race/<id>.html` instead, which adds no pages.
 
-14. **Calendar view** (idea). A month grid where each day carries that day's
+13. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -408,7 +408,7 @@ streaks report and the collapsible lists landed here.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-15. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
+14. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
     every long run is still invisible to the trend, because the steady
     aggregate stops at 75 min (root item 31).
     - **All-runs series**: only after the lab passes it — a second labelled line
@@ -447,7 +447,10 @@ Covered now:
   note, per-year shares, the cached lookup, and the demo's weather lines;
 - subT efficiency ranges: per-rep low/high (varied reps, a single rep, a rep
   without HR), the sticks and hover, the absence of extra trend lines, and the
-  axis ignoring one extreme rep.
+  axis ignoring one extreme rep;
+- fartlek: the stored method classifies as `quality/fartlek` even with a
+  "tempo" name, keeps the session out of the subT/LT1 sets, and the demo now
+  carries one.
 
 New work should add:
 

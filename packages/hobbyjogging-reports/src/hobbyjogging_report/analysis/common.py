@@ -61,17 +61,33 @@ def _planned_events(
         yield event
 
 
+def _is_fartlek(activity: Activity) -> bool:
+    """A stored fartlek method marks unstructured quality, not reps."""
+    return any(
+        method.strip().lower() == "fartlek"
+        for method in activity.workout_methods
+    )
+
+
 def is_subt_activity(a: Activity) -> bool:
     """True if the name marks the session as a subT workout.
 
     Only the name is used: descriptions often mention alternatives
-    ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in.
+    ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in. A stored
+    fartlek wins over the name, because a fartlek has no reps to measure and
+    never belongs in the subT buckets.
     """
+    if _is_fartlek(a):
+        return False
+
     return "subt" in a.name.lower()
 
 
 def is_lt1_activity(a: Activity) -> bool:
     """True if the name marks the session as an LT1 workout."""
+    if _is_fartlek(a):
+        return False
+
     text = a.name.lower()
     return any(word in text for word in LT1_WORDS)
 
