@@ -1782,6 +1782,68 @@ class EquipmentTests(unittest.TestCase):
 
 
 
+
+class RaceResultTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-04-12', 'run')"
+        )
+        self.conn.commit()
+
+    def _row(self):
+        return self.conn.execute(
+            "SELECT official_distance_m, official_time_s, place_total, "
+            "status, source FROM race_results WHERE activity_id = 'a1'"
+        ).fetchone()
+
+    def test_inserts_and_replaces(self):
+        self.writer.upsert_race_result(
+            "a1",
+            source="manual",
+            official_time_s=9600.0,
+            status="completed",
+        )
+        self.writer.upsert_race_result(
+            "a1",
+            source="manual",
+            official_distance_m=42195.0,
+            official_time_s=9469.0,
+        )
+
+        row = self._row()
+        self.assertAlmostEqual(42195.0, row["official_distance_m"])
+        self.assertAlmostEqual(9469.0, row["official_time_s"])
+
+    def test_a_manual_row_is_not_overwritten_by_a_source(self):
+        self.writer.upsert_race_result(
+            "a1",
+            source="manual",
+            official_time_s=9469.0,
+        )
+
+        written = self.writer.upsert_race_result(
+            "a1",
+            source="runalyze",
+            official_time_s=9500.0,
+        )
+
+        self.assertFalse(written)
+        self.assertAlmostEqual(9469.0, self._row()["official_time_s"])
+        self.assertEqual("manual", self._row()["source"])
+
+    def test_an_empty_payload_writes_nothing(self):
+        self.assertFalse(
+            self.writer.upsert_race_result("a1", source="manual")
+        )
+        self.assertIsNone(self._row())
+
+
 class FitScanManifestTests(unittest.TestCase):
 
     def setUp(self):

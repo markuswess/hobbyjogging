@@ -501,6 +501,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "sync":
         return run_sync_command(args, parser)
 
+    if args.command == "race-result":
+        from .race_result_cli import run_race_result
+
+        return run_race_result(args, parser)
+
     if args.command == "review":
         return run_review(args, parser)
 

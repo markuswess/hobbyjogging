@@ -12,6 +12,7 @@ from .model import (
     Activity,
     ActivityWeather,
     AthleteThreshold,
+    RaceResult,
     Equipment,
     Event,
     Interval,
@@ -43,6 +44,9 @@ class DataSource(Protocol):
         ...
 
     def athlete_thresholds(self) -> list[AthleteThreshold]:
+        ...
+
+    def race_results(self) -> list[RaceResult]:
         ...
 
     def zone_config(self, zone_config_id: str) -> ZoneConfig | None:

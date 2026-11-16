@@ -214,6 +214,51 @@ def build_parser() -> argparse.ArgumentParser:
         help="list what would be fetched without writing",
     )
 
+    race_result = subparsers.add_parser(
+        "race-result",
+        help="record official race metadata by hand",
+    )
+    race_result.add_argument("--database", type=Path)
+    race_result_sub = race_result.add_subparsers(
+        dest="race_result_action",
+        required=True,
+    )
+    race_result_add = race_result_sub.add_parser(
+        "add",
+        help="create or replace one activity's race result",
+    )
+    race_result_add.add_argument("activity")
+    race_result_add.add_argument("--distance", help="10k, 10000, 21.1km")
+    race_result_add.add_argument("--time", help="42:30 or 2:37:49")
+    race_result_add.add_argument("--name")
+    race_result_add.add_argument("--place", type=int)
+    race_result_add.add_argument("--place-gender", type=int)
+    race_result_add.add_argument("--place-ageclass", type=int)
+    race_result_add.add_argument("--participants", type=int)
+    race_result_add.add_argument("--participants-gender", type=int)
+    race_result_add.add_argument("--participants-ageclass", type=int)
+    race_result_add.add_argument(
+        "--officially-measured",
+        action="store_true",
+        help="the course distance is certified",
+    )
+    race_result_add.add_argument("--priority", help="A, B, C or unknown")
+    race_result_add.add_argument("--status", default="completed")
+    race_result_add.add_argument("--notes")
+    race_result_add.add_argument("--event-id")
+
+    race_result_list = race_result_sub.add_parser(
+        "list",
+        help="list stored race results",
+    )
+    race_result_list.add_argument("--limit", type=int)
+
+    race_result_remove = race_result_sub.add_parser(
+        "remove",
+        help="soft-exclude one activity's race result",
+    )
+    race_result_remove.add_argument("activity")
+
     review = subparsers.add_parser(
         "review",
         help="list and resolve import conflicts and quality review items",

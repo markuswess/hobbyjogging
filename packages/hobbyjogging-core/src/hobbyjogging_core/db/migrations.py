@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -289,6 +289,40 @@ CREATE TABLE athlete_thresholds (
 """
 
 
+MIGRATION_16_SQL = """
+-- Official race results, separate from the measured GPS values. One row per
+-- activity; the official distance and time are nullable so a partial result
+-- can be entered and completed later. A PB counts only completed results.
+CREATE TABLE race_results (
+    id INTEGER PRIMARY KEY,
+    activity_id TEXT NOT NULL UNIQUE
+        REFERENCES activities(id) ON DELETE CASCADE,
+    event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
+    name TEXT NOT NULL DEFAULT '',
+    official_distance_m REAL,
+    official_time_s REAL,
+    officially_measured INTEGER,
+    place_total INTEGER,
+    place_gender INTEGER,
+    place_ageclass INTEGER,
+    participants_total INTEGER,
+    participants_gender INTEGER,
+    participants_ageclass INTEGER,
+    priority_level TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'completed',
+    notes TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    excluded_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_race_results_activity ON race_results(activity_id);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -305,6 +339,7 @@ MIGRATIONS: dict[int, str] = {
     13: MIGRATION_13_SQL,
     14: MIGRATION_14_SQL,
     15: MIGRATION_15_SQL,
+    16: MIGRATION_16_SQL,
 }
 
 

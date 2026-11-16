@@ -1930,6 +1930,86 @@ class TrainingWriter:
         )
         return len(entries)
 
+    RACE_RESULT_FIELDS = (
+        "event_id",
+        "name",
+        "official_distance_m",
+        "official_time_s",
+        "officially_measured",
+        "place_total",
+        "place_gender",
+        "place_ageclass",
+        "participants_total",
+        "participants_gender",
+        "participants_ageclass",
+        "priority_level",
+        "status",
+        "notes",
+    )
+
+    def upsert_race_result(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        **fields: object,
+    ) -> bool:
+        """Insert or replace one activity's official race result.
+
+        A manual row is never overwritten by a source; a source row is
+        replaced by the same source. Returns ``True`` when a row was written.
+        """
+        unknown = set(fields) - set(self.RACE_RESULT_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown race-result fields: {sorted(unknown)}")
+
+        existing = self.connection.execute(
+            "SELECT source, excluded_at FROM race_results WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if existing is not None:
+            if existing["source"] == "manual" and source != "manual":
+                return False
+            if existing["excluded_at"] and source != "manual":
+                return False
+
+        values = {
+            key: value
+            for key, value in fields.items()
+            if value is not None
+        }
+
+        if not values:
+            return False
+
+        if existing is None:
+            columns = [
+                "activity_id", "source", "source_record_id", *values
+            ]
+            placeholders = ", ".join("?" for _ in columns)
+            self.connection.execute(
+                f"INSERT INTO race_results ({', '.join(columns)}) "
+                f"VALUES ({placeholders})",
+                (activity_id, source, source_record_id, *values.values()),
+            )
+            return True
+
+        assignments = ", ".join(f"{key} = ?" for key in values)
+        self.connection.execute(
+            f"UPDATE race_results SET {assignments}, "
+            "source = ?, source_record_id = ?, excluded_at = NULL, "
+            "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
+            (
+                *values.values(),
+                source,
+                source_record_id,
+                activity_id,
+            ),
+        )
+        return True
+
     WEATHER_FIELDS = (
         "temp_c",
         "feels_like_c",

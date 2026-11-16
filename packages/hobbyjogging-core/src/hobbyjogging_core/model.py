@@ -117,6 +117,29 @@ class Event:
 
 
 @dataclass
+class RaceResult:
+    """Official race metadata, kept apart from the measured GPS values."""
+
+    activity_id: str
+    date: date | None = None
+    name: str = ""
+    official_distance_m: float | None = None
+    official_time_s: float | None = None
+    officially_measured: bool | None = None
+    place_total: int | None = None
+    place_gender: int | None = None
+    place_ageclass: int | None = None
+    participants_total: int | None = None
+    participants_gender: int | None = None
+    participants_ageclass: int | None = None
+    priority_level: str = ""
+    status: str = "completed"
+    notes: str = ""
+    event_id: str | None = None
+    source: str = "manual"
+
+
+@dataclass
 class AthleteThreshold:
     """One dated snapshot of the athlete's threshold settings."""
 

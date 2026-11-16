@@ -9,6 +9,7 @@ from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
     AthleteThreshold,
+    RaceResult,
     Equipment,
     Event,
     EventZoneTime,
@@ -165,6 +166,49 @@ class TrainingRepository:
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 max_hr=row["max_hr"],
+            )
+            for row in rows
+        ]
+
+    def race_results(self) -> list[RaceResult]:
+        """Official race results, newest first, with the activity's date."""
+        rows = self.connection.execute(
+            """
+            SELECT r.activity_id, a.local_date, r.name, r.official_distance_m,
+                   r.official_time_s, r.officially_measured, r.place_total,
+                   r.place_gender, r.place_ageclass, r.participants_total,
+                   r.participants_gender, r.participants_ageclass,
+                   r.priority_level, r.status, r.notes, r.event_id, r.source
+            FROM race_results r
+            JOIN activities a ON a.id = r.activity_id
+            WHERE r.excluded_at IS NULL
+            ORDER BY a.local_date DESC, r.activity_id
+            """
+        ).fetchall()
+
+        return [
+            RaceResult(
+                activity_id=row["activity_id"],
+                date=date.fromisoformat(row["local_date"]),
+                name=row["name"] or "",
+                official_distance_m=row["official_distance_m"],
+                official_time_s=row["official_time_s"],
+                officially_measured=(
+                    None
+                    if row["officially_measured"] is None
+                    else bool(row["officially_measured"])
+                ),
+                place_total=row["place_total"],
+                place_gender=row["place_gender"],
+                place_ageclass=row["place_ageclass"],
+                participants_total=row["participants_total"],
+                participants_gender=row["participants_gender"],
+                participants_ageclass=row["participants_ageclass"],
+                priority_level=row["priority_level"] or "",
+                status=row["status"] or "completed",
+                notes=row["notes"] or "",
+                event_id=row["event_id"],
+                source=row["source"] or "",
             )
             for row in rows
         ]
