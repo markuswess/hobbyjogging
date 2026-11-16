@@ -217,9 +217,10 @@ export RUNALYZE_API_KEY=<your-personal-token>
 ```
 
 The header is `token: <key>` (not `Authorization: Bearer`, which is for the MCP
-server). Requests are paced client-side to the documented 240/minute.
-`RUNALYZE_TOKEN` is accepted as a fallback, and `RUNALYZE_API_BASE_URL`
-overrides the default `https://runalyze.com/api/v1`.
+server). The API budget is 240 requests per rate-limit window; the response
+headers carry the reset time, and the client stops with a clear message when
+the budget is exhausted. `RUNALYZE_TOKEN` is accepted as a fallback, and
+`RUNALYZE_API_BASE_URL` overrides the default `https://runalyze.com/api/v1`.
 
 ```bash
 uv run --env-file .env hobbyjogging-import runalyze inventory --dry-run
@@ -291,7 +292,10 @@ Runalyze enrich dry run: 9 activities
 
 Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
 `--output PATH`, and `--database PATH`. Enrichment is idempotent: a second run
-reports `activities tagged: 0` until the Runalyze note or tags change.
+reports `activities tagged: 0` until the Runalyze note or tags change. The
+240-request window means a full history needs several ranges; a mid-run 429
+stops cleanly, keeps the rows already processed, records the import run as
+`partial`, and the command can be re-run after the reset.
 
 ## Source precedence
 

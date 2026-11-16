@@ -71,6 +71,36 @@ class RunalyzeApi(Protocol):
         ...
 
 
+class RunalyzeRateLimitError(RuntimeError):
+    """Raised when the API answers 429; carries the reset information."""
+
+    def __init__(
+        self,
+        *,
+        retry_after_s: int | None = None,
+        reset_at: int | None = None,
+        limit: int | None = None,
+    ):
+        self.retry_after_s = retry_after_s
+        self.reset_at = reset_at
+        self.limit = limit
+
+        parts = ["Runalyze rate limit exhausted"]
+        if limit is not None:
+            parts.append(f"limit {limit}")
+        if retry_after_s is not None:
+            parts.append(f"retry after {retry_after_s} s")
+        if reset_at is not None:
+            parts.append(
+                "resets at "
+                + datetime.fromtimestamp(
+                    reset_at,
+                    tz=timezone.utc,
+                ).strftime("%Y-%m-%d %H:%MZ")
+            )
+        super().__init__("; ".join(parts))
+
+
 class RunalyzeClient:
     """Read-only Runalyze client with client-side rate limiting."""
 
@@ -117,6 +147,22 @@ class RunalyzeClient:
             timeout=self.timeout,
         )
         self._last_request = self._clock()
+
+        if response.status_code == 429:
+            raise RunalyzeRateLimitError(
+                retry_after_s=_header_int(
+                    response.headers,
+                    "Retry-After",
+                ),
+                reset_at=_header_int(
+                    response.headers,
+                    "X-RateLimit-Reset",
+                ),
+                limit=_header_int(
+                    response.headers,
+                    "X-RateLimit-Limit",
+                ),
+            )
 
         try:
             payload = response.json()
@@ -382,6 +428,24 @@ def _short(value: object, limit: int = 48) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 1] + "…"
+
+
+def _header_int(headers: object, name: str) -> int | None:
+    """Read an integer header, tolerating plain dicts and case differences."""
+    try:
+        items = headers.items()
+    except AttributeError:
+        return None
+
+    wanted = name.lower()
+    for key, value in items:
+        if str(key).lower() != wanted:
+            continue
+        try:
+            return int(float(str(value)))
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def _items(payload: object) -> list:

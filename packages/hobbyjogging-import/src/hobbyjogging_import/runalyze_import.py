@@ -26,7 +26,7 @@ from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS
 
 from .matching import ActivityMatcher, MatchCandidate
-from .runalyze import RunalyzeApi, RunalyzeClient
+from .runalyze import RunalyzeApi, RunalyzeClient, RunalyzeRateLimitError
 
 SOURCE = "runalyze"
 DISTANCE_TOLERANCE_RATIO = 0.05
@@ -51,6 +51,7 @@ class RunalyzeEnrichSummary:
     tags_written: int = 0
     unmatched_rows: list[dict] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    stopped_reason: str = ""
 
 
 @dataclass
@@ -122,13 +123,14 @@ class RunalyzeEnricher:
             if summary.run_id is not None:
                 self.writer.finish_import_run(
                     summary.run_id,
-                    "success",
+                    "partial" if summary.stopped_reason else "success",
                     records_seen=summary.activities_seen,
                     records_imported=summary.matched,
                     records_skipped=(
                         summary.unmatched
                         + summary.ambiguous
                     ),
+                    error=summary.stopped_reason or None,
                 )
             return summary
 
@@ -175,7 +177,13 @@ class RunalyzeEnricher:
                 )
                 continue
 
-            detail = self.client.get(f"activity/{external_id}")
+            try:
+                detail = self.client.get(f"activity/{external_id}")
+            except RunalyzeRateLimitError as exc:
+                summary.stopped_reason = str(exc)
+                summary.errors.append(str(exc))
+                break
+
             summary.detail_fetches += 1
 
             if not detail.ok or not isinstance(detail.payload, dict):
@@ -388,6 +396,9 @@ def format_enrich_summary(summary: RunalyzeEnrichSummary) -> str:
 
     for error in summary.errors:
         lines.append(f"  error: {error}")
+
+    if summary.stopped_reason:
+        lines.append(f"  stopped: {summary.stopped_reason}")
 
     if not summary.dry_run:
         lines.append(f"Import run: {summary.run_id}")

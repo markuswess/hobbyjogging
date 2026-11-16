@@ -8,6 +8,7 @@ from hobbyjogging_import.cli import build_parser, run_runalyze
 from hobbyjogging_import.runalyze import (
     MIN_REQUEST_INTERVAL_S,
     RunalyzeClient,
+    RunalyzeRateLimitError,
     RunalyzeResponse,
     _year_from_value,
     format_inventory,
@@ -69,9 +70,9 @@ class FakeApi:
 
 
 class FakeResponse:
-    def __init__(self, status, payload):
+    def __init__(self, status, payload, headers=None):
         self.status_code = status
-        self.headers = {}
+        self.headers = headers or {}
         self._payload = payload
         self.text = json.dumps(payload)
 
@@ -172,6 +173,33 @@ class RunalyzeClientTests(unittest.TestCase):
 
         self.assertEqual(2, len(items))
         self.assertEqual(2, len(session.calls))
+
+    def test_rate_limit_raises_with_the_reset(self):
+        session = FakeSession(
+            lambda url, params: FakeResponse(
+                429,
+                {"detail": "Too many requests"},
+                headers={
+                    "Retry-After": "60",
+                    "X-RateLimit-Reset": "1700000000",
+                    "X-RateLimit-Limit": "240",
+                },
+            )
+        )
+        client = RunalyzeClient(
+            api_key="secret",
+            base_url="https://example.test/api/v1",
+            session=session,
+            clock=lambda: 0.0,
+            sleep=lambda seconds: None,
+        )
+
+        with self.assertRaises(RunalyzeRateLimitError) as caught:
+            client.get("ping")
+
+        self.assertEqual(60, caught.exception.retry_after_s)
+        self.assertEqual(240, caught.exception.limit)
+        self.assertIn("rate limit", str(caught.exception))
 
     def test_requests_are_paced_to_the_rate_limit(self):
         session = FakeSession(

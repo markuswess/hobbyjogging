@@ -6,7 +6,10 @@ from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_import.cli import build_parser
-from hobbyjogging_import.runalyze import RunalyzeResponse
+from hobbyjogging_import.runalyze import (
+    RunalyzeRateLimitError,
+    RunalyzeResponse,
+)
 from hobbyjogging_import.runalyze_import import (
     RunalyzeEnricher,
     format_enrich_summary,
@@ -20,9 +23,10 @@ def _fixture(name):
 
 
 class FakeRunalyze:
-    def __init__(self, activities, details):
+    def __init__(self, activities, details, rate_limited=()):
         self.activities_payload = activities
         self.details = details
+        self.rate_limited = set(rate_limited)
         self.detail_calls = []
 
     def activities(self, start, end, *, per_page=100):
@@ -32,6 +36,11 @@ class FakeRunalyze:
         assert path.startswith("activity/"), path
         external_id = path.split("/", 1)[1]
         self.detail_calls.append(external_id)
+        if external_id in self.rate_limited:
+            raise RunalyzeRateLimitError(
+                retry_after_s=60,
+                limit=240,
+            )
         payload = self.details.get(external_id)
         if payload is None:
             return RunalyzeResponse(404, {}, {"detail": "missing"})
@@ -285,6 +294,34 @@ class RunalyzeEnrichTests(unittest.TestCase):
             "ambiguous_match",
             summary.unmatched_rows[0]["reason"],
         )
+
+    def test_rate_limit_mid_run_keeps_processed_rows(self):
+        client = FakeRunalyze(
+            _fixture("enrich_collection.json"),
+            {"201": self.details["201"]},
+            rate_limited={"202"},
+        )
+        enricher = RunalyzeEnricher(self.conn, client=client)
+
+        summary = enricher.enrich()
+
+        self.assertEqual(1, summary.matched)
+        self.assertEqual(1, summary.detail_fetches)
+        self.assertTrue(summary.stopped_reason)
+        self.assertEqual("Runalyze comment", self._row("a1")["description"])
+        self.assertEqual(
+            "Intervals note",
+            self._row("a2")["description"],
+        )
+        self.assertEqual(
+            {("Race", "runalyze", 0), ("Hilly", "runalyze", 0)},
+            self._tags("a1"),
+        )
+        self.assertEqual(set(), self._tags("a2"))
+        status = self.conn.execute(
+            "SELECT status FROM import_runs ORDER BY id DESC LIMIT 1"
+        ).fetchone()["status"]
+        self.assertEqual("partial", status)
 
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)

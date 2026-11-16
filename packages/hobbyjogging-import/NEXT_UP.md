@@ -9,8 +9,9 @@ on.
   Runalyze `note`, imports detail `tags` into `activity_tags` under
   `source='runalyze'` (manual tags survive), and reports unmatched/ambiguous
   rows (`--output` JSON). Matching is temporal plus distance; `name`, timing
-  and distance are never written. Validated on a DB copy: one week, 9/9
-  matched, 5 tags on 3 activities, second run a no-op.
+  and distance are never written. A mid-run 429 stops cleanly, keeps the rows
+  already processed, and marks the import run `partial`. Validated on a DB
+  copy: one week, 9/9 matched, 5 tags on 3 activities, second run a no-op.
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
   240/min pacing, numbered pages, local `--since`/`--to` filtering) and
   `runalyze inventory --dry-run`, which probes the known endpoints and reports

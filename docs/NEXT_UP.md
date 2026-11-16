@@ -339,8 +339,11 @@ one takes the next free number, so cross-references stay valid.
       `Authorization: Bearer` (that one is for the MCP server). The regenerated
       key has read scopes: `/api/v1/ping` answers and every data endpoint
       returns 200, except `sport`, `recurring-route`, `planned-race` and
-      `device-profile`, which still answer **403** with rate-limit headers
-      (240/min). None of the four blocks the import: the nested activity payload
+      `device-profile`, which still answer **403** with rate-limit headers.
+      The budget is **240 requests per window**; the reset is in
+      `X-RateLimit-Reset`/`Retry-After` (observed ~40 min after exhaustion),
+      so a full-history detail pass needs several windows. None of the four
+      blocks the import: the nested activity payload
       carries the route and the device name, sport can be mapped from the
       activity, and events are Intervals-authoritative. Docs are split per tier
       (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
@@ -396,7 +399,9 @@ one takes the next free number, so cross-references stay valid.
       `description` from `note`, imports detail `tags` into `activity_tags`
       under `source='runalyze'` (manual tags survive), and reports
       unmatched/ambiguous rows (`--output` JSON). Matching is temporal plus
-      distance; `name`, timing and distance are never written. Validated on a
+      distance; `name`, timing and distance are never written. A mid-run 429
+      stops cleanly, keeps the rows already processed, and marks the import
+      run `partial`. Validated on a
       DB copy over one week: 9/9 matched, 5 tags on 3 activities, second run a
       no-op. Phase 3 (gear) is next and still needs the cross-source identity
       decision below.
