@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 13 is parked on its page-coverage cost, 16 is a
-small dashboard-only pass, and every other open item needs a core or root
-change or the lab gate.
+Current focus: the demo data; 13 is parked on its page-coverage cost, 16 and
+17 are open reports-only items, and the rest need a core or root change or the
+lab gate.
 
 ## Done
 
@@ -214,9 +214,9 @@ _None._
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
 items 24 and 25. Of what is left, 13 is reports-only but parked because every
 link needs a page for the plotted activity, 16 is a small dashboard-only
-pass, 14 needs root items 4 and 30, 15's series needs the lab gate in root
-item 31, and 12 is recurring upkeep. The efficiency floor and the
-planned-event page landed here.
+pass and 17 is a reports-only report, 14 needs root items 4 and 30, 15's
+series needs the lab gate in root item 31, and 12 is recurring upkeep. The
+efficiency floor and the planned-event page landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -378,6 +378,32 @@ planned-event page landed here.
       keeps every row in the HTML; a short one renders a plain table; the
       activities tab still carries a planned row and an activity link; the
       demo dashboard test covers the collapsed lists.
+
+17. **A streaks report.** Running streaks are the simplest motivation number
+    the reports do not show: consecutive days with a run, plus the current
+    streak and the all-time bests with the distance and time they covered.
+    - **Definition**: a streak day is a calendar day with at least one
+      running activity (`RUN_TYPES`, review-excluded). A rest day ends a
+      streak and a ride does not extend one. A minimum (10 minutes or 1 km)
+      keeps a token jog from holding a streak: pick one and print the rule
+      next to the numbers.
+    - **Report**: `reports.sh streaks` in Markdown, on the same command path
+      as the other reports. A summary for the current streak (start date,
+      days, km, time, and whether today is already run or still pending),
+      then the longest streaks with start/end, days, km and time, cut by
+      `--limit` (default 10).
+    - **Staging**: the gate says dashboard last. Start with a pure function in
+      `analysis/streaks.py` and its tests plus the CLI report; a card on the
+      activities tab waits until the report has been useful for a week.
+    - **Edges**: all history (`activity_start`), ties ordered by days then
+      distance, and the current day handled explicitly so an evening run is
+      not counted as a missed day.
+    - **Tests**: a gap splits two streaks; a ride between run days does not
+      extend one; consecutive days across a month boundary; the current
+      streak with and without today's run; a tie; the `--limit` cut; a run
+      under the minimum does not count.
+    - **Demo**: the story's rest week, injury and boom-bust give several
+      streaks, so the demo coverage test can assert the report's shape.
 
 ## Tests and docs
 
