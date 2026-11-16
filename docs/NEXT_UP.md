@@ -474,8 +474,9 @@ one takes the next free number, so cross-references stay valid.
       entities in `src/CoreBundle/Entity/`. Design against it now — it already
       shaped the race-result and weather schemas (items 18 and 7).
     - **Payload findings (Nov 2026, token with read scopes)**: the activity
-      object has 81 fields (87 in the detail). `vo2max` is Runalyze's *effective*
-      estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
+      object has 81 fields (87 in the detail). `vo2max` is Runalyze's
+      *effective* estimate and sits beside `vo2max_by_time` and
+      `vo2max_with_elevation`, so
       `vo2max_runalyze` must name which one — take `vo2max` and note the others
       as alternatives, never a Garmin value. Tags are not in the activity
       payload but are filterable (`?tag=<id>` returns the activities), so one
@@ -998,9 +999,12 @@ one takes the next free number, so cross-references stay valid.
     holds. Coverage measured in the Intervals payloads we already keep:
     `average_cadence` 2,353 of 2,851 (83%), `average_stride` 2,334, but the
     running-dynamics family (`average_vertical_oscillation`,
-    `average_stance_time`, `average_vertical_ratio`) only 110 (4%). FIT
-    records carry them per second, but we store no streams; Intervals already
-    gives the per-activity averages. Runalyze adds `gap`/`x_gap`,
+    `average_stance_time`, `average_vertical_ratio`) only 110 (4%). The FIT
+    session message carries the same averages (`avg_vertical_oscillation`,
+    `avg_stance_time`, `avg_stance_time_balance`, `avg_vertical_ratio`,
+    `avg_step_length`, `avg_running_cadence`) and the records carry them per
+    second, so the 4 % is Intervals' coverage, not the ceiling — the importer
+    just does not extract them yet. Runalyze adds `gap`/`x_gap`,
     `aerobic_decoupling_pace/power`, `trimp`/`fit_trimp`/`fit_training_effect`,
     `required_critical_pace/power`, `climbs`, `hrv`, and zone distributions as
     percentages.
@@ -1008,10 +1012,12 @@ one takes the next free number, so cross-references stay valid.
       `gap_mps` — Runalyze's grade-adjusted pace beats a lap-based estimate.
     - **Lab**: decoupling and critical speed already have candidates; use
       Runalyze's values as a cross-check, not as stored metrics.
-    - **Out of scope**: vertical oscillation, stance time and ratio (4 %
-      coverage), impact loading, leg spring stiffness, TRIMP and training
-      effect (we keep Intervals' `training_load`), climbs as an entity, HRV
-      analysis, and zone distributions as percentages.
+    - **Out of scope for now**: vertical oscillation, stance time and ratio
+      (4 % in Intervals, more in FIT), impact loading, leg spring stiffness,
+      TRIMP and training effect (we keep Intervals' `training_load`), climbs as
+      an entity, HRV analysis, and zone distributions as percentages. If the
+      dynamics ever matter, extract the FIT session averages rather than
+      storing streams.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
