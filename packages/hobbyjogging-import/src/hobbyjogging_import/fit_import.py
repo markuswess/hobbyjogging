@@ -627,6 +627,9 @@ def _activity_values(session: FitSession) -> dict[str, object]:
         ),
         "moving_s": session.moving_s,
         "avg_hr": session.avg_hr,
+        "max_hr": session.max_hr,
+        "elevation_gain_m": session.ascent_m,
+        "elevation_loss_m": session.descent_m,
         "vo2max_garmin": session.vo2max_garmin,
     }
     values.update(

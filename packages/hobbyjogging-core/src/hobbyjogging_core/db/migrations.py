@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -210,6 +210,16 @@ CREATE INDEX idx_fit_scan_files_seen ON fit_scan_files(seen_at);
 """
 
 
+MIGRATION_12_SQL = """
+-- Per-activity elevation and maximum heart rate. Elevation is owner-based
+-- with a wide tolerance (the sources are estimates); max HR is owner-based
+-- with a 2 bpm tolerance (a bigger gap means a different sensor or effort).
+ALTER TABLE activities ADD COLUMN elevation_gain_m REAL;
+ALTER TABLE activities ADD COLUMN elevation_loss_m REAL;
+ALTER TABLE activities ADD COLUMN max_hr REAL;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -222,6 +232,7 @@ MIGRATIONS: dict[int, str] = {
     9: MIGRATION_9_SQL,
     10: MIGRATION_10_SQL,
     11: MIGRATION_11_SQL,
+    12: MIGRATION_12_SQL,
 }
 
 

@@ -27,6 +27,9 @@ ACTIVITY_COLUMNS = {
     "elapsed_s",
     "moving_s",
     "distance_m",
+    "elevation_gain_m",
+    "elevation_loss_m",
+    "max_hr",
     "avg_hr",
     "training_load",
     "rpe",
@@ -41,6 +44,9 @@ MANUAL_FIELDS = (
     "elapsed_s",
     "moving_s",
     "distance_m",
+    "elevation_gain_m",
+    "elevation_loss_m",
+    "max_hr",
     "avg_hr",
     "started_at_utc",
     "local_date",
@@ -61,6 +67,9 @@ CONFLICT_FIELDS = frozenset(
         "elapsed_s",
         "moving_s",
         "distance_m",
+        "elevation_gain_m",
+        "elevation_loss_m",
+        "max_hr",
         "avg_hr",
         "started_at_utc",
         "local_date",
@@ -87,6 +96,13 @@ NUMERIC_TOLERANCES = {
     # few bpm (smart recording, stopped time, rounding), so only a wider gap
     # is worth a human decision.
     "avg_hr": (0.01, 5.0),
+    # Elevation sums are estimates: the sources differ by a few percent on
+    # the same run, so only a wide gap is worth a decision.
+    "elevation_gain_m": (0.10, 20.0),
+    "elevation_loss_m": (0.10, 20.0),
+    # A max-HR gap beyond 2 bpm means a different sensor or a different
+    # effort, not rounding.
+    "max_hr": (0.01, 2.0),
 }
 DEFAULT_NUMERIC_TOLERANCE = (0.01, 0.5)
 START_TOLERANCE_S = 15.0

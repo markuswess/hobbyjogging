@@ -232,6 +232,15 @@ def rohdaten_values(
     if avg_hr is not None:
         values["avg_hr"] = avg_hr
 
+    max_hr = as_float(record.get("max. Hf"))
+    if max_hr is not None:
+        values["max_hr"] = max_hr
+
+    # The sheet records ascent only; a missing loss stays NULL rather than 0.
+    elevation_gain = as_float(record.get("m bergauf"))
+    if elevation_gain is not None:
+        values["elevation_gain_m"] = elevation_gain
+
     clock = as_clock(record.get("Startzeit"))
     if clock is not None:
         started_at, offset = local_start(day, clock, timezone_name)

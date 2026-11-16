@@ -58,6 +58,7 @@ class FitSession:
     avg_hr: float | None = None
     max_hr: float | None = None
     ascent_m: float | None = None
+    descent_m: float | None = None
     calories: float | None = None
     vo2max_garmin: float | None = None
     laps: list[FitLap] = field(default_factory=list)
@@ -206,6 +207,7 @@ def summarize_fit_messages(
                 avg_hr=_number(session.get("avg_heart_rate")),
                 max_hr=_number(session.get("max_heart_rate")),
                 ascent_m=_number(session.get("total_ascent")),
+                descent_m=_number(session.get("total_descent")),
                 calories=_number(session.get("total_calories")),
                 laps=[
                     _lap_from_message(lap, lap_index)
