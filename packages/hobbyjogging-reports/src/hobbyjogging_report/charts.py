@@ -1222,30 +1222,6 @@ def plot_subt(
             col=1,
         )
 
-        # Extremes are noisier than the weighted average, so they get thin
-        # dashed trends rather than a solid line of their own.
-        for field, dash in (
-            ("lowest_efficiency", "dot"),
-            ("highest_efficiency", "dash"),
-        ):
-            series = [getattr(point, field) for point in efficiency]
-
-            if len(series) < 2 or any(value is None for value in series):
-                continue
-
-            figure.add_trace(
-                go.Scatter(
-                    x=dates,
-                    y=_time_ewma(dates, series, window_days),
-                    mode="lines",
-                    line={"color": color, "width": 1.2, "dash": dash},
-                    opacity=0.45,
-                    showlegend=False,
-                ),
-                row=3,
-                col=1,
-            )
-
     if not plotted:
         raise ValueError("no data to plot")
 

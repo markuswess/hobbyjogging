@@ -89,7 +89,7 @@ class SubtChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
-    def test_efficiency_panel_shows_the_rep_range_and_extreme_trends(self):
+    def test_efficiency_panel_shows_the_rep_range(self):
         points = [
             SubtPoint(
                 D + timedelta(days=index),
@@ -105,10 +105,10 @@ class SubtChartTests(unittest.TestCase):
 
         html = plot_subt(points, "", as_html=True)
 
-        self.assertIn('"dash":"dot"', html)
-        self.assertIn('"dash":"dash"', html)
+        # Range sticks and the dot's hover, but no extra trend lines.
         self.assertIn("reps 1.80", html)
         self.assertIn("n=5", html)
+        self.assertNotIn('"dash"', html)
 
     def test_efficiency_axis_follows_the_bulk_not_one_extreme_rep(self):
         points = [

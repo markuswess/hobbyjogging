@@ -250,12 +250,12 @@ this list keeps the recent decisions only.
   the values and rep count in the hover. `SubtPoint` carries
   `lowest_efficiency`/`highest_efficiency` from `_subt_point()`, using the same
   usable reps as the weighted average (reps without HR or distance are
-  skipped; a single rep has no range). Dotted and dashed 42-day EWMAs track the
-  low and high series, thinner than the weighted average, and the efficiency
-  axis rounds to the bulk (top and bottom 5 % dropped) so a single 3.4
-  m/excess beat rep no longer stretches the panel past 3.2. Fastest/slowest rep
-  pace and max HR get no extreme trend lines: rep length and count confound
-  them.
+  skipped; a single rep has no range). The efficiency axis rounds to the bulk
+  (top and bottom 5 % dropped) so a single 3.4 m/excess beat rep no longer
+  stretches the panel past 3.2. Trends for the extremes were tried and removed
+  again: three lines per category overloaded the panel, so only the weighted
+  average keeps a line, and fastest/slowest rep pace and max HR never got one
+  because rep length and count confound them.
 
 ## Bugs
 
@@ -446,7 +446,7 @@ Covered now:
 - weather: `format_weather` variants, the point lookup, the hover and coverage
   note, per-year shares, the cached lookup, and the demo's weather lines;
 - subT efficiency ranges: per-rep low/high (varied reps, a single rep, a rep
-  without HR), the panel range and extreme trends, the hover values, and the
+  without HR), the sticks and hover, the absence of extra trend lines, and the
   axis ignoring one extreme rep.
 
 New work should add:
