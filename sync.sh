@@ -105,6 +105,8 @@ if (( generate_classification )); then
         run activity_zone_configs_current "${maintenance_args[@]}"
     uv run --env-file .env python -m hobbyjogging_maintenance \
         run training_periods_current "${maintenance_args[@]}"
+    uv run --env-file .env python -m hobbyjogging_maintenance \
+        run race_links_current "${maintenance_args[@]}"
 fi
 
 if (( generate_dashboard )); then

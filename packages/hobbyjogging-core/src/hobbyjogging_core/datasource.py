@@ -17,9 +17,11 @@ from .model import (
     TrainingPeriod,
     Equipment,
     Event,
+    EventActivityLink,
     Interval,
     Lap,
     ReviewItem,
+    Route,
     WellnessDay,
     ZoneConfig,
 )
@@ -61,6 +63,12 @@ class DataSource(Protocol):
         ...
 
     def equipment(self) -> list[Equipment]:
+        ...
+
+    def routes(self) -> list[Route]:
+        ...
+
+    def event_activity_links(self) -> list[EventActivityLink]:
         ...
 
     def review_items(

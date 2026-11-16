@@ -1092,6 +1092,186 @@ class TrainingWriter:
 
         return len(cleaned)
 
+    def upsert_route(
+        self,
+        route_id: str,
+        *,
+        name: str,
+        source: str,
+        external_ref: str | None = None,
+        distance_m: float | None = None,
+        notes: str = "",
+    ) -> bool:
+        """Write one route, leaving a manual route untouched.
+
+        A reimport from the same source refreshes the name and fills a missing
+        distance or external reference; it never clears a value. Returns
+        ``True`` when a row was written.
+        """
+        if not route_id:
+            raise ValueError("route id must not be empty")
+        if not name:
+            raise ValueError("route name must not be empty")
+
+        existing = self.connection.execute(
+            "SELECT source FROM routes WHERE id = ?",
+            (route_id,),
+        ).fetchone()
+
+        if existing is None:
+            self.connection.execute(
+                """
+                INSERT INTO routes (
+                    id, name, external_ref, distance_m, source, notes
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (route_id, name, external_ref, distance_m, source, notes),
+            )
+            return True
+
+        if existing["source"] == "manual" and source != "manual":
+            return False
+
+        self.connection.execute(
+            """
+            UPDATE routes SET
+                name = COALESCE(NULLIF(?, ''), name),
+                external_ref = COALESCE(?, external_ref),
+                distance_m = COALESCE(?, distance_m),
+                notes = COALESCE(NULLIF(?, ''), notes),
+                excluded_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (name, external_ref, distance_m, notes, route_id),
+        )
+        return True
+
+    def replace_activity_routes(
+        self,
+        activity_id: str,
+        route_ids: list[str],
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        is_manual: bool = False,
+    ) -> int:
+        """Replace one source's routes for an activity.
+
+        A reimport replaces only its own non-manual links; manual links are
+        never touched. Returns the number of links written.
+        """
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        cleaned = list(dict.fromkeys(route for route in route_ids if route))
+        if cleaned:
+            placeholders = ", ".join("?" for _ in cleaned)
+            known = {
+                item["id"]
+                for item in self.connection.execute(
+                    f"SELECT id FROM routes WHERE id IN ({placeholders})",
+                    cleaned,
+                )
+            }
+            missing = [route for route in cleaned if route not in known]
+            if missing:
+                raise ValueError(f"unknown routes: {missing}")
+
+        self.connection.execute(
+            """
+            DELETE FROM activity_routes
+            WHERE activity_id = ? AND source = ? AND is_manual = ?
+            """,
+            (activity_id, source, 1 if is_manual else 0),
+        )
+
+        if cleaned:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_routes (
+                    activity_id, route_id, source, source_record_id, is_manual
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(activity_id, route_id, source) DO UPDATE SET
+                    source_record_id = excluded.source_record_id,
+                    is_manual = excluded.is_manual
+                """,
+                [
+                    (
+                        activity_id,
+                        route,
+                        source,
+                        source_record_id,
+                        1 if is_manual else 0,
+                    )
+                    for route in cleaned
+                ],
+            )
+
+        return len(cleaned)
+
+    def replace_event_activity_links(
+        self,
+        event_id: str,
+        activity_ids: list[str],
+        *,
+        match_method: str = "auto",
+        confidence: float | None = None,
+    ) -> int:
+        """Replace an event's automatic activity links, keeping manual ones."""
+        event = self.connection.execute(
+            "SELECT 1 FROM events WHERE id = ?",
+            (event_id,),
+        ).fetchone()
+        if event is None:
+            raise ValueError(f"unknown event: {event_id}")
+
+        cleaned = list(dict.fromkeys(item for item in activity_ids if item))
+        if cleaned:
+            placeholders = ", ".join("?" for _ in cleaned)
+            rows = self.connection.execute(
+                f"SELECT id FROM activities WHERE id IN ({placeholders}) "
+                "AND excluded_at IS NULL",
+                cleaned,
+            ).fetchall()
+            known = {row["id"] for row in rows}
+            missing = [item for item in cleaned if item not in known]
+            if missing:
+                raise ValueError(f"unknown or excluded activities: {missing}")
+
+        self.connection.execute(
+            "DELETE FROM event_activity_links "
+            "WHERE event_id = ? AND is_manual = 0",
+            (event_id,),
+        )
+
+        if cleaned:
+            self.connection.executemany(
+                """
+                INSERT INTO event_activity_links (
+                    event_id, activity_id, match_method, confidence, is_manual
+                ) VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(event_id, activity_id) DO UPDATE SET
+                    match_method = excluded.match_method,
+                    confidence = excluded.confidence,
+                    is_manual = 0,
+                    linked_at = CURRENT_TIMESTAMP
+                """,
+                [
+                    (event_id, item, match_method, confidence)
+                    for item in cleaned
+                ],
+            )
+
+        return len(cleaned)
+
     def upsert_equipment(
         self,
         equipment_id: str,

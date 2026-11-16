@@ -14,10 +14,12 @@ from hobbyjogging_core.model import (
     TrainingPeriod,
     Equipment,
     Event,
+    EventActivityLink,
     EventZoneTime,
     Interval,
     Lap,
     ReviewItem,
+    Route,
     WellnessDay,
     ZoneConfig,
 )
@@ -55,6 +57,7 @@ class TrainingRepository:
         activity_ids = [row["id"] for row in rows]
         zone_times = self._zone_times(activity_ids)
         equipment = self._equipment_by_activity(activity_ids)
+        routes = self._routes_by_activity(activity_ids)
         tags = self._tags_by_activity(activity_ids)
         methods, targets = self._activity_workout_sets(activity_ids)
         flagged = self._open_review_activity_ids(activity_ids)
@@ -84,6 +87,7 @@ class TrainingRepository:
                 pace_zone_times=zone_times[row["id"]]["pace"],
                 hr_zone_times=zone_times[row["id"]]["hr"],
                 equipment=equipment[row["id"]],
+                routes=routes[row["id"]],
                 device_id=row["device_id"] or "",
                 needs_review=row["id"] in flagged,
             )
@@ -400,6 +404,38 @@ class TrainingRepository:
 
         return [self._equipment_from_row(row) for row in rows]
 
+    def routes(self) -> list[Route]:
+        rows = self.connection.execute(
+            """
+            SELECT id, name, external_ref, distance_m, source, notes
+            FROM routes
+            WHERE excluded_at IS NULL
+            ORDER BY name, id
+            """
+        ).fetchall()
+
+        return [self._route_from_row(row) for row in rows]
+
+    def event_activity_links(self) -> list[EventActivityLink]:
+        rows = self.connection.execute(
+            """
+            SELECT event_id, activity_id, match_method, confidence, is_manual
+            FROM event_activity_links
+            ORDER BY event_id, activity_id
+            """
+        ).fetchall()
+
+        return [
+            EventActivityLink(
+                event_id=row["event_id"],
+                activity_id=row["activity_id"],
+                match_method=row["match_method"] or "",
+                confidence=row["confidence"],
+                is_manual=bool(row["is_manual"]),
+            )
+            for row in rows
+        ]
+
     def review_items(
         self,
         *,
@@ -656,6 +692,42 @@ class TrainingRepository:
             result[row["activity_id"]].append(self._equipment_from_row(row))
 
         return result
+
+    def _routes_by_activity(
+        self,
+        activity_ids: list[str],
+    ) -> dict[str, list[Route]]:
+        placeholders = ", ".join("?" for _ in activity_ids)
+        rows = self.connection.execute(
+            f"""
+            SELECT
+                ar.activity_id,
+                r.id, r.name, r.external_ref, r.distance_m, r.source, r.notes
+            FROM activity_routes ar
+            JOIN routes r ON r.id = ar.route_id
+            WHERE ar.activity_id IN ({placeholders})
+              AND r.excluded_at IS NULL
+            ORDER BY ar.activity_id, r.name, r.id
+            """,
+            activity_ids,
+        ).fetchall()
+
+        result: dict[str, list[Route]] = defaultdict(list)
+        for row in rows:
+            result[row["activity_id"]].append(self._route_from_row(row))
+
+        return result
+
+    @staticmethod
+    def _route_from_row(row: sqlite3.Row) -> Route:
+        return Route(
+            id=row["id"],
+            name=row["name"],
+            external_ref=row["external_ref"] or "",
+            distance_m=row["distance_m"],
+            source=row["source"] or "",
+            notes=row["notes"] or "",
+        )
 
     @staticmethod
     def _equipment_from_row(row: sqlite3.Row) -> Equipment:

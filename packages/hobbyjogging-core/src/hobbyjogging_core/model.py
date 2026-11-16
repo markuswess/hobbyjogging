@@ -26,6 +26,28 @@ class Equipment:
 
 
 @dataclass
+class Route:
+    """A named loop or course, independent of the activity that ran it."""
+
+    id: str
+    name: str = ""
+    external_ref: str = ""
+    distance_m: float | None = None
+    source: str = ""
+    notes: str = ""
+
+
+@dataclass
+class ActivityRoute:
+    """Link between an activity and a route it covered."""
+
+    activity_id: str
+    route_id: str
+    source: str = "manual"
+    is_manual: bool = False
+
+
+@dataclass
 class ActivityEquipment:
     """Link between an activity and a piece of equipment."""
 
@@ -61,6 +83,7 @@ class Activity:
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
     equipment: list[Equipment] = field(default_factory=list)
+    routes: list[Route] = field(default_factory=list)
     device_id: str = ""
     needs_review: bool = False  # open review items exist for this activity
 
@@ -123,6 +146,17 @@ class Event:
     def quality(self) -> bool | None:
         """Whether the planned session is quality, non-quality, or unknown."""
         return is_quality(self.workout_methods, self.workout_targets)
+
+
+@dataclass
+class EventActivityLink:
+    """A planned event and the activity that ran it."""
+
+    event_id: str
+    activity_id: str
+    match_method: str = "auto"
+    confidence: float | None = None
+    is_manual: bool = False
 
 
 @dataclass

@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 21
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -386,6 +386,61 @@ ALTER TABLE wellness_days ADD COLUMN atl REAL;
 """
 
 
+MIGRATION_20_SQL = """
+-- Routes: a named loop or course, kept apart from the activity that ran it.
+-- The sheet's Streckennummer is the stable key; a name-only row gets a
+-- name-scoped key. Runalyze's recurring_route id is a different identity, so
+-- the two never merge automatically.
+CREATE TABLE routes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    external_ref TEXT,
+    distance_m REAL,
+    source TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    excluded_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_routes_source_ref
+ON routes(source, external_ref)
+WHERE external_ref IS NOT NULL AND excluded_at IS NULL;
+
+-- A run can cover several routes, so the link is a table, not a column.
+CREATE TABLE activity_routes (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    route_id TEXT NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, route_id, source)
+);
+
+CREATE INDEX idx_activity_routes_route ON activity_routes(route_id);
+"""
+
+
+MIGRATION_21_SQL = """
+-- A planned race and the activity that ran it. A race day can also have
+-- warmup and cooldown activities, so this is a link table: one event may
+-- point at several activities and one activity at several events.
+CREATE TABLE event_activity_links (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    match_method TEXT NOT NULL DEFAULT 'auto',
+    confidence REAL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    linked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, activity_id)
+);
+
+CREATE INDEX idx_event_activity_links_activity
+ON event_activity_links(activity_id);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -406,6 +461,8 @@ MIGRATIONS: dict[int, str] = {
     17: MIGRATION_17_SQL,
     18: MIGRATION_18_SQL,
     19: MIGRATION_19_SQL,
+    20: MIGRATION_20_SQL,
+    21: MIGRATION_21_SQL,
 }
 
 

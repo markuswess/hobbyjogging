@@ -31,6 +31,7 @@ from .quality import (
     record_quality_findings,
     resolve_agreed_field_conflicts,
 )
+from .routes import numbers_by_name, route_identity
 from .sheet import (
     ALTERNATIVTRAINING,
     DEFAULT_TIMEZONE,
@@ -78,6 +79,7 @@ class SheetImportSummary:
     equipment_linked: int = 0
     equipment_missing: int = 0
     tags_written: int = 0
+    routes_linked: int = 0
     review_recorded: int = 0
     ambiguous_matches: list[tuple[str, list[MatchCandidate]]] = field(
         default_factory=list
@@ -288,6 +290,10 @@ class SheetImporter:
             )
 
         occurrences: dict[str, int] = {}
+        known_route_numbers = numbers_by_name(
+            (record.get("Strecke"), record.get("Streckennummer"))
+            for _, record, _ in candidates
+        )
         keys = [
             self._external_key(record, day)
             for _, record, day in candidates
@@ -421,6 +427,24 @@ class SheetImporter:
                 match_method=match_method,
                 confidence=confidence,
             )
+            route = route_identity(
+                record.get("Strecke"),
+                record.get("Streckennummer"),
+                known_route_numbers,
+            )
+            if route is not None:
+                self.writer.upsert_route(
+                    route.id,
+                    name=route.name,
+                    external_ref=route.external_ref,
+                    source=SOURCE,
+                )
+                summary.routes_linked += self.writer.replace_activity_routes(
+                    activity_id,
+                    [route.id],
+                    source=SOURCE,
+                    source_record_id=source_record_id,
+                )
             if tags:
                 summary.tags_written += self.writer.replace_activity_tags(
                     activity_id,
