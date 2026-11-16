@@ -127,6 +127,14 @@ on.
 
 ## Next
 
+- **Runalyze phase 1: read-only client and inventory.** Build `runalyze.py`
+  (the `token: <key>` header, pagination, 240/min awareness, `--since`/`--to`)
+  and `runalyze inventory --dry-run`, which reports what the API exposes per
+  endpoint, field and year and writes nothing. The read-scoped token works for
+  the data endpoints; `sport`, `recurring-route`, `planned-race` and
+  `device-profile` still 403, but the nested activity payload covers routes and
+  the device name. Tests use recorded JSON fixtures, never the live API. See
+  root item 12 for the payload findings and the later phases.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with
@@ -204,37 +212,10 @@ on.
   package so the canonical vocabulary is not shaped by one spreadsheet.
   Maintenance already depends on import, so its backfills keep working.
 
-**Runalyze enrichment** is still waiting on the API details (below).
-
 ## Waiting on
 
-- **Runalyze enrichment** (blocked on the token's read scopes, not on design).
-  The REST API takes a **`token: <key>`** header — `Authorization: Bearer` is
-  for the MCP server and returns 401. Checked live: `/api/v1/ping` answers
-  `["pong"]`, every data endpoint returns 403 with rate-limit headers
-  (240/min), so the key is valid but has no read scope; regenerate it at
-  `/settings/personal-api`. The resource list comes from `/api`:
-  `activity`, `raceresult` (alpha), `equipment`, `device-profile`,
-  `recurring-route`, `sport`, `tag`, `planned-race`, and the health metrics
-  `sleep`, `hrv`, `heartRateRest`, `heartRateMax`, `bodyComposition`,
-  `disease`. Payload: comments into `description`, tags in `activity_tags`,
-  gear via `equipment`, `vo2max_runalyze`, weight and illness ranges into
-  `wellness_days` and `training_periods`.
-  - **Gear / equipment**: gear records become
-    `source_records(record_type='gear')` plus `equipment` rows, and activities
-    link through `activity_equipment` with `source='runalyze'`. Cross-source
-    identity reuses `equipment_source_links`: link a gear record to an
-    existing item when its activities consistently carry the same sheet shoe
-    (co-occurrence), else on a unique normalized brand+model match, else open
-    an `ambiguous_equipment` review item — never guess (the two "Lunge C-Dur"
-    pairs differ only by colour and date). 2022+ gear has no sheet
-    counterpart and simply creates new rows.
-  - **Race results**: Runalyze `race_result` supplies placing, category,
-    participants, conditions and often the proper race name (today's rows are
-    generically named "10k Race"). Store it on the race link/event; the
-    activity already holds time and distance.
-- The dashboard is reports-package work.
-- The planned-event zone display is reports-package work.
+Nothing. Runalyze access is unblocked for the data endpoints; phase 1 is in
+Next.
 
 ## Notes / risks
 

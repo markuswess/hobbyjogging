@@ -335,20 +335,20 @@ one takes the next free number, so cross-references stay valid.
     ends in 2021, so 2022–2026 has no gear at all), comments, tags, race
     results and `vo2max_runalyze`. It is not one import but a milestone with
     its own dependencies.
-    - **Access, checked against the live API (Nov 2026)**: the header is
-      **`token: <key>`**, not `Authorization: Bearer` (that one is for the MCP
-      server). With a premium key, `/api/v1/ping` answers `["pong"]` but every
-      data endpoint returns **403 Access Denied** with rate-limit headers
-      (240/min) — the key is valid and lacks the read scopes. Fix is on the
-      account side: regenerate the token at `/settings/personal-api` with read
-      scopes and check its expiry. Docs are split per tier
+    - **Access (Nov 2026)**: the header is **`token: <key>`**, not
+      `Authorization: Bearer` (that one is for the MCP server). The regenerated
+      key has read scopes: `/api/v1/ping` answers and every data endpoint
+      returns 200, except `sport`, `recurring-route`, `planned-race` and
+      `device-profile`, which still answer **403** with rate-limit headers
+      (240/min). None of the four blocks phase 1: the nested activity payload
+      carries the route and the device name, sport can be mapped from the
+      activity, and events are Intervals-authoritative. Docs are split per tier
       (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
       document, so the resource list comes from `/api` instead.
-    - **Fallback that may unblock it now**: `runalyze.com/my/exports` offers a
+    - **Fallback if the API regresses**: `runalyze.com/my/exports` offers a
       CSV/JSON export from the web UI, the same pattern as the Strava bulk
-      export. Check whether it carries comments, tags, gear and race results;
-      if it does, the milestone starts there and the API is only for
-      incremental sync.
+      export. It is the backstop for a bulk history load, not the starting
+      point now that the read-scoped token works.
     - **Schema is public, only read access is gated**: the authoritative spec is
       **`/api/docs.jsonopenapi`** (749 KB, 289 schemas) — the `/doc/api/*` pages
       return an empty document even with a token. The open-source repository
@@ -356,35 +356,40 @@ one takes the next free number, so cross-references stay valid.
       dataset keys in `inc/core/Dataset/Keys/` and the entities in
       `src/CoreBundle/Entity/`. Design against the spec — it already shaped the
       race-result, weather and threshold items (18, 7, 8).
-    - **Payload findings (Nov 2026, token with read scopes)**: the activity
-      object has 81 fields (87 in the detail). `vo2max` is Runalyze's
-      *effective* estimate and sits beside `vo2max_by_time` and
-      `vo2max_with_elevation`, so
+    - **Payload findings (Nov 2026, read-scoped token)**: the activity object
+      has 81 fields (87 in the detail). `vo2max` is Runalyze's *effective*
+      estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
       `vo2max_runalyze` must name which one — take `vo2max` and note the others
       as alternatives, never a Garmin value. Tags are not in the activity
       payload but are filterable (`?tag=<id>` returns the activities), so one
       query per tag definition imports them. `sport`, `recurring-route`,
-      `planned-race` and `device-profile` answer 403 with this token; the
-      nested activity data covers routes and the device name anyway.
+      `planned-race` and `device-profile` answer 403; the nested activity data
+      covers routes and the device name anyway.
+    - **Equipment finding**: gear records carry a name and a category but **no
+      brand or model**, so cross-source identity rests on the name and on
+      co-occurrence with the sheet shoes, not on a brand+model key.
     - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
       same personal token — relevant to the coaching workflow (item 25), not to
       bulk import.
-    - **Dependencies**: official race results (item 18) and the equipment
-      identity work below. Comments need no decision — they fill
+    - **Dependencies**: the official race-result table and race links are in
+      (schema v16/v21), and the gear identity below is the only design piece
+      still open. Comments need no decision — they fill
       `activities.description` only when it is blank (item 1).
-    - **Phases**: (1) export/API client with a dry run that reports what is
-      available per field and per year; (2) comments and tags into the chosen
-      text home; (3) gear with cross-source identity; (4) race results;
+    - **Phases**: (1) **next, import package** — a read-only client and
+      `runalyze inventory --dry-run` that reports what is available per field
+      and per year, writing nothing; (2) comments and tags into the chosen text
+      home; (3) gear with cross-source identity; (4) race results;
       (5) `vo2max_runalyze` as the second owner; (6) the reports.
     - **Gear identity**: gear records become
       `source_records(record_type='gear')` plus `equipment` rows, linked
       through `activity_equipment` with `source='runalyze'`. Cross-source
       identity reuses `equipment_source_links`: link a gear record to an
       existing item when its activities consistently carry the same sheet shoe
-      (co-occurrence), else on a unique normalized brand+model match, else open
-      an `ambiguous_equipment` review item — never guess (the two
-      "Lunge C-Dur" pairs differ only by colour and date). 2022+ gear has no
-      sheet counterpart and simply creates new rows.
+      (co-occurrence), else on a unique normalized name, else open an
+      `ambiguous_equipment` review item — never guess (the two "Lunge C-Dur"
+      pairs differ only by colour and date). Brand and model are not in the
+      payload, so they cannot be the match key. 2022+ gear has no sheet
+      counterpart and simply creates new rows.
     - **Import rules**: Runalyze never writes `name` — its title is a Garmin
       auto-title, and an unmatched row that creates the activity would own the
       name and block the Intervals session name the classifier reads. Its

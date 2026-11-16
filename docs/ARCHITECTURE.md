@@ -29,8 +29,8 @@ data trustworthy. **Review and editing**: triage, manual overrides that survive
 reimports, durable exclusion, and activity linking. **Reports and dashboard**:
 Markdown reports, charts and a static dashboard over the same analysis layer.
 **More sources**: the FIT archive, Intervals.icu and the Garmin Personal API are
-in, the historical spreadsheet is imported, and Runalyze enrichment waits on API
-details. **Race tracking**: planned races linked to the completed activities,
+in, the historical spreadsheet is imported, and Runalyze enrichment is the next
+source milestone. **Race tracking**: planned races linked to the completed activities,
 official results, and race reports. **Later**: platform independence (owning
 edits, comments, planning and subjective wellness locally), a small front end
 over the database, and a deterministic LLM coaching bundle. The first three are
@@ -165,8 +165,8 @@ Source ingestion and the review queue.
   the planned-event horizon.
 - `links.py` — Intervals/Garmin activity URL resolution for triage and
   `review show`.
-- `runalyze.py` — planned Runalyze enrichment import (comments, tags, gear,
-  VO2max); never writes timing or distance.
+- `runalyze.py` — Runalyze enrichment import (comments, tags, gear, race
+  results, VO2max, wellness); never writes timing or distance.
 - `matching.py` — temporal activity matching across sources.
 - `quality.py` — canonical quality rules, field-conflict recording, review
   fingerprints, quality refresh after edits.
@@ -519,15 +519,18 @@ comments, tags, gear, and the Runalyze VO2max estimate:
   Garmin activity id) and stored as `source_records` with
   `external_id = runalyze:<id>`; unmatched rows create a canonical activity
   (decision: keep the history complete).
-- Comments merge into `activities.description` (empty → other; contains →
-  longer; otherwise join in a stable order), idempotently and without taking
-  ownership of the field.
+- Comments fill `activities.description` only when it is blank, idempotently
+  and without taking ownership of the field.
 - Tags land in `activity_tags`; gear is upserted into `equipment` and linked via
-  `activity_equipment` (first shoe/bike item primary, rest secondary), with
-  canonical types derived from Runalyze's equipment-categories endpoint.
+  `activity_equipment` (first shoe/bike item primary, rest secondary). The
+  equipment payload has a name and category but no brand/model, so identity
+  uses the name and co-occurrence with the sheet shoes.
 - `activities.vo2max_runalyze` stores the effective estimate; `0` /
-  `use_vo2max=false` means missing. Runalyze may also fill an empty
-  `vo2max_garmin`; the raw payload keeps the variants.
+  `use_vo2max=false` means missing. Runalyze never writes `vo2max_garmin`; the
+  raw payload keeps the variants.
+- Race results land in `race_results` and the linked event in
+  `event_activity_links`; weight and illness ranges fill `wellness_days` and
+  `training_periods`. Phase 1 is a read-only inventory command.
 
 ## Review workflow
 
@@ -636,7 +639,7 @@ dashboard: the view models make it cheap to add later.
   comparison, and the static dashboard; report code is split per report.
 - The review queue is currently empty; reports still hide activities with
   open items by default (`--include-review` shows them).
-- Remaining: Runalyze enrichment (API details) and the homelab cutover.
+- Remaining: Runalyze enrichment (phase 1 next) and the homelab cutover.
 
 ## Deployment
 

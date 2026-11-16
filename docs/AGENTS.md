@@ -78,7 +78,8 @@ cleanup pass is part of the todo list, not a rewrite project.
 - `packages/hobbyjogging-core` — canonical model, schema/migrations, sport
   vocabulary, `TrainingWriter`, `TrainingRepository`.
 - `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
-  importers, review queue and triage. Runalyze enrichment is planned.
+  importers, review queue and triage. Runalyze enrichment is next (phase 1:
+  a read-only inventory command).
 - `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
   backfills/recomputes.
 - `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
