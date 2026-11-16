@@ -174,12 +174,12 @@ on.
 - **Wellness extras and routes.** Map the selected wellness keys into the new
   columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
   migrations land.
-- **Device capture.** Parse FIT `file_id` (manufacturer, product, serial) into
-  the core device registry and link the activity as `recorder`; normalize
+- **Device capture.** Parse FIT `file.manufacturer/product/serial_number` into
+  the core `devices` registry and set `activities.device_id`; normalize
   Intervals `device_name` (`GARMIN ENDURO` / `Garmin Enduro`, `EDGE_540` /
-  `Edge 540`) to the same product and link with `source='intervals'`, letting
-  the FIT link win. Depends on the core `devices` / `activity_devices`
-  migration.
+  `Edge 540`) to the same product and fill the FK only when FIT left it empty.
+  Garmin Connect web uploads are not devices. Depends on the core `devices`
+  table and the `activities.device_id` column.
 
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),

@@ -65,14 +65,14 @@ This file records what the package is still waiting on.
   dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
-- **`activity_devices_v1`** (backfill). Once the core device tables and the
-  importer writes land, create devices and activity links from the stored
-  payloads: FIT `file.manufacturer/product/serial_number` as `recorder`,
-  Intervals `device_name` normalized to the same product. Idempotent;
-  `--dry-run`; never touches manual links.
+- **`activity_device_v1`** (backfill). Once the core `devices` table and
+  `activities.device_id` land, create the devices from the FIT
+  `file.manufacturer/product/serial_number` and fill the FK; Intervals
+  `device_name` fills only what FIT left empty, and a manual FK survives.
+  Idempotent, `--dry-run`.
   - Tests: device creation from FIT and Intervals, FIT-over-Intervals
-    precedence, a rerun is a no-op, dry-run writes nothing, manual links
-    survive.
+    precedence, a rerun is a no-op, dry-run writes nothing, a manual FK
+    survives.
 
 Nothing else queued. New data work registers a task here instead of a script.
 
