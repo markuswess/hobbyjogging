@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Official race results are stored (schema v16).** `race_results` keeps the
+  official distance and time apart from the measured GPS values, with
+  `officially_measured`, places and participants by total/gender/age class,
+  `priority_level`, `status` and notes; a manual row is never overwritten by an
+  import. `TrainingWriter.upsert_race_result`, `DataSource.race_results()` and
+  the `race-result add|list|remove` CLI are in place, so a result can be
+  entered by hand until Runalyze supplies it. The reports still have to prefer
+  the official pair over the measured one (their list).
 - **Athlete thresholds and zone configs are stored (schema v14/v15).**
   `athlete_thresholds` holds dated snapshots of `max_hr`, `lthr` and
   `threshold_pace_mps` — **per sport**, because Intervals stamps the settings
@@ -521,46 +529,6 @@ one takes the next free number, so cross-references stay valid.
    runner) asserting that derived rows have a known origin, manual rows survive
    recomputes, and a recompute reproduces the same sets. No schema change; a
    `computed_by` column only if a queryable need appears.
-
-18. **Official race results** (core + import + reports). Race results, PBs,
-   and the Riegel fit currently use GPS distance/time because there is no
-   official race metadata. `events.distance_m` is a planned/announced
-   distance, not a result, and `activities.distance_m` is the measured
-   GPS value — neither should be overwritten.
-   - **Future schema**: `race_results(id, activity_id, event_id, name,
-     official_distance_m, official_time_s, officially_measured,
-     place_total, place_gender, place_ageclass,
-     participants_total, participants_gender, participants_ageclass,
-     notes, source, source_record_id, excluded_at, created_at, updated_at)`,
-     with `UNIQUE(activity_id)`; the measured columns are nullable. Race results
-     get their own record so the official and measured values stay separate.
-     The extra columns come from Runalyze's `Raceresult` entity
-     (`official_distance`, `official_time`, `officially_measured`, `name`,
-     `place_*`, `participants_*`), so the schema does not need a second
-     migration once that import lands. The API adds `priority_level` (A/B/C/
-     unknown) and `status` (completed, plus DNS/DNF): store both, and let a PB
-     count only `completed` results — a DNS with a time would otherwise win a
-     bucket.
-   - **Core**: model + `DataSource.race_results()` +
-     `TrainingWriter.upsert_race_result` (replace or insert; provenance and
-     exclusion rules follow the usual canonical pattern).
-   - **Import/manual entry**: a small CLI (`race-result add`/`edit`) or a
-     triage action writes the row; the fields are optional so a partial result
-     can be entered now and completed later.
-   - **Reports**: PBs, the Riegel fit, and distance buckets use
-     `official_distance_m` + `official_time_s` when both exist and fall back to
-     the activity's measured values otherwise. This is the fix for the
-     bucket-PB bug (a 4.2 km race currently wins the 5k PB); until it lands, the
-     reports bug asks for a tight distance tolerance or a labelled adjustment.
-     The race report shows both the official and GPS values so a mismatch is
-     visible. The computed pace uses one consistent pair, never a mix.
-   - **Relationship to race links**: this does not require
-     `event_activity_links` (item 4); the row is keyed by activity. A later link
-     can enrich it with the event's planned distance/zone metadata.
-   - **Tests**: writer idempotency, `race_results()` returns the stored row,
-     PB/bucket/Riegel prefer official values, the GPS fallback is unchanged,
-     and the race report shows both values.
-   - **Docs**: the reports README's race section.
 
 20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
     priority). The payload carries `decoupling`, `efficiency_factor`,

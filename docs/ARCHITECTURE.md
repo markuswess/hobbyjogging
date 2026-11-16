@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 15.
+SQLite, forward-only migrations. Schema version 16.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,11 @@ SQLite, forward-only migrations. Schema version 15.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `race_results` (v16) — official race metadata, one row per activity:
+  official distance and time, `officially_measured`, places and participants
+  by total/gender/age class, `priority_level`, `status` (a PB counts only
+  `completed`), notes and source. Kept apart from the measured GPS values, and
+  a manual row is never overwritten by an import.
 - `athlete_thresholds` (v14/v15) — dated snapshots of the athlete's
   threshold settings, **per sport**: `max_hr`, `lthr`, `threshold_pace_mps`.
   Intervals stamps them on every activity; a missing value carries forward and

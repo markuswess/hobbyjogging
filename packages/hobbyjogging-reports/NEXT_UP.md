@@ -23,8 +23,9 @@ this list keeps the recent decisions only.
   2% of the standard distance for 5k/10k/HM/M, so a 4.2 km race no longer
   wins the 5k PB; Trail and Other still use the fastest raw time. The PB
   tables show the distance, and the Riegel `PB` column uses the same
-  qualified PB. Official race results will replace this tolerance when root
-  item 18 lands.
+  qualified PB. Official race results are stored now (`race_results`, schema
+  v16); the tables still have to prefer the official pair, which is the next
+  step here.
 - **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
@@ -105,8 +106,8 @@ this list keeps the recent decisions only.
   lines, so a slower race is a triangle at the top rather than stretching
   the chart. Equal times do not advance a line; tests cover strict
   improvements, ties, bucket separation and short-course rejection. The 2%
-  tolerance inside a bucket waits for official race distances (root item
-  18).
+  tolerance inside a bucket can go once the tables read the stored official
+  distances.
 
 - **Equivalent times with paces.** The Riegel table projects 5k, 7k, 10k,
   15k, HM, 30k and the marathon. 7k/15k/30k have no PB bucket, so they show

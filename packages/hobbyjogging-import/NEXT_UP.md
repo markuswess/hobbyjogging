@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **`race-result` command.** `race-result add|list|remove` writes one activity's
+  official race metadata by hand (distance, time, place, participants,
+  `officially_measured`, priority, status), replacing its own row and never
+  overwriting a manual one. The schema is v16 `race_results`.
 - **Max HR and temperature capture.** The v12 columns and the v13
   `activity_weather` table are written by the importers: FIT session max HR,
   Intervals `max_heartrate` and `average_temp`, the sheet's `max. Hf` and
