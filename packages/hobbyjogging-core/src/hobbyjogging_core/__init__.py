@@ -4,6 +4,7 @@ from .classify import (
     CROSS_TRAINING,
     UNKNOWN,
     Category,
+    category_for_sets,
     classify,
 )
 from .datasource import DataSource
@@ -79,6 +80,7 @@ __all__ = [
     "WORKOUT_TARGETS",
     "WellnessDay",
     "canonical_method",
+    "category_for_sets",
     "classify",
     "canonical_sport",
     "canonical_target",

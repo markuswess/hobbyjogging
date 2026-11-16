@@ -1,7 +1,12 @@
 import unittest
 from datetime import date
 
-from hobbyjogging_core.classify import classify, work_intervals
+from hobbyjogging_core.classify import (
+    category_for_sets,
+    classify,
+    work_intervals,
+)
+from hobbyjogging_core.workouts import classification_for_category
 from hobbyjogging_core.model import Activity, Interval
 
 DEFAULT_DATE = date(2026, 10, 1)
@@ -421,6 +426,136 @@ class StoredClassificationTests(unittest.TestCase):
                 use_stored=False,
             ).path,
         )
+
+class CategoryForSetsTests(unittest.TestCase):
+    """The inverse mapping from stored sets to the display category."""
+
+    def test_empty_sets_are_unknown(self):
+        self.assertEqual("unknown", category_for_sets().path)
+
+    def test_priority_order(self):
+        self.assertEqual(
+            "quality/race",
+            category_for_sets({"race", "long_run"}, {"base"}).path,
+        )
+        self.assertEqual(
+            "quality/longrun",
+            category_for_sets({"long_run"}, {"base"}).path,
+        )
+        self.assertEqual(
+            "quality/fartlek",
+            category_for_sets({"fartlek"}, {"vo2max"}).path,
+        )
+        self.assertEqual(
+            "quality/intervals/lt1",
+            category_for_sets({"intervals"}, {"lt1"}).path,
+        )
+        self.assertEqual(
+            "quality/intervals/other",
+            category_for_sets({"intervals"}, {"subthreshold"}).path,
+        )
+        self.assertEqual(
+            "quality/tempo",
+            category_for_sets({"continuous"}, {"threshold"}).path,
+        )
+        self.assertEqual(
+            "non-quality/recovery",
+            category_for_sets({"continuous"}, {"recovery"}).path,
+        )
+        self.assertEqual(
+            "non-quality/easy",
+            category_for_sets({"continuous"}, {"base"}).path,
+        )
+
+    def test_a_target_without_a_method_still_counts(self):
+        self.assertEqual(
+            "quality/tempo",
+            category_for_sets(set(), {"threshold"}).path,
+        )
+        self.assertEqual(
+            "quality/intervals/lt1",
+            category_for_sets(set(), {"lt1"}).path,
+        )
+        self.assertEqual(
+            "non-quality/recovery",
+            category_for_sets(set(), {"recovery"}).path,
+        )
+
+    def test_strides_alone_stay_non_quality(self):
+        self.assertEqual(
+            "non-quality/easy",
+            category_for_sets({"strides"}, set()).path,
+        )
+
+    def test_round_trip_with_classification_for_category(self):
+        pairs = [
+            ("quality", "intervals", "lt1"),
+            ("quality", "intervals", "other"),
+            ("quality", "longrun", None),
+            ("quality", "race", None),
+            ("quality", "tempo", None),
+            ("quality", "fartlek", None),
+            ("non-quality", "easy", None),
+            ("non-quality", "recovery", None),
+        ]
+
+        for group, kind, detail in pairs:
+            methods, targets = classification_for_category(group, kind, detail)
+            expected = "/".join(
+                part for part in (group, kind, detail) if part
+            )
+            self.assertEqual(
+                expected,
+                category_for_sets(methods, targets).path,
+                f"{group}/{kind}/{detail}",
+            )
+
+    def test_stored_sets_beat_a_misleading_name_and_duration(self):
+        self.assertEqual(
+            "quality/race",
+            classify(
+                activity(
+                    name="Long Sunday run",
+                    duration_s=2 * 60 * 60,
+                    workout_methods=["race"],
+                    workout_targets=["other"],
+                )
+            ).path,
+        )
+        self.assertEqual(
+            "quality/tempo",
+            classify(
+                activity(
+                    name="Easy",
+                    workout_methods=["continuous"],
+                    workout_targets=["threshold"],
+                )
+            ).path,
+        )
+
+    def test_stored_subthreshold_is_refined_by_the_reps(self):
+        self.assertEqual(
+            "quality/intervals/subt",
+            classify(
+                activity(
+                    workout_methods=["intervals"],
+                    workout_targets=["subthreshold"],
+                )
+            ).path,
+        )
+
+    def test_stored_fartlek_is_its_own_kind(self):
+        self.assertEqual(
+            "quality/fartlek",
+            classify(
+                activity(
+                    name="Easy",
+                    workout_methods=["fartlek"],
+                    workout_targets=["vo2max"],
+                )
+            ).path,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

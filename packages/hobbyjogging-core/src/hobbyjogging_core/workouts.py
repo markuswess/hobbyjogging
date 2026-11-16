@@ -159,6 +159,8 @@ def classification_for_category(
             return {"intervals"}, {"other"}
         if kind == "longrun":
             return {"long_run"}, {"base"}
+        if kind == "fartlek":
+            return {"fartlek"}, set()
         if kind == "race":
             return {"race"}, {"other"}
         if kind == "race-support":

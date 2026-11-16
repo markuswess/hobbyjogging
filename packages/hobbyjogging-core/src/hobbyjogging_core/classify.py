@@ -9,6 +9,7 @@ quality
 │   ├── subt-long    (avg rep > 7:00)
 │   ├── lt1
 │   └── other
+├── fartlek          (unstructured quality)
 ├── longrun          (> 90 min)
 ├── race
 ├── race-support     (warmup / cooldown)
@@ -19,8 +20,15 @@ non-quality
 cross-training
 unknown
 
-Rules
------
+Stored sets win
+---------------
+When an activity carries method/target sets, ``category_for_sets`` derives the
+category from them and the heuristic below runs only for unclassified
+activities. Two read-time refinements survive: the subT rep-length detail comes
+from the work reps, and race warm-ups/cool-downs come from the name.
+
+Rules (the heuristic)
+---------------------
 - quality: RPE > 3. RPE exactly 3 can also be quality when the session
   has explicit quality content (race/subT/LT1/tempo) or intensity/zones
   indicate quality. If RPE is missing, infer from intensity
@@ -48,6 +56,11 @@ from statistics import median
 
 from .model import Activity, Interval
 from .sports import RUN_SPORTS
+from .workouts import (
+    QUALITY_TARGETS,
+    canonical_method,
+    canonical_target,
+)
 
 RUN_TYPES = RUN_SPORTS
 
@@ -98,7 +111,7 @@ TEMPO_WORDS = ("tempo", "threshold", "schwelle")
 class Category:
 
     group: str                  # "quality" | "non-quality" | "cross-training" | "unknown"
-    kind: str = ""              # "intervals" | "longrun" | "race" | "race-support" | "tempo" | "easy" | "recovery"
+    kind: str = ""              # "intervals" | "fartlek" | "longrun" | "race" | "race-support" | "tempo" | "easy" | "recovery"
     detail: str | None = None   # "subt-short" | "subt-medium" | "subt-long" | "lt1" | "other"
 
     @property
@@ -113,6 +126,64 @@ class Category:
 
 UNKNOWN = Category("unknown")
 CROSS_TRAINING = Category("cross-training")
+
+
+def category_for_sets(
+    methods: object = (),
+    targets: object = (),
+) -> Category:
+    """Display category from the stored method/target sets.
+
+    The inverse of ``classification_for_category``, with a fixed priority:
+    race, long_run, fartlek, intervals/progression, continuous+threshold
+    (tempo), continuous+recovery, continuous, empty. The only intentional
+    ambiguity is ``{continuous}, {base}``, which is ``easy``; the rep-length
+    detail and the race-support label are read-time refinements, not stored
+    facts.
+    """
+    method_set = {canonical_method(value) for value in methods}
+    target_set = {canonical_target(value) for value in targets}
+
+    if not method_set and not target_set:
+        return UNKNOWN
+
+    if "race" in method_set:
+        return Category("quality", "race")
+    if "long_run" in method_set:
+        return Category("quality", "longrun")
+    if "fartlek" in method_set:
+        return Category("quality", "fartlek")
+
+    if method_set & {"intervals", "progression"}:
+        if "lt1" in target_set:
+            return Category("quality", "intervals", "lt1")
+        return Category("quality", "intervals", "other")
+
+    quality_targets = target_set & QUALITY_TARGETS
+
+    if "continuous" in method_set:
+        if "threshold" in target_set:
+            return Category("quality", "tempo")
+        if "lt1" in target_set:
+            return Category("quality", "intervals", "lt1")
+        if quality_targets:
+            return Category("quality", "intervals", "other")
+        if "recovery" in target_set:
+            return Category("non-quality", "recovery")
+        return Category("non-quality", "easy")
+
+    # A target without a method still says something about the session.
+    if quality_targets:
+        if "threshold" in target_set:
+            return Category("quality", "tempo")
+        if "lt1" in target_set:
+            return Category("quality", "intervals", "lt1")
+        return Category("quality", "intervals", "other")
+
+    if "recovery" in target_set:
+        return Category("non-quality", "recovery")
+
+    return Category("non-quality", "easy")
 
 
 def classify_interval(duration_s: float) -> str:
@@ -217,13 +288,7 @@ def classify(
     stored = activity.quality if use_stored else None
 
     if stored is not None:
-        if stored:
-            return _quality_category(activity, text, work)
-
-        if "recovery" in activity.workout_targets or _is_recovery(activity):
-            return Category("non-quality", "recovery")
-
-        return Category("non-quality", "easy")
+        return _category_from_sets(activity, work)
 
     quality = _is_quality(activity, text, work)
 
@@ -332,6 +397,30 @@ def _quality_category(
         return stored
 
     return Category("quality", "intervals", "other")
+
+
+def _category_from_sets(activity: Activity, work: list[Interval]) -> Category:
+    """Stored category plus the one read-time detail refinement.
+
+    The rep-length bucket is derived from the work reps when the target is
+    ``subthreshold``, because the stored sets cannot express short/medium/long.
+    """
+    category = category_for_sets(
+        activity.workout_methods,
+        activity.workout_targets,
+    )
+    targets = {canonical_target(value) for value in activity.workout_targets}
+
+    if category.kind == "intervals" and "subthreshold" in targets:
+        reps = [i.duration_s for i in work if i.duration_s >= SUBT_MIN_REP_S]
+
+        if not reps:
+            return Category("quality", "intervals", "subt")
+
+        average = sum(reps) / len(reps)
+        return Category("quality", "intervals", f"subt-{classify_interval(average)}")
+
+    return category
 
 
 def _stored_quality_category(activity: Activity) -> Category | None:
