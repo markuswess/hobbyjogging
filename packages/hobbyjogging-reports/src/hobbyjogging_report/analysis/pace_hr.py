@@ -163,7 +163,7 @@ def pace_hr_efficiency_lines(
     """Draw one efficiency line per half, beside the free regressions.
 
     ``E`` is the weighted aggregate ``sum(distance) / sum(excess beats)``
-    over steady runs in the 45–75 min band, so it matches the steady
+    over steady runs in the steady band, so it matches the steady
     efficiency reported elsewhere. The intercept is the half's median
     resting-HR baseline. Points without a baseline or outside that band are
     left out of the fit but stay in the scatter.

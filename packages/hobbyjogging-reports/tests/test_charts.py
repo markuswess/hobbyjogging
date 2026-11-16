@@ -1296,7 +1296,7 @@ class CompareChartTests(unittest.TestCase):
         )
 
         self.assertIn("excess beat", html)
-        self.assertIn("steady 45", html)
+        self.assertIn("steady 40", html)
 
     def test_compare_chart_time_axis_is_weekly_hours(self):
         series = [

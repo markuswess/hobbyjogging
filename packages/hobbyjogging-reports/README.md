@@ -197,10 +197,10 @@ database `DataSource` and produces the Markdown reports and charts:
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
   km, load, and Z3+4, plus the planned weekly average for the next 14
   days, plus an Efficiency row in the same table using the trailing
-  7/42/182-day weighted steady efficiency (45–75 min, no planned value).
+  7/42/182-day weighted steady efficiency (40–75 min, no planned value).
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days, including weighted
-  steady efficiency (45–75 min) in the running block and category table.
+  steady efficiency (40–75 min) in the running block and category table.
 - **monthly** — Same summary over the last 30 days.
 - **yearly** — Same summary over the last 365 days.
 - **all** — Daily + weekly + monthly + yearly in one report.
@@ -301,7 +301,7 @@ database `DataSource` and produces the Markdown reports and charts:
   least-squares line is fitted to the older and newer half of the runs
   (parameters on the chart and printed by the CLI). Each half also gets a
   dashed efficiency line, `HR = RHR + v·60/E`, where `E` is that half's
-  weighted efficiency over steady runs in the 45–75 min band
+  weighted efficiency over steady runs in the 40–75 min band
   (`Σdistance / Σexcess beats`, in **m/excess beat**) and `RHR` is its median
   resting-HR baseline; the label shows both values and the band. The scatter
   keeps every run, but the steady-band points that feed those dashed lines
@@ -635,9 +635,12 @@ Which runs feed which number:
 - Session report, daily compact line, `eff` activities column: one raw
   per-activity value, no duration band.
 - Period/category, overview and compare aggregates: steady non-quality runs
-  from 45–75 min, with the band printed next to the number.
+  from 40–75 min, with the band printed next to the number. The 40-minute
+  floor includes short easy runs; the duration term makes one read about
+  1.5 % lower than a 60-minute run, and printing the band keeps that bias
+  visible.
 - Pace/HR chart: every run in the scatter; only the dashed efficiency lines
-  use steady 45–75 min runs, whose points carry a dark outline.
+  use steady 40–75 min runs, whose points carry a dark outline.
 - subT chart and summary tables: work-rep efficiency, not steady runs.
 
 Aggregates are always `Σdistance / Σexcess beats`, never the mean of

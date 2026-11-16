@@ -98,11 +98,19 @@ class EfficiencyHelperTests(unittest.TestCase):
             workout_methods=["continuous"],
             workout_targets=["base"],
         )
+        floor = Activity(
+            id="d",
+            date=D,
+            type="run",
+            duration_s=40 * 60,
+            workout_methods=["continuous"],
+            workout_targets=["base"],
+        )
         short = Activity(
             id="b",
             date=D,
             type="run",
-            duration_s=30 * 60,
+            duration_s=39 * 60,
             workout_methods=["continuous"],
             workout_targets=["base"],
         )
@@ -116,8 +124,36 @@ class EfficiencyHelperTests(unittest.TestCase):
         )
 
         self.assertTrue(is_steady_run(steady))
+        self.assertTrue(is_steady_run(floor))
         self.assertFalse(is_steady_run(short))
         self.assertFalse(is_steady_run(quality))
+
+    def test_the_floor_admits_a_short_easy_run(self):
+        easy = Activity(
+            id="a",
+            date=D,
+            type="run",
+            duration_s=40 * 60,
+            distance_m=8000,
+            avg_hr=150,
+            workout_methods=["continuous"],
+            workout_targets=["base"],
+        )
+        quality = Activity(
+            id="b",
+            date=D,
+            type="run",
+            duration_s=40 * 60,
+            distance_m=8000,
+            avg_hr=170,
+            workout_methods=["intervals"],
+            workout_targets=["threshold"],
+        )
+
+        value = steady_efficiency([easy, quality], lambda _day: 50)
+
+        # 8000 m over 40 min at 100 excess bpm is 4000 beats.
+        self.assertAlmostEqual(2.0, value)
 
     def test_steady_efficiency_ignores_quality_sessions(self):
         steady = Activity(

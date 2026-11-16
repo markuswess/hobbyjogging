@@ -6,6 +6,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
     RESTING_HR_WINDOW_DAYS,
+    STEADY_BAND_LABEL,
     activity_sort_key,
     is_lt1_activity,
     is_subt_activity,
@@ -136,7 +137,7 @@ def period_report(
 
     if run_efficiency is not None:
         lines.append(
-            f"- Steady efficiency (45–75 min): "
+            f"- Steady efficiency ({STEADY_BAND_LABEL}): "
             f"{run_efficiency:.2f} m/excess beat"
         )
 

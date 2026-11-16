@@ -615,8 +615,8 @@ def run_pace_hr_chart(
 
     if efficiency_lines:
         print(
-            "note: efficiency lines use steady 45–75 min non-quality runs; "
-            "all runs are plotted"
+            f"note: efficiency lines use steady {STEADY_BAND_LABEL} "
+            "non-quality runs; all runs are plotted"
         )
 
     path = plot_pace_hr(points, output=output)

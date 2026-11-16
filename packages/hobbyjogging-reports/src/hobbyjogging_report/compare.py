@@ -4,7 +4,7 @@ from datetime import date
 
 from hobbyjogging_core.datasource import DataSource
 
-from .analysis import COMPARE_MODES, compare_periods
+from .analysis import COMPARE_MODES, STEADY_BAND_LABEL, compare_periods
 from .command_support import resting_hr_lookup
 from .format import fmt_time, format_pace
 from .review import exclude_review, review_note
@@ -103,7 +103,7 @@ def compare_report(
         "",
         "| Period | Runs | Cross | Run time | Cross time | Run km | "
         "Avg pace | Avg HR | Garmin VO2max avg | "
-        "Steady efficiency (45–75 min) |",
+        f"Steady efficiency ({STEADY_BAND_LABEL}) |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
 

@@ -34,11 +34,16 @@ from .common import RUN_TYPES
 EFFICIENCY_UNIT = "m/excess beat"
 RESTING_HR_WINDOW_DAYS = 365
 MIN_EXCESS_HR = 10
-STEADY_MIN_DURATION_S = 45 * 60
+# 40 min, not 45: a short easy run is still aerobic, and the duration
+# model's +135/T term makes a 40-minute run read about 1.5% lower than a
+# 60-minute one. On the real log the floor adds ~300 steady runs all-time and
+# moves the aggregate by 0.001, so it widens n without changing the trend.
+# The band stays printed on every aggregate so that bias remains visible.
+STEADY_MIN_DURATION_S = 40 * 60
 STEADY_MAX_DURATION_S = 75 * 60
 STEADY_DURATION_BAND = (STEADY_MIN_DURATION_S, STEADY_MAX_DURATION_S)
-STEADY_BAND_LABEL = "45–75 min"
-STEADY_EFFICIENCY_LABEL = "Efficiency (45–75 min steady)"
+STEADY_BAND_LABEL = "40–75 min"
+STEADY_EFFICIENCY_LABEL = f"Efficiency ({STEADY_BAND_LABEL} steady)"
 MIN_RESTING_HR = 35.0
 MAX_RESTING_HR = 70.0
 

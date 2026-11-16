@@ -93,13 +93,13 @@ class OverviewReportTests(unittest.TestCase):
         self.assertEqual("5min", _row(report, "Z3+4 / week")[-1])
         self.assertEqual(
             [
-                "Efficiency (45–75 min steady)",
+                "Efficiency (40–75 min steady)",
                 "1.67",
                 "1.67",
                 "1.67",
                 "-",
             ],
-            _row(report, "Efficiency (45–75 min steady)"),
+            _row(report, "Efficiency (40–75 min steady)"),
         )
         self.assertNotIn("## Efficiency", report)
         self.assertIn("sum(excess beats)", report)

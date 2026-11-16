@@ -19,6 +19,7 @@ from hobbyjogging_core.workouts import WORKOUT_METHODS, WORKOUT_TARGETS
 from .analysis import (
     EFFICIENCY_UNIT,
     RUN_TYPES,
+    STEADY_BAND_LABEL,
     activity_efficiency,
     is_lt1_activity,
     is_subt_activity,
@@ -179,7 +180,7 @@ def format_category_table(stats):
 
     lines = [
         "| Category | Sessions | Time | Load | "
-        "Steady efficiency (45–75 min) | Time % | Load % |",
+        f"Steady efficiency ({STEADY_BAND_LABEL}) | Time % | Load % |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
 

@@ -13,6 +13,7 @@ from .analysis import (
     EFFICIENCY_UNIT,
     RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
+    STEADY_BAND_LABEL,
     STEADY_DURATION_BAND,
     STEADY_EFFICIENCY_LABEL,
     aggregate_efficiency,
@@ -316,7 +317,7 @@ def overview_report(
         "",
         "Steady efficiency is the trailing weighted sum(distance) / "
         f"sum(excess beats), in {EFFICIENCY_UNIT}, for non-quality runs "
-        "in the 45–75 min band; it has no planned value.",
+        f"in the {STEADY_BAND_LABEL} band; it has no planned value.",
     ])
 
     return "\n".join(lines)

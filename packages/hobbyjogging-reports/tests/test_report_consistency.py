@@ -106,7 +106,7 @@ class EfficiencyReportTests(unittest.TestCase):
             self._source(),
         )
 
-        self.assertIn("- Steady efficiency (45–75 min): 2.22 m/excess beat", report)
+        self.assertIn("- Steady efficiency (40–75 min): 2.22 m/excess beat", report)
         self.assertIn(
             "| non-quality/easy | 1 | 50min | 32 | 2.22 | 100% | 100% |",
             report,

@@ -1578,8 +1578,9 @@ def plot_pace_hr(
 
     if efficiency_lines:
         notes.append(
-            "dashed efficiency lines use steady 45–75 min non-quality "
-            "runs; outlined points are their inputs — all runs are shown"
+            f"dashed efficiency lines use steady {STEADY_BAND_LABEL} "
+            "non-quality runs; outlined points are their inputs — all runs "
+            "are shown"
         )
 
     if notes:
