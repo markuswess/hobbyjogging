@@ -408,6 +408,13 @@ class SheetImporter:
                 source_record_id=source_record_id,
                 temp_c=as_float(record.get("Temperatur in °C")),
             )
+            weight = as_float(record.get("Gewicht nachher"))
+            if weight is not None and sheet.name == ROHDATEN:
+                self.writer.upsert_wellness(
+                    local_date=values["local_date"],
+                    source_record_id=source_record_id,
+                    weight_kg=weight,
+                )
             self.writer.link_activity_source(
                 activity_id,
                 source_record_id,

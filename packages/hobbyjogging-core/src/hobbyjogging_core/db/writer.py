@@ -1453,31 +1453,67 @@ class TrainingWriter:
         )
         self.set_review_status(review_item_id, "resolved", note=note)
 
+    WELLNESS_FIELDS = (
+        "hrv",
+        "resting_hr",
+        "sleep_s",
+        "weight_kg",
+        "sleep_score",
+        "sleep_quality",
+        "spo2",
+        "steps",
+        "floors_climbed",
+        "ctl",
+        "atl",
+    )
+
     def upsert_wellness(
         self,
         *,
         local_date: str,
         source_record_id: int,
-        hrv: float | None = None,
-        resting_hr: float | None = None,
-        sleep_s: float | None = None,
+        **fields: object,
     ) -> None:
+        """Write one day's wellness, never clearing a value another source set."""
+        unknown = set(fields) - set(self.WELLNESS_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown wellness fields: {sorted(unknown)}")
+
+        values = {
+            key: value
+            for key, value in fields.items()
+            if value is not None
+        }
+
+        if not values:
+            self.connection.execute(
+                """
+                INSERT INTO wellness_days (local_date, source_record_id)
+                VALUES (?, ?)
+                ON CONFLICT(local_date) DO UPDATE SET
+                    source_record_id = excluded.source_record_id,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (local_date, source_record_id),
+            )
+            return
+
+        columns = ["local_date", "source_record_id", *values]
+        placeholders = ", ".join("?" for _ in columns)
+        updates = ", ".join(
+            f"{key} = COALESCE(excluded.{key}, wellness_days.{key})"
+            for key in values
+        )
         self.connection.execute(
-            """
-            INSERT INTO wellness_days (
-                local_date, source_record_id, hrv, resting_hr, sleep_s
-            ) VALUES (?, ?, ?, ?, ?)
+            f"""
+            INSERT INTO wellness_days ({', '.join(columns)})
+            VALUES ({placeholders})
             ON CONFLICT(local_date) DO UPDATE SET
                 source_record_id = excluded.source_record_id,
-                hrv = COALESCE(excluded.hrv, wellness_days.hrv),
-                resting_hr = COALESCE(
-                    excluded.resting_hr,
-                    wellness_days.resting_hr
-                ),
-                sleep_s = COALESCE(excluded.sleep_s, wellness_days.sleep_s),
+                {updates},
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (local_date, source_record_id, hrv, resting_hr, sleep_s),
+            (local_date, source_record_id, *values.values()),
         )
 
     def upsert_event(

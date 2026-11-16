@@ -93,7 +93,9 @@ class TrainingRepository:
     def wellness(self, start: date, end: date) -> list[WellnessDay]:
         rows = self.connection.execute(
             """
-            SELECT local_date, hrv, resting_hr, sleep_s
+            SELECT local_date, hrv, resting_hr, sleep_s, weight_kg,
+                   sleep_score, sleep_quality, spo2, steps, floors_climbed,
+                   ctl, atl
             FROM wellness_days
             WHERE local_date BETWEEN ? AND ?
             ORDER BY local_date
@@ -107,6 +109,14 @@ class TrainingRepository:
                 hrv=row["hrv"],
                 resting_hr=row["resting_hr"],
                 sleep_s=row["sleep_s"],
+                weight_kg=row["weight_kg"],
+                sleep_score=row["sleep_score"],
+                sleep_quality=row["sleep_quality"],
+                spo2=row["spo2"],
+                steps=row["steps"],
+                floors_climbed=row["floors_climbed"],
+                ctl=row["ctl"],
+                atl=row["atl"],
             )
             for row in rows
         ]

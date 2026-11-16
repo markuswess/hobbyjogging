@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -370,6 +370,22 @@ ON training_periods(start_date, end_date);
 """
 
 
+MIGRATION_19_SQL = """
+-- Wellness extras. The Intervals payloads carry sleep score and quality,
+-- SpO2, weight, steps, floors climbed and their own CTL/ATL; readiness,
+-- stress, respiration, mood, soreness and fatigue are present as keys but
+-- never populated, so they get no column yet.
+ALTER TABLE wellness_days ADD COLUMN weight_kg REAL;
+ALTER TABLE wellness_days ADD COLUMN sleep_score REAL;
+ALTER TABLE wellness_days ADD COLUMN sleep_quality REAL;
+ALTER TABLE wellness_days ADD COLUMN spo2 REAL;
+ALTER TABLE wellness_days ADD COLUMN steps INTEGER;
+ALTER TABLE wellness_days ADD COLUMN floors_climbed INTEGER;
+ALTER TABLE wellness_days ADD COLUMN ctl REAL;
+ALTER TABLE wellness_days ADD COLUMN atl REAL;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -389,6 +405,7 @@ MIGRATIONS: dict[int, str] = {
     16: MIGRATION_16_SQL,
     17: MIGRATION_17_SQL,
     18: MIGRATION_18_SQL,
+    19: MIGRATION_19_SQL,
 }
 
 

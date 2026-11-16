@@ -561,6 +561,14 @@ class IntervalsImporter:
             hrv=_float(raw.get("hrv")),
             resting_hr=_float(raw.get("restingHR")),
             sleep_s=_float(raw.get("sleepSecs")),
+            sleep_score=_float(raw.get("sleepScore")),
+            sleep_quality=_float(raw.get("sleepQuality")),
+            spo2=_float(raw.get("spO2")),
+            weight_kg=_float(raw.get("weight")),
+            steps=_int(raw.get("steps")),
+            floors_climbed=_int(raw.get("floorsClimbed")),
+            ctl=_float(raw.get("ctl")),
+            atl=_float(raw.get("atl")),
         )
         return True
 

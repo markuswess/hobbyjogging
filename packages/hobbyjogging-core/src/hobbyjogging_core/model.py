@@ -85,6 +85,14 @@ class WellnessDay:
     hrv: float | None = None
     resting_hr: float | None = None
     sleep_s: float | None = None
+    weight_kg: float | None = None
+    sleep_score: float | None = None
+    sleep_quality: float | None = None
+    spo2: float | None = None
+    steps: int | None = None
+    floors_climbed: int | None = None
+    ctl: float | None = None
+    atl: float | None = None
 
 
 @dataclass(frozen=True)
