@@ -8,8 +8,9 @@ the activity carry the ``race`` method under its own non-manual source.
 
 Manual links and manual workout sets always win: an event with a manual link
 is left alone, and an activity with manual methods never gets the derived
-``race`` row. More than one candidate is ambiguous, so it opens an
-``ambiguous_race`` review item instead of guessing.
+``race`` row. Intervals stores only the event date, not a start time, so there
+is nothing to rank candidates by; more than one candidate is therefore
+ambiguous and opens an ``ambiguous_race`` review item instead of guessing.
 """
 
 from __future__ import annotations
