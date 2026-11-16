@@ -16,6 +16,11 @@ DEFAULT_GARMIN_TOKEN_CACHE = (
     Path("~/.config/garmin/connect-personal-api-bearer-token.json")
 )
 
+RUNALYZE_API_KEY_ENV = "RUNALYZE_API_KEY"
+RUNALYZE_API_KEY_FALLBACK_ENV = "RUNALYZE_TOKEN"
+RUNALYZE_BASE_URL_ENV = "RUNALYZE_API_BASE_URL"
+DEFAULT_RUNALYZE_BASE_URL = "https://runalyze.com/api/v1"
+
 
 def default_fit_dir() -> Path:
     """Return the configured FIT directory, falling back to data/fit."""
@@ -47,6 +52,22 @@ def garmin_token_cache_path() -> Path:
     """Return the bearer-token cache path, shared with Garmin's own client."""
     value = os.environ.get(GARMIN_TOKEN_CACHE_ENV)
     return Path(value).expanduser() if value else DEFAULT_GARMIN_TOKEN_CACHE
+
+
+def runalyze_api_key() -> str | None:
+    """Return the Runalyze personal API token from the environment."""
+    value = (
+        os.environ.get(RUNALYZE_API_KEY_ENV)
+        or os.environ.get(RUNALYZE_API_KEY_FALLBACK_ENV)
+    )
+    value = (value or "").strip()
+    return value or None
+
+
+def runalyze_base_url() -> str:
+    """Return the Runalyze API base URL."""
+    value = os.environ.get(RUNALYZE_BASE_URL_ENV)
+    return (value or DEFAULT_RUNALYZE_BASE_URL).rstrip("/")
 
 
 def resolve_fit_path(value: str | Path) -> Path:

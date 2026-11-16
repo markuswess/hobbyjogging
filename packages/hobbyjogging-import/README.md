@@ -206,6 +206,53 @@ JSON activity summary exposes `vO2MaxValue` but leaves it null; the FIT still
 carries message 140, so the FIT is the VO2max source. The separate type-44
 `max_met_data` files are only present in GDPR exports and are not needed.
 
+## Runalyze
+
+Phase 1 is a read-only inventory: it proves what the personal API exposes
+before comments, tags, gear, or race results are imported. Set the personal
+token:
+
+```bash
+export RUNALYZE_API_KEY=<your-personal-token>
+```
+
+The header is `token: <key>` (not `Authorization: Bearer`, which is for the MCP
+server). Requests are paced client-side to the documented 240/minute.
+`RUNALYZE_TOKEN` is accepted as a fallback, and `RUNALYZE_API_BASE_URL`
+overrides the default `https://runalyze.com/api/v1`.
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze inventory --dry-run
+```
+
+The inventory writes nothing. It probes the known endpoints and prints the
+activity-field coverage per year (counts of non-null values):
+
+```text
+Runalyze inventory (dry run)
+Base: https://runalyze.com/api/v1
+
+Endpoints:
+  ping             200  (pong)
+  activities       200
+  equipment        200
+  sport            403  (blocked)
+  recurring-route  403  (blocked)
+  planned-race     403  (blocked)
+  device-profile   403  (blocked)
+  blocked: sport, recurring-route, planned-race, device-profile (expected; the nested activity payload covers them)
+
+Activities: 812 (2022-2026)
+  activities                     2022   2023   2024   2025   2026   total
+  average_heartrate               200    210    215    220    180     812
+```
+
+Options: `--since`/`--to` limit the activity range, `--limit N` caps the
+sample, and `--per-page N` sets the page size. The four 403 endpoints are
+expected; the nested activity payload carries the route and device name. Tests
+use recorded JSON fixtures under `tests/fixtures/runalyze/` and never call the
+live API.
+
 ## Source precedence
 
 There is one fixed source rule: `moving_s` and `elapsed_s` are always

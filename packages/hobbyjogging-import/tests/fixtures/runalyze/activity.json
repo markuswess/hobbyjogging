@@ -1,0 +1,8 @@
+{
+  "id": 101,
+  "date": "2024-03-01 08:00:00",
+  "sport": 1,
+  "vo2max": 52.0,
+  "vo2max_by_time": 51.0,
+  "vo2max_with_elevation": 50.0
+}

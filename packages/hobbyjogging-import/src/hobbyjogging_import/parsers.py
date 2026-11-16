@@ -174,6 +174,41 @@ def build_parser() -> argparse.ArgumentParser:
     sheet.add_argument("--dry-run", action="store_true")
     sheet.add_argument("--database", type=Path)
 
+    runalyze = subparsers.add_parser(
+        "runalyze",
+        help="read-only Runalyze API access",
+    )
+    runalyze_sub = runalyze.add_subparsers(
+        dest="runalyze_action",
+        required=True,
+    )
+    runalyze_inventory = runalyze_sub.add_parser(
+        "inventory",
+        help="report what the API exposes per endpoint, field and year",
+    )
+    runalyze_inventory.add_argument("--since", dest="start", type=date_arg)
+    runalyze_inventory.add_argument("--to", dest="end", type=date_arg)
+    runalyze_inventory.add_argument(
+        "--limit",
+        type=int,
+        help="read at most this many activities",
+    )
+    runalyze_inventory.add_argument(
+        "--per-page",
+        type=int,
+        default=100,
+        help="activities per API page (default: 100)",
+    )
+    runalyze_inventory.add_argument(
+        "--base-url",
+        help="override the API base URL (default: RUNALYZE_API_BASE_URL)",
+    )
+    runalyze_inventory.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report only; the inventory never writes",
+    )
+
     garmin = subparsers.add_parser(
         "garmin",
         help="fetch original FIT files from Garmin Connect",

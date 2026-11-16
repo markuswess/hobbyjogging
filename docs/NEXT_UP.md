@@ -375,7 +375,7 @@ one takes the next free number, so cross-references stay valid.
       (schema v16/v21), and the gear identity below is the only design piece
       still open. Comments need no decision — they fill
       `activities.description` only when it is blank (item 1).
-    - **Phases**: (1) **next, import package** — a read-only client and
+    - **Phases**: (1) **done, import package** — a read-only client and
       `runalyze inventory --dry-run` that reports what is available per field
       and per year, writing nothing; (2) comments and tags into the chosen text
       home; (3) gear with cross-source identity; (4) race results;

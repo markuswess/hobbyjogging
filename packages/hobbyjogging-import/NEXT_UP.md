@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
+  240/min pacing, numbered pages, `--since`/`--to`) and
+  `runalyze inventory --dry-run`, which probes the known endpoints and reports
+  activity-field coverage per year without writing. The four 403 endpoints are
+  reported as expected. Tests use recorded fixtures. Phases 2–6 remain in root
+  item 12.
 - **Sheet routes.** `Strecke`/`Streckennummer` resolve to a canonical route
   (number first, then the name's number when unambiguous) and the activity is
   linked; a Gmap URL is not a route. The sheet remains the only route source
@@ -127,14 +133,6 @@ on.
 
 ## Next
 
-- **Runalyze phase 1: read-only client and inventory.** Build `runalyze.py`
-  (the `token: <key>` header, pagination, 240/min awareness, `--since`/`--to`)
-  and `runalyze inventory --dry-run`, which reports what the API exposes per
-  endpoint, field and year and writes nothing. The read-scoped token works for
-  the data endpoints; `sport`, `recurring-route`, `planned-race` and
-  `device-profile` still 403, but the nested activity payload covers routes and
-  the device name. Tests use recorded JSON fixtures, never the live API. See
-  root item 12 for the payload findings and the later phases.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with
@@ -214,8 +212,8 @@ on.
 
 ## Waiting on
 
-Nothing. Runalyze access is unblocked for the data endpoints; phase 1 is in
-Next.
+Nothing. Runalyze read access is unblocked; phase 1 has landed and phases 2–6
+are scoped in root item 12.
 
 ## Notes / risks
 

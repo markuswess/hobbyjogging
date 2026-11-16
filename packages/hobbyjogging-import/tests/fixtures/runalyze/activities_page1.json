@@ -1,0 +1,21 @@
+[
+  {
+    "id": 101,
+    "date": "2024-03-01 08:00:00",
+    "sport": 1,
+    "distance": 10000,
+    "moving_time": 3600,
+    "average_heartrate": 140,
+    "vo2max": 52.0,
+    "recurring_route": {"id": 7, "name": "Loop"}
+  },
+  {
+    "id": 102,
+    "date": "2024-06-15 07:30:00",
+    "sport": 1,
+    "distance": 20000,
+    "moving_time": 7200,
+    "average_heartrate": 145,
+    "vo2max": null
+  }
+]

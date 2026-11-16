@@ -19,6 +19,7 @@ from .intervals import EventSyncSummary, IntervalsImporter
 from .ods import OdsError, read_sheets
 from .parsers import build_parser
 from .review_cli import run_review
+from .runalyze import RunalyzeClient, format_inventory, run_inventory
 from .sheet_import import SheetImporter, format_sheet_summary
 from .sync import format_sync_summary, run_sync
 
@@ -228,6 +229,39 @@ def _run_sheet_inspect(args, parser: argparse.ArgumentParser) -> int:
             if values:
                 print("  " + " | ".join(values))
 
+    return 0
+
+
+def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
+    if args.runalyze_action != "inventory":
+        parser.error(f"unknown runalyze command: {args.runalyze_action}")
+
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+    if args.per_page <= 0:
+        parser.error("--per-page must be greater than zero")
+    if (
+        args.start is not None
+        and args.end is not None
+        and args.start > args.end
+    ):
+        parser.error("--since must not be after --to")
+
+    try:
+        client = RunalyzeClient(base_url=args.base_url)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    summary = run_inventory(
+        client,
+        start=args.start,
+        end=args.end,
+        limit=args.limit,
+        per_page=args.per_page,
+        dry_run=args.dry_run,
+        base_url=client.base_url,
+    )
+    print(format_inventory(summary))
     return 0
 
 
@@ -491,6 +525,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "sheet":
         return run_sheet(args, parser)
+
+    if args.command == "runalyze":
+        return run_runalyze(args, parser)
 
     if args.command == "garmin":
         return run_garmin(args, parser)
