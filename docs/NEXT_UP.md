@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Per-activity weather is stored (schema v13).** `activity_weather` holds the
+  union of what the sources provide — temperature, feels-like, humidity, wind
+  speed/degree/gust, wind chill, heat index, pressure, UV, clouds, condition,
+  `is_night` — in metric units, one row per activity, first source owns it and
+  a later source only fills its gaps. Intervals writes `average_temp` and the
+  sheet `Temperatur in °C`; the backfill covered 3,002 activities (2,823
+  Intervals, 179 sheet). The Runalyze fields stay `NULL` until that import
+  lands, and the lab still has to say whether adjusted pace is worth it.
 - **Elevation and max HR are stored (schema v12).** `activities` gains
   `elevation_gain_m`, `elevation_loss_m` and `max_hr`, owner-based with a wide
   elevation tolerance (10 % or 20 m) and 2 bpm for max HR. FIT parses
@@ -282,25 +290,6 @@ one takes the next free number, so cross-references stay valid.
      report.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
-
-7. **Per-activity weather** (core + import + maintenance + reports).
-   Intervals carries `average_temp`, `average_weather_temp`,
-   `average_feels_like`, `average_wind_speed`, `average_wind_gust` and
-   `average_clouds` (2,847 activities); the sheet has `Temperatur in °C`
-   (766). Weather is the biggest pace/HR confounder we ignore today.
-   - **Explore first, in the lab**: how much temperature and wind explain pace
-     and HR variance, and whether an "adjusted pace" is worth it.
-   - **If it earns its place**: a small `activity_weather` row per activity —
-     `temp_c`, `feels_like_c`, `humidity_pct`, `wind_speed_ms`, `wind_gust_ms`,
-     `wind_chill_c`, `heat_index_c`, `air_pressure_hpa`, `clouds_pct`, `source`
-     — rather than columns on `activities`; importers write it and
-     `activity_weather_v1` backfills from the payloads. Add `wind_degree`,
-     `uv_index`, `weather_condition` and `is_night`: Runalyze supplies them and
-     Intervals does not, while feels-like and wind gust are the other way
-     round — the row carries the union, and a missing field stays `NULL`
-     rather than being guessed.
-   - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
-     comparing similar efforts across conditions.
 
 8. **Athlete thresholds and zone configs** (core + import + maintenance +
    reports). The Intervals payloads carry the athlete's settings per activity:

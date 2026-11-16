@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Max HR and temperature capture.** The v12 columns and the v13
+  `activity_weather` table are written by the importers: FIT session max HR,
+  Intervals `max_heartrate` and `average_temp`, the sheet's `max. Hf` and
+  `Temperatur in °C`. Runalyze's richer weather fields (humidity, wind,
+  pressure, UV, clouds, condition) are shaped into the table and wait for that
+  importer.
 - **Fartlek for the sheet `fs` code.** `SHEET_TYPE_CODES` maps `fs` to
   `fartlek` + `vo2max`, with the `fahrtspiel` / `fartlek_run` aliases, so new
   sheet imports land in the right bucket. The existing rows were converted by
@@ -161,13 +167,6 @@ on.
   is nothing to detect or clear. The remaining work is in the consumers: the
   session report qualifies the value on non-runs; the charts are running-only
   and `docs/SOURCE_NOTES.md` records the per-sport semantics.
-- **Weather capture.** Max HR is done (v12: FIT session, Intervals
-  `max_heartrate`, sheet `max. Hf`). What remains is the weather block:
-  Intervals `average_temp`, `average_feels_like`, `average_wind_speed`,
-  `average_wind_gust`, `average_clouds`, the sheet's `Temperatur in °C`, and
-  Runalyze's `temperature`, `humidity`, `wind_speed`, `wind_degree`,
-  `cloud_cover`, `pressure`, `uv_index`, `is_night`, `weather_condition`.
-  Depends on the `activity_weather` table.
 - **Wellness extras and routes.** Map the selected wellness keys into the new
   columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
   migrations land.

@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 12.
+SQLite, forward-only migrations. Schema version 13.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,10 @@ SQLite, forward-only migrations. Schema version 12.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `activity_weather` (v13) — one row per activity: temperature, feels-like,
+  humidity, wind speed/degree/gust, wind chill, heat index, pressure, UV,
+  clouds, condition and a night flag, in metric units. The first source owns
+  the row; a later source only fills the fields it left empty.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
   attached to activities, tagged by source record. Laps are device splits
   (auto-lap or manual); intervals are Intervals.icu's typed reps (`WORK` /

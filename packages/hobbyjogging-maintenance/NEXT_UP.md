@@ -4,6 +4,9 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`activity_weather_v1`.** Created `activity_weather` rows from Intervals
+  `average_temp` and the sheet's `Temperatur in °C`, first source owning the
+  row. Applied to the real DB: 3,002 activities (2,823 Intervals, 179 sheet).
 - **`activity_elevation_v1` and `activity_max_hr_v1`.** Filled the v12 columns
   from the stored payloads in import order (Intervals, FIT, sheet), through the
   writer so ownership and tolerances hold. Applied to the real DB: 3,287
@@ -59,9 +62,6 @@ This file records what the package is still waiting on.
   dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
-- **`activity_weather_v1`** (backfill). Create `activity_weather` rows from the
-  Intervals weather block and the sheet's `Temperatur in °C`, idempotent,
-  dry-run.
 - **`activity_devices_v1`** (backfill). Once the core device tables and the
   importer writes land, create devices and activity links from the stored
   payloads: FIT `file.manufacturer/product/serial_number` as `recorder`,
