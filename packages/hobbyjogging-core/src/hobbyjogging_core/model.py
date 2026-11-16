@@ -61,6 +61,7 @@ class Activity:
     pace_zone_times: list[float] = field(default_factory=list)
     hr_zone_times: list[float] = field(default_factory=list)
     equipment: list[Equipment] = field(default_factory=list)
+    device_id: str = ""
     needs_review: bool = False  # open review items exist for this activity
 
     @property
@@ -114,6 +115,20 @@ class Event:
     def quality(self) -> bool | None:
         """Whether the planned session is quality, non-quality, or unknown."""
         return is_quality(self.workout_methods, self.workout_targets)
+
+
+@dataclass
+class Device:
+    """A recording device: the watch, computer or sensor behind an activity."""
+
+    id: str
+    manufacturer: str = ""
+    product: str = ""
+    serial_number: str = ""
+    name: str = ""
+    acquired_on: date | None = None
+    retired_on: date | None = None
+    notes: str = ""
 
 
 @dataclass

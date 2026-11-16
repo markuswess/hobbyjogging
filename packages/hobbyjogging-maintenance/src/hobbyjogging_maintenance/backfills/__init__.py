@@ -1,6 +1,7 @@
 """Registered backfills. Importing this package registers every task."""
 
 from . import (
+    activity_device_v1,
     activity_measurements_v1,
     activity_weather_v1,
     drop_classification_tags_v1,
@@ -13,6 +14,7 @@ from . import (
 )
 
 __all__ = [
+    "activity_device_v1",
     "activity_measurements_v1",
     "activity_weather_v1",
     "drop_classification_tags_v1",

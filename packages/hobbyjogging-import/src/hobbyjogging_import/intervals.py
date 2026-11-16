@@ -403,6 +403,13 @@ class IntervalsImporter:
             return None
 
         values = _activity_values(raw)
+        device_id = _device_id(raw.get("device_name"))
+        if device_id is not None:
+            self.writer.upsert_device(
+                device_id,
+                name=str(raw.get("device_name") or "").strip(),
+            )
+            values["device_id"] = device_id
         conflicts = self.writer.upsert_activity(
             activity_id,
             values,
@@ -736,6 +743,23 @@ def _event_changed(
         or existing_zones
         != {zone.zone_label: float(zone.seconds) for zone in zones}
     )
+
+
+def _device_id(device_name: object) -> str | None:
+    """A stable id for an Intervals-only device, or None when it is unknown."""
+    text = str(device_name or "").strip().lower()
+
+    if not text:
+        return None
+
+    slug = "".join(
+        character if character.isalnum() else "-"
+        for character in text
+    ).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+
+    return f"intervals:{slug}" if slug else None
 
 
 def _activity_values(raw: dict) -> dict[str, object]:

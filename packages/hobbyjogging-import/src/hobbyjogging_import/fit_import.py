@@ -497,7 +497,18 @@ class FitImporter:
         if source_record_id is None:
             raise RuntimeError("FIT source record was not created")
 
+        device_id = _device_id(fit_summary)
+        if device_id is not None:
+            self.writer.upsert_device(
+                device_id,
+                manufacturer=fit_summary.manufacturer,
+                product=fit_summary.product,
+                serial_number=fit_summary.serial_number,
+            )
+
         values = _activity_values(session)
+        if device_id is not None:
+            values["device_id"] = device_id
         conflicts = self.writer.upsert_activity(
             activity_id,
             values,
@@ -601,6 +612,22 @@ def discover_fit_files(
             discovered.append(candidate)
 
     return sorted(discovered, key=lambda path: str(path))
+
+
+def _device_id(summary: FitFileSummary) -> str | None:
+    """The recorder's stable id, or None for a non-device upload.
+
+    Garmin Connect web uploads carry ``product='connect'`` and no serial; they
+    are uploads, not devices.
+    """
+    manufacturer = (summary.manufacturer or "").strip()
+    product = (summary.product or "").strip()
+
+    if not manufacturer or not product or product == "connect":
+        return None
+
+    serial = (summary.serial_number or "").strip()
+    return f"fit:{manufacturer}:{product}:{serial}"
 
 
 def _activity_values(session: FitSession) -> dict[str, object]:

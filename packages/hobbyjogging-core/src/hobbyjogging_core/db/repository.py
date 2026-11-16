@@ -9,6 +9,7 @@ from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
     AthleteThreshold,
+    Device,
     RaceResult,
     Equipment,
     Event,
@@ -38,7 +39,7 @@ class TrainingRepository:
                 id, local_date, started_at_utc, sport, name, description,
                 duration_s, elapsed_s, distance_m, avg_hr, training_load,
                 rpe, feel, intensity, vo2max_garmin, vo2max_runalyze,
-                moving_s
+                moving_s, device_id
             FROM activities
             WHERE local_date BETWEEN ? AND ?
               AND excluded_at IS NULL
@@ -82,6 +83,7 @@ class TrainingRepository:
                 pace_zone_times=zone_times[row["id"]]["pace"],
                 hr_zone_times=zone_times[row["id"]]["hr"],
                 equipment=equipment[row["id"]],
+                device_id=row["device_id"] or "",
                 needs_review=row["id"] in flagged,
             )
             for row in rows
@@ -166,6 +168,38 @@ class TrainingRepository:
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 max_hr=row["max_hr"],
+            )
+            for row in rows
+        ]
+
+    def devices(self) -> list[Device]:
+        rows = self.connection.execute(
+            """
+            SELECT id, manufacturer, product, serial_number, name,
+                   acquired_on, retired_on, notes
+            FROM devices
+            ORDER BY acquired_on, product, id
+            """
+        ).fetchall()
+
+        return [
+            Device(
+                id=row["id"],
+                manufacturer=row["manufacturer"] or "",
+                product=row["product"] or "",
+                serial_number=row["serial_number"] or "",
+                name=row["name"] or "",
+                acquired_on=(
+                    date.fromisoformat(row["acquired_on"])
+                    if row["acquired_on"]
+                    else None
+                ),
+                retired_on=(
+                    date.fromisoformat(row["retired_on"])
+                    if row["retired_on"]
+                    else None
+                ),
+                notes=row["notes"] or "",
             )
             for row in rows
         ]

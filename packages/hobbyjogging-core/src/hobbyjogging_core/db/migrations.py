@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -323,6 +323,28 @@ CREATE INDEX idx_race_results_activity ON race_results(activity_id);
 """
 
 
+MIGRATION_17_SQL = """
+-- Recording devices. One recorder per activity, so the activity carries a
+-- single foreign key instead of a link table; the serial distinguishes two
+-- units of the same product.
+CREATE TABLE devices (
+    id TEXT PRIMARY KEY,
+    manufacturer TEXT NOT NULL DEFAULT '',
+    product TEXT NOT NULL DEFAULT '',
+    serial_number TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    acquired_on TEXT,
+    retired_on TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE activities ADD COLUMN device_id TEXT
+    REFERENCES devices(id) ON DELETE SET NULL;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -340,6 +362,7 @@ MIGRATIONS: dict[int, str] = {
     14: MIGRATION_14_SQL,
     15: MIGRATION_15_SQL,
     16: MIGRATION_16_SQL,
+    17: MIGRATION_17_SQL,
 }
 
 

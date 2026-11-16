@@ -38,6 +38,7 @@ ACTIVITY_COLUMNS = {
     "intensity",
     "vo2max_garmin",
     "vo2max_runalyze",
+    "device_id",
 }
 
 MANUAL_FIELDS = (
@@ -56,6 +57,7 @@ MANUAL_FIELDS = (
     "training_load",
     "vo2max_garmin",
     "vo2max_runalyze",
+    "device_id",
 )
 
 # Fields whose cross-source disagreement is surfaced for review. Subjective
@@ -117,6 +119,9 @@ DATETIME_FIELDS = frozenset({"started_at_utc"})
 FIELD_AUTHORITY = {
     "moving_s": "intervals",
     "elapsed_s": "intervals",
+    # FIT carries the device serial, so it wins over Intervals' device name;
+    # a manual assignment still wins.
+    "device_id": "fit",
 }
 
 
@@ -1929,6 +1934,59 @@ class TrainingWriter:
             entries,
         )
         return len(entries)
+
+    def upsert_device(
+        self,
+        device_id: str,
+        *,
+        manufacturer: str = "",
+        product: str = "",
+        serial_number: str = "",
+        name: str = "",
+        acquired_on: date | str | None = None,
+        retired_on: date | str | None = None,
+        notes: str = "",
+    ) -> bool:
+        """Create or refresh one recording device. Returns True when created."""
+        if not str(device_id).strip():
+            raise ValueError("device id must not be empty")
+
+        existing = self.connection.execute(
+            "SELECT 1 FROM devices WHERE id = ?",
+            (device_id,),
+        ).fetchone()
+
+        self.connection.execute(
+            """
+            INSERT INTO devices (
+                id, manufacturer, product, serial_number, name,
+                acquired_on, retired_on, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                manufacturer = excluded.manufacturer,
+                product = excluded.product,
+                serial_number = excluded.serial_number,
+                name = excluded.name,
+                acquired_on = COALESCE(excluded.acquired_on, devices.acquired_on),
+                retired_on = COALESCE(excluded.retired_on, devices.retired_on),
+                notes = CASE
+                    WHEN excluded.notes = '' THEN devices.notes
+                    ELSE excluded.notes
+                END,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                device_id,
+                manufacturer,
+                product,
+                serial_number,
+                name,
+                acquired_on,
+                retired_on,
+                notes,
+            ),
+        )
+        return existing is None
 
     RACE_RESULT_FIELDS = (
         "event_id",
