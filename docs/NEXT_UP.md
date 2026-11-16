@@ -379,12 +379,20 @@ one takes the next free number, so cross-references stay valid.
      activity.
    - Start with the four with the best signal-to-noise — readiness,
      sleepScore, stress, respiration — and leave the rest behind a flag.
-   - **Canonical weight needs its own decision**: `weight` arrives in the
-     Intervals wellness payload and the sheet's `Gewicht nachher`, but nothing
-     decides it as a canonical field. If the lab's HR/economy VO2max idea is
-     ever pursued, weight and max HR are its blockers — max HR is item 6, so
-     weight needs an explicit choice of unit (kg), owner and source before it
-     feeds any derived metric.
+   - **Canonical weight (decided)**: `weight_kg` on `wellness_days`, nullable
+     and owner-based, in kilograms with a plausible-range guard. Sources:
+     the Intervals wellness payload, the sheet's `Gewicht nachher`, and
+     Runalyze's `bodyComposition` endpoint — the Runalyze API confirmed it
+     exists, which closes the open question. Body fat waits until something
+     reads it; the lab's HR/economy VO2max idea now has its other blocker
+     (max HR, item 6) resolved too.
+   - **Runalyze wellness is split, not one endpoint**: `sleep`, `hrv`,
+     `heartRateRest`, `heartRateMax`, `bodyComposition` and `disease` are
+     separate health-metric resources, so the importer maps each into
+     `wellness_days` rather than expecting a wellness object.
+   - **Out of scope, recorded**: `bloodPressure`, `bloodGlucose`,
+     `bodyTemperature`, `mental`, `dailyNote`, `menstrualCycle`, `statistics`
+     and `race-suggestion` are not stored.
 
 10. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
@@ -435,12 +443,15 @@ one takes the next free number, so cross-references stay valid.
     ends in 2021, so 2022–2026 has no gear at all), comments, tags, race
     results and `vo2max_runalyze`. It is not one import but a milestone with
     its own dependencies.
-    - **Access, re-checked (Nov 2026)**: the Personal API takes
-      `Authorization: Bearer <token>` with tokens from
-      `/settings/personal-api`, but the help page says read access is for
-      supporter/premium accounts — so the first step is confirming the account
-      tier. The public OpenAPI document returns an empty spec, so the read
-      endpoints are not documented anonymously.
+    - **Access, checked against the live API (Nov 2026)**: the header is
+      **`token: <key>`**, not `Authorization: Bearer` (that one is for the MCP
+      server). With a premium key, `/api/v1/ping` answers `["pong"]` but every
+      data endpoint returns **403 Access Denied** with rate-limit headers
+      (240/min) — the key is valid and lacks the read scopes. Fix is on the
+      account side: regenerate the token at `/settings/personal-api` with read
+      scopes and check its expiry. Docs are split per tier
+      (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
+      document, so the resource list comes from `/api` instead.
     - **Fallback that may unblock it now**: `runalyze.com/my/exports` offers a
       CSV/JSON export from the web UI, the same pattern as the Strava bulk
       export. Check whether it carries comments, tags, gear and race results;
@@ -847,6 +858,11 @@ one takes the next free number, so cross-references stay valid.
     - **Ranges from markers**: a season's end is derivable; an illness's is not
       — 25 single-day markers say "sick today", not how long. Start with the
       marker, allow a manual end, and never infer a duration.
+    - **Runalyze `disease` supplies the range**: the API has a health-metric
+      resource for illness with its own start and end, which is exactly what
+      the day markers cannot give. Use it as the illness source when the
+      import lands, with the Intervals markers as a fallback and manual entry
+      always winning.
     - **Manual entry**: `period add|edit|remove` (manual wins), and the future
       edit CLI from item 1.
     - **Reports**: shade seasons and illness on volume, load, recovery and

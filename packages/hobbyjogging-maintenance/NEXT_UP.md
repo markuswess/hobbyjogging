@@ -51,8 +51,10 @@ This file records what the package is still waiting on.
   no `threshold_pace`, and record the derived series next to the stamped one
   so the reports can show both. Idempotent, dry-run, and it reports the delta
   to the stamped values.
-- **`wellness_extras_v1`** (backfill). Fill the new wellness columns from
-  the stored Intervals wellness payloads (3,022 days), idempotent, dry-run.
+- **`wellness_extras_v1`** (backfill). Fill the new wellness columns —
+  including `weight_kg` from the Intervals payload and the sheet's
+  `Gewicht nachher` — from the stored payloads (3,022 days), idempotent,
+  dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
 - **`activity_max_hr_v1`** (backfill). Fill `activities.max_hr` from the

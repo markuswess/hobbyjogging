@@ -201,14 +201,18 @@ on.
 
 ## Waiting on
 
-- **Runalyze enrichment** (blocked on access, not on design): the Personal API
-  uses a Bearer token from `/settings/personal-api`, but read access is for
-  supporter/premium accounts and the public OpenAPI spec is empty. Check the
-  account tier first; then check whether `runalyze.com/my/exports` (CSV/JSON,
-  like the Strava bulk export) carries comments, tags, gear and race results —
-  if it does, start there and use the API only for incremental sync.
-  Payload: comments into the chosen text home, tags in `activity_tags`, gear
-  via the equipment endpoints, and `vo2max_runalyze`.
+- **Runalyze enrichment** (blocked on the token's read scopes, not on design).
+  The REST API takes a **`token: <key>`** header — `Authorization: Bearer` is
+  for the MCP server and returns 401. Checked live: `/api/v1/ping` answers
+  `["pong"]`, every data endpoint returns 403 with rate-limit headers
+  (240/min), so the key is valid but has no read scope; regenerate it at
+  `/settings/personal-api`. The resource list comes from `/api`:
+  `activity`, `raceresult` (alpha), `equipment`, `device-profile`,
+  `recurring-route`, `sport`, `tag`, `planned-race`, and the health metrics
+  `sleep`, `hrv`, `heartRateRest`, `heartRateMax`, `bodyComposition`,
+  `disease`. Payload: comments into `description`, tags in `activity_tags`,
+  gear via `equipment`, `vo2max_runalyze`, weight and illness ranges into
+  `wellness_days` and `training_periods`.
   - **Gear / equipment**: gear records become
     `source_records(record_type='gear')` plus `equipment` rows, and activities
     link through `activity_equipment` with `source='runalyze'`. Cross-source
