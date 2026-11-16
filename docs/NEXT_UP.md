@@ -869,6 +869,26 @@ one takes the next free number, so cross-references stay valid.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
+36. **Keep illness ranges, not one-day markers** (maintenance; then reports).
+    The reports illness bands need real spans, and the source has them: every
+    Intervals `SICK`/`NOTE` event carries `end_date_local` — all 29 in the log
+    are multi-day (the Feb–Mar 2026 thyroid episode is 2026-02-08 → 2026-03-09).
+    `training_periods_current` writes `start = end` because it assumes the
+    source has no duration, so only one-day markers reach the reports.
+    - **Maintenance**: read `end_date_local` (fall back to
+      `start_date_local`), store it inclusive, matching the season end
+      convention. Extend `test_training_periods` with a ranged payload and a
+      same-day one, then re-run the recompute (`--dry-run` first on the real
+      DB).
+    - **Runalyze**: Injury & Sickness Tracking records start and end dates, so
+      the item 12 import should map health entries to `illness` periods with
+      ranges, never markers.
+    - **Hand back**: reports item 10 (season and illness bands) resumes once
+      the derived ranges exist; its chart code already handles a range and a
+      one-day marker.
+    - **Check**: `period list` shows the ranges, and a period report's illness
+      days match the event durations.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

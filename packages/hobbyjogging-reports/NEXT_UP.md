@@ -276,9 +276,9 @@ Schema v12-v16 moved the data under several items, so the picture changed:
 (repository query and model drop them; items 2 and 6), the per-activity zone
 config ids (item 5's zone normalization), devices (1), routes (3), wellness
 extras (4) and social titles (7). Item 13 has its data (`event_activity_links`,
-schema v21), item 10's seasons do but its illness ranges wait on the
-maintenance recompute keeping `end_date_local`, and 14's series needs the lab
-gate in root item 31. Item 12 stays parked on its
+schema v21), item 10 is handed to root item 36 for its illness ranges and
+resumes here after the maintenance fix, and 14's series needs the lab gate in
+root item 31. Item 12 stays parked on its
 page-coverage cost, and 11 is recurring upkeep. The efficiency floor, the planned-event page, the
 streaks report and the collapsible lists landed here.
 
@@ -338,10 +338,11 @@ streaks report and the collapsible lists landed here.
     seasons, 25 illness markers, 4 notes), and the source carries real ranges:
     every Intervals `SICK`/`NOTE` event has an `end_date_local` (the Feb–Mar
     2026 thyroid episode is 2026-02-08 → 2026-03-09). The derived rows are
-    one-day because `training_periods_current` drops that end date, so a
-    maintenance fix comes first: read `end_date_local`, test a ranged and a
-    same-day payload, re-run the recompute. Until it lands the reports draw
-    one-day markers; the shading handles both shapes either way.
+    one-day because `training_periods_current` drops that end date. **Handed
+    off**: root item 36 fixes the recompute (read `end_date_local`, test a
+    ranged and a same-day payload, re-run it); this item resumes here
+    afterwards. Until then the reports draw one-day markers, and the shading
+    handles both shapes either way.
     - **Chart**: one shared helper shades seasons on the volume and load charts
       with a quiet label at each visible band start, and illness periods on
       recovery and the analysis pace/HR chart (which carries the efficiency
