@@ -290,6 +290,10 @@ one takes the next free number, so cross-references stay valid.
    - **Ownership**: owner-based like distance, with a wide tolerance (10% or
      20 m) because the sources are estimates; manual wins. Intervals authority
      is the fallback if conflicts turn out to be noisy.
+   - **Runalyze keeps corrected and file values**: `elevation_up`/`_down` are
+     corrected, `elevation_up_file`/`_down_file` the raw FIT sums, with an
+     `elevation_source`. Store the corrected pair and keep the file pair as
+     provenance (the raw payload already holds it); do not average them.
    - **Backfill `activity_elevation_v1`** (maintenance): fill existing rows
      from the stored payloads (Intervals, sheet) and from summed FIT laps, no
      network, idempotent, `--dry-run`.
@@ -323,9 +327,11 @@ one takes the next free number, so cross-references stay valid.
      `temp_c`, `feels_like_c`, `humidity_pct`, `wind_speed_ms`, `wind_gust_ms`,
      `wind_chill_c`, `heat_index_c`, `air_pressure_hpa`, `clouds_pct`, `source`
      — rather than columns on `activities`; importers write it and
-     `activity_weather_v1` backfills from the payloads. The humidity, wind
-     chill, heat index and pressure fields exist only in Runalyze's dataset
-     keys today, so the row is shaped for both sources from the start.
+     `activity_weather_v1` backfills from the payloads. Add `wind_degree`,
+     `uv_index`, `weather_condition` and `is_night`: Runalyze supplies them and
+     Intervals does not, while feels-like and wind gust are the other way
+     round — the row carries the union, and a missing field stays `NULL`
+     rather than being guessed.
    - **Uses**: heat/wind annotations on pace, HR and efficiency charts;
      comparing similar efforts across conditions.
 
@@ -406,8 +412,13 @@ one takes the next free number, so cross-references stay valid.
      backfills from the sheet payloads.
    - **Reports**: group activities by route so pace, HR and efficiency compare
      like-for-like; a route page with its best efforts.
-   - **Open**: GPS-derived routes for the FIT era would need stored streams,
-     which do not exist today.
+   - **Runalyze supplies routes for the FIT era**: the activity payload nests a
+     `recurring_route` with id, name, distance, start/end coordinates and a
+     bounding box, so route identity after 2021 does not depend on stored
+     streams. The sheet remains the only source before 2022; a route id from
+     Runalyze is a different identity from a `Streckennummer`, so the two
+     never merge automatically.
+   - **Open**: our own GPS-derived routes would still need stored streams.
 
 11. **Device registry and per-activity device** (core + import + maintenance +
    reports). The sources already carry the device: FIT
@@ -462,6 +473,15 @@ one takes the next free number, so cross-references stay valid.
       the 60 per-activity dataset keys in `inc/core/Dataset/Keys/` and the
       entities in `src/CoreBundle/Entity/`. Design against it now — it already
       shaped the race-result and weather schemas (items 18 and 7).
+    - **Payload findings (Nov 2026, token with read scopes)**: the activity
+      object has 81 fields (87 in the detail). `vo2max` is Runalyze's *effective*
+      estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
+      `vo2max_runalyze` must name which one — take `vo2max` and note the others
+      as alternatives, never a Garmin value. Tags are not in the activity
+      payload but are filterable (`?tag=<id>` returns the activities), so one
+      query per tag definition imports them. `sport`, `recurring-route`,
+      `planned-race` and `device-profile` answer 403 with this token; the
+      nested activity data covers routes and the device name anyway.
     - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
       same personal token — relevant to the coaching workflow (item 25), not to
       bulk import.
@@ -585,7 +605,10 @@ one takes the next free number, so cross-references stay valid.
      The extra columns come from Runalyze's `Raceresult` entity
      (`official_distance`, `official_time`, `officially_measured`, `name`,
      `place_*`, `participants_*`), so the schema does not need a second
-     migration once that import lands.
+     migration once that import lands. The API adds `priority_level` (A/B/C/
+     unknown) and `status` (completed, plus DNS/DNF): store both, and let a PB
+     count only `completed` results — a DNS with a time would otherwise win a
+     bucket.
    - **Core**: model + `DataSource.race_results()` +
      `TrainingWriter.upsert_race_result` (replace or insert; provenance and
      exclusion rules follow the usual canonical pattern).
@@ -969,6 +992,28 @@ one takes the next free number, so cross-references stay valid.
     - **Why low**: the raw sources and the database are already safe; this
       protects the decisions and the design claim, which matters if the project
       is ever abandoned or handed over.
+
+35. **Runalyze's extra metrics: what to store, what to ignore** (core + import
+    + reports; decision). The activity payload carries more than our schema
+    holds. Coverage measured in the Intervals payloads we already keep:
+    `average_cadence` 2,353 of 2,851 (83%), `average_stride` 2,334, but the
+    running-dynamics family (`average_vertical_oscillation`,
+    `average_stance_time`, `average_vertical_ratio`) only 110 (4%). FIT
+    records carry them per second, but we store no streams; Intervals already
+    gives the per-activity averages. Runalyze adds `gap`/`x_gap`,
+    `aerobic_decoupling_pace/power`, `trimp`/`fit_trimp`/`fit_training_effect`,
+    `required_critical_pace/power`, `climbs`, `hrv`, and zone distributions as
+    percentages.
+    - **Store**: `cadence` and `stride_length` (83 % coverage, actionable) and
+      `gap_mps` — Runalyze's grade-adjusted pace beats a lap-based estimate.
+    - **Lab**: decoupling and critical speed already have candidates; use
+      Runalyze's values as a cross-check, not as stored metrics.
+    - **Out of scope**: vertical oscillation, stance time and ratio (4 %
+      coverage), impact loading, leg spring stiffness, TRIMP and training
+      effect (we keep Intervals' `training_load`), climbs as an entity, HRV
+      analysis, and zone distributions as percentages.
+    - **Open**: whether cadence and stride sit on `activities` or in an
+      `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
