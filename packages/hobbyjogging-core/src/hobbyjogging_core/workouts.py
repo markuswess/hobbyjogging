@@ -11,6 +11,7 @@ from __future__ import annotations
 WORKOUT_METHODS = {
     "continuous": "Continuous",
     "intervals": "Intervals",
+    "fartlek": "Fartlek",
     "long_run": "Long Run",
     "progression": "Progression",
     "race": "Race",
@@ -33,7 +34,7 @@ WORKOUT_TARGETS = {
 # A session is quality if any method or target below is present. Strides alone
 # never make a session quality; base/recovery targets do not either.
 QUALITY_METHODS = frozenset(
-    {"intervals", "long_run", "progression", "race"}
+    {"intervals", "fartlek", "long_run", "progression", "race"}
 )
 QUALITY_TARGETS = frozenset(
     {"lt1", "subthreshold", "threshold", "vo2max", "speed", "marathon"}
@@ -46,6 +47,9 @@ METHOD_ALIASES = {
     "reps": "intervals",
     "repetitions": "intervals",
     "interval": "intervals",
+    "fahrtspiel": "fartlek",
+    "fartlek_run": "fartlek",
+    "fartlekrun": "fartlek",
     # "tempo" is retired: a tempo run is continuous with a threshold target.
     "tempo": "continuous",
     "tempo_run": "continuous",
@@ -79,7 +83,7 @@ SHEET_TYPE_CODES = {
     "i": ({"intervals"}, {"vo2max"}, set()),
     "bi": ({"intervals"}, {"vo2max"}, {"hills"}),
     "b": ({"continuous"}, {"base"}, set()),
-    "fs": ({"intervals"}, set(), set()),
+    "fs": ({"fartlek"}, {"vo2max"}, set()),
     "k": (set(), set(), {"strength"}),
     "ll": ({"long_run"}, {"base"}, set()),
     "lt": ({"race"}, {"other"}, set()),

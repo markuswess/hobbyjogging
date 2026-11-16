@@ -41,8 +41,16 @@ class WorkoutVocabularyTests(unittest.TestCase):
         self.assertEqual("continuous", canonical_method("tempo_run"))
 
     def test_unknown_values_become_other(self):
-        self.assertEqual("other", canonical_method("fartlek"))
+        self.assertEqual("other", canonical_method("nonsense"))
         self.assertEqual("other", canonical_target("nonsense"))
+
+    def test_fartlek_is_its_own_method(self):
+        self.assertEqual("fartlek", canonical_method("fartlek"))
+        self.assertEqual("fartlek", canonical_method("fahrtspiel"))
+        self.assertEqual("fartlek", canonical_method("fartlek_run"))
+        self.assertEqual("Fartlek", method_label("fartlek"))
+        self.assertTrue(is_quality({"fartlek"}, set()))
+        self.assertTrue(is_quality({"fartlek"}, {"vo2max"}))
 
     def test_labels(self):
         self.assertEqual("Long Run", method_label("long_run"))
@@ -108,7 +116,7 @@ class WorkoutVocabularyTests(unittest.TestCase):
             classification_for_sheet_code("bi"),
         )
         self.assertEqual(
-            ({"intervals"}, set(), set()),
+            ({"fartlek"}, {"vo2max"}, set()),
             classification_for_sheet_code("fs"),
         )
         self.assertEqual(

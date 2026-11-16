@@ -1053,10 +1053,10 @@ class WorkoutClassificationTriageTests(unittest.TestCase):
         self.assertEqual("resolved", self._item()["status"])
 
     def test_manual_input_rejects_unknown_tokens(self):
-        lines, counters = self._runner(["k", "3", "fartlek", "q"])
+        lines, counters = self._runner(["k", "3", "nonsense", "q"])
 
         joined = "\n".join(lines)
-        self.assertIn("unknown method 'fartlek'", joined)
+        self.assertIn("unknown method 'nonsense'", joined)
         self.assertEqual(0, counters.get("classified", 0))
         self.assertEqual("open", self._item()["status"])
         self.assertEqual(([], [], None), self._sets())
