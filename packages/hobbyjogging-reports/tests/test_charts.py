@@ -89,6 +89,60 @@ class SubtChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
+    def test_efficiency_panel_shows_the_rep_range_and_extreme_trends(self):
+        points = [
+            SubtPoint(
+                D + timedelta(days=index),
+                "short",
+                220,
+                count=5,
+                efficiency=2.0 + index * 0.05,
+                lowest_efficiency=1.8 + index * 0.05,
+                highest_efficiency=2.2 + index * 0.05,
+            )
+            for index in range(4)
+        ]
+
+        html = plot_subt(points, "", as_html=True)
+
+        self.assertIn('"dash":"dot"', html)
+        self.assertIn('"dash":"dash"', html)
+        self.assertIn("reps 1.80", html)
+        self.assertIn("n=5", html)
+
+    def test_efficiency_axis_follows_the_bulk_not_one_extreme_rep(self):
+        points = [
+            SubtPoint(
+                D + timedelta(days=index),
+                "short",
+                220,
+                efficiency=2.5,
+                lowest_efficiency=2.4,
+                highest_efficiency=2.6,
+            )
+            for index in range(10)
+        ]
+        points[0] = SubtPoint(
+            D,
+            "short",
+            220,
+            efficiency=2.5,
+            lowest_efficiency=2.4,
+            highest_efficiency=9.0,
+        )
+
+        html = plot_subt(points, "", as_html=True)
+
+        index = html.index("Plotly.newPlot(")
+        bracket = html.index("[", index)
+        _data, end = json.JSONDecoder().raw_decode(html[bracket:])
+        brace = html.index("{", bracket + end)
+        layout, _ = json.JSONDecoder().raw_decode(html[brace:])
+
+        low, high = layout["yaxis3"]["range"]
+        self.assertGreaterEqual(low, 2.0)
+        self.assertLess(high, 3.0)
+
     def test_combined_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

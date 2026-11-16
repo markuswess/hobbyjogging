@@ -346,6 +346,75 @@ class SubtEfficiencyTests(unittest.TestCase):
         self.assertEqual(2750, points[0].beats)
         self.assertAlmostEqual(5000 / 2750, blocks[0].efficiency)
 
+    def test_points_carry_the_rep_efficiency_range(self):
+        activity = Activity(id="a", date=D, type="run", duration_s=600)
+        intervals = [
+            Interval(
+                type="WORK",
+                group_id="g",
+                duration_s=300,
+                distance_m=1000,
+                avg_hr=160,
+            ),
+            Interval(
+                type="WORK",
+                group_id="g",
+                duration_s=300,
+                distance_m=800,
+                avg_hr=170,
+            ),
+        ]
+
+        points = subt_work_points(activity, intervals, resting_hr=50)
+
+        # 1000 m / (110 bpm * 5 min) and 800 m / (120 bpm * 5 min).
+        self.assertAlmostEqual(800 / 600, points[0].lowest_efficiency)
+        self.assertAlmostEqual(1000 / 550, points[0].highest_efficiency)
+        self.assertAlmostEqual(1800 / 1150, points[0].efficiency)
+
+    def test_a_single_rep_has_no_range(self):
+        activity = Activity(id="a", date=D, type="run", duration_s=300)
+        intervals = [
+            Interval(
+                type="WORK",
+                group_id="g",
+                duration_s=300,
+                distance_m=1000,
+                avg_hr=160,
+            ),
+        ]
+
+        point = subt_work_points(activity, intervals, resting_hr=50)[0]
+
+        self.assertAlmostEqual(
+            point.lowest_efficiency,
+            point.highest_efficiency,
+        )
+
+    def test_a_rep_without_hr_stays_out_of_the_range(self):
+        activity = Activity(id="a", date=D, type="run", duration_s=600)
+        intervals = [
+            Interval(
+                type="WORK",
+                group_id="g",
+                duration_s=300,
+                distance_m=1000,
+                avg_hr=160,
+            ),
+            Interval(
+                type="WORK",
+                group_id="g",
+                duration_s=300,
+                distance_m=600,
+                avg_hr=None,
+            ),
+        ]
+
+        point = subt_work_points(activity, intervals, resting_hr=50)[0]
+
+        self.assertAlmostEqual(1000 / 550, point.lowest_efficiency)
+        self.assertAlmostEqual(1000 / 550, point.highest_efficiency)
+
     def test_partial_hr_coverage_stays_weighted(self):
         activity = Activity(id="a", date=D, type="run", duration_s=600)
         intervals = [

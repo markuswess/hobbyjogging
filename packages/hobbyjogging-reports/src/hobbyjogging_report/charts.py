@@ -333,6 +333,23 @@ def _planned_total_bars(figure, values, *, label: str = "planned"):
     )
 
 
+def _bulk_range(values, *, step: float) -> list[float] | None:
+    """Round a range around the bulk, so an extreme value cannot flatten it."""
+    ordered = sorted(value for value in values if value is not None)
+
+    if not ordered:
+        return None
+
+    dropped = max(1, round(AXIS_TAIL * (len(ordered) - 1)))
+    low = ordered[min(dropped, len(ordered) - 1)]
+    high = ordered[max(0, len(ordered) - 1 - dropped)]
+
+    return [
+        step * math.floor(low / AXIS_HEADROOM / step),
+        step * math.ceil(high * AXIS_HEADROOM / step),
+    ]
+
+
 def _axis_ceiling(
     values,
     *,
@@ -1136,12 +1153,54 @@ def plot_subt(
             continue
 
         dates = [point.date for point in efficiency]
+
+        # The rep range, like the pace panel's fastest/slowest sticks.
+        for point in efficiency:
+            if (
+                point.lowest_efficiency is None
+                or point.highest_efficiency is None
+                or point.lowest_efficiency == point.highest_efficiency
+            ):
+                continue
+
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date, point.date],
+                    y=[
+                        point.lowest_efficiency,
+                        point.highest_efficiency,
+                    ],
+                    mode="lines",
+                    line={"color": color, "width": 1.1},
+                    opacity=0.35,
+                    showlegend=False,
+                ),
+                row=3,
+                col=1,
+            )
+
         figure.add_trace(
             go.Scatter(
                 x=dates,
                 y=[point.efficiency for point in efficiency],
                 mode="markers",
                 marker={"color": color, "size": 7},
+                text=[
+                    (
+                        f"{point.date} {category}"
+                        f"<br>E {point.efficiency:.2f} {EFFICIENCY_UNIT}"
+                        + (
+                            f", reps {point.lowest_efficiency:.2f}–"
+                            f"{point.highest_efficiency:.2f}"
+                            if point.lowest_efficiency is not None
+                            and point.highest_efficiency is not None
+                            else ""
+                        )
+                        + f", n={point.count}"
+                    )
+                    for point in efficiency
+                ],
+                hoverinfo="text",
                 showlegend=False,
             ),
             row=3,
@@ -1162,6 +1221,30 @@ def plot_subt(
             row=3,
             col=1,
         )
+
+        # Extremes are noisier than the weighted average, so they get thin
+        # dashed trends rather than a solid line of their own.
+        for field, dash in (
+            ("lowest_efficiency", "dot"),
+            ("highest_efficiency", "dash"),
+        ):
+            series = [getattr(point, field) for point in efficiency]
+
+            if len(series) < 2 or any(value is None for value in series):
+                continue
+
+            figure.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=_time_ewma(dates, series, window_days),
+                    mode="lines",
+                    line={"color": color, "width": 1.2, "dash": dash},
+                    opacity=0.45,
+                    showlegend=False,
+                ),
+                row=3,
+                col=1,
+            )
 
     if not plotted:
         raise ValueError("no data to plot")
@@ -1189,8 +1272,21 @@ def plot_subt(
         row=2,
         col=1,
     )
+    efficiency_range = _bulk_range(
+        [
+            value
+            for point in points
+            for value in (
+                point.efficiency,
+                point.lowest_efficiency,
+                point.highest_efficiency,
+            )
+        ],
+        step=0.1,
+    )
     figure.update_yaxes(
         title_text="efficiency (m/excess beat, work reps)",
+        range=efficiency_range,
         row=3,
         col=1,
     )

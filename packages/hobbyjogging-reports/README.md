@@ -308,11 +308,13 @@ stay compact (`1h02`).
   default, with pace, average HR, and efficiency (m/excess beat) as three
   stacked panels sharing a date axis. Dots are color-coded by rep length
   (short/medium/long) or LT1; pace ranges show fastest–slowest, HR ranges
-  show average–max, and the pace/HR lines are 42-day EWMAs while the
-  efficiency line is a 42-day *weighted* mean
-  (sum(distance)/sum(excess beats)). The pace axis is fixed at 4:20–3:15
-  min/km (faster up) and HR at 140–180 bpm; efficiency auto-ranges (about
-  1.8–2.8 in the current data).
+  show average–max, and the efficiency panel shows each session's worst–best
+  work rep. The pace/HR lines are 42-day EWMAs, the efficiency average is a
+  42-day *weighted* mean (sum(distance)/sum(excess beats)), and the low and
+  high efficiency series get thin dotted/dashed trends of their own. The pace
+  axis is fixed at 4:20–3:15 min/km (faster up), HR at 140–180 bpm, and
+  efficiency follows the bulk (the top and bottom 5 % are rounded away) so one
+  extreme rep cannot flatten the panel; the hover keeps the full values.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point

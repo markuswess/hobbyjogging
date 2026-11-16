@@ -55,6 +55,7 @@ def _subt_point(
     # Efficiency only counts reps with a usable excess heart rate.
     efficiency_distance = 0.0
     efficiency_beats = 0.0
+    rep_efficiencies = []
 
     for interval in intervals:
         sample_beats = excess_beats(
@@ -68,6 +69,7 @@ def _subt_point(
 
         efficiency_distance += interval.distance_m
         efficiency_beats += sample_beats
+        rep_efficiencies.append(interval.distance_m / sample_beats)
 
     efficiency = (
         efficiency_distance / efficiency_beats
@@ -94,6 +96,10 @@ def _subt_point(
         distance_m=efficiency_distance,
         beats=efficiency_beats,
         efficiency=efficiency,
+        lowest_efficiency=min(rep_efficiencies) if rep_efficiencies else None,
+        highest_efficiency=(
+            max(rep_efficiencies) if rep_efficiencies else None
+        ),
     )
 
 

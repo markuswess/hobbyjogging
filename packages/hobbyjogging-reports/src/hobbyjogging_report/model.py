@@ -25,6 +25,8 @@ class SubtPoint:
     distance_m: float = 0
     beats: float = 0  # excess heartbeats, above the resting baseline
     efficiency: float | None = None
+    lowest_efficiency: float | None = None  # worst work rep
+    highest_efficiency: float | None = None  # best work rep
 
 
 @dataclass
