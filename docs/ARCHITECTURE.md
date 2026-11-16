@@ -250,8 +250,9 @@ SQLite, forward-only migrations. Schema version 11.
   session report prints one raw segment table — intervals when there is more
   than one, otherwise laps when there is more than one — and the subT
   work-reps section is derived separately.
-- `activity_tags` (v5) — activity labels with their source; used for dashboard
-  filters and later analysis.
+- `activity_tags` (v5) — activity labels with their source. The sheet writes
+  its training-area code (`Trainingsgebiet`); the classification code is not a
+  tag, because the method/target sets already carry it.
 - `activity_workout_methods`, `activity_workout_targets` (v9) — set-based
   workout classification for completed activities (a session may carry
   several methods and targets).

@@ -4,6 +4,9 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`drop_classification_tags_v1`.** Removed the sheet's `Trainigstyp` codes
+  from `activity_tags`, keeping manual tags and the training-area labels.
+  Applied to the real DB: 874 tags from 869 activities; 1,015 area tags remain.
 - **`fartlek_from_fs_v1`.** Converted the sheet-`fs` activities from
   `intervals` to `fartlek`, filling a missing target with `vo2max` and skipping
   manual rows entirely. Applied to the real DB: 60 activities, 40 converted,
@@ -39,9 +42,6 @@ This file records what the package is still waiting on.
   activities (date + sport, then distance within ~5%, then start proximity),
   write `event_activity_links`, open an `ambiguous_race` item for genuine
   ambiguity, and never touch a manual link. See root item 4.
-- **`drop_classification_tags_v1`** (backfill). Remove the sheet's
-  `Trainigstyp` codes from `activity_tags`, keeping manual tags and orthogonal
-  labels (`hills`, `bad data`); idempotent, dry-run. See root item 19.
 - **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
   (backfills). Create threshold snapshots and zone configs from the stored
   payloads and set the activity FK columns; idempotent, dry-run.

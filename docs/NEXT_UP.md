@@ -4,6 +4,11 @@ Updated 2026-11-12.
 
 ## Done
 
+- **The redundant sheet tags are gone.** The sheet import no longer writes the
+  `Trainigstyp` code as a tag — the method/target sets carry it — and
+  `drop_classification_tags_v1` removed 874 code tags from 869 activities,
+  leaving the 1,015 training-area labels (`w`, `m`, `wb`, `a`, `t`, `I`) that
+  are orthogonal to the classification. Manual tags are never touched.
 - **The display category comes from the stored sets.** `category_for_sets`
   maps methods/targets to the display kind with a fixed priority (race,
   long_run, fartlek, intervals/progression, continuous+threshold, recovery,
@@ -169,6 +174,9 @@ Updated 2026-11-12.
 _None._
 
 ## Next
+
+Numbers are labels, not a schedule: a completed item leaves a gap and a new
+one takes the next free number, so cross-references stay valid.
 
 1. **Activity editing, CLI first** (core + import). The only manual write
    surface is `review edit`, which changes `duration_s`, `distance_m` and
@@ -587,20 +595,6 @@ _None._
      PB/bucket/Riegel prefer official values, the GPS fallback is unchanged,
      and the race report shows both values.
    - **Docs**: the reports README's race section.
-
-19. **Retire the redundant sheet tags** (core + import + maintenance + reports).
-    `activity_tags` still holds the sheet's `Trainigstyp` codes — 890 `w`,
-    278 `r`, 166 `i`, 130 `ll`, 99 `tdl`, 60 `fs`, 51 `m`, 44 `b`, 38 `lt`,
-    33 `u` — which the stored method/target sets now encode. Reports only print
-    them, and the classifier never reads them.
-    - **Decide**: keep tags for genuinely orthogonal labels (`hills`,
-      `bad data`) and drop the classification codes, or retire the table.
-    - **Backfill `drop_classification_tags_v1`**: remove the classification
-      codes, keep manual tags and the orthogonal ones; idempotent, dry-run.
-    - **Import**: stop writing the codes; keep the sheet's free tags.
-    - **Reports**: the session Tags line keeps working for what remains.
-    - **Tests**: the codes drop, `hills` survives, manual tags are untouched,
-      a rerun is a no-op.
 
 20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
     priority). The payload carries `decoupling`, `efficiency_factor`,
