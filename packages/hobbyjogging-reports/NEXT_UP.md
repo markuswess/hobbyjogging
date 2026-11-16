@@ -330,6 +330,26 @@ handler is small, but every link needs a page for the plotted activity.
     - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
       session does not; the all-runs line includes it; both labels render.
 
+16. **A page for planned events, linked from the activities tab.** The tab now
+    lists planned and missed sessions, but their date and name are plain text
+    (`esc`), so there is nothing to open — the completed rows link to
+    `activity/<id>.html` and the planned ones do not.
+    - **Page**: `event/<id>.html`, a short page in the shape of the activity
+      page — date, name, sport, planned duration/distance/load, methods and
+      targets, the planned zone distribution from `event_zone_times`, and the
+      description. The session report already renders the day's planned
+      workout, so the formatting exists; this is a page around it.
+    - **Links**: the date and name of a planned or missed row link to it; the
+      status column stays text.
+    - **Plan vs actual**: once `event_activity_links` lands (root item 4), the
+      page shows the resulting activity and the delta. Until then, match by
+      date and sport the way the tab already does, and label the match as
+      approximate.
+    - **Nav**: back to All activities; the demo already generates planned
+      events, so the page appears there.
+    - **Tests**: a planned row links to its page, a missed row too, the page
+      renders zones and methods, and the demo coverage test still passes.
+
 ## Tests and docs
 
 Covered now:
