@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 16 and the weather half of 2 are open, 5's
-threshold trend and 6's fartlek check are nearly ready, 13 is parked, and the
-rest need a core or root change or the lab gate.
+Current focus: the demo data; the weather half of 2, 5's threshold trend and
+6's fartlek check are open, 13 is parked, and the rest need a core or root
+change or the lab gate.
 
 ## Done
 
@@ -217,6 +217,16 @@ this list keeps the recent decisions only.
   days of 961 streaks. The dashboard card waits for a week of use, per the
   gate.
 
+- **Long dashboard lists collapse.** `html.table()` takes a unique `collapse`
+  key: past `TABLE_COLLAPSE_ROWS` (20) it renders a native checkbox and hides
+  the extra rows with a CSS sibling rule, keeping the first 20 visible and
+  printing "Showing the first 20 of N rows" beside a "Show all N rows" label
+  (and "Show fewer" when open). Every row stays in the HTML, so the activity
+  and race links and the browser's find keep working; it is CSS only, with no
+  JavaScript and no build option. Wired on activities, race results, PBs, the
+  review queue and gear; short tables and the Markdown reports are unchanged.
+  The demo's activities tab (66 rows) collapses.
+
 ## Bugs
 
 _None._
@@ -231,8 +241,8 @@ config ids (item 5's zone normalization), devices (1), routes (3), wellness
 extras (4) and social titles (8). Items 9 and 10 need root items 24 and 25,
 11 needs root item 30, 14 needs root items 4 and 30, and 15's series needs
 the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
-16 is open, and 12 is recurring upkeep. The efficiency floor, the
-planned-event page and the streaks report landed here.
+and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
+streaks report and the collapsible lists landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -377,31 +387,6 @@ planned-event page and the streaks report landed here.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
 
-16. **Collapse the long dashboard lists.** The activities tab renders 50
-    activity rows plus the planned window, and Performance renders every race
-    result; on a phone those tables push the rest of the page out of reach.
-    Collapse a long table behind a summary that names its row count, with the
-    most recent rows still visible.
-    - **Mechanism**: native markup only — no JavaScript and no build option.
-      Either a `<details>` around the whole table (closed, summary
-      `Activities (50)`), or a checkbox plus a `:checked` sibling rule that
-      keeps the first ~20 rows visible and reveals the rest; pick one when
-      implementing. Every row stays in the DOM, so the activity links and the
-      browser's find still work.
-    - **One place**: extend `table()` in `html.py` with an optional summary and
-      row limit, so the count, the toggle and the muted "showing all N" line
-      are rendered once, not per page. Count the rendered rows, never a
-      hard-coded number.
-    - **Where**: any table past the threshold — activities, race results, PBs,
-      review items, gear. Short tables (equivalent times, upcoming races,
-      category breakdown) and the Markdown reports stay as they are.
-    - **Threshold**: a module constant (about 20 rows), not a flag, so a quiet
-      week looks unchanged.
-    - **Tests**: a long table renders the summary with the real row count and
-      keeps every row in the HTML; a short one renders a plain table; the
-      activities tab still carries a planned row and an activity link; the
-      demo dashboard test covers the collapsed lists.
-
 ## Tests and docs
 
 Covered now:
@@ -423,7 +408,10 @@ Covered now:
   plan-vs-actual table;
 - streaks: gaps split, a ride does not extend, the minimum duration, two runs
   on one day, the current streak with and without today, the distance
-  tie-break, the limit, and the report's shape.
+  tie-break, the limit, and the report's shape;
+- collapsible tables: a long table renders the toggle and the count with every
+  row still in the HTML, a short or key-less one stays plain, and the demo's
+  activities tab collapses.
 
 New work should add:
 

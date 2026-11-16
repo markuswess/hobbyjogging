@@ -597,6 +597,11 @@ class DemoGeneratorTests(unittest.TestCase):
             # The planned rows open an event page, and every link resolves.
             activities = (site / "activities.html").read_text()
             self.assertIn('href="event/', activities)
+            # Fifty activity rows plus the plan collapse behind the toggle,
+            # with every row still in the HTML.
+            self.assertIn('class="table-toggle"', activities)
+            self.assertIn('class="extra-row"', activities)
+            self.assertIn("Show all", activities)
             event_pages = sorted((site / "event").glob("*.html"))
             self.assertTrue(event_pages)
             planned = event_pages[0].read_text()

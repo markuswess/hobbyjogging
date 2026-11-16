@@ -106,6 +106,7 @@ def build_gear_section(
         ],
         rows,
         numeric=(2, 3, 4, 7),
+        collapse="gear",
     )
     table_html += (
         '<p class="muted">`*` default shoe target '

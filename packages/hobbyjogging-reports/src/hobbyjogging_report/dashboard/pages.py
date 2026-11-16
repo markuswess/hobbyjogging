@@ -227,6 +227,7 @@ def activities_page(
         [row for _day, row in rows],
         numeric=(6, 7, 8, 9, 10),
         empty="No activities found.",
+        collapse="activities",
     )
 
     if excluded:
@@ -525,6 +526,7 @@ def health_page(
         ["Severity", "Category", "Detail", "Activity", "Reported"],
         queue_rows,
         empty="The review queue is empty.",
+        collapse="review-queue",
     )
 
     review_rows = []
@@ -548,6 +550,7 @@ def health_page(
         ["Date", "Sport", "Name", "Status"],
         review_rows,
         empty="No activities with open review items in this window.",
+        collapse="review-flagged",
     )
 
     missing_rows = [

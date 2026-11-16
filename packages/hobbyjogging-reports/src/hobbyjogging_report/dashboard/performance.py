@@ -124,6 +124,7 @@ def build_performance_section(
         ],
         numeric=(3, 4, 5, 6, 7),
         empty="No race results.",
+        collapse="races",
     )
 
     pbs_html = table(
@@ -143,6 +144,7 @@ def build_performance_section(
         ],
         numeric=(3, 4, 5),
         empty="No personal bests yet.",
+        collapse="pbs",
     )
 
     chart_html = (

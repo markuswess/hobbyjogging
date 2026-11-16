@@ -48,6 +48,11 @@ Pages:
   matching activity. The Status column reads `done`, `planned` or `missed`
   (past date, no activity); planned rows show the target time, distance and
   load, and link to their event page.
+  Long log tables — activities, race results, PBs, the review queue and gear —
+  collapse past 20 rows behind a native checkbox toggle: the first 20 stay
+  visible, the label says "Show all N rows", and every row remains in the
+  HTML, so the links and the browser's find keep working. It is CSS only, with
+  no JavaScript and no build option; the Markdown reports are unchanged.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter with its two regression halves
   and two dashed efficiency lines, over the last two years

@@ -40,16 +40,24 @@ def link(href: str, text: str) -> str:
     return f'<a href="{esc(href)}">{esc(text)}</a>'
 
 
+TABLE_COLLAPSE_ROWS = 20
+
+
 def table(
     headers: list[str],
     rows: list[list[str]],
     *,
     numeric: tuple[int, ...] = (),
     empty: str | None = None,
+    collapse: str | None = None,
 ) -> str:
     """Render a table.
 
-    Cell values are treated as HTML; callers escape user data with :func:`esc`.
+    ``collapse`` is a unique key for a log-style table. Past
+    :data:`TABLE_COLLAPSE_ROWS` rows the extras are hidden behind a CSS-only
+    checkbox toggle, while every row stays in the HTML so the browser's find
+    and the row links keep working. Cell values are treated as HTML; callers
+    escape user data with :func:`esc`.
     """
     if not rows:
         return (
@@ -59,6 +67,7 @@ def table(
         )
 
     numeric_set = set(numeric)
+    collapsed = collapse is not None and len(rows) > TABLE_COLLAPSE_ROWS
     head = "".join(
         f'<th class="num">{esc(header)}</th>'
         if index in numeric_set
@@ -66,7 +75,11 @@ def table(
         for index, header in enumerate(headers)
     )
     body = "".join(
-        "<tr>"
+        (
+            '<tr class="extra-row">'
+            if collapsed and index >= TABLE_COLLAPSE_ROWS
+            else "<tr>"
+        )
         + "".join(
             f'<td class="num">{cell}</td>'
             if index in numeric_set
@@ -74,14 +87,32 @@ def table(
             for index, cell in enumerate(row)
         )
         + "</tr>"
-        for row in rows
+        for index, row in enumerate(rows)
     )
 
-    return (
+    rendered = (
         '<div class="table-wrap"><table>'
         f"<thead><tr>{head}</tr></thead>"
         f"<tbody>{body}</tbody>"
         "</table></div>"
+    )
+
+    if not collapsed:
+        return rendered
+
+    toggle_id = f"table-{collapse}"
+
+    return (
+        f'<input type="checkbox" id="{esc(toggle_id)}" class="table-toggle">'
+        + rendered
+        + '<p class="table-more">'
+        '<span class="muted more">'
+        f"Showing the first {TABLE_COLLAPSE_ROWS} of {len(rows)} rows. "
+        "</span>"
+        f'<label for="{esc(toggle_id)}">'
+        f'<span class="more">Show all {len(rows)} rows</span>'
+        '<span class="less">Show fewer</span>'
+        "</label></p>"
     )
 
 
@@ -190,6 +221,37 @@ th, td {
 }
 th { background: #eef1f4; font-weight: 600; }
 th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+.table-toggle:not(:checked) ~ .table-wrap tbody tr.extra-row {
+  display: none;
+}
+.table-toggle:checked ~ .table-more .more { display: none; }
+.table-toggle:not(:checked) ~ .table-more .less { display: none; }
+.table-more { margin: 6px 0 0; font-size: 0.9rem; }
+.table-more label {
+  cursor: pointer;
+  color: #1769aa;
+  text-decoration: underline;
+}
+.table-toggle:focus-visible ~ .table-more label {
+  outline: 2px solid #1769aa;
+  outline-offset: 2px;
+}
+@media print {
+  .table-toggle:not(:checked) ~ .table-wrap tbody tr.extra-row {
+    display: table-row;
+  }
+  .table-more { display: none; }
+}
 .chart {
   background: #fff;
   border: 1px solid #e4e7eb;

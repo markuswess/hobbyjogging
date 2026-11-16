@@ -324,6 +324,9 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Continuous", activities)
             self.assertIn("Base", activities)
             self.assertIn("activities are hidden by import review", activities)
+            # Four rows stay below the collapse threshold.
+            self.assertNotIn('class="table-toggle"', activities)
+            self.assertIn(".table-toggle:not(:checked)", index)
             self.assertIn('href="event/ev-subt.html"', activities)
             self.assertIn('href="event/ev-missed.html"', activities)
 
