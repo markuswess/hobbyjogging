@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Sheet routes.** `Strecke`/`Streckennummer` resolve to a canonical route
+  (number first, then the name's number when unambiguous) and the activity is
+  linked; a Gmap URL is not a route. The sheet remains the only route source
+  before 2022, and Runalyze's `recurring_route` will be a separate identity.
 - **`period` command.** `period add|list|remove` writes a manual training
   period (kind, start, optional end, label, notes), keyed by kind and start so
   re-adding updates it. The recompute owns the Intervals-derived periods and
@@ -179,9 +183,6 @@ on.
   is nothing to detect or clear. The remaining work is in the consumers: the
   session report qualifies the value on non-runs; the charts are running-only
   and `docs/SOURCE_NOTES.md` records the per-sport semantics.
-- **Routes capture.** Map the sheet's `Strecke` / `Streckennummer` into routes
-  once the core `routes` tables land. (The wellness keys are captured already:
-  weight, sleep score and quality, SpO2, steps, floors and CTL/ATL.)
 
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),

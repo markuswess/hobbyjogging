@@ -133,6 +133,12 @@ Cross-package changes must leave all four suites green.
   (triage `(t)`); manual fields still win. Normal imports never force.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →
   `vo2max_runalyze`. Tags are per-source and manual tags are never replaced.
+- Route identity is source-scoped: the sheet keys by `Streckennummer` (or the
+  name when there is no single number), and Runalyze's `recurring_route` id is
+  a different identity — the two never merge automatically.
+- A linked race event gives its activity the `race` method under `race_link`;
+  a manual link or a manual method set wins, and an ambiguous match becomes an
+  `ambiguous_race` review item rather than a guess.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
 - Workout methods/targets are set-based (`activity_workout_*`,
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;

@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 19.
+SQLite, forward-only migrations. Schema version 21.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,17 @@ SQLite, forward-only migrations. Schema version 19.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `routes` (v20) + `activity_routes` — a named loop or course and the
+  activities that covered it. Route identity is source-scoped: the sheet keys
+  by `Streckennummer`, falling back to the name's number when unambiguous and
+  then to the name itself; Runalyze's `recurring_route` id is a different
+  identity and never merges automatically. A run can cover several routes, so
+  the link is a table.
+- `event_activity_links` (v21) — a planned race and the activity that ran it.
+  `race_links_current` matches date + sport + distance within 5%; an
+  ambiguous match opens an `ambiguous_race` review item instead of guessing.
+  A linked race makes the activity carry the `race` method under `race_link`;
+  a manual link or a manual method set wins.
 - `training_periods` (v18) — dated spans: seasons, plans, illness, travel,
   recovery. Intervals supplies the season starts (`SEASON_START`) and the
   sickness/travel notes (`SICK`/`NOTE`); a season ends the day before the next

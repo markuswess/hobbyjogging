@@ -200,9 +200,8 @@ this list keeps the recent decisions only.
   `event_zone_times`, and the description. The date and name of a planned or
   missed row link to it, and the session report's planned block links there
   too, so a matched event — which has no tab row — stays reachable. A matched
-  page adds an approximate plan-vs-actual table by date and sport, exact links
-  wait on `event_activity_links` (root item 4), and it links back to the
-  activity. An untyped note, or an event without an id, stays plain text.
+  page adds a plan-vs-actual table by date and sport from
+  `event_activity_links` (schema v21), and it links back to the activity. An untyped note, or an event without an id, stays plain text.
   Tests cover the planned and missed rows, the matched page, zones and
   methods, and the demo link.
 
@@ -257,8 +256,8 @@ Schema v12-v16 moved the data under several items, so the picture changed:
 half landed. What still needs core first: max HR and elevation on `Activity`
 (repository query and model drop them; items 2 and 7), the per-activity zone
 config ids (item 5's zone normalization), devices (1), routes (3), wellness
-extras (4) and social titles (8). Item 11 has its data now (`training_periods`,
-schema v18), 14 still needs `event_activity_links` (root item 4), and 15's
+extras (4) and social titles (8). Items 11 and 14 have their data now
+(`training_periods`, schema v18; `event_activity_links`, schema v21), and 15's
 series needs the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
 and 12 is recurring upkeep. The efficiency floor, the planned-event page, the
 streaks report and the collapsible lists landed here.
@@ -275,11 +274,12 @@ streaks report and the collapsible lists landed here.
    checks, and the Max HR column beside weather in the coverage table.
 
 3. **Route grouping.** Group activities by route so pace, HR and efficiency
-   compare like-for-like, with a route page listing its best efforts. Depends
-   on the root route item.
+   compare like-for-like, with a route page listing its best efforts. The data
+   is there (`routes` + `activity_routes`, schema v20; 36 routes, 384 links).
 
-4. **Wellness extras.** A readiness view (readiness, sleep score, stress,
-   respiration, spO2) plus a weight trend, once the columns land.
+4. **Wellness extras.** A readiness view (sleep score and quality, SpO2,
+   steps, CTL/ATL; readiness and stress are empty in the payloads) plus a
+   weight trend from `wellness_days` (schema v19).
 
 5. **Threshold trend and era-correct zones.** The dated snapshots landed
    (schema v14/v15) and `DataSource.athlete_thresholds()` returns them, so the
@@ -389,10 +389,9 @@ streaks report and the collapsible lists landed here.
       coloured by load or distance, with a hover tooltip — shows the training
       shape in a single page with no navigation. Worth trying before the full
       grid.
-    - **Depends on**: `event_activity_links` (root item 4) for done/planned/
-      missed. Illness and season shading can come from `training_periods` now
-      (schema v18); without the links a calendar can only show activities and
-      raw events.
+    - **Depends on**: `event_activity_links` (schema v21) for done/planned/
+      missed, and `training_periods` (schema v18) for illness and season
+      shading.
     - **Open**: month grid or heat map first; wellness markers in the cells
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.

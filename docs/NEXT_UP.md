@@ -1,9 +1,30 @@
 # Status and next steps
 
-Updated 2026-11-12.
+Updated 2026-11-16.
 
 ## Done
 
+- **Routes are stored and linked (schema v20).** `routes` holds a named loop
+  with a source-scoped `external_ref`, and `activity_routes` links an activity
+  to the routes it covered (a table, since one run can cover several). The
+  sheet importer maps `Strecke`/`Streckennummer` and `activity_routes_v1`
+  backfilled 384 links over 36 routes: 29 numbered (`Wienerberg inkl
+  Unterführungen` 16 with 149 runs, `Wienerberg 8er` 25 with 57) and 7
+  name-only variants. A name-only row reuses the number seen for the same name
+  (`Kaserne` → 6); a name with no single number, or several, keeps its own key,
+  and a Gmap URL is not a route. Runalyze's `recurring_route` id is a different
+  identity and never merges automatically. Route grouping and the route page
+  stay on the reports list.
+- **Planned races are linked to activities (schema v21).** `event_activity_links`
+  joins a race event to the activity that ran it, and `race_links_current`
+  matches date + sport + distance within 5%. It linked the 2026 Linz Marathon
+  (42.45 vs 42.19 km, confidence 0.994) and the 2025 Baden Stadtlauf (9.79 vs
+  10.0 km, 0.979); both now carry the `race` method under `race_link` and
+  classify as race instead of long run / intervals. A manual link or a manual
+  method set wins, more than one candidate opens an `ambiguous_race` review
+  item, and the 2027 Linz event is untouched. Plan vs actual is now available
+  from the event's planned distance, duration, load and zones. The race report
+  consumes the link on the reports list.
 - **Wellness extras and canonical weight are stored (schema v19).**
   `wellness_days` gains weight, sleep score and quality, SpO2, steps, floors
   climbed and Intervals' CTL/ATL. The backfill filled 3,167 days: weight 358
@@ -308,50 +329,6 @@ one takes the next free number, so cross-references stay valid.
      still resolves explicitly.
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
-
-4. **Link planned races to activities and propagate the `race` method**
-   (core + maintenance). The classifier only reads the name, so the two past
-   planned races are misclassified: the 2026 Linz Marathon (42.45 km, 2:37:49)
-   is `long_run` and the 2025 Baden Stadtlauf 10k is `intervals`, although both
-   have a race event on the same day. Only 8 of the 45 race activities have a
-   same-day event.
-   - **Next migration**: `event_activity_links(event_id, activity_id,
-     match_method, confidence, linked_at)` — a table, not a column, because a
-     race day can also have warmup/cooldown activities.
-   - **Matching** (`race_links_current`, a maintenance recompute): date + sport,
-     then distance within ~5% (42.20 vs 42.45 km), then start-time proximity.
-     Ambiguous candidates open an `ambiguous_race` review item instead of
-     guessing.
-   - **Propagation**: for each linked race event, ensure the activity carries
-     the `race` method with a non-manual source; manual sets always win, so a
-     deliberate change survives.
-   - **Plan vs actual** comes free: the event already stores planned
-     distance/duration/load/zones.
-   - **Split**: core owns the table, migration, model and repository;
-     maintenance owns the recompute; reports consumes the link for the race
-     report.
-   - **Tests**: distance tolerance, ambiguous → review item, manual methods
-     untouched, idempotent, dry-run.
-
-10. **Route identity and grouping** (core + import + maintenance + reports).
-   The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link
-   (993), but the canonical model has no route. FIT payloads carry no GPS
-   streams, so historical route identity can only come from the sheet.
-   - **Next migration**: `routes(id, name, external_ref, notes)` and
-     `activity_routes(activity_id, route_id, source, source_record_id,
-     is_manual)` — a table, since one run can cover several routes.
-   - **Import/maintenance**: map `Strecke` (with `Streckennummer` as the
-     stable key) to routes and link the activity; `activity_routes_v1`
-     backfills from the sheet payloads.
-   - **Reports**: group activities by route so pace, HR and efficiency compare
-     like-for-like; a route page with its best efforts.
-   - **Runalyze supplies routes for the FIT era**: the activity payload nests a
-     `recurring_route` with id, name, distance, start/end coordinates and a
-     bounding box, so route identity after 2021 does not depend on stored
-     streams. The sheet remains the only source before 2022; a route id from
-     Runalyze is a different identity from a `Streckennummer`, so the two
-     never merge automatically.
-   - **Open**: our own GPS-derived routes would still need stored streams.
 
 12. **Runalyze enrichment** (core + import + maintenance + reports; milestone).
     Runalyze is the source that closes the 2022+ gap: gear identity (the sheet

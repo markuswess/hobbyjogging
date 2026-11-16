@@ -122,6 +122,17 @@ the `moving_time_mismatch` quality rule.
   `small_difference`, `start_offset`) can be bulk-resolved; the rest need a
   per-activity decision.
 
+## Routes
+
+The sheet's `Strecke` is the route name and `Streckennummer` the stable key;
+389 rows carry a name, 360 a number, and 29 name-only rows are resolved through
+the number seen for the same name elsewhere (`Kaserne` → 6). A name with no
+single number, or with several (`Lusthaus` 33/330), keeps a name-scoped key
+instead of being merged. The Gmap link is not a route. Runalyze's activity
+payload nests a `recurring_route` (id, name, distance, start/end coordinates,
+bounding box); its id is a different identity from a `Streckennummer`, so the
+two never merge automatically.
+
 ## Planned events
 
 Intervals events expose only `moving_time`, never elapsed/recording time. The
@@ -135,6 +146,8 @@ event `duration_s` is therefore the planned **moving** duration, and
   and VO2max message 140.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/intervals.py` —
   Intervals activity/event mapping.
+- `packages/hobbyjogging-import/src/hobbyjogging_import/routes.py` — sheet
+  route identity.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/quality.py` —
   `moving_time_mismatch` and other quality rules.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/causes.py` — conflict

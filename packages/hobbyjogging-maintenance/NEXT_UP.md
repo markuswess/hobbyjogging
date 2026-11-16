@@ -4,6 +4,16 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`race_links_current`.** Matches each race event to an activity on the same
+  date and sport within 5% distance, writes `event_activity_links` and derives
+  the `race` method under `race_link`. A manual link or manual method set wins;
+  two candidates open an `ambiguous_race` review item. Applied: 2 links
+  (Linz Marathon 2026, Baden Stadtlauf 2025), 2 methods added; runs in
+  `sync.sh`.
+- **`activity_routes_v1`.** Resolves the sheet's `Strecke`/`Streckennummer`
+  into routes (number first, then the name's number when unambiguous) and
+  links the matched activity. Applied: 36 routes and 384 links; name-only
+  variants and Gmap URLs are handled without guessing.
 - **`wellness_extras_v1`.** Filled weight, sleep score and quality, SpO2,
   steps, floors climbed and CTL/ATL from the wellness payloads, with the
   sheet's `Gewicht nachher` as a weight fallback. Applied: 3,167 days; weight
@@ -61,18 +71,12 @@ This file records what the package is still waiting on.
 
 ## Next
 
-- **`race_links_current`** (recompute). Match planned race events to completed
-  activities (date + sport, then distance within ~5%, then start proximity),
-  write `event_activity_links`, open an `ambiguous_race` item for genuine
-  ambiguity, and never touch a manual link. See root item 4.
-- **`thresholds_from_races_v1`** (backfill, idea — blocked on the race links
-  and on the lab work settling the derivation). Derive per-era threshold pace
+- **`thresholds_from_races_v1`** (backfill, idea — the race links exist now;
+  still blocked on the lab work settling the derivation). Derive per-era threshold pace
   and LTHR from linked race results, fill the activities where Intervals has
   no `threshold_pace`, and record the derived series next to the stamped one
   so the reports can show both. Idempotent, dry-run, and it reports the delta
   to the stamped values.
-- **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
-  `Streckennummer` to routes and link the activities.
 
 Nothing else queued. New data work registers a task here instead of a script.
 
