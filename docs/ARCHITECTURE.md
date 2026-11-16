@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 16.
+SQLite, forward-only migrations. Schema version 17.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,11 @@ SQLite, forward-only migrations. Schema version 16.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `devices` (v17) — the recording devices: manufacturer, product, serial,
+  name and active dates. One recorder per activity, so `activities.device_id`
+  is a single nullable foreign key; the serial is what a text column could not
+  give. FIT owns the field (it carries the serial) and a manual assignment
+  wins.
 - `race_results` (v16) — official race metadata, one row per activity:
   official distance and time, `officially_measured`, places and participants
   by total/gender/age class, `priority_level`, `status` (a PB counts only

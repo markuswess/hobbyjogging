@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Recording devices are stored (schema v17).** A `devices` table
+  (manufacturer, product, serial, name, active dates) and a nullable
+  `activities.device_id` — one recorder per activity, so no link table. FIT
+  owns the field (it carries the serial) and a manual assignment wins. The
+  backfill filled 2,853 activities across 6 devices: enduro 1,636, fr645
+  1,139, edge_540 74, fr945 1, plus two Intervals-only rows; 1,295 pre-2019
+  activities have no device. Garmin Connect web uploads are not devices. The
+  device timeline stays on the reports list.
 - **Official race results are stored (schema v16).** `race_results` keeps the
   official distance and time apart from the measured GPS values, with
   `officially_measured`, places and participants by total/gender/age class,
@@ -356,35 +364,6 @@ one takes the next free number, so cross-references stay valid.
      Runalyze is a different identity from a `Streckennummer`, so the two
      never merge automatically.
    - **Open**: our own GPS-derived routes would still need stored streams.
-
-11. **Device registry and per-activity device** (core + import + maintenance +
-   reports). The sources already carry the device: FIT
-   `file.manufacturer/product/serial_number` — enduro (1,639 activities), fr645
-   (1,139), edge_540 (74), fr945 (1) and two Garmin Connect web uploads — and
-   Intervals `device_name` with the same four in mixed casing. Nothing before
-   2019 (the sheet has no device column).
-   - **Schema, deliberately minimal**: `devices(id, manufacturer, product,
-     serial_number, name, acquired_on, retired_on, notes)` and a nullable
-     `activities.device_id`. One recorder per activity, so a link table with
-     roles would be speculative; the serial is what a text column cannot give
-     (a replaced Enduro would collapse into one name). Device id
-     `fit:<manufacturer>:<product>:<serial>`; Intervals-only devices
-     `intervals:<slug>`.
-   - **Import**: FIT parses `file.manufacturer/product/serial_number` (already
-     in the payload) → upsert the device and set `activities.device_id`;
-     Intervals normalizes `device_name` (`GARMIN ENDURO` / `Garmin Enduro`,
-     `EDGE_540` / `Edge 540`) to the same product and fills the FK only when
-     FIT left it empty. Garmin Connect uploads are not devices. Sheet:
-     nothing.
-   - **Maintenance**: `activity_device_v1` backfills the devices and the FK
-     from the stored payloads, idempotent, `--dry-run`.
-   - **Pre-2019 gap**: manual assignment only — `activities.device_id` joins
-     `MANUAL_FIELDS`, so the edit CLI sets it; never infer from a date range.
-   - **Reports**: the equipment page becomes "Gear & devices" with active
-     periods, counts and a device timeline; the VO2max chart marks device
-     changes; the session report shows `- Device: …`.
-   - **Tests**: FIT/Intervals parsing and normalization, FIT-over-Intervals
-     precedence, backfill idempotency, a manual FK surviving.
 
 12. **Runalyze enrichment** (core + import + maintenance + reports; milestone).
     Runalyze is the source that closes the 2022+ gap: gear identity (the sheet

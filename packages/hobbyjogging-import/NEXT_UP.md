@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Device capture.** The FIT importer upserts the device from
+  `file.manufacturer/product/serial_number` and sets `activities.device_id`;
+  the Intervals importer normalizes `device_name` and fills only what FIT left
+  empty (FIT owns the field). Garmin Connect uploads are not devices.
 - **`race-result` command.** `race-result add|list|remove` writes one activity's
   official race metadata by hand (distance, time, place, participants,
   `officially_measured`, priority, status), replacing its own row and never
@@ -174,12 +178,6 @@ on.
 - **Wellness extras and routes.** Map the selected wellness keys into the new
   columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
   migrations land.
-- **Device capture.** Parse FIT `file.manufacturer/product/serial_number` into
-  the core `devices` registry and set `activities.device_id`; normalize
-  Intervals `device_name` (`GARMIN ENDURO` / `Garmin Enduro`, `EDGE_540` /
-  `Edge 540`) to the same product and fill the FK only when FIT left it empty.
-  Garmin Connect web uploads are not devices. Depends on the core `devices`
-  table and the `activities.device_id` column.
 
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),

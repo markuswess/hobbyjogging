@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`activity_device_v1`.** Created the devices from the FIT
+  `file.manufacturer/product/serial_number` and filled `activities.device_id`,
+  with Intervals `device_name` only where FIT left it empty. Applied: 2,853
+  activities across 6 devices; 1,295 pre-2019 rows have none.
 - **`athlete_thresholds_current` and `activity_zone_configs_current`.** Derive
   the per-sport threshold snapshots and the zone configs from the Intervals
   payloads, then point each activity at the config of its era. Recomputes, so
@@ -65,14 +69,6 @@ This file records what the package is still waiting on.
   dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
-- **`activity_device_v1`** (backfill). Once the core `devices` table and
-  `activities.device_id` land, create the devices from the FIT
-  `file.manufacturer/product/serial_number` and fill the FK; Intervals
-  `device_name` fills only what FIT left empty, and a manual FK survives.
-  Idempotent, `--dry-run`.
-  - Tests: device creation from FIT and Intervals, FIT-over-Intervals
-    precedence, a rerun is a no-op, dry-run writes nothing, a manual FK
-    survives.
 
 Nothing else queued. New data work registers a task here instead of a script.
 
