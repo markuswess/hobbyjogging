@@ -186,7 +186,7 @@ class RohdatenImportTests(SheetImportTestCase):
 
         self.assertEqual(1, summary.activities_created)
         self.assertEqual(1, summary.activities_imported)
-        self.assertEqual(2, summary.tags_written)
+        self.assertEqual(1, summary.tags_written)
         self.assertEqual(1, summary.equipment_linked)
 
         activity = self._activities()[0]
@@ -207,7 +207,7 @@ class RohdatenImportTests(SheetImportTestCase):
             """,
             (activity["id"],),
         ).fetchall()
-        self.assertEqual(["ll", "w"], [row["tag"] for row in tags])
+        self.assertEqual(["w"], [row["tag"] for row in tags])
 
         link = self.connection.execute(
             """
@@ -434,6 +434,7 @@ class RohdatenImportTests(SheetImportTestCase):
                                 "Distanz in m": 13710.0,
                                 "Zeit": timedelta(minutes=65),
                                 "Trainigstyp": "ll",
+                                "Trainingsgebiet": "w",
                             }
                         ]
                     ),

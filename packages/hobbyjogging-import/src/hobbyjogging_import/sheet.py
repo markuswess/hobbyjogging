@@ -238,12 +238,11 @@ def rohdaten_values(
         values["started_at_utc"] = started_at
         values["tz_offset_min"] = offset
 
+    # The training type is stored as method/target sets, so only the training
+    # area stays a tag; the code itself would duplicate the classification.
     tags = [
         tag
-        for tag in (
-            clean_text(record.get("Trainigstyp")),
-            clean_text(record.get("Trainingsgebiet")),
-        )
+        for tag in (clean_text(record.get("Trainingsgebiet")),)
         if tag
     ]
     shoe = record.get("Schuhe")

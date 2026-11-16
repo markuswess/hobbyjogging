@@ -118,7 +118,7 @@ class RohdatenMappingTests(unittest.TestCase):
         # 17:00 CEST is 15:00 UTC.
         self.assertEqual("2019-07-23T15:00:00Z", values["started_at_utc"])
         self.assertEqual(120, values["tz_offset_min"])
-        self.assertEqual(["ll", "w"], tags)
+        self.assertEqual(["w"], tags)
         self.assertEqual(7.0, shoe)
 
     def test_winter_time_uses_one_hour_offset(self):
