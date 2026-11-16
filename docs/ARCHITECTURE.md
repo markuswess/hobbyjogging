@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 13.
+SQLite, forward-only migrations. Schema version 15.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -244,6 +244,13 @@ SQLite, forward-only migrations. Schema version 13.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `athlete_thresholds` (v14/v15) — dated snapshots of the athlete's
+  threshold settings, **per sport**: `max_hr`, `lthr`, `threshold_pace_mps`.
+  Intervals stamps them on every activity; a missing value carries forward and
+  one snapshot per sport and date is kept.
+- `zone_configs` (filled by the import) — one row per distinct boundary set,
+  with `activities.hr_zone_config_id` / `pace_zone_config_id` pointing at the
+  era's config, so "Z3" means the same thing across years.
 - `activity_weather` (v13) — one row per activity: temperature, feels-like,
   humidity, wind speed/degree/gust, wind chill, heat index, pressure, UV,
   clouds, condition and a night flag, in metric units. The first source owns

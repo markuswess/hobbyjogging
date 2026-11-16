@@ -4,6 +4,12 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`athlete_thresholds_current` and `activity_zone_configs_current`.** Derive
+  the per-sport threshold snapshots and the zone configs from the Intervals
+  payloads, then point each activity at the config of its era. Recomputes, so
+  they run in `sync.sh` after every import. Applied: 51 snapshots across 21
+  sports (14 for running, threshold pace 4.587 → 4.854 m/s), 11 zone configs,
+  2,848 activities linked to an HR config and 2,230 to a pace config.
 - **`activity_weather_v1`.** Created `activity_weather` rows from Intervals
   `average_temp` and the sheet's `Temperatur in °C`, first source owning the
   row. Applied to the real DB: 3,002 activities (2,823 Intervals, 179 sheet).
@@ -47,9 +53,6 @@ This file records what the package is still waiting on.
   activities (date + sport, then distance within ~5%, then start proximity),
   write `event_activity_links`, open an `ambiguous_race` item for genuine
   ambiguity, and never touch a manual link. See root item 4.
-- **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
-  (backfills). Create threshold snapshots and zone configs from the stored
-  payloads and set the activity FK columns; idempotent, dry-run.
 - **`thresholds_from_races_v1`** (backfill, idea — blocked on the race links
   and on the lab work settling the derivation). Derive per-era threshold pace
   and LTHR from linked race results, fill the activities where Intervals has

@@ -4,6 +4,16 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Athlete thresholds and zone configs are stored (schema v14/v15).**
+  `athlete_thresholds` holds dated snapshots of `max_hr`, `lthr` and
+  `threshold_pace_mps` — **per sport**, because Intervals stamps the settings
+  of the activity's own sport. The running series has 14 snapshots and the
+  threshold pace drifts **4.587 → 4.854 m/s (3:38 → 3:26/km)** over 2019–2026;
+  rides, swims and the rest have their own small series. `zone_configs` is
+  filled with 11 distinct boundary sets and 2,848 activities point at the HR
+  config of their era (2,230 at a pace config). Both are recomputes
+  (`athlete_thresholds_current`, `activity_zone_configs_current`) that run in
+  `sync.sh`. The threshold trend view remains on the reports list.
 - **Per-activity weather is stored (schema v13).** `activity_weather` holds the
   union of what the sources provide — temperature, feels-like, humidity, wind
   speed/degree/gust, wind chill, heat index, pressure, UV, clouds, condition,
@@ -290,54 +300,6 @@ one takes the next free number, so cross-references stay valid.
      report.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
-
-8. **Athlete thresholds and zone configs** (core + import + maintenance +
-   reports). The Intervals payloads carry the athlete's settings per activity:
-   `athlete_max_hr` (192), `lthr` (174, drifting 172–180), `LTHRdetected`,
-   `threshold_pace` (**4.59 → 4.85 m/s = 3:38 → 3:26/km** across 2019–2026),
-   and the zone boundaries `icu_hr_zones` (`[135,156,174,192]`) and
-   `pace_zones` (`[73,83,100,999]` %). None of it is stored, and
-   `zone_configs` plus the activity FK columns are empty dead schema.
-   - **Zone configs**: reuse `zone_configs(id, kind, source,
-     boundaries_json)`, one row per distinct snapshot, and set
-     `activities.pace_zone_config_id` / `hr_zone_config_id`. Zone times then
-     mean the same thing across eras. Runalyze's `zone_distribution_*` are
-     percentages computed from its own settings, not boundaries — never merge
-     them into a config.
-   - **Thresholds**: a small dated `athlete_thresholds` snapshot table
-     (`effective_from`, `max_hr`, `lthr`, `threshold_pace_mps`, `source`)
-     rather than columns on activities — they belong to the athlete and change
-     slowly.
-   - **Intervals is the only threshold source.** It stamps the settings on
-     every activity, so the series moves whenever they change; Runalyze has no
-     such history — its OpenAPI spec (`/api/docs.jsonopenapi`, the authoritative
-     schema source, 289 schemas) exposes only current `hr_max` and `hr_rest` in
-     the account settings, no `lthr`, no threshold pace, and its
-     `TrainingPaceDto` bands are derived, not stamped. So the table has one
-     owner: **no conflict rule**, and `source` is provenance only. Runalyze can
-     contribute at most one current-value snapshot as a cross-check, and even
-     that is 403 with today's token (`account/*`, `sport`).
-   - **Import**: write both from the payloads; treat `threshold_pace` 0 and
-     implausible values (e.g. 0.83) as absent.
-   - **Backfills**: `athlete_thresholds_v1`, `activity_zone_configs_v1`.
-   - **Reports**: a threshold trend chart (LTHR, threshold pace, max HR) beside
-     VO2max, era-correct zone normalization, and subT work-rep pace compared
-     with the period's threshold pace.
-   - **Races as threshold evidence** (idea, depends on item 4's race links).
-     Intervals' stamped values are athlete settings, not measurements, and
-     `threshold_pace` is missing on ~1,400 activities. A race is the best
-     observed evidence we have: a 10k–half marathon result gives a defensible
-     threshold pace (via Riegel-style adjustment for the distance) and LTHR
-     (the sustained HR of the last third). A `thresholds_from_races_v1`
-     backfill would derive a per-era series from linked race results and use it
-     to (a) fill the gaps, (b) cross-check the stamped values, and (c) emit a
-     consensus series where they disagree. It also yields HR/pace zone
-     boundaries for eras with no `icu_hr_zones`. **The derivation rule set,
-     the race-distance window and the tolerances are still to be determined** —
-     start in the lab against the existing stamped values before storing
-     anything.
-   - **Validation**: Intervals' threshold pace and the subT-derived pace should
-     agree; report the delta.
 
 9. **Wellness beyond HRV, resting HR and sleep** (core + import +
    maintenance + reports). Intervals wellness carries 47 keys; we store three.
