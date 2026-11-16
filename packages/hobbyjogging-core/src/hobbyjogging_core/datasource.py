@@ -11,12 +11,14 @@ from typing import Protocol
 from .model import (
     Activity,
     ActivityWeather,
+    AthleteThreshold,
     Equipment,
     Event,
     Interval,
     Lap,
     ReviewItem,
     WellnessDay,
+    ZoneConfig,
 )
 
 
@@ -38,6 +40,12 @@ class DataSource(Protocol):
         ...
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
+        ...
+
+    def athlete_thresholds(self) -> list[AthleteThreshold]:
+        ...
+
+    def zone_config(self, zone_config_id: str) -> ZoneConfig | None:
         ...
 
     def equipment(self) -> list[Equipment]:

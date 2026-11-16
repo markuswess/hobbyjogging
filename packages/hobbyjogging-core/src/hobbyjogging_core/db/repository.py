@@ -8,6 +8,7 @@ from datetime import date
 from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
+    AthleteThreshold,
     Equipment,
     Event,
     EventZoneTime,
@@ -15,6 +16,7 @@ from hobbyjogging_core.model import (
     Lap,
     ReviewItem,
     WellnessDay,
+    ZoneConfig,
 )
 
 # Review categories that do not make an activity's data untrusted. They stay
@@ -166,6 +168,47 @@ class TrainingRepository:
             )
             for row in rows
         ]
+
+    def athlete_thresholds(self) -> list[AthleteThreshold]:
+        rows = self.connection.execute(
+            """
+            SELECT effective_from, sport, max_hr, lthr, threshold_pace_mps,
+                   source
+            FROM athlete_thresholds
+            ORDER BY sport, effective_from, id
+            """
+        ).fetchall()
+
+        return [
+            AthleteThreshold(
+                effective_from=date.fromisoformat(row["effective_from"]),
+                sport=row["sport"] or "",
+                max_hr=row["max_hr"],
+                lthr=row["lthr"],
+                threshold_pace_mps=row["threshold_pace_mps"],
+                source=row["source"],
+            )
+            for row in rows
+        ]
+
+    def zone_config(self, zone_config_id: str) -> ZoneConfig | None:
+        row = self.connection.execute(
+            """
+            SELECT id, kind, source, boundaries_json
+            FROM zone_configs WHERE id = ?
+            """,
+            (zone_config_id,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return ZoneConfig(
+            id=row["id"],
+            kind=row["kind"],
+            boundaries=json.loads(row["boundaries_json"]),
+            source=row["source"],
+        )
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         row = self.connection.execute(

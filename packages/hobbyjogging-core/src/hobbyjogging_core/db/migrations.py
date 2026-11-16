@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 15
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -248,6 +248,47 @@ CREATE TABLE activity_weather (
 """
 
 
+MIGRATION_14_SQL = """
+-- Dated athlete-threshold snapshots. Intervals stamps the athlete's settings
+-- on every activity, so this is the deduplicated series of those settings;
+-- Runalyze has no such history. A missing value carries forward.
+CREATE TABLE athlete_thresholds (
+    id INTEGER PRIMARY KEY,
+    effective_from TEXT NOT NULL,
+    max_hr REAL,
+    lthr REAL,
+    threshold_pace_mps REAL,
+    source TEXT NOT NULL DEFAULT 'intervals',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (source, effective_from)
+);
+"""
+
+
+MIGRATION_15_SQL = """
+-- Thresholds are per sport: Intervals stamps the settings of the activity's
+-- own sport, so the running series and the cycling one are different. The
+-- v14 table was created empty in the same change, so it is recreated with the
+-- sport column and the wider unique key.
+DROP TABLE athlete_thresholds;
+CREATE TABLE athlete_thresholds (
+    id INTEGER PRIMARY KEY,
+    effective_from TEXT NOT NULL,
+    sport TEXT NOT NULL DEFAULT '',
+    max_hr REAL,
+    lthr REAL,
+    threshold_pace_mps REAL,
+    source TEXT NOT NULL DEFAULT 'intervals',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (source, sport, effective_from)
+);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -262,6 +303,8 @@ MIGRATIONS: dict[int, str] = {
     11: MIGRATION_11_SQL,
     12: MIGRATION_12_SQL,
     13: MIGRATION_13_SQL,
+    14: MIGRATION_14_SQL,
+    15: MIGRATION_15_SQL,
 }
 
 

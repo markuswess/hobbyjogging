@@ -117,6 +117,28 @@ class Event:
 
 
 @dataclass
+class AthleteThreshold:
+    """One dated snapshot of the athlete's threshold settings."""
+
+    effective_from: date
+    sport: str = ""
+    max_hr: float | None = None
+    lthr: float | None = None
+    threshold_pace_mps: float | None = None
+    source: str = ""
+
+
+@dataclass
+class ZoneConfig:
+    """One set of zone boundaries, shared by the activities of its era."""
+
+    id: str
+    kind: str
+    boundaries: list[float]
+    source: str = ""
+
+
+@dataclass
 class ActivityWeather:
     """The weather recorded for one activity, in metric units."""
 

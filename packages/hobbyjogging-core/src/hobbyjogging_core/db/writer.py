@@ -1,5 +1,6 @@
 """Write-side access to the canonical database."""
 
+import hashlib
 import json
 import sqlite3
 from collections.abc import Iterable
@@ -1828,6 +1829,106 @@ class TrainingWriter:
                 [(activity_id, value) for value in cleaned],
             )
         return len(cleaned)
+
+    def upsert_zone_config(
+        self,
+        *,
+        kind: str,
+        boundaries: list[float],
+        source: str,
+    ) -> str:
+        """Return the id of the zone config for these boundaries.
+
+        The id is derived from the boundaries, so two activities of the same
+        era share one row and a changed boundary set creates a new one.
+        """
+        if not boundaries:
+            raise ValueError("zone boundaries must not be empty")
+
+        digest = hashlib.sha1(
+            json.dumps(boundaries, sort_keys=True).encode()
+        ).hexdigest()[:12]
+        config_id = f"{source}:{kind}:{digest}"
+
+        self.connection.execute(
+            """
+            INSERT INTO zone_configs (id, kind, source, boundaries_json)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO NOTHING
+            """,
+            (
+                config_id,
+                kind,
+                source,
+                json.dumps(boundaries),
+            ),
+        )
+        return config_id
+
+    def set_activity_zone_configs(
+        self,
+        activity_id: str,
+        *,
+        pace_zone_config_id: str | None = None,
+        hr_zone_config_id: str | None = None,
+    ) -> None:
+        """Point an activity at the zone configs of its era."""
+        assignments = []
+        params: list[object] = []
+
+        if pace_zone_config_id is not None:
+            assignments.append("pace_zone_config_id = ?")
+            params.append(pace_zone_config_id)
+        if hr_zone_config_id is not None:
+            assignments.append("hr_zone_config_id = ?")
+            params.append(hr_zone_config_id)
+
+        if not assignments:
+            return
+
+        params.append(activity_id)
+        self.connection.execute(
+            f"UPDATE activities SET {', '.join(assignments)} WHERE id = ?",
+            params,
+        )
+
+    def replace_athlete_thresholds(
+        self,
+        rows: list[dict[str, object]],
+        *,
+        source: str,
+    ) -> int:
+        """Replace one source's dated threshold snapshots."""
+        self.connection.execute(
+            "DELETE FROM athlete_thresholds WHERE source = ?",
+            (source,),
+        )
+
+        entries = [
+            (
+                row["effective_from"],
+                row.get("sport") or "",
+                row.get("max_hr"),
+                row.get("lthr"),
+                row.get("threshold_pace_mps"),
+                source,
+                row.get("source_record_id"),
+            )
+            for row in rows
+        ]
+        if not entries:
+            return 0
+
+        self.connection.executemany(
+            """
+            INSERT INTO athlete_thresholds (
+                effective_from, sport, max_hr, lthr, threshold_pace_mps,
+                source, source_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            entries,
+        )
+        return len(entries)
 
     WEATHER_FIELDS = (
         "temp_c",

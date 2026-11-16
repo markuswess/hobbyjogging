@@ -99,6 +99,10 @@ if (( generate_classification )); then
         run workout_sets_current "${maintenance_args[@]}"
     uv run --env-file .env python -m hobbyjogging_maintenance \
         run workout_classification_queue "${maintenance_args[@]}"
+    uv run --env-file .env python -m hobbyjogging_maintenance \
+        run athlete_thresholds_current "${maintenance_args[@]}"
+    uv run --env-file .env python -m hobbyjogging_maintenance \
+        run activity_zone_configs_current "${maintenance_args[@]}"
 fi
 
 if (( generate_dashboard )); then
