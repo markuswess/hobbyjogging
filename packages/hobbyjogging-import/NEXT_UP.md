@@ -141,15 +141,15 @@ on.
 
 ## Next
 
-- **Runalyze phase 2: comments and tags.** Match the activity collection to
-  canonical activities temporally plus by distance, fill
-  `activities.description` from `note` only when it is blank, and write the
-  detail payload's `tags` (`[{id, tag}]`) into `activity_tags` with
-  `source='runalyze'`. The collection has no tags, `?tag=` is ignored and
-  `/api/v1/statistics/tags` is 403, so read the detail per activity. Never
-  write `name`; manual tags and descriptions win. Enrich matched rows and
-  report the unmatched ones for the later activity phase. Tests use recorded
-  fixtures. See root item 12.
+- **Runalyze phase 3: gear identity and activity links.** Read the detail
+  payload's `equipment` array (full `EquipmentDto` objects, so no separate gear
+  fetch), resolve each gear record with the co-occurrence → name → new-row rule
+  in root item 12, and write `source_records(record_type='gear')`,
+  `equipment`, `equipment_source_links` and `activity_equipment`
+  (`source='runalyze'`). The first shoe/bike item is primary, the rest
+  secondary; manual links win; a split co-occurrence or a name matching several
+  rows opens `ambiguous_equipment`. Brand/model stay empty. Tests cover
+  co-occurrence, unique and ambiguous names, 2022+ new rows and idempotency.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with
@@ -229,8 +229,8 @@ on.
 
 ## Waiting on
 
-Nothing. Runalyze read access is unblocked; phase 1 has landed and phases 2–6
-are scoped in root item 12.
+Nothing. Runalyze phases 1–2 have landed; phases 3–6 are scoped in root item
+12.
 
 ## Notes / risks
 

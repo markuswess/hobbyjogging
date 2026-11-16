@@ -166,8 +166,12 @@ paced to 240/minute.
 - Endpoints that answer 200: `ping`, `activity`, `equipment`, `tag`. The four
   that answer 403 are `sport`, `recurring-route`, `planned-race` and
   `device-profile`; the nested activity data covers the route and device name.
-- `equipment` returns `id`, `name`, `notes`, `category_id` and usage fields,
-  but **no brand or model**.
+- `equipment` is an array of full `EquipmentDto` objects in the activity
+  detail (`id`, `name`, `notes`, `category_id`, `date_start`, `date_end`, usage
+  fields), so gear comes with the detail and needs no separate fetch. The
+  `/api/v1/equipment` collection returns the same shape, and
+  `/api/v1/equipment/category` lists the category names. There is **no brand
+  or model**.
 - The OpenAPI document at `/api/docs.jsonopenapi` needs
   `Accept: application/vnd.openapi+json`; a plain JSON accept gets a 406.
 

@@ -30,7 +30,7 @@ reimports, durable exclusion, and activity linking. **Reports and dashboard**:
 Markdown reports, charts and a static dashboard over the same analysis layer.
 **More sources**: the FIT archive, Intervals.icu and the Garmin Personal API are
 in, the historical spreadsheet is imported, and Runalyze enrichment is in
-progress (phase 1 landed). **Race tracking**: planned races linked to the
+progress (phases 1–2 landed). **Race tracking**: planned races linked to the
 completed activities, official results, and race reports. **Later**: platform
 independence (owning edits, comments, planning and subjective wellness
 locally), a small front end over the database, and a deterministic LLM coaching
@@ -530,8 +530,8 @@ comments, tags, gear, and the Runalyze VO2max estimate:
   raw payload keeps the variants.
 - Race results land in `race_results` and the linked event in
   `event_activity_links`; weight and illness ranges fill `wellness_days` and
-  `training_periods`. Phase 1 (read-only client and inventory) landed; comments
-  and tags are next.
+  `training_periods`. Phases 1–2 (read-only inventory, comments and tags)
+  landed; gear identity is next.
 
 ## Review workflow
 
@@ -640,7 +640,7 @@ dashboard: the view models make it cheap to add later.
   comparison, and the static dashboard; report code is split per report.
 - The review queue is currently empty; reports still hide activities with
   open items by default (`--include-review` shows them).
-- Remaining: Runalyze enrichment (comments/tags next) and the homelab cutover.
+- Remaining: Runalyze enrichment (gear identity next) and the homelab cutover.
 
 ## Deployment
 

@@ -380,9 +380,9 @@ one takes the next free number, so cross-references stay valid.
       same personal token — relevant to the coaching workflow (item 25), not to
       bulk import.
     - **Dependencies**: the official race-result table and race links are in
-      (schema v16/v21), and the gear identity below is the only design piece
-      still open. Comments need no decision — they fill
-      `activities.description` only when it is blank (item 1).
+      (schema v16/v21), and the gear identity rule below is settled. Comments
+      need no decision — they fill `activities.description` only when it is
+      blank (item 1).
     - **Phases**: (1) **done, import package** — a read-only client and
       `runalyze inventory --dry-run` that reports what is available per field
       and per year, writing nothing; (2) **done, import package** — comments
@@ -401,20 +401,33 @@ one takes the next free number, so cross-references stay valid.
       unmatched/ambiguous rows (`--output` JSON). Matching is temporal plus
       distance; `name`, timing and distance are never written. A mid-run 429
       stops cleanly, keeps the rows already processed, and marks the import
-      run `partial`. Validated on a
-      DB copy over one week: 9/9 matched, 5 tags on 3 activities, second run a
-      no-op. Phase 3 (gear) is next and still needs the cross-source identity
-      decision below.
-    - **Gear identity**: gear records become
-      `source_records(record_type='gear')` plus `equipment` rows, linked
-      through `activity_equipment` with `source='runalyze'`. Cross-source
-      identity reuses `equipment_source_links`: link a gear record to an
-      existing item when its activities consistently carry the same sheet shoe
-      (co-occurrence), else on a unique normalized name, else open an
-      `ambiguous_equipment` review item — never guess (the two "Lunge C-Dur"
-      pairs differ only by colour and date). Brand and model are not in the
-      payload, so they cannot be the match key. 2022+ gear has no sheet
-      counterpart and simply creates new rows.
+      run `partial`. Validated on a DB copy over one week: 9/9 matched, 5 tags
+      on 3 activities, second run a no-op. The real DB is untouched; a full
+      history exceeds one 240-request window, so the operational step is a
+      chunked `runalyze enrich` run with a dry run first. Phase 3 (gear) is next
+      and uses the identity rule below.
+    - **Gear identity (decided)**: gear records become
+      `source_records(record_type='gear', external_id='runalyze:<id>')` plus
+      `equipment` rows, linked through `activity_equipment` with
+      `source='runalyze'`. The activity detail's `equipment` array already
+      carries the full gear object, so no separate gear fetch is needed.
+      Resolve a gear record in this order:
+      1. **Co-occurrence**: among its matched activities that already have a
+         sheet equipment link, if at least 3 carry one sheet item and that item
+         covers at least 80% of them, link the gear record to it.
+      2. **Name**: otherwise normalize the name (casefold, `-`/`_` to spaces,
+         collapse whitespace) and compare with existing `equipment.name` and
+         `brand + " " + model`; exactly one match links, several are ambiguous.
+      3. **New row**: otherwise create `runalyze:equipment:<id>` with the name,
+         a category-derived type (`shoe`, `bike`, `other`), `notes`, and
+         `date_start`/`date_end` → `acquired_on`/`retired_on`; brand and model
+         stay empty because the payload has none.
+      A split co-occurrence or a name matching several rows opens an
+      `ambiguous_equipment` review item with the candidates; never guess (the
+      two "Lunge C-Dur" pairs differ only by colour and date). 2022+ gear has
+      no sheet counterpart and simply creates new rows. For each matched
+      activity, the first shoe/bike item is primary and the rest secondary; a
+      manual link wins.
     - **Import rules**: Runalyze never writes `name` — its title is a Garmin
       auto-title, and an unmatched row that creates the activity would own the
       name and block the Intervals session name the classifier reads. Its
