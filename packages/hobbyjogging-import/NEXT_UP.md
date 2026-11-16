@@ -179,9 +179,9 @@ on.
   is nothing to detect or clear. The remaining work is in the consumers: the
   session report qualifies the value on non-runs; the charts are running-only
   and `docs/SOURCE_NOTES.md` records the per-sport semantics.
-- **Wellness extras and routes.** Map the selected wellness keys into the new
-  columns and the sheet's `Strecke`/`Streckennummer` into routes, once the core
-  migrations land.
+- **Routes capture.** Map the sheet's `Strecke` / `Streckennummer` into routes
+  once the core `routes` tables land. (The wellness keys are captured already:
+  weight, sleep score and quality, SpO2, steps, floors and CTL/ATL.)
 
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),

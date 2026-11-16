@@ -4,6 +4,14 @@ Updated 2026-11-12.
 
 ## Done
 
+- **Wellness extras and canonical weight are stored (schema v19).**
+  `wellness_days` gains weight, sleep score and quality, SpO2, steps, floors
+  climbed and Intervals' CTL/ATL. The backfill filled 3,167 days: weight 358
+  (Intervals 213 plus the sheet's `Gewicht nachher`), sleep score 1,493, sleep
+  quality 1,492, SpO2 155, steps 966, floors 43, CTL/ATL 3,022. **Readiness,
+  stress and respiration are present as payload keys but empty in every one of
+  the 3,022 days**, so they got no column — the item's "four best" were the
+  three that do not exist. The readiness view stays on the reports list.
 - **Training periods are stored (schema v18).** `training_periods` holds dated
   spans — season, plan, illness, travel, recovery — and `training_periods_current`
   derives them from the Intervals event notes: 3 seasons (VCM 23/24/25, each
@@ -324,34 +332,6 @@ one takes the next free number, so cross-references stay valid.
      report.
    - **Tests**: distance tolerance, ambiguous → review item, manual methods
      untouched, idempotent, dry-run.
-
-9. **Wellness beyond HRV, resting HR and sleep** (core + import +
-   maintenance + reports). Intervals wellness carries 47 keys; we store three.
-   The useful extras: `readiness`, `sleepScore`/`sleepQuality`, `stress`,
-   `respiration`, `spO2`, `mood`, `soreness`/`fatigue`, `steps`,
-   `floorsClimbed`, `weight`, and Intervals' `ctl`/`atl`.
-   - **Next migration**: `wellness_days` gains the selected nullable columns.
-   - **Import**: map the Intervals wellness payload; Runalyze later.
-   - **Backfill `wellness_extras_v1`** from the stored payloads (3,022 days).
-   - **Reports**: a readiness view (readiness, sleep score, stress,
-     respiration, spO2), a weight trend, and steps/floors as non-training
-     activity.
-   - Start with the four with the best signal-to-noise — readiness,
-     sleepScore, stress, respiration — and leave the rest behind a flag.
-   - **Canonical weight (decided)**: `weight_kg` on `wellness_days`, nullable
-     and owner-based, in kilograms with a plausible-range guard. Sources:
-     the Intervals wellness payload, the sheet's `Gewicht nachher`, and
-     Runalyze's `bodyComposition` endpoint — the Runalyze API confirmed it
-     exists, which closes the open question. Body fat waits until something
-     reads it; the lab's HR/economy VO2max idea now has its other blocker
-     (max HR, item 6) resolved too.
-   - **Runalyze wellness is split, not one endpoint**: `sleep`, `hrv`,
-     `heartRateRest`, `heartRateMax`, `bodyComposition` and `disease` are
-     separate health-metric resources, so the importer maps each into
-     `wellness_days` rather than expecting a wellness object.
-   - **Out of scope, recorded**: `bloodPressure`, `bloodGlucose`,
-     `bodyTemperature`, `mental`, `dailyNote`, `menstrualCycle`, `statistics`
-     and `race-suggestion` are not stored.
 
 10. **Route identity and grouping** (core + import + maintenance + reports).
    The sheet has `Strecke` / `Streckennummer` (389 / 360 rows) and a Gmap link

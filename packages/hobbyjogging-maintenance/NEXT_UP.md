@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`wellness_extras_v1`.** Filled weight, sleep score and quality, SpO2,
+  steps, floors climbed and CTL/ATL from the wellness payloads, with the
+  sheet's `Gewicht nachher` as a weight fallback. Applied: 3,167 days; weight
+  358, sleep score 1,493, SpO2 155, steps 966, CTL/ATL 3,022.
 - **`training_periods_current`.** Derives seasons, illness markers and notes
   from the Intervals event payloads, closing each season the day before the
   next and never inferring a marker's duration. Applied: 3 seasons, 25 illness
@@ -67,10 +71,6 @@ This file records what the package is still waiting on.
   no `threshold_pace`, and record the derived series next to the stamped one
   so the reports can show both. Idempotent, dry-run, and it reports the delta
   to the stamped values.
-- **`wellness_extras_v1`** (backfill). Fill the new wellness columns —
-  including `weight_kg` from the Intervals payload and the sheet's
-  `Gewicht nachher` — from the stored payloads (3,022 days), idempotent,
-  dry-run. Runalyze's `bodyComposition` fills the same column when it lands.
 - **`activity_routes_v1`** (backfill). Map the sheet's `Strecke` /
   `Streckennummer` to routes and link the activities.
 

@@ -230,7 +230,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 18.
+SQLite, forward-only migrations. Schema version 19.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -285,7 +285,12 @@ SQLite, forward-only migrations. Schema version 18.
   several methods and targets).
 - `event_workout_methods`, `event_workout_targets` (v9) — the same sets for
   planned events.
-- `wellness_days`, `equipment`, `activity_equipment`,
+- `wellness_days` — one row per day: HRV, resting HR and sleep seconds, plus
+  (v19) weight, sleep score and quality, SpO2, steps, floors climbed and
+  Intervals' own CTL/ATL. Readiness, stress, respiration, mood, soreness and
+  fatigue are present as payload keys but never populated, so they have no
+  column.
+- `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `events` — planned workouts and races: local date, type, description,
   planned moving duration (`duration_s`), distance, training load, planned
