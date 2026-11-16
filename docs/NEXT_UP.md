@@ -340,7 +340,7 @@ one takes the next free number, so cross-references stay valid.
       key has read scopes: `/api/v1/ping` answers and every data endpoint
       returns 200, except `sport`, `recurring-route`, `planned-race` and
       `device-profile`, which still answer **403** with rate-limit headers
-      (240/min). None of the four blocks phase 1: the nested activity payload
+      (240/min). None of the four blocks the import: the nested activity payload
       carries the route and the device name, sport can be mapped from the
       activity, and events are Intervals-authoritative. Docs are split per tier
       (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
@@ -364,11 +364,12 @@ one takes the next free number, so cross-references stay valid.
       phase 1 inventory). `vo2max` is Runalyze's *effective*
       estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
       `vo2max_runalyze` must name which one — take `vo2max` and note the others
-      as alternatives, never a Garmin value. Tags are not in the activity
-      payload but are filterable (`?tag=<id>` returns the activities), so one
-      query per tag definition imports them. `sport`, `recurring-route`,
-      `planned-race` and `device-profile` answer 403; the nested activity data
-      covers routes and the device name anyway.
+      as alternatives, never a Garmin value. **Tags are in the detail payload**
+      (`tags: [{id, tag}]`), not the collection: `?tag=<id>` on the collection
+      is ignored and `/api/v1/statistics/tags` is 403, so phase 2 reads the
+      detail per activity. `sport`, `recurring-route`, `planned-race` and
+      `device-profile` answer 403; the nested activity data covers routes and
+      the device name anyway.
     - **Equipment finding**: gear records carry a name and a category but **no
       brand or model**, so cross-source identity rests on the name and on
       co-occurrence with the sheet shoes, not on a brand+model key.
@@ -386,12 +387,13 @@ one takes the next free number, so cross-references stay valid.
       (5) `vo2max_runalyze` as the second owner; (6) the reports.
     - **Phase 1 result (Nov 2026)**: the import package ships the read-only
       client and the inventory. Live run: 2,841 activities (2019–2026), 82
-      collection fields / 88 detail fields, `equipment` answers 200, and the
-      four expected 403s. Phase 2 (comments/tags) is the next package task; it
-      needs the text-home decision (item 1) and can start from the `/api/v1/tag`
-      collection the API root lists. Root housekeeping: update the package
-      description in `docs/AGENTS.md` (still says phase 1) and fold the access
-      facts into `SOURCE_NOTES.md`.
+      collection fields, 85–88 non-null detail fields (153 in the schema),
+      `equipment` answers 200, and the four expected 403s. Comments are `note`;
+      tags are detail-only; `title` is the Garmin auto-title and never becomes
+      `activities.name`. Phase 2 (comments/tags) is the next package task: the
+      text home is decided (`activities.description` blank-fill, tags in
+      `activity_tags`), and it enriches matched rows and reports the unmatched
+      ones for the later activity phase.
     - **Gear identity**: gear records become
       `source_records(record_type='gear')` plus `equipment` rows, linked
       through `activity_equipment` with `source='runalyze'`. Cross-source

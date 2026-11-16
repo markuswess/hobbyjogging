@@ -134,6 +134,15 @@ on.
 
 ## Next
 
+- **Runalyze phase 2: comments and tags.** Match the activity collection to
+  canonical activities temporally plus by distance, fill
+  `activities.description` from `note` only when it is blank, and write the
+  detail payload's `tags` (`[{id, tag}]`) into `activity_tags` with
+  `source='runalyze'`. The collection has no tags, `?tag=` is ignored and
+  `/api/v1/statistics/tags` is 403, so read the detail per activity. Never
+  write `name`; manual tags and descriptions win. Enrich matched rows and
+  report the unmatched ones for the later activity phase. Tests use recorded
+  fixtures. See root item 12.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with

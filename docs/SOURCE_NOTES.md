@@ -140,12 +140,45 @@ event `duration_s` is therefore the planned **moving** duration, and
 `training_load` comes from `icu_training_load`. Planned zone time comes from
 `workout_doc.zoneTimes` (see `event_zones.py`).
 
+## Runalyze
+
+The personal API is read-only for the current token. The base is
+`https://runalyze.com/api/v1`, the header is `token: <key>`, and requests are
+paced to 240/minute.
+
+- The activity collection is **`/api/v1/activity` (singular)** with `page` and
+  `itemsPerPage`. Its `time[...]` filters are ignored, so read every page and
+  apply `--since`/`--to` locally. The live inventory saw 2,841 activities
+  (2019–2026).
+- The collection carries 82 non-null fields; the detail carries 85–88 of the
+  153 fields in the schema. Detail-only data includes `tags`
+  (`[{id, tag}]`) and `equipment` when present.
+- **Comments are `note`**; `title` is the Garmin auto-title and never becomes
+  `activities.name`.
+- **Tags are detail-only.** The collection has no `tags`, `?tag=<id>` on the
+  collection is ignored, and `/api/v1/statistics/tags` answers 403. The
+  `/api/v1/tag` collection lists the definitions (`{id, tag}`), but the
+  activity-to-tag link comes from each activity's detail payload.
+- `sport` and `type` are nested objects; `device_name` is the recorder;
+  `recurring_route` nests id, name, distance and start/end/bounding
+  coordinates; `vo2max`, `vo2max_by_time`, `vo2max_with_elevation` and
+  `use_vo2max` are all present.
+- Endpoints that answer 200: `ping`, `activity`, `equipment`, `tag`. The four
+  that answer 403 are `sport`, `recurring-route`, `planned-race` and
+  `device-profile`; the nested activity data covers the route and device name.
+- `equipment` returns `id`, `name`, `notes`, `category_id` and usage fields,
+  but **no brand or model**.
+- The OpenAPI document at `/api/docs.jsonopenapi` needs
+  `Accept: application/vnd.openapi+json`; a plain JSON accept gets a 406.
+
 ## Code references
 
 - `packages/hobbyjogging-import/src/hobbyjogging_import/fit.py` — FIT parsing
   and VO2max message 140.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/intervals.py` —
   Intervals activity/event mapping.
+- `packages/hobbyjogging-import/src/hobbyjogging_import/runalyze.py` —
+  read-only Runalyze client and inventory.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/routes.py` — sheet
   route identity.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/quality.py` —
