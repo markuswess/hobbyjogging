@@ -501,6 +501,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "sync":
         return run_sync_command(args, parser)
 
+    if args.command == "period":
+        from .period_cli import run_period
+
+        return run_period(args, parser)
+
     if args.command == "race-result":
         from .race_result_cli import run_race_result
 

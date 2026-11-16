@@ -118,6 +118,19 @@ class Event:
 
 
 @dataclass
+class TrainingPeriod:
+    """A dated span: a season, a plan, an illness, a trip or a recovery."""
+
+    id: str
+    kind: str
+    label: str = ""
+    start_date: date | None = None
+    end_date: date | None = None
+    source: str = ""
+    notes: str = ""
+
+
+@dataclass
 class Device:
     """A recording device: the watch, computer or sensor behind an activity."""
 

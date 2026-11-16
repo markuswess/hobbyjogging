@@ -214,6 +214,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="list what would be fetched without writing",
     )
 
+    period = subparsers.add_parser(
+        "period",
+        help="record manual training periods (illness, travel, plan)",
+    )
+    period.add_argument("--database", type=Path)
+    period_sub = period.add_subparsers(dest="period_action", required=True)
+    period_add = period_sub.add_parser("add", help="create or update a period")
+    period_add.add_argument(
+        "--kind",
+        required=True,
+        choices=("season", "plan", "illness", "travel", "recovery", "other"),
+    )
+    period_add.add_argument("--start", required=True)
+    period_add.add_argument("--end")
+    period_add.add_argument("--label")
+    period_add.add_argument("--notes")
+    period_list = period_sub.add_parser("list", help="list stored periods")
+    period_list.add_argument("--limit", type=int)
+    period_remove = period_sub.add_parser(
+        "remove",
+        help="soft-exclude one period",
+    )
+    period_remove.add_argument("period")
+
     race_result = subparsers.add_parser(
         "race-result",
         help="record official race metadata by hand",

@@ -1988,6 +1988,73 @@ class TrainingWriter:
         )
         return existing is None
 
+    def replace_training_periods(
+        self,
+        rows: list[dict[str, object]],
+        *,
+        source: str,
+    ) -> int:
+        """Replace one source's training periods; manual rows are kept."""
+        self.connection.execute(
+            "DELETE FROM training_periods WHERE source = ?",
+            (source,),
+        )
+
+        entries = [
+            (
+                row["id"],
+                row["kind"],
+                row.get("label") or "",
+                row["start_date"],
+                row.get("end_date"),
+                source,
+                row.get("source_record_id"),
+                row.get("notes") or "",
+            )
+            for row in rows
+        ]
+        if not entries:
+            return 0
+
+        self.connection.executemany(
+            """
+            INSERT INTO training_periods (
+                id, kind, label, start_date, end_date,
+                source, source_record_id, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            entries,
+        )
+        return len(entries)
+
+    def upsert_training_period(
+        self,
+        period_id: str,
+        *,
+        kind: str,
+        start_date: str,
+        label: str = "",
+        end_date: str | None = None,
+        notes: str = "",
+    ) -> None:
+        """Write one manual period, replacing the same id."""
+        self.connection.execute(
+            """
+            INSERT INTO training_periods (
+                id, kind, label, start_date, end_date, source, notes
+            ) VALUES (?, ?, ?, ?, ?, 'manual', ?)
+            ON CONFLICT(id) DO UPDATE SET
+                kind = excluded.kind,
+                label = excluded.label,
+                start_date = excluded.start_date,
+                end_date = excluded.end_date,
+                notes = excluded.notes,
+                excluded_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (period_id, kind, label, start_date, end_date, notes),
+        )
+
     RACE_RESULT_FIELDS = (
         "event_id",
         "name",

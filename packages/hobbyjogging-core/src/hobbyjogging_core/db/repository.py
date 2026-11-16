@@ -11,6 +11,7 @@ from hobbyjogging_core.model import (
     AthleteThreshold,
     Device,
     RaceResult,
+    TrainingPeriod,
     Equipment,
     Event,
     EventZoneTime,
@@ -168,6 +169,33 @@ class TrainingRepository:
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 max_hr=row["max_hr"],
+            )
+            for row in rows
+        ]
+
+    def training_periods(self) -> list[TrainingPeriod]:
+        rows = self.connection.execute(
+            """
+            SELECT id, kind, label, start_date, end_date, source, notes
+            FROM training_periods
+            WHERE excluded_at IS NULL
+            ORDER BY start_date, id
+            """
+        ).fetchall()
+
+        return [
+            TrainingPeriod(
+                id=row["id"],
+                kind=row["kind"],
+                label=row["label"] or "",
+                start_date=date.fromisoformat(row["start_date"]),
+                end_date=(
+                    date.fromisoformat(row["end_date"])
+                    if row["end_date"]
+                    else None
+                ),
+                source=row["source"] or "",
+                notes=row["notes"] or "",
             )
             for row in rows
         ]

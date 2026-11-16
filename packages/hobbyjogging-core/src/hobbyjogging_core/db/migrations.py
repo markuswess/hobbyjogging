@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -345,6 +345,31 @@ ALTER TABLE activities ADD COLUMN device_id TEXT
 """
 
 
+MIGRATION_18_SQL = """
+-- Training periods: seasons, plans, illness, travel and recovery. A period is
+-- a date range, which an event is not; ranges may overlap (an illness inside a
+-- season). Intervals supplies the season starts and the sickness notes; a
+-- manual row is never removed by the recompute.
+CREATE TABLE training_periods (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    label TEXT NOT NULL DEFAULT '',
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    source TEXT NOT NULL DEFAULT 'intervals',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    excluded_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_training_periods_dates
+ON training_periods(start_date, end_date);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -363,6 +388,7 @@ MIGRATIONS: dict[int, str] = {
     15: MIGRATION_15_SQL,
     16: MIGRATION_16_SQL,
     17: MIGRATION_17_SQL,
+    18: MIGRATION_18_SQL,
 }
 
 
