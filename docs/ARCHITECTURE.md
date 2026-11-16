@@ -131,12 +131,13 @@ Canonical model, schema, and read/write access.
 - `sports.py` — canonical sport names, labels, groups, and the shared alias
   table for FIT/Intervals/manual entry.
 - `classify.py` — the workout-category heuristic (quality/non-quality,
-  intervals/longrun/race/tempo, subT rep length), plus `work_intervals` and
-  the rep-length buckets. It prefers the stored classification and falls back
-  to the heuristic; the classification tasks call it with
-  `use_stored=False`.
+  intervals/fartlek/longrun/race/tempo, subT rep length), `category_for_sets`
+  (the stored sets to display kind inverse), plus `work_intervals` and the
+  rep-length buckets. Classified activities take their category from the
+  stored sets; the heuristic runs only for unclassified ones, and the
+  classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 10).
+  (`SCHEMA_VERSION`, currently 11).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
