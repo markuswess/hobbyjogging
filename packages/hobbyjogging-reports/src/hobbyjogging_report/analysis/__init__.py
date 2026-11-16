@@ -118,6 +118,15 @@ from .races import (
 )
 from .recovery import RecoveryBand, RecoveryBands, recovery_bands, recovery_trends
 from .rpe import daily_session_rpe, rpe_metrics
+from .streaks import (
+    DEFAULT_STREAK_LIMIT,
+    MIN_STREAK_RUN_S,
+    RunStreak,
+    StreakSummary,
+    is_streak_run,
+    run_streaks,
+    streak_summary,
+)
 from .subt import (
     subt_blocks,
     subt_report_blocks,
@@ -154,9 +163,11 @@ __all__ = [
     "BASELINE_WINDOW_DAYS",
     "DEFAULT_ZONE_COUNT",
     "DEFAULT_SHOE_TARGET_M",
+    "DEFAULT_STREAK_LIMIT",
     "EFFICIENCY_UNIT",
     "EquipmentStat",
     "MIN_EXCESS_HR",
+    "MIN_STREAK_RUN_S",
     "RESTING_HR_WINDOW_DAYS",
     "STEADY_BAND_LABEL",
     "STEADY_DURATION_BAND",
@@ -171,6 +182,11 @@ __all__ = [
     "RACE_BUCKETS",
     "RaceResult",
     "RiegelFit",
+    "RunStreak",
+    "StreakSummary",
+    "is_streak_run",
+    "run_streaks",
+    "streak_summary",
     "STANDARD_BUCKETS",
     "STANDARD_DISTANCES",
     "TRAIL_BUCKET",

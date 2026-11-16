@@ -179,6 +179,20 @@ def parse_races_args(
     return args.bucket, start, end, args.limit
 
 
+def parse_streaks_args(argv: list[str]) -> int:
+    """Parse the streak-table limit."""
+    from .analysis import DEFAULT_STREAK_LIMIT
+
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--limit", type=int, default=DEFAULT_STREAK_LIMIT)
+    args = parser.parse_args(argv)
+
+    if args.limit <= 0:
+        raise ValueError("--limit must be positive")
+
+    return args.limit
+
+
 def parse_planned_args(
     argv: list[str],
     default_days: int = DEFAULT_PLANNED_DAYS,

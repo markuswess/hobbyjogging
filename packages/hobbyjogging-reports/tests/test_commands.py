@@ -22,6 +22,7 @@ EXPECTED = {
     "equipment",
     "race",
     "races",
+    "streaks",
     "planned",
     "session",
     "classify",

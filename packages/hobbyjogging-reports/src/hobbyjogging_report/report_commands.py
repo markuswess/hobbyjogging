@@ -15,6 +15,7 @@ from .planned import planned_report
 from .race_report import race_report, races_report
 from .recovery_report import recovery_report
 from .subt_ewma_report import subt_ewma_report
+from .streak_report import streaks_report
 from .subt_report import subt_report
 from .sessions import session_report
 
@@ -188,6 +189,14 @@ def run_races_command(parsed, source, include_review):
 
 def run_race_command(parsed, source, include_review):
     return race_report(parsed, source, include_review=include_review)
+
+
+def run_streaks_command(parsed, source, include_review):
+    return streaks_report(
+        source,
+        limit=parsed,
+        include_review=include_review,
+    )
 
 
 def run_equipment_command(parsed, source, include_review):

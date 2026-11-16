@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 13 is parked on its page-coverage cost, 16 and
-17 are open reports-only items, and the rest need a core or root change or the
-lab gate.
+Current focus: the demo data; 13 is parked on its page-coverage cost, 16 is
+the open reports-only item, and the rest need a core or root change or the lab
+gate.
 
 ## Done
 
@@ -205,6 +205,17 @@ this list keeps the recent decisions only.
   Tests cover the planned and missed rows, the matched page, zones and
   methods, and the demo link.
 
+- **A streaks report.** `reports.sh streaks` lists the current running streak
+  (days, span, km, time, and whether today is already run) and the longest
+  streaks with the same fields, cut by `--limit` (default 10). A streak day is
+  a calendar day with one run of at least 10 minutes; a rest day ends it and a
+  ride never extends it, so cross-training cannot hold a running streak.
+  `analysis/streaks.py` does the grouping (two runs on one day count once,
+  with both added), the current streak ends today or yesterday, and
+  review-excluded runs never count. On the real log: current 23 days, best 117
+  days of 961 streaks. The dashboard card waits for a week of use, per the
+  gate.
+
 ## Bugs
 
 _None._
@@ -214,9 +225,9 @@ _None._
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
 items 24 and 25. Of what is left, 13 is reports-only but parked because every
 link needs a page for the plotted activity, 16 is a small dashboard-only
-pass and 17 is a reports-only report, 14 needs root items 4 and 30, 15's
-series needs the lab gate in root item 31, and 12 is recurring upkeep. The
-efficiency floor and the planned-event page landed here.
+pass, 14 needs root items 4 and 30, 15's series needs the lab gate in root
+item 31, and 12 is recurring upkeep. The efficiency floor, the planned-event
+page and the streaks report landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -379,32 +390,6 @@ efficiency floor and the planned-event page landed here.
       activities tab still carries a planned row and an activity link; the
       demo dashboard test covers the collapsed lists.
 
-17. **A streaks report.** Running streaks are the simplest motivation number
-    the reports do not show: consecutive days with a run, plus the current
-    streak and the all-time bests with the distance and time they covered.
-    - **Definition**: a streak day is a calendar day with at least one
-      running activity (`RUN_TYPES`, review-excluded). A rest day ends a
-      streak and a ride does not extend one. A minimum (10 minutes or 1 km)
-      keeps a token jog from holding a streak: pick one and print the rule
-      next to the numbers.
-    - **Report**: `reports.sh streaks` in Markdown, on the same command path
-      as the other reports. A summary for the current streak (start date,
-      days, km, time, and whether today is already run or still pending),
-      then the longest streaks with start/end, days, km and time, cut by
-      `--limit` (default 10).
-    - **Staging**: the gate says dashboard last. Start with a pure function in
-      `analysis/streaks.py` and its tests plus the CLI report; a card on the
-      activities tab waits until the report has been useful for a week.
-    - **Edges**: all history (`activity_start`), ties ordered by days then
-      distance, and the current day handled explicitly so an evening run is
-      not counted as a missed day.
-    - **Tests**: a gap splits two streaks; a ride between run days does not
-      extend one; consecutive days across a month boundary; the current
-      streak with and without today's run; a tie; the `--limit` cut; a run
-      under the minimum does not count.
-    - **Demo**: the story's rest week, injury and boom-bust give several
-      streaks, so the demo coverage test can assert the report's shape.
-
 ## Tests and docs
 
 Covered now:
@@ -423,7 +408,10 @@ Covered now:
   and labels Trail/Other bests as raw in the tables;
 - planned-event pages: a planned and a missed row link to their page, the
   page renders zones and methods, and a matched event shows the approximate
-  plan-vs-actual table.
+  plan-vs-actual table;
+- streaks: gaps split, a ride does not extend, the minimum duration, two runs
+  on one day, the current streak with and without today, the distance
+  tie-break, the limit, and the report's shape.
 
 New work should add:
 

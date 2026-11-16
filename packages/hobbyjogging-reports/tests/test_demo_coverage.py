@@ -12,6 +12,7 @@ from hobbyjogging_report.equipment_report import equipment_report
 from hobbyjogging_report.race_report import race_report, races_report
 from hobbyjogging_report.sessions import session_report
 from hobbyjogging_report.sources import create_source
+from hobbyjogging_report.streak_report import streaks_report
 from hobbyjogging_report.subt_ewma_report import subt_ewma_report
 
 TODAY = date(2026, 11, 12)
@@ -61,6 +62,15 @@ class DemoCoverageTests(unittest.TestCase):
                 equipment = equipment_report(source, today=TODAY)
                 for marker in ("# Gear", "## Coverage"):
                     self.assertIn(marker, equipment)
+
+                streaks = streaks_report(source, today=TODAY)
+                for marker in (
+                    "# Running streaks",
+                    "- Current:",
+                    "## Longest streaks",
+                    "| Start | End | Days | Distance | Time |",
+                ):
+                    self.assertIn(marker, streaks)
 
                 ewma = subt_ewma_report(source, today=TODAY)
                 for marker in (

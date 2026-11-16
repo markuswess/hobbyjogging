@@ -31,6 +31,7 @@ from .cli import (
     parse_races_args,
     parse_recovery_args,
     parse_report_args,
+    parse_streaks_args,
     parse_time_args,
 )
 from .activity_list import (
@@ -55,6 +56,7 @@ from .report_commands import (
     run_recovery_report_command,
     run_report_command,
     run_session_command,
+    run_streaks_command,
     run_subt_ewma_report_command,
     run_subt_report_command,
     summary_handler,
@@ -208,6 +210,17 @@ COMMANDS = {
         ),
         parse=parse_races_args,
         run=run_races_command,
+    ),
+    "streaks": Command(
+        "streaks",
+        "Current and longest running streaks",
+        "streaks [--limit N]",
+        (
+            "reports.sh streaks",
+            "reports.sh streaks --limit 20",
+        ),
+        parse=parse_streaks_args,
+        run=run_streaks_command,
     ),
     "race": Command(
         "race",

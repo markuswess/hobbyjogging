@@ -233,6 +233,13 @@ database `DataSource` and produces the Markdown reports and charts:
 - **race <activity-id>** — One race-day report: splits, first/second-half
   pace, planned-vs-actual zones and duration/distance when a race event
   exists on the same date.
+- **streaks** — The current running streak (days, span, km, time, and
+  whether today is already run) and the longest streaks with the same
+  fields, cut by `--limit N` (default 10). A streak day needs one run of at
+  least 10 minutes; a rest day ends the streak and a ride never extends it,
+  so cross-training cannot hold a running streak. All history from the first
+  activity is used, review-excluded runs do not count, and a run later today
+  is not reported as a missed day.
 - **equipment** — Gear mileage and use from `equipment` →
   `activity_equipment` → activities: sessions, km, km/month, last used,
   target/wear, coverage per year, and retirement candidates. Shoes without

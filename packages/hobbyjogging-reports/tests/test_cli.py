@@ -18,6 +18,7 @@ from hobbyjogging_report.cli import (
     parse_planned_args,
     parse_races_args,
     parse_recovery_args,
+    parse_streaks_args,
     parse_report_args,
     parse_time_args,
     resolve_forward_range,
@@ -568,6 +569,19 @@ class RacesArgsTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             with redirect_stderr(io.StringIO()):
                 parse_races_args(["--bucket", "marathon"])
+
+
+class StreakArgsTests(unittest.TestCase):
+
+    def test_default_limit(self):
+        self.assertEqual(10, parse_streaks_args([]))
+
+    def test_reads_the_limit(self):
+        self.assertEqual(3, parse_streaks_args(["--limit", "3"]))
+
+    def test_rejects_non_positive_limit(self):
+        with self.assertRaises(ValueError):
+            parse_streaks_args(["--limit", "0"])
 
 
 class DashboardArgsTests(unittest.TestCase):
