@@ -170,6 +170,19 @@ this list keeps the recent decisions only.
   recovery weeks again). Tests cover the grid, the plateaus, the bust drop
   and the empty rides.
 
+- **Efficiency floor at 40 minutes.** `STEADY_MIN_DURATION_S` is 40 min, so a
+  short easy run now enters the period/overview/compare aggregates. The band
+  label comes from `STEADY_BAND_LABEL` everywhere it is printed (category
+  table, period line, compare header, chart and CLI notes, README), because
+  the duration model's `+135/T` term makes a 40-minute run read about 1.5 %
+  lower than a 60-minute one. On the real log the floor adds 26 steady runs
+  over the last year (108 → 134) and 314 all-time (1,165 → 1,479), while the
+  aggregate moves by 0.002 last year (2.485 → 2.487) and 0.001 all-time
+  (2.425 → 2.426), so it widens n without changing the trend. Quality
+  sessions stay out. The metric card still says 45–75 in its definition,
+  comparability, rendered list and HR-line section; the root session updates
+  it with root item 31.
+
 - **The activities tab is a training log.** It keeps every completed
   activity row and appends a row for each planned event in the shown range
   and the next 14 days that has no matching activity (same date and sport
@@ -190,8 +203,8 @@ items 24 and 25. Of what is left, 13 and 16 are reports-only in principle,
 14 needs root items 4 and 30, 15's series needs the lab gate in root item
 31, and 12 is recurring upkeep. Two of them are not ready to start: 13 is
 parked because every link needs a page for the plotted activity, and 16
-needs the event id from core. 15's 40-minute floor can ship alone, but its
-metric card is root-owned.
+needs the event id from core. The efficiency floor landed here; its metric
+card follows in the root session.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -319,19 +332,16 @@ metric card is root-owned.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-15. **Efficiency scope: 40-minute floor and an all-runs series.** The aggregates
-    use non-quality runs in 45–75 min, so a 40-minute easy run and every long
-    run are invisible to the trend (root item 31).
-    - **40-minute floor**: lower `STEADY_MIN_DURATION_S` to 40 min. The duration
-      model's `+135/T` term makes a 40-minute run about 1.5 % lower than a
-      60-minute one; print the band so the bias is visible. Raises n without
-      mixing protocols, and it can ship on its own.
+15. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
+    every long run is still invisible to the trend, because the steady
+    aggregate stops at 75 min (root item 31).
     - **All-runs series**: only after the lab passes it — a second labelled line
       over every run with HR, distance and duration, never merged into the
       steady aggregate. Both lines carry their own label.
-    - **Card**: the efficiency card gains the floor and the second series.
-    - **Tests**: a 40-minute easy run enters the steady aggregate; an interval
-      session does not; the all-runs line includes it; both labels render.
+    - **Card**: the efficiency card gains the floor (owed since it landed, see
+      Done) and the second series.
+    - **Tests**: the all-runs line includes a long run and a short easy run;
+      the steady line does not; both labels render.
 
 16. **A page for planned events, linked from the activities tab.** The tab now
     lists planned and missed sessions, but their date and name are plain text
@@ -342,11 +352,10 @@ metric card is root-owned.
       targets, the planned zone distribution from `event_zone_times`, and the
       description. The session report already renders the day's planned
       workout, so the formatting exists; this is a page around it.
-    - **Needs the event id.** The `events` table has one, but `Event` drops
-      it: `repository.events()` selects `id` and never passes it to the
-      model, so a root session must expose it before the page can be keyed
-      by id. A date and sport slug is no substitute — the demo already has
-      two sessions on one day.
+    - **Event id (landed).** `Event.id` is now a model field and
+      `repository.events()` populates it, so the page can be keyed by id. A
+      date-and-sport slug would not do: the demo already has two sessions on
+      one day.
     - **Links**: the date and name of a planned or missed row link to it; the
       status column stays text.
     - **Plan vs actual**: once `event_activity_links` lands (root item 4), the

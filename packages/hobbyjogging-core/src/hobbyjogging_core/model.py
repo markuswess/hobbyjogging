@@ -98,6 +98,7 @@ class EventZoneTime:
 @dataclass
 class Event:
     date: date
+    id: str = ""  # canonical event id, stable across imports
     name: str = ""
     type: str = ""
     description: str = ""

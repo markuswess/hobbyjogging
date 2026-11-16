@@ -127,6 +127,7 @@ class TrainingRepository:
         return [
             Event(
                 date=date.fromisoformat(row["local_date"]),
+                id=row["id"],
                 name=row["name"],
                 type=row["type"],
                 description=row["description"],

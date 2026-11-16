@@ -196,6 +196,7 @@ class TrainingRepositoryTests(unittest.TestCase):
 
         self.assertEqual(1055, activities[0].moving_s)
         self.assertEqual(62, events[0].training_load)
+        self.assertEqual("e1", events[0].id)
 
     def test_excluded_events_are_hidden(self):
         self.conn.execute(
