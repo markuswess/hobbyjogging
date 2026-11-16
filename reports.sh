@@ -70,18 +70,10 @@ while (( index < ${#args[@]} )); do
     esac
 done
 
-case "$mode" in
-    -h|--help)
-        usage
-        exit 0
-        ;;
-    daily|overview|recovery-report|equipment|races|race|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities)
-        ;;
-    *)
-        usage >&2
-        exit 2
-        ;;
-esac
+if [[ "$mode" == "-h" || "$mode" == "--help" ]]; then
+    usage
+    exit 0
+fi
 
 if (( explicit_mode == 0 )); then
     args=("$mode" "${args[@]}")
