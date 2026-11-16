@@ -226,7 +226,9 @@ uv run --env-file .env hobbyjogging-import runalyze inventory --dry-run
 ```
 
 The inventory writes nothing. It probes the known endpoints and prints the
-activity-field coverage per year (counts of non-null values):
+activity-field coverage per year (counts of non-null values). The collection
+is `/api/v1/activity` (singular); the API ignores its date filters, so the
+client reads all pages and applies `--since`/`--to` locally.
 
 ```text
 Runalyze inventory (dry run)
@@ -240,11 +242,15 @@ Endpoints:
   recurring-route  403  (blocked)
   planned-race     403  (blocked)
   device-profile   403  (blocked)
+  activity detail  200  (88 fields)
   blocked: sport, recurring-route, planned-race, device-profile (expected; the nested activity payload covers them)
 
-Activities: 812 (2022-2026)
-  activities                     2022   2023   2024   2025   2026   total
-  average_heartrate               200    210    215    220    180     812
+Activities: 2841 (2019-2026)
+
+                                   2019   2020   ...   2026   total
+  activities                        227    369   ...    379    2841
+  hr_avg                            ...
+  vo2max                            ...
 ```
 
 Options: `--since`/`--to` limit the activity range, `--limit N` caps the

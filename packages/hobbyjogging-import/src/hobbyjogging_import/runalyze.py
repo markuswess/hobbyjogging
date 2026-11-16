@@ -22,11 +22,12 @@ from .config import runalyze_api_key, runalyze_base_url
 REQUESTS_PER_MINUTE = 240
 MIN_REQUEST_INTERVAL_S = 60.0 / REQUESTS_PER_MINUTE
 
-# Endpoint label -> path. The four 403 endpoints stay listed so the inventory
+# Endpoint label -> path. The collection is singular (`activity`), matching
+# the API root at /api. The four 403 endpoints stay listed so the inventory
 # reports them explicitly instead of silently omitting them.
 INVENTORY_ENDPOINTS = (
     ("ping", "ping"),
-    ("activities", "activities"),
+    ("activities", "activity"),
     ("equipment", "equipment"),
     ("sport", "sport"),
     ("recurring-route", "recurring-route"),
@@ -34,7 +35,8 @@ INVENTORY_ENDPOINTS = (
     ("device-profile", "device-profile"),
 )
 
-YEAR_KEYS = ("date", "start_date", "start_time", "time")
+ACTIVITY_COLLECTION = "activity"
+YEAR_KEYS = ("date_time", "date", "start_date", "start_time", "time")
 
 
 @dataclass(frozen=True)
@@ -134,25 +136,23 @@ class RunalyzeClient:
         *,
         per_page: int = 100,
     ) -> list[dict]:
-        """Read all activities in the range, following numbered pages."""
+        """Read all activities, following numbered pages.
+
+        The collection ignores its date filters, so every page is read and the
+        range is applied locally from ``date_time``.
+        """
         items: list[dict] = []
         seen: set[object] = set()
         page = 1
 
         while True:
-            params: dict[str, object] = {
-                "page": page,
-                "perPage": per_page,
-            }
-            if start is not None:
-                params["from"] = start.isoformat()
-            if end is not None:
-                params["to"] = end.isoformat()
-
-            response = self.get("activities", params)
+            response = self.get(
+                ACTIVITY_COLLECTION,
+                {"page": page, "itemsPerPage": per_page},
+            )
             if not response.ok:
                 raise RuntimeError(
-                    "Runalyze activities failed "
+                    "Runalyze activity collection failed "
                     f"(HTTP {response.status})"
                 )
 
@@ -177,7 +177,11 @@ class RunalyzeClient:
                 break
             page += 1
 
-        return items
+        return [
+            item
+            for item in items
+            if _in_range(item, start, end)
+        ]
 
     def _throttle(self) -> None:
         if self._last_request is None:
@@ -221,8 +225,8 @@ def run_inventory(
 
     for label, path in INVENTORY_ENDPOINTS:
         params = (
-            {"page": 1, "perPage": 1}
-            if path == "activities"
+            {"page": 1, "itemsPerPage": 1}
+            if path == ACTIVITY_COLLECTION
             else None
         )
         response = api.get(path, params)
@@ -362,7 +366,10 @@ def _endpoint_note(path: str, response: RunalyzeResponse) -> str:
     if not response.ok:
         return _short(response.payload)
     if path == "ping":
-        return _short(response.payload)
+        payload = response.payload
+        if isinstance(payload, list) and payload:
+            return _short(payload[0])
+        return _short(payload)
     if path == "activity":
         payload = response.payload
         if isinstance(payload, dict):
@@ -386,6 +393,36 @@ def _items(payload: object) -> list:
             if isinstance(value, list):
                 return value
     return []
+
+
+def _activity_date(activity: dict) -> date | None:
+    for key in YEAR_KEYS:
+        value = activity.get(key)
+        if value is None:
+            continue
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError:
+            continue
+    return None
+
+
+def _in_range(
+    activity: dict,
+    start: date | None,
+    end: date | None,
+) -> bool:
+    if start is None and end is None:
+        return True
+
+    day = _activity_date(activity)
+    if day is None:
+        return False
+    if start is not None and day < start:
+        return False
+    if end is not None and day > end:
+        return False
+    return True
 
 
 def _activity_year(activity: dict) -> int | None:

@@ -6,11 +6,12 @@ on.
 ## Done
 
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
-  240/min pacing, numbered pages, `--since`/`--to`) and
+  240/min pacing, numbered pages, local `--since`/`--to` filtering) and
   `runalyze inventory --dry-run`, which probes the known endpoints and reports
-  activity-field coverage per year without writing. The four 403 endpoints are
-  reported as expected. Tests use recorded fixtures. Phases 2–6 remain in root
-  item 12.
+  activity-field coverage per year without writing. Verified live: 2,841
+  activities (2019–2026), 88 fields in the detail payload, and the four
+  expected 403 endpoints. Tests use recorded fixtures. Phases 2–6 remain in
+  root item 12.
 - **Sheet routes.** `Strecke`/`Streckennummer` resolve to a canonical route
   (number first, then the name's number when unambiguous) and the activity is
   linked; a Gmap URL is not a route. The sheet remains the only route source

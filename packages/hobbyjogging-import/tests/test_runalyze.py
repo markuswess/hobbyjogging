@@ -32,7 +32,7 @@ class FakeApi:
 
     def get(self, path, params=None):
         self.calls.append((path, params))
-        if path == "activities":
+        if path == "activity":
             page = int((params or {}).get("page", 1))
             payload = (
                 self.pages[page - 1]
@@ -124,14 +124,37 @@ class RunalyzeClientTests(unittest.TestCase):
         self.assertEqual(3, len(items))
         self.assertEqual(2, len(session.calls))
         self.assertEqual(
-            "https://example.test/api/v1/activities",
+            "https://example.test/api/v1/activity",
             session.calls[0]["url"],
         )
         self.assertEqual("secret", session.calls[0]["headers"]["token"])
         self.assertEqual(1, session.calls[0]["params"]["page"])
-        self.assertEqual("2023-01-01", session.calls[0]["params"]["from"])
-        self.assertEqual("2024-12-31", session.calls[0]["params"]["to"])
+        self.assertEqual(2, session.calls[0]["params"]["itemsPerPage"])
         self.assertEqual(2, session.calls[1]["params"]["page"])
+
+    def test_range_is_filtered_locally(self):
+        pages = {
+            1: _fixture("activities_page1.json"),
+            2: _fixture("activities_page2.json"),
+        }
+
+        def handler(url, params):
+            page = int((params or {}).get("page", 1))
+            return FakeResponse(200, pages.get(page, []))
+
+        client = RunalyzeClient(
+            api_key="secret",
+            base_url="https://example.test/api/v1",
+            session=FakeSession(handler),
+        )
+
+        items = client.activities(
+            date(2024, 1, 1),
+            date(2024, 12, 31),
+            per_page=2,
+        )
+
+        self.assertEqual([101, 102], [item["id"] for item in items])
 
     def test_pagination_stops_when_the_server_repeats_a_page(self):
         page = _fixture("activities_page1.json")
