@@ -179,9 +179,8 @@ this list keeps the recent decisions only.
   over the last year (108 → 134) and 314 all-time (1,165 → 1,479), while the
   aggregate moves by 0.002 last year (2.485 → 2.487) and 0.001 all-time
   (2.425 → 2.426), so it widens n without changing the trend. Quality
-  sessions stay out. The metric card still says 45–75 in its definition,
-  comparability, rendered list and HR-line section; the root session updates
-  it with root item 31.
+  sessions stay out. The metric card now says 40–75 in its definition,
+  comparability, rendered list and HR-line section (root item 31).
 
 - **The activities tab is a training log.** It keeps every completed
   activity row and appends a row for each planned event in the shown range

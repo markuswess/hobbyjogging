@@ -923,15 +923,15 @@ _None._
     - **Tests**: SEASON_START maps to a season range, SICK to a day marker, a
       manual end survives a reimport, overlapping periods are allowed.
 
-31. **Efficiency over all activities, with a 40-minute floor** (lab first, then
-    reports and the card). The aggregates only use non-quality runs inside the
-    45–75 min band (`STEADY_DURATION_BAND`), so a 40-minute easy run or a steady
-    long run contributes nothing to the trend. Two changes to evaluate, in this
-    order:
-    - **Lower the floor to 40 min.** The duration model gives `+135/T` bpm, so a
-      40-minute run reads about 1.5 % lower than a 60-minute one; inside a
-      40–75 min band that spread is acceptable *if the band is printed*. It
-      raises n without mixing protocols — the cheap half of the idea.
+31. **Efficiency over all activities** (lab first, then reports and the card).
+    The steady aggregate stops at 75 min (`STEADY_DURATION_BAND`), so a long run
+    contributes nothing to the trend; it used to start at 45 min as well.
+    - **40-minute floor (landed).** The duration model gives `+135/T` bpm, so a
+      40-minute run reads about 1.5 % lower than a 60-minute one; inside the
+      40–75 min band that spread is acceptable while the band is printed. On the
+      real log it added 26 steady runs over the last year (108 → 134) and 314
+      all-time (1,165 → 1,479), moving the aggregate by 0.002 and 0.001. The
+      card now says 40–75 min.
     - **An all-runs series.** Every run with HR, distance and duration, as a
       second labelled line beside the steady aggregate — never merged into it.
       The card's Comparability caveat says whole-session interval averages are

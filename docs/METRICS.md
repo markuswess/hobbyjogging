@@ -68,23 +68,27 @@ dashboard. The dashboard is the last step, never the first.
   fatigue, so the correction factor is **parked** until streams or a
   heat/fatigue control can shrink the uncertainty below the effect.
   `experiments/efficiency_duration.py`. Reports act on this directly: the
-  steady aggregates use a fixed **45–75 min** band, and a run counts as steady
+  steady aggregates use a fixed **40–75 min** band, and a run counts as steady
   only when it is non-quality (unknown/unclassified runs count; intervals,
-  races, long runs, progressions and fartlek do not). The band is printed next
-  to every aggregate, so two numbers are never read as comparable when they
-  come from different bands. Session and daily efficiency stay raw
-  per-activity values and are deliberately unbanded.
+  races, long runs, progressions and fartlek do not). The floor sits at 40 min
+  because the `+135/T` term makes a 40-minute run read about 1.5 % lower than a
+  60-minute one — inside the band that bias is acceptable while the band is
+  printed; lowering it added 26 steady runs over the last year (108 → 134) and
+  314 all-time (1,165 → 1,479) while the aggregate moved by 0.002 and 0.001.
+  The band is printed next to every aggregate, so two numbers are never read as
+  comparable when they come from different bands. Session and daily efficiency
+  stay raw per-activity values and are deliberately unbanded.
 - **Comparability**: whole-session interval averages are not comparable to
   steady runs; compare intervals within a fixed protocol or through work-rep
   efficiency. Period, category, overview, compare and pace/HR efficiency lines
-  use the same steady 45–75 min band, so their aggregates can be compared with
+  use the same steady 40–75 min band, so their aggregates can be compared with
   each other but not with a raw session number or another run length.
 - **Rendered**: session report and daily compact line (raw per activity),
-  `eff` activities column, period/category reports (steady 45–75 min),
-  compare text report and tab (steady 45–75 min), overview EWMA row,
+  `eff` activities column, period/category reports (steady 40–75 min),
+  compare text report and tab (steady 40–75 min), overview EWMA row,
   pace/HR efficiency lines, subT work reps and summary tables (work-rep
   efficiency, labelled as such), subT EWMA report, subT chart panel. The
-  pace/HR scatter shows all runs; the steady 45–75 min points that feed the
+  pace/HR scatter shows all runs; the steady 40–75 min points that feed the
   dashed efficiency lines carry a dark outline and the chart note says so.
 
 ### HR-speed efficiency line
@@ -92,7 +96,7 @@ dashboard. The dashboard is the last step, never the first.
 - **Definition**: for each half of the runs, `HR = RHR + v·60/E`, where `v`
   is speed in m/s, `RHR` is the half's median 365-day resting-HR baseline, and
   `E` is the half's weighted efficiency (`Σdistance / Σexcess beats`) over
-  **steady runs in the 45–75 min band**, in **m/excess beat**. One parameter,
+  **steady runs in the 40–75 min band**, in **m/excess beat**. One parameter,
   no free intercept.
 - **Baseline / thresholds**: resting HR from the same rolling 365-day median
   (expanding, `None` when absent) used by the efficiency metric; points
