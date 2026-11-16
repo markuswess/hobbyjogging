@@ -17,7 +17,7 @@ from .classify import classify
 from .cli import range_parser, resolve_range
 from .command_support import resting_hr_lookup
 from .format import (
-    fmt_time,
+    fmt_clock,
     format_feel,
     format_methods,
     format_targets,
@@ -64,8 +64,8 @@ COLUMNS = {
     "started": _plain("started (UTC)", _started),
     "sport": _plain("sport", sport_label),
     "name": _plain("name", lambda a: a.name or "-"),
-    "duration": _plain("duration", lambda a: fmt_time(a.duration_s), True),
-    "elapsed": _plain("elapsed", lambda a: fmt_time(a.elapsed_s), True),
+    "duration": _plain("duration", lambda a: fmt_clock(a.duration_s), True),
+    "elapsed": _plain("elapsed", lambda a: fmt_clock(a.elapsed_s), True),
     "distance": _plain("distance", _distance, True),
     "pace": _plain("pace", pace, True),
     "avg_hr": _plain(

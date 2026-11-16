@@ -89,7 +89,7 @@ class MarkdownRendererTests(unittest.TestCase):
 
         markdown = "\n".join(format_event(event))
 
-        self.assertIn("- Duration: 1h00", markdown)
+        self.assertIn("- Duration: 1:00:00", markdown)
         self.assertIn("```", markdown)
         self.assertNotIn("- Description:", markdown)
 

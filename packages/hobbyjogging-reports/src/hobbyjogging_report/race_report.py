@@ -21,7 +21,6 @@ from .classify import classify
 from .command_support import activity_start, resting_hr_lookup
 from .format import (
     fmt_clock,
-    fmt_time,
     format_pace,
     format_session_activity,
     table_text,
@@ -267,8 +266,8 @@ def _zone_rows(activity, events) -> list[str]:
         planned_s = planned.get(label, 0.0)
         delta = seconds - planned_s
         lines.append(
-            f"| {label} | {fmt_time(planned_s)} | {fmt_time(seconds)} | "
-            f"{'+' if delta >= 0 else '-'}{fmt_time(abs(delta))} |"
+            f"| {label} | {fmt_clock(planned_s)} | {fmt_clock(seconds)} | "
+            f"{'+' if delta >= 0 else '-'}{fmt_clock(abs(delta))} |"
         )
 
     return lines

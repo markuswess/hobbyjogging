@@ -140,7 +140,7 @@ class PeriodDescriptionTests(unittest.TestCase):
         self.assertNotIn("Comments: # Warm up", report)
         self.assertIn(
             "### 5x5' subT medium\n"
-            "- Totals: 50min, 5:00/km, 140 BpM\n"
+            "- Totals: 50:00, 5:00/km, 140 BpM\n"
             "- Comments:\n"
             "  ```\n"
             "  # Warm up\n"

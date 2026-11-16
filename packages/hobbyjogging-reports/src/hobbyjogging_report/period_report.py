@@ -15,6 +15,7 @@ from .analysis import (
 )
 from .classify import category_breakdown
 from .format import (
+    fmt_clock,
     fmt_time,
     format_category_table,
     format_feel,
@@ -195,7 +196,7 @@ def period_report(
 
             lines.append(f"\n### {q.name}")
             lines.append(
-                f"- Totals: {fmt_time(q.duration_s)}, "
+                f"- Totals: {fmt_clock(q.duration_s)}, "
                 f"{pace(q)}, {hr} BpM{feel}"
             )
 

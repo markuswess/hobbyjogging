@@ -238,6 +238,14 @@ this list keeps the recent decisions only.
   `upsert_activity_weather` (about 3 % of days left empty). Max HR waits on the
   core exposure.
 
+- **Session times read as M:SS.** A single activity or planned workout now
+  prints `M:SS` (`H:MM:SS` past an hour) for duration, elapsed time, zone
+  splits, the event page's plan-vs-actual table and the activities/planned
+  tables; the compact `fmt_zones` variant is gone. Week, month, category,
+  overview and streak totals keep `1h02`/`50min`, because they are sums and
+  averages where seconds are noise. On the real log a 3,000 s session reads
+  `50:00`, and `activities` shows `42:32` instead of `42min`.
+
 ## Bugs
 
 _None._

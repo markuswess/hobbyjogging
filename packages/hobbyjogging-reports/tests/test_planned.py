@@ -42,11 +42,11 @@ class PlannedReportTests(unittest.TestCase):
             report,
         )
         self.assertIn(
-            "| 2026-11-06 | Fri | Easy | Run | 8.0 km | 50min | - | 40 |",
+            "| 2026-11-06 | Fri | Easy | Run | 8.0 km | 50:00 | - | 40 |",
             report,
         )
         self.assertIn(
-            "| 2026-11-08 | Sun | Long run | Run | 21.0 km | 2h00 | - | 120 |",
+            "| 2026-11-08 | Sun | Long run | Run | 21.0 km | 2:00:00 | - | 120 |",
             report,
         )
         self.assertLess(report.index("Easy"), report.index("Long run"))
@@ -103,7 +103,7 @@ class PlannedReportTests(unittest.TestCase):
         report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn(
-            "| 2026-11-06 | Fri | 5x5 subT | Run | - | - | 30min | - |",
+            "| 2026-11-06 | Fri | 5x5 subT | Run | - | - | 30:00 | - |",
             report,
         )
         self.assertIn(
@@ -209,7 +209,7 @@ class PlannedReportTests(unittest.TestCase):
         report = planned_report(D1, D1, source, today=TODAY)
 
         self.assertIn(
-            "| 2026-11-06 | Fri | Easy | Run | - | - | 0min | - |",
+            "| 2026-11-06 | Fri | Easy | Run | - | - | 0:00 | - |",
             report,
         )
 

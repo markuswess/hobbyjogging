@@ -138,19 +138,6 @@ def format_fenced_block(text, indent=""):
     ]
 
 
-def fmt_zones(zone_times):
-    """Zone times as ``Z1 5min | Z3 30min`` for compact report lines."""
-
-    if not zone_times:
-        return "-"
-
-    return " | ".join(
-        f"Z{i+1} {fmt_time(t)}"
-        for i, t in enumerate(zone_times)
-        if t
-    )
-
-
 def fmt_zones_precise(zone_times):
     """Format zone times as M:SS, keeping sub-minute zones visible."""
     if not zone_times:
@@ -393,14 +380,14 @@ def _activity_metric_lines(
     resting_hr_estimated: bool = False,
 ):
     """Shared metric lines for compact and detailed activity renderers."""
-    lines = [f"- Duration: {fmt_time(activity.duration_s)}"]
+    lines = [f"- Duration: {fmt_clock(activity.duration_s)}"]
 
     if (
         detailed
         and activity.elapsed_s
         and activity.elapsed_s != activity.duration_s
     ):
-        lines.append(f"- Elapsed: {fmt_time(activity.elapsed_s)}")
+        lines.append(f"- Elapsed: {fmt_clock(activity.elapsed_s)}")
 
     if activity.distance_m:
         lines.append(f"- Distance: {activity.distance_m / 1000:.1f} km")
@@ -452,7 +439,7 @@ def _activity_metric_lines(
         )
         lines.append(f"- Equipment: {names}")
 
-    zones = fmt_zones_precise if detailed else fmt_zones
+    zones = fmt_zones_precise
 
     if activity.pace_zone_times:
         lines.append(f"- Pace zones: {zones(activity.pace_zone_times)}")
@@ -617,7 +604,7 @@ def _planned_event_fields(event: Event) -> list[str]:
     if event.type:
         lines.append(f"- Type: {sport_label(event)}")
     if event.duration_s:
-        lines.append(f"- Duration: {fmt_time(event.duration_s)}")
+        lines.append(f"- Duration: {fmt_clock(event.duration_s)}")
     if event.distance_m:
         lines.append(f"- Distance: {event.distance_m / 1000:.1f} km")
     if event.workout_methods:
@@ -656,7 +643,7 @@ def format_planned_event(
 
 
 def _time_value(value: float | None) -> str:
-    return fmt_time(value) if value else "-"
+    return fmt_clock(value) if value else "-"
 
 
 def _distance_value(value: float | None) -> str:

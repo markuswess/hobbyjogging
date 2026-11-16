@@ -82,7 +82,7 @@ class EventReportTests(unittest.TestCase):
         self.assertIn("## 5x5 subT", text)
         self.assertIn("- Date: 2026-10-01", text)
         self.assertIn("- Load: 60", text)
-        self.assertIn("- Duration: 50min", text)
+        self.assertIn("- Duration: 50:00", text)
         self.assertIn("- Methods: Intervals", text)
         self.assertIn("- Targets: Threshold", text)
         self.assertIn("- Planned pace times: Z3 25:00", text)
@@ -118,7 +118,7 @@ class EventReportTests(unittest.TestCase):
         self.assertIn("### Plan vs actual", text)
         self.assertIn("[2026-10-01 Run](../activity/a1.html)", text)
         self.assertIn("approximate", text)
-        self.assertIn("| Time | 50min | 45min | -5min |", text)
+        self.assertIn("| Time | 50:00 | 45:00 | -5:00 |", text)
         self.assertIn(
             "| Distance | 12.0 km | 11.0 km | -1.0 km |",
             text,
@@ -364,14 +364,14 @@ class FormattingTests(unittest.TestCase):
         lines = format_activity(FakeSource(), a, "Run Easy")
 
         self.assertEqual("\n### Run Easy", lines[0])
-        self.assertIn("- Duration: 50min", lines)
+        self.assertIn("- Duration: 50:00", lines)
         self.assertIn("- Distance: 10.0 km", lines)
         self.assertIn("- Pace: 5:00/km", lines)
         self.assertIn("- HR: 140 avg", lines)
         self.assertIn("- Load: 40", lines)
         self.assertIn("- RPE: 1", lines)
         self.assertIn("- Feel: 2 (Good)", lines)
-        self.assertIn("- Pace zones: Z3 30min", lines)
+        self.assertIn("- Pace zones: Z3 30:00", lines)
 
     def test_format_methods_and_targets(self):
         a = activity(

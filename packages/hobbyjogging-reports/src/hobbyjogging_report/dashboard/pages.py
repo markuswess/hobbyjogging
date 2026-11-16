@@ -9,6 +9,7 @@ from hobbyjogging_core.model import Activity, Event, ReviewItem
 
 from ..analysis import RUN_TYPES, YearCoverage
 from ..format import (
+    fmt_clock,
     fmt_time,
     format_feel,
     format_methods,
@@ -184,7 +185,7 @@ def activities_page(
                 link(href, name),
                 esc(format_methods(activity)),
                 esc(format_targets(activity)),
-                esc(fmt_time(activity.duration_s)),
+                esc(fmt_clock(activity.duration_s)),
                 esc(_km_cell(activity.distance_m)),
                 esc(_pace_cell(activity)),
                 esc(_hr(activity.avg_hr)),
@@ -210,7 +211,7 @@ def activities_page(
                 link(href, name_cell) if href else esc(name_cell),
                 esc(format_methods(event)),
                 esc(format_targets(event)),
-                esc(fmt_time(event.duration_s)) if event.duration_s else "-",
+                esc(fmt_clock(event.duration_s)) if event.duration_s else "-",
                 esc(_km_cell(event.distance_m)),
                 "-",
                 "-",

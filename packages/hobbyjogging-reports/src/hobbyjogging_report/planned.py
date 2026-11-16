@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from .analysis import event_zone_time
-from .format import fmt_time, sport_label, table_text
+from .format import fmt_clock, fmt_time, sport_label, table_text
 
 
 def _distance_cell(distance_m: float | None) -> str:
@@ -25,7 +25,7 @@ def _zone_cell(event) -> str:
     if seconds is None:
         return "-"
 
-    return fmt_time(seconds) if seconds else "0min"
+    return fmt_clock(seconds) if seconds else "0:00"
 
 
 def planned_report(
@@ -72,7 +72,7 @@ def planned_report(
             f"| {event.date} | {event.date:%a} | "
             f"{table_text(event.name) or '-'} | {sport_label(event)} | "
             f"{_distance_cell(event.distance_m)} | "
-            f"{fmt_time(event.duration_s)} | "
+            f"{fmt_clock(event.duration_s)} | "
             f"{_zone_cell(event)} | "
             f"{_load_cell(event.training_load)} |"
         )

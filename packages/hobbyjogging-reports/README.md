@@ -204,7 +204,10 @@ in sync with the importers.
 ## Reports and charts
 
 Reads activity, wellness and planned-session data through the canonical
-database `DataSource` and produces the Markdown reports and charts:
+database `DataSource` and produces the Markdown reports and charts. A single
+session or planned workout shows its time as `M:SS` (`H:MM:SS` past an hour),
+including the elapsed time and zone splits; week, month and category totals
+stay compact (`1h02`).
 
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.

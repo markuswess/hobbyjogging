@@ -10,7 +10,7 @@ from .analysis import (
     resting_hr_baselines,
 )
 from .format import (
-    fmt_time,
+    fmt_clock,
     format_activity,
     format_fenced_block,
     format_nights,
@@ -28,7 +28,7 @@ def format_event(event) -> list[str]:
         lines.append(f"- Type: {sport_label(event)}")
 
     if event.duration_s:
-        lines.append(f"- Duration: {fmt_time(event.duration_s)}")
+        lines.append(f"- Duration: {fmt_clock(event.duration_s)}")
 
     if event.distance_m:
         lines.append(f"- Distance: {event.distance_m/1000:.1f} km")
