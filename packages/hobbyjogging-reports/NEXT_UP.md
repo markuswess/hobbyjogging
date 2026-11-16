@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 13 is parked on its page-coverage cost, 16 is
-the open reports-only item, and the rest need a core or root change or the lab
-gate.
+Current focus: the demo data; 16 and the weather half of 2 are open, 5's
+threshold trend and 6's fartlek check are nearly ready, 13 is parked, and the
+rest need a core or root change or the lab gate.
 
 ## Done
 
@@ -223,22 +223,28 @@ _None._
 
 ## Next
 
-Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Of what is left, 13 is reports-only but parked because every
-link needs a page for the plotted activity, 16 is a small dashboard-only
-pass, 14 needs root items 4 and 30, 15's series needs the lab gate in root
-item 31, and 12 is recurring upkeep. The efficiency floor, the planned-event
-page and the streaks report landed here.
+Schema v12-v16 moved the data under several items, so the picture changed:
+2's weather annotations, 5's threshold trend and 6's fartlek check are now
+reports-only. What still needs core first: max HR and elevation on `Activity`
+(repository query and model drop them; items 2 and 7), the per-activity zone
+config ids (item 5's zone normalization), devices (1), routes (3), wellness
+extras (4) and social titles (8). Items 9 and 10 need root items 24 and 25,
+11 needs root item 30, 14 needs root items 4 and 30, and 15's series needs
+the lab gate in root item 31. Item 13 stays parked on its page-coverage cost,
+16 is open, and 12 is recurring upkeep. The efficiency floor, the
+planned-event page and the streaks report landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
    device changes on the VO2max chart so a step is attributable to the watch,
    and add a `- Device:` line to the session report.
 
-2. **Weather and max HR in the reports.** Once the data lands: show max HR in
-   the session report and use it for HR-zone checks; annotate pace, HR and
-   efficiency charts with temperature and wind; add a per-year data-coverage
-   line for both.
+2. **Weather and max HR in the reports.** Weather landed (schema v13) and is
+   exposed through `DataSource.activity_weather()`, so annotating the pace, HR
+   and efficiency charts with temperature and wind and adding a per-year
+   coverage line are reports-only. Max HR is stored (schema v12) but the
+   repository's activity query and the `Activity` model drop it, so the
+   session line and the HR-zone checks need that exposure in core first.
 
 3. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. Depends
@@ -247,23 +253,28 @@ page and the streaks report landed here.
 4. **Wellness extras.** A readiness view (readiness, sleep score, stress,
    respiration, spO2) plus a weight trend, once the columns land.
 
-5. **Threshold trend and era-correct zones.** A chart of LTHR, threshold pace
-   and max HR over the years beside VO2max; normalize activity zones with each
-   activity's zone config; compare subT work-rep pace with the period's
-   threshold pace. If the race-derived series lands, show it against the
-   stamped values so a divergence is visible.
+5. **Threshold trend and era-correct zones.** The dated snapshots landed
+   (schema v14/v15) and `DataSource.athlete_thresholds()` returns them, so the
+   LTHR/threshold-pace/max-HR chart beside VO2max, the subT comparison with the
+   period's threshold pace, and the race-derived series from the official
+   results (schema v16) are reports-only. Normalizing zone times through each
+   activity's config needs that config id on the model first: the database
+   column exists, but the repository query and `Activity` drop it.
 
-6. **Fartlek as its own category.** Show `quality/fartlek` in the breakdown
-   and the category column, and keep it out of the subT rep-length buckets and
-   every rep-count/duration analysis — a fartlek has no reps to measure. The
-   read-time `tempo` fallback must not turn it into `intervals`. Depends on
-   the root fartlek item.
+6. **Fartlek as its own category.** The core token and display kind landed:
+   `classify()` returns `quality/fartlek` and the category table already shows
+   it (7 activities on the real log), and a fartlek never enters the subT
+   buckets. What is left is the check: confirm the read-time `tempo` fallback
+   cannot turn it into `intervals`, keep every rep-count/duration analysis off
+   it, and add a fartlek session to the demo, which has none.
 
-7. **Elevation in the reports.** Once the columns land: climb per km in the
-   session report and the activities list, a coarse grade-adjusted pace from
-   per-lap gain (the FIT payload has no altitude stream, so this is
-   lap-level), trail suggestions from the ≥40 m/km evidence, and route
-   difficulty on the dashboard.
+7. **Elevation in the reports.** The columns landed (schema v12) but the
+   repository's activity query and the `Activity` model drop
+   `elevation_gain_m`/`elevation_loss_m`, so that exposure comes first. Then:
+   climb per km in the session report and the activities list, a coarse
+   grade-adjusted pace from per-lap gain (the FIT payload has no altitude
+   stream, so this is lap-level), trail suggestions from the ≥40 m/km
+   evidence, and route difficulty on the dashboard.
 
 8. **Strava in the session report.** A `Strava: …` line with the title, the
    description as an annotation, and a link to the activity. Depends on the
