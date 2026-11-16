@@ -2,6 +2,7 @@
 
 from . import (
     activity_measurements_v1,
+    activity_weather_v1,
     drop_classification_tags_v1,
     drop_empty_intervals_v1,
     event_race_method_v1,
@@ -13,6 +14,7 @@ from . import (
 
 __all__ = [
     "activity_measurements_v1",
+    "activity_weather_v1",
     "drop_classification_tags_v1",
     "drop_empty_intervals_v1",
     "event_race_method_v1",

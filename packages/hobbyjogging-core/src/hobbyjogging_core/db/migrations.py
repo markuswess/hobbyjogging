@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -220,6 +220,34 @@ ALTER TABLE activities ADD COLUMN max_hr REAL;
 """
 
 
+MIGRATION_13_SQL = """
+-- Per-activity weather. One row per activity: the first source to record it
+-- owns the row, a later source only fills the fields it left empty. Values
+-- are metric: temperature in °C, wind in m/s, pressure in hPa.
+CREATE TABLE activity_weather (
+    activity_id TEXT PRIMARY KEY
+        REFERENCES activities(id) ON DELETE CASCADE,
+    source TEXT NOT NULL DEFAULT '',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    temp_c REAL,
+    feels_like_c REAL,
+    humidity_pct REAL,
+    wind_speed_ms REAL,
+    wind_degree REAL,
+    wind_gust_ms REAL,
+    wind_chill_c REAL,
+    heat_index_c REAL,
+    pressure_hpa REAL,
+    uv_index REAL,
+    clouds_pct REAL,
+    condition TEXT,
+    is_night INTEGER,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -233,6 +261,7 @@ MIGRATIONS: dict[int, str] = {
     10: MIGRATION_10_SQL,
     11: MIGRATION_11_SQL,
     12: MIGRATION_12_SQL,
+    13: MIGRATION_13_SQL,
 }
 
 

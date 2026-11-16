@@ -425,6 +425,12 @@ class IntervalsImporter:
                 - {conflict.field_name for conflict in conflicts}
             ),
         )
+        self.writer.upsert_activity_weather(
+            activity_id,
+            source=SOURCE,
+            source_record_id=source_record_id,
+            temp_c=_float(raw.get("average_temp")),
+        )
         self.writer.link_activity_source(
             activity_id,
             source_record_id,

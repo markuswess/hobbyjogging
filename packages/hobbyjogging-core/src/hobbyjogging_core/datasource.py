@@ -10,6 +10,7 @@ from typing import Protocol
 
 from .model import (
     Activity,
+    ActivityWeather,
     Equipment,
     Event,
     Interval,
@@ -34,6 +35,9 @@ class DataSource(Protocol):
         ...
 
     def activity_laps(self, activity_id: str) -> list[Lap]:
+        ...
+
+    def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         ...
 
     def equipment(self) -> list[Equipment]:

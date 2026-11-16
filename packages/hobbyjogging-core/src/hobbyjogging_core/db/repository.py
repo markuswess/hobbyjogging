@@ -7,6 +7,7 @@ from datetime import date
 
 from hobbyjogging_core.model import (
     Activity,
+    ActivityWeather,
     Equipment,
     Event,
     EventZoneTime,
@@ -165,6 +166,41 @@ class TrainingRepository:
             )
             for row in rows
         ]
+
+    def activity_weather(self, activity_id: str) -> ActivityWeather | None:
+        row = self.connection.execute(
+            """
+            SELECT temp_c, feels_like_c, humidity_pct, wind_speed_ms,
+                   wind_degree, wind_gust_ms, wind_chill_c, heat_index_c,
+                   pressure_hpa, uv_index, clouds_pct, condition, is_night,
+                   source
+            FROM activity_weather
+            WHERE activity_id = ?
+            """,
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return ActivityWeather(
+            temp_c=row["temp_c"],
+            feels_like_c=row["feels_like_c"],
+            humidity_pct=row["humidity_pct"],
+            wind_speed_ms=row["wind_speed_ms"],
+            wind_degree=row["wind_degree"],
+            wind_gust_ms=row["wind_gust_ms"],
+            wind_chill_c=row["wind_chill_c"],
+            heat_index_c=row["heat_index_c"],
+            pressure_hpa=row["pressure_hpa"],
+            uv_index=row["uv_index"],
+            clouds_pct=row["clouds_pct"],
+            condition=row["condition"] or "",
+            is_night=(
+                None if row["is_night"] is None else bool(row["is_night"])
+            ),
+            source=row["source"] or "",
+        )
 
     def activity_laps(self, activity_id: str) -> list[Lap]:
         rows = self.connection.execute(

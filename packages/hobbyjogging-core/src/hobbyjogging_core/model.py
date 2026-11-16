@@ -117,6 +117,26 @@ class Event:
 
 
 @dataclass
+class ActivityWeather:
+    """The weather recorded for one activity, in metric units."""
+
+    temp_c: float | None = None
+    feels_like_c: float | None = None
+    humidity_pct: float | None = None
+    wind_speed_ms: float | None = None
+    wind_degree: float | None = None
+    wind_gust_ms: float | None = None
+    wind_chill_c: float | None = None
+    heat_index_c: float | None = None
+    pressure_hpa: float | None = None
+    uv_index: float | None = None
+    clouds_pct: float | None = None
+    condition: str = ""
+    is_night: bool | None = None
+    source: str = ""
+
+
+@dataclass
 class Interval:
     group_id: str | None = None
     type: str = ""

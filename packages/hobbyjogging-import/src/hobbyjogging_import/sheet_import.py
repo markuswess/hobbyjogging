@@ -41,6 +41,7 @@ from .sheet import (
     alternativtraining_values,
     as_clock,
     as_date,
+    as_float,
     clean_text,
     equipment_id,
     equipment_values,
@@ -400,6 +401,12 @@ class SheetImporter:
                     (set(values) & CONFLICT_FIELDS)
                     - {conflict.field_name for conflict in conflicts}
                 ),
+            )
+            self.writer.upsert_activity_weather(
+                activity_id,
+                source=SOURCE,
+                source_record_id=source_record_id,
+                temp_c=as_float(record.get("Temperatur in °C")),
             )
             self.writer.link_activity_source(
                 activity_id,

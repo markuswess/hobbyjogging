@@ -1829,6 +1829,86 @@ class TrainingWriter:
             )
         return len(cleaned)
 
+    WEATHER_FIELDS = (
+        "temp_c",
+        "feels_like_c",
+        "humidity_pct",
+        "wind_speed_ms",
+        "wind_degree",
+        "wind_gust_ms",
+        "wind_chill_c",
+        "heat_index_c",
+        "pressure_hpa",
+        "uv_index",
+        "clouds_pct",
+        "condition",
+        "is_night",
+    )
+
+    def upsert_activity_weather(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        **fields: object,
+    ) -> bool:
+        """Write one activity's weather, keeping the first source's row.
+
+        A reimport from the same source refreshes its values. A different
+        source only fills the fields the owner left empty, so two providers
+        do not overwrite each other field by field.
+        """
+        unknown = set(fields) - set(self.WEATHER_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown weather fields: {sorted(unknown)}")
+
+        row = self.connection.execute(
+            "SELECT source FROM activity_weather WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        values = {
+            key: value
+            for key, value in fields.items()
+            if value is not None and value != ""
+        }
+
+        if not values:
+            return False
+
+        if row is None:
+            columns = ["activity_id", "source", "source_record_id", *values]
+            placeholders = ", ".join("?" for _ in columns)
+            self.connection.execute(
+                f"INSERT INTO activity_weather ({', '.join(columns)}) "
+                f"VALUES ({placeholders})",
+                (activity_id, source, source_record_id, *values.values()),
+            )
+            return True
+
+        if row["source"] != source:
+            existing = self.connection.execute(
+                "SELECT * FROM activity_weather WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone()
+            values = {
+                key: value
+                for key, value in values.items()
+                if existing[key] is None or existing[key] == ""
+            }
+
+            if not values:
+                return False
+
+        assignments = ", ".join(f"{key} = ?" for key in values)
+        self.connection.execute(
+            f"UPDATE activity_weather SET {assignments}, "
+            "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
+            (*values.values(), activity_id),
+        )
+        return True
+
     def record_fit_scan_file(
         self,
         *,
