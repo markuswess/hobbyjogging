@@ -619,6 +619,17 @@ class DemoGeneratorTests(unittest.TestCase):
             health = (site / "health.html").read_text()
             self.assertIn("The review queue is empty.", health)
             self.assertIn("Synthetic demo data", health)
+            self.assertIn("Data coverage", health)
+            self.assertIn("Weather", health)
+
+            analysis = (site / "analysis.html").read_text()
+            self.assertIn("weather on ", analysis)
+
+            details = [
+                page.read_text()
+                for page in (site / "activity").glob("*.html")
+            ]
+            self.assertTrue(any("Weather:" in text for text in details))
 
             # The public demo must not publish the lab notebook, the experiment
             # scripts, or the metric registry: they carry this athlete's own

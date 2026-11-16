@@ -159,6 +159,7 @@ def session_report(
                 resting_hr=baseline(activity.date),
                 resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
+                weather=source.activity_weather(activity.id),
                 wellness=wellness_day,
                 review_items=[
                     item

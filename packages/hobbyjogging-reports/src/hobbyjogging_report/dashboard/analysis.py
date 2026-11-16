@@ -172,6 +172,7 @@ def build_analysis_section(
             for activity in display
             if activity.type in RUN_TYPES
         },
+        weather_lookup=source.activity_weather,
     )
     pace_hr_html = (
         plot_pace_hr(points, "", as_html=True)

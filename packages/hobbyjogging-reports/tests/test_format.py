@@ -7,6 +7,7 @@ from hobbyjogging_report.format import (
     format_category_table,
     format_event,
     format_feel,
+    format_weather,
     format_methods,
     format_session_activity,
     format_targets,
@@ -16,7 +17,13 @@ from hobbyjogging_report.format import (
     work_summary_for_activity,
 )
 from hobbyjogging_report.summary import recovery_summary, summarize_training
-from hobbyjogging_core.model import Event, EventZoneTime, Interval, WellnessDay
+from hobbyjogging_core.model import (
+    ActivityWeather,
+    Event,
+    EventZoneTime,
+    Interval,
+    WellnessDay,
+)
 from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
@@ -117,6 +124,45 @@ class EventReportTests(unittest.TestCase):
             text,
         )
         self.assertIn("| Load | 60 | 55 | -5 |", text)
+
+
+class WeatherTests(unittest.TestCase):
+
+    def test_session_report_carries_the_weather_line(self):
+        lines = format_session_activity(
+            activity(),
+            [],
+            weather=ActivityWeather(temp_c=12.4, wind_speed_ms=3.2),
+        )
+
+        self.assertIn("- Weather: 12 °C, wind 3 m/s", lines)
+
+    def test_session_report_omits_an_empty_weather_line(self):
+        lines = format_session_activity(activity(), [])
+
+        self.assertNotIn("- Weather:", "\n".join(lines))
+
+    def test_feels_like_appears_only_when_it_differs(self):
+        self.assertEqual(
+            "12 °C, feels 6 °C, wind 3 m/s",
+            format_weather(
+                ActivityWeather(
+                    temp_c=12.4,
+                    feels_like_c=5.8,
+                    wind_speed_ms=3.2,
+                )
+            ),
+        )
+        self.assertEqual(
+            "12 °C",
+            format_weather(
+                ActivityWeather(temp_c=12.4, feels_like_c=13.0)
+            ),
+        )
+
+    def test_missing_weather_is_blank(self):
+        self.assertEqual("", format_weather(None))
+        self.assertEqual("", format_weather(ActivityWeather()))
 
 
 class EstimatedBaselineTests(unittest.TestCase):

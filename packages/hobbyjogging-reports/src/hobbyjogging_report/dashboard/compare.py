@@ -72,6 +72,7 @@ def build_compare_section(
             for activity in activities
             if activity.type in RUN_TYPES
         },
+        weather_lookup=source.activity_weather,
     )
     vo2max = vo2max_measurements(activities, start, today)
 

@@ -18,9 +18,10 @@ from ..analysis import (
     average_warmup_days,
     recovery_trends,
     vo2max_points,
+    yearly_coverage,
 )
 from ..classify import classify
-from ..command_support import resting_hr_lookup
+from ..command_support import activity_start, resting_hr_lookup
 from ..format import format_event, format_session_activity
 from ..html import markdown_to_html
 from ..links import resolve_activity_links
@@ -320,6 +321,18 @@ def build_dashboard(
         {activity.id: activity for activity in listed_activities}
     )
     detail_ids = set(detail_activities)
+    coverage_activities, _ = exclude_review(
+        source.activities(activity_start(source, today), today),
+        include_review=include_review,
+    )
+    coverage = yearly_coverage(
+        coverage_activities,
+        {
+            activity.id
+            for activity in coverage_activities
+            if source.activity_weather(activity.id) is not None
+        },
+    )
 
     generated_at = datetime.now().astimezone().strftime(
         "%Y-%m-%d %H:%M %Z"
@@ -432,6 +445,7 @@ def build_dashboard(
             include_review=include_review,
             detail_ids=detail_ids,
             review_items=open_review,
+            coverage=coverage,
         ),
     }
 
@@ -478,6 +492,7 @@ def build_dashboard(
                 resting_hr=baseline(activity.date),
                 resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
+                weather=source.activity_weather(activity.id),
                 planned_hrefs={
                     event.id: f"../event/{event_filename(event.id)}"
                     for event in day_events

@@ -30,6 +30,19 @@ class CachedDataSourceTests(unittest.TestCase):
         self.assertEqual(3, len(narrow))
         self.assertEqual(1, cached.query_counts["activities"])
 
+    def test_weather_is_cached_by_activity(self):
+        source = FakeSource(
+            [activity(id="a", date=D)],
+            weather={"a": object()},
+        )
+        cached = CachedDataSource(source)
+
+        first = cached.activity_weather("a")
+        second = cached.activity_weather("a")
+
+        self.assertIs(first, second)
+        self.assertEqual(1, cached.query_counts["activity_weather"])
+
     def test_disjoint_range_queries_again(self):
         cached = CachedDataSource(self._source())
 

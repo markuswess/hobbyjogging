@@ -359,6 +359,7 @@ def race_report(
             resting_hr=baseline(activity.date),
             resting_hr_estimated=baseline.estimated(activity.date),
             planned_events=events,
+            weather=source.activity_weather(activity.id),
             wellness=wellness,
             review_items=review_items,
             laps=laps,

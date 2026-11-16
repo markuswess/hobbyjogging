@@ -56,7 +56,9 @@ Pages:
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter with its two regression halves
   and two dashed efficiency lines, over the last two years
-  (`--analysis-days`, default 731).
+  (`--analysis-days`, default 731). Runs with stored weather carry the
+  temperature and wind in their hover and the chart notes how many runs have
+  it and the range those cover.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year.
@@ -64,18 +66,18 @@ Pages:
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
   182), with dashed projected volume/time lines that follow actual values
   through today and then the plan, a Garmin running VO2max line plot with one
-  raw value per activity, a pace-vs-heart-rate scatter coloured by year, plus
+  raw value per activity, a pace-vs-heart-rate scatter coloured by year with
+  weather in its hover, plus
   the year and month comparison reports (which include the period average
   Garmin VO2max and a weighted efficiency column). All charts show only the
   five most recent years by default; older years remain available from the
   legend. The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
-- `activity/<id>.html` — the session report body (metrics, workout methods and
-  targets, zone times, description, the raw segment table, and subT/LT1
-  work reps),
-  exactly as `reports.sh session` renders it. Its planned block links to the
-  day's event page.
+- `activity/<id>.html` — the session report body (metrics, weather when it is
+  recorded, workout methods and targets, zone times, description, the raw
+  segment table, and subT/LT1 work reps), exactly as `reports.sh session`
+  renders it. Its planned block links to the day's event page.
 - `event/<id>.html` — one planned session: date, sport, planned time, distance
   and load, methods and targets, the planned zone distribution, and the
   description. When an activity matches the event by date and sport, the page
@@ -105,7 +107,8 @@ Pages:
   the metric registry from `docs/METRICS.md`, each with a contents list.
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, linked activity, reported date), the activities hidden by review,
-  and missing-data counts.
+  missing-data counts, and a per-year data-coverage table (activities and how
+  many carry stored weather; max HR joins it once the model exposes it).
 
 The `--reports` dashboard option is accepted as a compatibility no-op;
 those Markdown reports are already embedded on their relevant pages. The Docs

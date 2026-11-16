@@ -35,6 +35,7 @@ from hobbyjogging_report.analysis import (
     riegel_time,
 )
 from hobbyjogging_core.model import Activity, Equipment
+from hobbyjogging_core.model import ActivityWeather
 from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
@@ -695,6 +696,43 @@ class PaceHrChartTests(unittest.TestCase):
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
+
+    def test_pace_hr_chart_carries_weather_in_the_hover_and_a_note(self):
+        points = [
+            PaceHrPoint(
+                D,
+                300.0,
+                150.0,
+                weather=ActivityWeather(temp_c=12.4, wind_speed_ms=3.2),
+            ),
+            PaceHrPoint(D + timedelta(days=1), 290.0, 152.0),
+        ]
+
+        html = plot_pace_hr(points, "", as_html=True)
+
+        degree = chr(92) + "u00b0C"
+        slash = chr(92) + "u002f"
+        self.assertIn("12 " + degree + ", wind 3 m" + slash + "s", html)
+        self.assertIn(
+            "weather on 1 of 2 runs (median 12 " + degree
+            + ", 12 to 12 " + degree + ")",
+            html,
+        )
+
+    def test_compare_pace_hr_chart_notes_weather_coverage(self):
+        points = [
+            PaceHrPoint(
+                D,
+                300.0,
+                150.0,
+                weather=ActivityWeather(temp_c=12.4),
+            ),
+            PaceHrPoint(D + timedelta(days=1), 290.0, 152.0),
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertIn("weather on 1 of 2 runs", html)
 
     def test_pace_hr_chart_uses_speed_with_pace_labels(self):
         html = plot_pace_hr([PaceHrPoint(D, 300.0, 150.0)], "", as_html=True)

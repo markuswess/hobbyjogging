@@ -6,6 +6,8 @@ Canonical source-agnostic types live in :mod:`hobbyjogging_core.model`.
 from dataclasses import dataclass
 from datetime import date
 
+from hobbyjogging_core.model import ActivityWeather
+
 
 @dataclass
 class SubtPoint:
@@ -196,6 +198,7 @@ class PaceHrPoint:
     excess_beats: float = 0
     steady: bool = False
     category: str = ""
+    weather: ActivityWeather | None = None
 
     @property
     def speed_m_s(self) -> float:

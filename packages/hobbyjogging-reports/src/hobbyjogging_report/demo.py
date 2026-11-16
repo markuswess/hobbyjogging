@@ -932,6 +932,25 @@ def _shoe_for(
     return periods[-1][2]
 
 
+_MONTH_TEMPERATURE_C = (4, 5, 9, 13, 18, 22, 24, 23, 19, 13, 8, 5)
+
+
+def _write_weather(writer: TrainingWriter, activity: dict) -> None:
+    """Seasonal conditions, with a few missing days like a real log."""
+    day = activity["day"]
+    ordinal = day.toordinal()
+
+    if ordinal % 37 == 0:
+        return
+
+    writer.upsert_activity_weather(
+        activity["id"],
+        source=DEMO_SOURCE,
+        temp_c=float(_MONTH_TEMPERATURE_C[day.month - 1] + ordinal % 5 - 2),
+        wind_speed_ms=round(1.5 + (ordinal % 9) * 0.5, 1),
+    )
+
+
 def _write_activity(writer: TrainingWriter, activity: dict) -> None:
     writer.upsert_activity(
         activity["id"],
@@ -959,6 +978,7 @@ def _write_activity(writer: TrainingWriter, activity: dict) -> None:
         activity["targets"],
         source=DEMO_SOURCE,
     )
+    _write_weather(writer, activity)
 
     if activity["intervals"]:
         writer.replace_activity_intervals(

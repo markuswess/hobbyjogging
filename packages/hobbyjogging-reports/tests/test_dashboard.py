@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from hobbyjogging_core.model import (
+    ActivityWeather,
     Equipment,
     Event,
     Lap,
@@ -189,6 +190,9 @@ def _source():
                 sleep_s=7.5 * 3600,
             ),
         ],
+        weather={
+            "run1": ActivityWeather(temp_c=12.4, wind_speed_ms=3.2),
+        },
         links={
             "run1": ActivityLinks(
                 intervals="https://intervals.icu/activities/i1",
@@ -365,6 +369,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("RPE 42d", analysis)
             self.assertIn("RPE 182d", analysis)
             self.assertIn("Pace vs heart rate", analysis)
+            self.assertIn("weather on 1 of", analysis)
             self.assertIn("avg HR (bpm)", analysis)
             self.assertNotIn("subT and LT1 intervals", analysis)
             self.assertEqual(4, analysis.count("Plotly.newPlot"))
@@ -415,8 +420,12 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("../index.html", detail)
             self.assertIn('href="../activities.html"', detail)
             self.assertIn('href="../event/ev-matched.html"', detail)
+            self.assertIn("Weather: 12 °C, wind 3 m/s", detail)
 
             health = (target / "health.html").read_text()
+            self.assertIn("Data coverage", health)
+            self.assertIn("Weather", health)
+            self.assertIn("2026", health)
             self.assertIn("Review queue", health)
             self.assertIn("field conflict", health)
             self.assertIn("avg_hr differs by 6 bpm", health)

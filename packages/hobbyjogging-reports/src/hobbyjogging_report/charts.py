@@ -29,7 +29,7 @@ from .analysis import (
     riegel_reference,
     riegel_time,
 )
-from .format import fmt_clock, fmt_time, format_pace
+from .format import fmt_clock, fmt_time, format_pace, format_weather
 from .model import (
     AverageWindows,
     DistancePoint,
@@ -1449,6 +1449,31 @@ def _style_pace_hr_axes(figure) -> None:
     )
 
 
+def _weather_hint(weather) -> str:
+    text = format_weather(weather)
+
+    return f"<br>{text}" if text else ""
+
+
+def _weather_summary(points: list[PaceHrPoint]) -> str | None:
+    """One chart note: how many runs have weather and the range it spans."""
+    temps = sorted(
+        point.weather.temp_c
+        for point in points
+        if point.weather is not None and point.weather.temp_c is not None
+    )
+
+    if not temps:
+        return None
+
+    median = temps[len(temps) // 2]
+
+    return (
+        f"weather on {len(temps)} of {len(points)} runs "
+        f"(median {median:.0f} °C, {temps[0]:.0f} to {temps[-1]:.0f} °C)"
+    )
+
+
 def plot_pace_hr(
     points: list[PaceHrPoint],
     output: str,
@@ -1515,6 +1540,7 @@ def plot_pace_hr(
                         + f"<br>{_pace_hr_label(category)}"
                         + f"<br>{format_pace(point.pace_s_per_km)}/km"
                         + f", {point.avg_hr:.0f} bpm"
+                        + _weather_hint(point.weather)
                     )
                     for point in chunk
                 ],
@@ -1582,6 +1608,11 @@ def plot_pace_hr(
             "non-quality runs; outlined points are their inputs — all runs "
             "are shown"
         )
+
+    weather_note = _weather_summary(points)
+
+    if weather_note:
+        notes.append(weather_note)
 
     if notes:
         figure.add_annotation(
@@ -1657,6 +1688,7 @@ def plot_compare_pace_hr(
                         f"{point.date} {point.name}".strip()
                         + f"<br>{format_pace(point.pace_s_per_km)}/km"
                         + f", {point.avg_hr:.0f} bpm"
+                        + _weather_hint(point.weather)
                     )
                     for point in chunk
                 ],
@@ -1682,6 +1714,11 @@ def plot_compare_pace_hr(
                     for category in symbols
                 )
                 + "<br>all runs; colour = calendar year"
+                + (
+                    f"<br>{weather_line}"
+                    if (weather_line := _weather_summary(points))
+                    else ""
+                )
             ),
             xref="paper",
             yref="paper",

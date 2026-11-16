@@ -7,6 +7,7 @@ reports work with any ``DataSource`` implementation.
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import (
     Activity,
+    ActivityWeather,
     Event,
     Interval,
     Lap,
@@ -560,6 +561,34 @@ def format_interval_table(intervals: list[Interval]):
     return lines
 
 
+def format_weather(weather: ActivityWeather | None) -> str:
+    """One line of conditions: ``12 °C, wind 3 m/s``.
+
+    Temperature is the anchor; feels-like appears only when it differs by
+    3 °C or more, and missing pieces are simply left out.
+    """
+    if weather is None:
+        return ""
+
+    parts = []
+
+    if weather.temp_c is not None:
+        parts.append(f"{weather.temp_c:.0f} °C")
+
+        if (
+            weather.feels_like_c is not None
+            and abs(weather.feels_like_c - weather.temp_c) >= 3
+        ):
+            parts.append(f"feels {weather.feels_like_c:.0f} °C")
+
+    if weather.wind_speed_ms:
+        parts.append(f"wind {weather.wind_speed_ms:.0f} m/s")
+    if weather.condition:
+        parts.append(weather.condition.strip().lower())
+
+    return ", ".join(parts)
+
+
 def _link(url: str) -> str:
     """Markdown link whose text is the external activity id."""
     label = url.rsplit("/", 1)[-1] or url
@@ -765,6 +794,7 @@ def format_session_activity(
     resting_hr_estimated: bool = False,
     planned_events: list[Event] | None = None,
     planned_hrefs: dict[str, str] | None = None,
+    weather: ActivityWeather | None = None,
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
@@ -783,6 +813,11 @@ def format_session_activity(
 
     if activity.started_at_utc:
         lines.append(f"- Started: {activity.started_at_utc} (UTC)")
+
+    conditions = format_weather(weather)
+
+    if conditions:
+        lines.append(f"- Weather: {conditions}")
 
     if links is not None:
         if links.intervals:

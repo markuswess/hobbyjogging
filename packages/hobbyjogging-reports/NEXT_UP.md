@@ -2,9 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; the weather half of 2, 5's threshold trend and
-6's fartlek check are open, 13 is parked, and the rest need a core or root
-change or the lab gate.
+Current focus: the demo data; 2's max-HR half, 5's threshold trend and 6's
+fartlek check are open, 13 is parked, and the rest need a core or root change
+or the lab gate.
 
 ## Done
 
@@ -227,6 +227,17 @@ this list keeps the recent decisions only.
   review queue and gear; short tables and the Markdown reports are unchanged.
   The demo's activities tab (66 rows) collapses.
 
+- **Weather in the reports.** The session report prints
+  `- Weather: 12 °C, wind 3 m/s` (feels-like only when it differs by 3 °C or
+  more); the pace/HR scatters on Analysis and Compare carry the same line in
+  their hover and note coverage and range (`weather on 709 of 709 runs (median
+  19 °C, 1 to 35 °C)`). The health tab gains a per-year coverage table from
+  `analysis/coverage.py`: on the real log weather is 92–100 % from 2019 and 0 %
+  before. `CachedDataSource` memoizes weather by activity, `DatabaseSource`
+  exposes it, and the demo writes seasonal temperature and wind through
+  `upsert_activity_weather` (about 3 % of days left empty). Max HR waits on the
+  core exposure.
+
 ## Bugs
 
 _None._
@@ -234,8 +245,8 @@ _None._
 ## Next
 
 Schema v12-v16 moved the data under several items, so the picture changed:
-2's weather annotations, 5's threshold trend and 6's fartlek check are now
-reports-only. What still needs core first: max HR and elevation on `Activity`
+5's threshold trend and 6's fartlek check are reports-only, and 2's weather
+half landed. What still needs core first: max HR and elevation on `Activity`
 (repository query and model drop them; items 2 and 7), the per-activity zone
 config ids (item 5's zone normalization), devices (1), routes (3), wellness
 extras (4) and social titles (8). Item 11 has its data now (`training_periods`,
@@ -249,12 +260,11 @@ streaks report and the collapsible lists landed here.
    device changes on the VO2max chart so a step is attributable to the watch,
    and add a `- Device:` line to the session report.
 
-2. **Weather and max HR in the reports.** Weather landed (schema v13) and is
-   exposed through `DataSource.activity_weather()`, so annotating the pace, HR
-   and efficiency charts with temperature and wind and adding a per-year
-   coverage line are reports-only. Max HR is stored (schema v12) but the
-   repository's activity query and the `Activity` model drop it, so the
-   session line and the HR-zone checks need that exposure in core first.
+2. **Max HR in the reports.** Weather landed: the session report, both
+   pace/HR scatters and the health coverage table use it. Max HR is stored
+   (schema v12) but the repository's activity query and the `Activity` model
+   drop it, so that exposure comes first; then the session line, the HR-zone
+   checks, and the Max HR column beside weather in the coverage table.
 
 3. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. Depends
@@ -413,7 +423,9 @@ Covered now:
   tie-break, the limit, and the report's shape;
 - collapsible tables: a long table renders the toggle and the count with every
   row still in the HTML, a short or key-less one stays plain, and the demo's
-  activities tab collapses.
+  activities tab collapses;
+- weather: `format_weather` variants, the point lookup, the hover and coverage
+  note, per-year shares, the cached lookup, and the demo's weather lines.
 
 New work should add:
 

@@ -23,6 +23,7 @@ from .equipment import (
     equipment_usage,
     retirement_candidates,
 )
+from .coverage import YearCoverage, yearly_coverage
 from .efficiency import (
     EFFICIENCY_UNIT,
     MIN_EXCESS_HR,
@@ -166,6 +167,8 @@ __all__ = [
     "DEFAULT_STREAK_LIMIT",
     "EFFICIENCY_UNIT",
     "EquipmentStat",
+    "YearCoverage",
+    "yearly_coverage",
     "MIN_EXCESS_HR",
     "MIN_STREAK_RUN_S",
     "RESTING_HR_WINDOW_DAYS",

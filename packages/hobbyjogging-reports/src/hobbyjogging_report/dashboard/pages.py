@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from hobbyjogging_core.model import Activity, Event, ReviewItem
 
-from ..analysis import RUN_TYPES
+from ..analysis import RUN_TYPES, YearCoverage
 from ..format import (
     fmt_time,
     format_feel,
@@ -487,6 +487,7 @@ def health_page(
     demo_label: str | None = None,
     detail_ids: set[str],
     review_items: list[ReviewItem],
+    coverage: list[YearCoverage] | None = None,
 ) -> str:
     stats = [
         ("Activities in window", str(health.activities), ""),
@@ -565,11 +566,33 @@ def health_page(
         numeric=(1,),
     )
 
+    coverage_html = ""
+
+    if coverage:
+        coverage_html = card(
+            "Data coverage",
+            table(
+                ["Year", "Activities", "Weather"],
+                [
+                    [
+                        str(row.year),
+                        str(row.activities),
+                        f"{row.weather} ({row.weather_share:.0%})",
+                    ]
+                    for row in coverage
+                ],
+                numeric=(1, 2,),
+            )
+            + '<p class="muted">Activities with stored weather, by year. '
+            "Max HR joins the table once the model exposes it.</p>",
+        )
+
     body = (
         stat_grid(stats)
         + card("Review queue", queue_html)
         + card("Activities with open review items", review_html)
         + card("Missing data", missing_html)
+        + coverage_html
     )
 
     return page(

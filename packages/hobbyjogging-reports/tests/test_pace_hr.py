@@ -8,6 +8,7 @@ from hobbyjogging_report.analysis import (
     pace_hr_trends,
 )
 from hobbyjogging_report.model import PaceHrPoint
+from hobbyjogging_core.model import ActivityWeather
 from support import activity_factory
 
 D = date(2026, 1, 1)
@@ -151,6 +152,26 @@ class PaceHrTests(unittest.TestCase):
 
         self.assertEqual(["easy", "intervals"], [p.category for p in points])
         self.assertEqual([True, False], [p.steady for p in points])
+
+    def test_points_carry_weather_when_the_caller_supplies_it(self):
+        weather = ActivityWeather(temp_c=12.0, wind_speed_ms=3.0)
+        points = pace_hr_points(
+            [activity(id="a", date=D, distance_m=10000, avg_hr=150)],
+            D,
+            D,
+            weather_lookup=lambda activity_id: weather,
+        )
+
+        self.assertIs(weather, points[0].weather)
+
+    def test_without_a_lookup_weather_stays_empty(self):
+        points = pace_hr_points(
+            [activity(id="a", date=D, distance_m=10000, avg_hr=150)],
+            D,
+            D,
+        )
+
+        self.assertIsNone(points[0].weather)
 
     def test_points_without_a_baseline_are_still_scattered(self):
         points = pace_hr_points(

@@ -56,6 +56,7 @@ class FakeSource:
         review_items=None,
         laps=None,
         equipment=None,
+        weather=None,
     ):
         self._activities = list(activities or [])
         self._equipment = list(equipment or [])
@@ -64,6 +65,7 @@ class FakeSource:
         self._wellness = list(wellness or [])
         self._events = list(events or [])
         self._links = dict(links or {})
+        self._weather = dict(weather or {})
         self._review_items = list(review_items or [])
 
     @staticmethod
@@ -94,6 +96,9 @@ class FakeSource:
 
     def activity_laps(self, activity_id):
         return self._laps.get(activity_id, [])
+
+    def activity_weather(self, activity_id):
+        return self._weather.get(activity_id)
 
     def equipment(self):
         return list(self._equipment)

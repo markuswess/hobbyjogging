@@ -8,7 +8,7 @@ from datetime import date
 from statistics import median
 
 from hobbyjogging_core.classify import classify as core_classify
-from hobbyjogging_core.model import Activity, Interval
+from hobbyjogging_core.model import Activity, ActivityWeather, Interval
 
 from .common import RUN_TYPES, pace_s_per_km
 from .efficiency import STEADY_BAND_LABEL, excess_beats, is_steady_run
@@ -22,6 +22,7 @@ def pace_hr_points(
     *,
     resting_hr_baseline: Callable[[date], float | None] | None = None,
     intervals_by_id: dict[str, list[Interval]] | None = None,
+    weather_lookup: Callable[[str], ActivityWeather | None] | None = None,
 ) -> list[PaceHrPoint]:
     """One point per run with distance, time, and average heart rate."""
     points = []
@@ -71,6 +72,11 @@ def pace_hr_points(
                     intervals=(intervals_by_id or {}).get(activity.id, []),
                 ),
                 category=category_name,
+                weather=(
+                    weather_lookup(activity.id)
+                    if weather_lookup is not None
+                    else None
+                ),
             )
         )
 

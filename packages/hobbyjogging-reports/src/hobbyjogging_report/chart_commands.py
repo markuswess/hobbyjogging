@@ -594,6 +594,7 @@ def run_pace_hr_chart(
             for activity in activities
             if activity.type in RUN_TYPES
         },
+        weather_lookup=source.activity_weather,
     )
 
     for trend in pace_hr_trends(points):
