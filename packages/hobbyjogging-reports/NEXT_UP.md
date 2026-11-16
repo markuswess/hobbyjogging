@@ -2,8 +2,9 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; 13 is parked on its page-coverage cost, and
-every other open item needs a core or root change or the lab gate.
+Current focus: the demo data; 13 is parked on its page-coverage cost, 16 is a
+small dashboard-only pass, and every other open item needs a core or root
+change or the lab gate.
 
 ## Done
 
@@ -212,9 +213,10 @@ _None._
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
 items 24 and 25. Of what is left, 13 is reports-only but parked because every
-link needs a page for the plotted activity, 14 needs root items 4 and 30,
-15's series needs the lab gate in root item 31, and 12 is recurring upkeep.
-The efficiency floor and the planned-event page landed here.
+link needs a page for the plotted activity, 16 is a small dashboard-only
+pass, 14 needs root items 4 and 30, 15's series needs the lab gate in root
+item 31, and 12 is recurring upkeep. The efficiency floor and the
+planned-event page landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -351,6 +353,31 @@ The efficiency floor and the planned-event page landed here.
     - **Card**: the efficiency card gains the second series.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
+
+16. **Collapse the long dashboard lists.** The activities tab renders 50
+    activity rows plus the planned window, and Performance renders every race
+    result; on a phone those tables push the rest of the page out of reach.
+    Collapse a long table behind a summary that names its row count, with the
+    most recent rows still visible.
+    - **Mechanism**: native markup only — no JavaScript and no build option.
+      Either a `<details>` around the whole table (closed, summary
+      `Activities (50)`), or a checkbox plus a `:checked` sibling rule that
+      keeps the first ~20 rows visible and reveals the rest; pick one when
+      implementing. Every row stays in the DOM, so the activity links and the
+      browser's find still work.
+    - **One place**: extend `table()` in `html.py` with an optional summary and
+      row limit, so the count, the toggle and the muted "showing all N" line
+      are rendered once, not per page. Count the rendered rows, never a
+      hard-coded number.
+    - **Where**: any table past the threshold — activities, race results, PBs,
+      review items, gear. Short tables (equivalent times, upcoming races,
+      category breakdown) and the Markdown reports stay as they are.
+    - **Threshold**: a module constant (about 20 rows), not a flag, so a quiet
+      week looks unchanged.
+    - **Tests**: a long table renders the summary with the real row count and
+      keeps every row in the HTML; a short one renders a plain table; the
+      activities tab still carries a planned row and an activity link; the
+      demo dashboard test covers the collapsed lists.
 
 ## Tests and docs
 
