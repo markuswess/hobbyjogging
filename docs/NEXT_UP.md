@@ -301,11 +301,22 @@ one takes the next free number, so cross-references stay valid.
    - **Zone configs**: reuse `zone_configs(id, kind, source,
      boundaries_json)`, one row per distinct snapshot, and set
      `activities.pace_zone_config_id` / `hr_zone_config_id`. Zone times then
-     mean the same thing across eras.
+     mean the same thing across eras. Runalyze's `zone_distribution_*` are
+     percentages computed from its own settings, not boundaries — never merge
+     them into a config.
    - **Thresholds**: a small dated `athlete_thresholds` snapshot table
      (`effective_from`, `max_hr`, `lthr`, `threshold_pace_mps`, `source`)
      rather than columns on activities — they belong to the athlete and change
      slowly.
+   - **Intervals is the only threshold source.** It stamps the settings on
+     every activity, so the series moves whenever they change; Runalyze has no
+     such history — its OpenAPI spec (`/api/docs.jsonopenapi`, the authoritative
+     schema source, 289 schemas) exposes only current `hr_max` and `hr_rest` in
+     the account settings, no `lthr`, no threshold pace, and its
+     `TrainingPaceDto` bands are derived, not stamped. So the table has one
+     owner: **no conflict rule**, and `source` is provenance only. Runalyze can
+     contribute at most one current-value snapshot as a cross-check, and even
+     that is 403 with today's token (`account/*`, `sport`).
    - **Import**: write both from the payloads; treat `threshold_pace` 0 and
      implausible values (e.g. 0.83) as absent.
    - **Backfills**: `athlete_thresholds_v1`, `activity_zone_configs_v1`.
@@ -424,11 +435,13 @@ one takes the next free number, so cross-references stay valid.
       export. Check whether it carries comments, tags, gear and race results;
       if it does, the milestone starts there and the API is only for
       incremental sync.
-    - **Schema is public, only read access is gated**: the database model is in
-      the open-source repository (`Runalyze/Runalyze`, branch `support/4.3.x`):
-      the 60 per-activity dataset keys in `inc/core/Dataset/Keys/` and the
-      entities in `src/CoreBundle/Entity/`. Design against it now — it already
-      shaped the race-result and weather schemas (items 18 and 7).
+    - **Schema is public, only read access is gated**: the authoritative spec is
+      **`/api/docs.jsonopenapi`** (749 KB, 289 schemas) — the `/doc/api/*` pages
+      return an empty document even with a token. The open-source repository
+      (`Runalyze/Runalyze`, branch `support/4.3.x`) adds the per-activity
+      dataset keys in `inc/core/Dataset/Keys/` and the entities in
+      `src/CoreBundle/Entity/`. Design against the spec — it already shaped the
+      race-result, weather and threshold items (18, 7, 8).
     - **Payload findings (Nov 2026, token with read scopes)**: the activity
       object has 81 fields (87 in the detail). `vo2max` is Runalyze's
       *effective* estimate and sits beside `vo2max_by_time` and
