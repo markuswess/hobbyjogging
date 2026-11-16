@@ -5,6 +5,7 @@ from hobbyjogging_report.classify import category_breakdown
 from hobbyjogging_report.format import (
     format_activity,
     format_category_table,
+    format_event,
     format_feel,
     format_methods,
     format_session_activity,
@@ -15,7 +16,7 @@ from hobbyjogging_report.format import (
     work_summary_for_activity,
 )
 from hobbyjogging_report.summary import recovery_summary, summarize_training
-from hobbyjogging_core.model import Interval, WellnessDay
+from hobbyjogging_core.model import Event, EventZoneTime, Interval, WellnessDay
 from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
@@ -48,6 +49,74 @@ class Vo2maxLabelTests(unittest.TestCase):
         )
 
         self.assertIn("- VO2max: 55.0 (Garmin, swim)", lines)
+
+
+class EventReportTests(unittest.TestCase):
+    """A planned event's page shows the plan, and the match when there is one."""
+
+    def test_plain_event_page_carries_the_plan(self):
+        event = Event(
+            id="e1",
+            date=D,
+            name="5x5 subT",
+            type="run",
+            duration_s=3000,
+            distance_m=12000,
+            training_load=60,
+            workout_methods=["intervals"],
+            workout_targets=["threshold"],
+            zone_kind="pace",
+            zone_times=[EventZoneTime("Z3", 1500, 3)],
+            description="Hold threshold.",
+        )
+
+        text = "\n".join(format_event(event))
+
+        self.assertIn("## 5x5 subT", text)
+        self.assertIn("- Date: 2026-10-01", text)
+        self.assertIn("- Load: 60", text)
+        self.assertIn("- Duration: 50min", text)
+        self.assertIn("- Methods: Intervals", text)
+        self.assertIn("- Targets: Threshold", text)
+        self.assertIn("- Planned pace times: Z3 25:00", text)
+        self.assertIn("Hold threshold.", text)
+        self.assertNotIn("Plan vs actual", text)
+
+    def test_matched_event_compares_plan_with_actual(self):
+        event = Event(
+            id="e1",
+            date=D,
+            name="Tempo",
+            type="run",
+            duration_s=3000,
+            distance_m=12000,
+            training_load=60,
+        )
+        matched = activity(
+            id="a1",
+            date=D,
+            duration_s=2700,
+            distance_m=11000,
+            training_load=55,
+        )
+
+        text = "\n".join(
+            format_event(
+                event,
+                matched=matched,
+                matched_href="../activity/a1.html",
+            )
+        )
+
+        self.assertIn("### Plan vs actual", text)
+        self.assertIn("[2026-10-01 Run](../activity/a1.html)", text)
+        self.assertIn("approximate", text)
+        self.assertIn("| Time | 50min | 45min | -5min |", text)
+        self.assertIn(
+            "| Distance | 12.0 km | 11.0 km | -1.0 km |",
+            text,
+        )
+        self.assertIn("| Load | 60 | 55 | -5 |", text)
 
 
 class EstimatedBaselineTests(unittest.TestCase):

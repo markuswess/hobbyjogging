@@ -593,6 +593,21 @@ class DemoGeneratorTests(unittest.TestCase):
 
             index = (site / "index.html").read_text()
             self.assertIn("Synthetic demo data", index)
+
+            # The planned rows open an event page, and every link resolves.
+            activities = (site / "activities.html").read_text()
+            self.assertIn('href="event/', activities)
+            event_pages = sorted((site / "event").glob("*.html"))
+            self.assertTrue(event_pages)
+            planned = event_pages[0].read_text()
+            self.assertIn("Planned", planned)
+            self.assertIn("← All activities", planned, event_pages[0].name)
+            start = activities.index('href="event/') + len('href="')
+            end = activities.index('"', start)
+            self.assertTrue(
+                (site / activities[start:end]).exists(),
+                activities[start:end],
+            )
             performance = (site / "performance.html").read_text()
             self.assertIn("Upcoming races", performance)
 

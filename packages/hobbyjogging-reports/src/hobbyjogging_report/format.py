@@ -581,9 +581,9 @@ def format_wellness_summary(day: WellnessDay) -> str:
     return "- " + ", ".join(parts)
 
 
-def format_planned_event(event: Event) -> list[str]:
-    """Render the day's planned workout under a session report."""
-    lines = [f"\n### Planned — {event.name or sport_label(event)}"]
+def _planned_event_fields(event: Event) -> list[str]:
+    """A planned workout's fields, shared by the session block and page."""
+    lines = []
 
     if event.type:
         lines.append(f"- Type: {sport_label(event)}")
@@ -610,6 +610,101 @@ def format_planned_event(event: Event) -> list[str]:
     if description:
         lines.append("")
         lines.extend(format_fenced_block(description))
+
+    return lines
+
+
+def format_planned_event(
+    event: Event,
+    *,
+    href: str | None = None,
+) -> list[str]:
+    """Render the day's planned workout under a session report."""
+    name = event.name or sport_label(event)
+    heading = f"[{name}]({href})" if href else name
+
+    return [f"\n### Planned — {heading}"] + _planned_event_fields(event)
+
+
+def _time_value(value: float | None) -> str:
+    return fmt_time(value) if value else "-"
+
+
+def _distance_value(value: float | None) -> str:
+    return f"{value / 1000:.1f} km" if value else "-"
+
+
+def _number_value(value: float | None) -> str:
+    return "-" if value is None else f"{value:.0f}"
+
+
+def _difference(planned: float | None, actual: float | None, render) -> str:
+    """Signed change from planned to actual, rendered by ``render``."""
+    if planned is None or actual is None:
+        return "-"
+
+    delta = actual - planned
+
+    if not delta:
+        return "0"
+
+    return ("+" if delta > 0 else "-") + render(abs(delta))
+
+
+def format_event(
+    event: Event,
+    *,
+    matched: Activity | None = None,
+    matched_href: str | None = None,
+) -> list[str]:
+    """Render one planned event as a standalone page report."""
+    lines = [
+        f"\n## {event.name or sport_label(event)}",
+        f"- Date: {event.date}",
+    ]
+
+    if event.training_load is not None:
+        lines.append(f"- Load: {event.training_load:.0f}")
+
+    lines.extend(_planned_event_fields(event))
+
+    if matched is None:
+        return lines
+
+    name = f"{matched.date} {matched.name or sport_label(matched)}"
+    activity = f"[{name}]({matched_href})" if matched_href else name
+    time_delta = _difference(
+        event.duration_s,
+        matched.duration_s,
+        _time_value,
+    )
+    distance_delta = _difference(
+        event.distance_m,
+        matched.distance_m,
+        _distance_value,
+    )
+    load_delta = _difference(
+        event.training_load,
+        matched.training_load,
+        _number_value,
+    )
+    lines.extend(
+        [
+            "\n### Plan vs actual",
+            f"- Activity: {activity}",
+            "- Matched by date and sport only: exact event links wait on "
+            "`event_activity_links`, so read the comparison as approximate.",
+            "",
+            "| Metric | Planned | Actual | Difference |",
+            "|---|---:|---:|---:|",
+            f"| Time | {_time_value(event.duration_s)} | "
+            f"{_time_value(matched.duration_s)} | {time_delta} |",
+            f"| Distance | {_distance_value(event.distance_m)} | "
+            f"{_distance_value(matched.distance_m)} | {distance_delta} |",
+            f"| Load | {_number_value(event.training_load)} | "
+            f"{_number_value(matched.training_load)} | {load_delta} |",
+        ]
+    )
 
     return lines
 
@@ -669,6 +764,7 @@ def format_session_activity(
     resting_hr: float | None = None,
     resting_hr_estimated: bool = False,
     planned_events: list[Event] | None = None,
+    planned_hrefs: dict[str, str] | None = None,
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
@@ -717,7 +813,12 @@ def format_session_activity(
     lines.extend(format_review_items(review_items or []))
 
     for event in planned_events or []:
-        lines.extend(format_planned_event(event))
+        lines.extend(
+            format_planned_event(
+                event,
+                href=(planned_hrefs or {}).get(event.id),
+            )
+        )
 
     if wellness is not None:
         lines.append("\n### Wellness")

@@ -21,7 +21,7 @@ from ..analysis import (
 )
 from ..classify import classify
 from ..command_support import resting_hr_lookup
-from ..format import format_session_activity
+from ..format import format_event, format_session_activity
 from ..html import markdown_to_html
 from ..links import resolve_activity_links
 from ..model import AverageWindows
@@ -37,12 +37,16 @@ from .nsa import build_nsa_section
 from .health import collect_health
 from .pages import (
     activity_filename,
+    activity_href,
     activity_page,
     activities_page,
+    event_filename,
+    event_page,
     analysis_page,
     compare_page,
     health_page,
     nsa_page,
+    match_planned_events,
     performance_page,
     race_page,
     overview_page,
@@ -306,6 +310,7 @@ def build_dashboard(
         )
         if event.type
     ]
+    planned_matches = match_planned_events(listed_activities, plan_events)
 
     detail_activities = {
         activity.id: activity
@@ -473,6 +478,11 @@ def build_dashboard(
                 resting_hr=baseline(activity.date),
                 resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
+                planned_hrefs={
+                    event.id: f"../event/{event_filename(event.id)}"
+                    for event in day_events
+                    if event.id and event.type
+                },
                 wellness=wellness_day,
                 review_items=[
                     item
@@ -491,6 +501,43 @@ def build_dashboard(
             include_review=include_review,
             activity=activity,
             report_html=markdown_to_html(report, demote=1),
+        )
+
+    page_events = {
+        event.id: event
+        for event in plan_events
+        if event.id
+    }
+
+    for day_events, _wellness in day_context.values():
+        for event in day_events:
+            if event.id and event.type:
+                page_events.setdefault(event.id, event)
+
+    event_pages = {}
+
+    for event in page_events.values():
+        matched = planned_matches.get(event.id)
+        event_pages[f"event/{event_filename(event.id)}"] = event_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            event=event,
+            report_html=markdown_to_html(
+                "\n".join(
+                    format_event(
+                        event,
+                        matched=matched,
+                        matched_href=(
+                            f"../{activity_href(matched.id)}"
+                            if matched is not None
+                            else None
+                        ),
+                    )
+                ),
+                demote=1,
+            ),
         )
 
     race_pages = {}
@@ -513,7 +560,7 @@ def build_dashboard(
         )
 
     target = resolve_output_dir(output)
-    _write_site(target, pages | detail_pages | race_pages)
+    _write_site(target, pages | detail_pages | race_pages | event_pages)
     mark("pages", phase)
 
     return target

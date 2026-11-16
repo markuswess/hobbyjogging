@@ -47,7 +47,7 @@ Pages:
   every planned event in the shown range and the next 14 days that has no
   matching activity. The Status column reads `done`, `planned` or `missed`
   (past date, no activity); planned rows show the target time, distance and
-  load and stay unlinked, since an event has no page.
+  load, and link to their event page.
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter with its two regression halves
   and two dashed efficiency lines, over the last two years
@@ -69,7 +69,13 @@ Pages:
 - `activity/<id>.html` — the session report body (metrics, workout methods and
   targets, zone times, description, the raw segment table, and subT/LT1
   work reps),
-  exactly as `reports.sh session` renders it.
+  exactly as `reports.sh session` renders it. Its planned block links to the
+  day's event page.
+- `event/<id>.html` — one planned session: date, sport, planned time, distance
+  and load, methods and targets, the planned zone distribution, and the
+  description. When an activity matches the event by date and sport, the page
+  adds an approximate plan-vs-actual table and links to that activity; exact
+  links wait on `event_activity_links`. Untyped notes have no page.
 - `performance.html` (Performance) — upcoming races, race results, personal
   bests, a per-bucket PB progression chart in pace (5k/10k/HM/M only, with
   the races that missed the line as hollow dots in the bucket's colour and

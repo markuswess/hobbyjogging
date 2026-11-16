@@ -2,8 +2,8 @@
 
 Updated 2026-11-16.
 
-Current focus: the demo data; no short item is unblocked, item 13 is parked
-on its page-coverage cost, and 16 waits on the event id.
+Current focus: the demo data; 13 is parked on its page-coverage cost, and
+every other open item needs a core or root change or the lab gate.
 
 ## Done
 
@@ -186,10 +186,23 @@ this list keeps the recent decisions only.
   activity row and appends a row for each planned event in the shown range
   and the next 14 days that has no matching activity (same date and sport
   for now). A Status column reads `done`, `planned` or `missed`; planned
-  rows carry methods, targets, planned time, distance and load, and stay
-  unlinked. Events without a sport and matched events never add a row.
+  rows carry methods, targets, planned time, distance and load, and link to
+  their event page (see below). Events without a sport and matched events
+  never add a row.
   The `activities` CLI report is unchanged. Tests cover a matched event, a
   missed one, a future one and the demo's planned sessions.
+
+- **Planned events open a page.** Every typed event in the tab's window (and
+  on any session day) gets `event/<id>.html`: date, sport, planned
+  time/distance/load, methods and targets, the planned zone distribution from
+  `event_zone_times`, and the description. The date and name of a planned or
+  missed row link to it, and the session report's planned block links there
+  too, so a matched event — which has no tab row — stays reachable. A matched
+  page adds an approximate plan-vs-actual table by date and sport, exact links
+  wait on `event_activity_links` (root item 4), and it links back to the
+  activity. An untyped note, or an event without an id, stays plain text.
+  Tests cover the planned and missed rows, the matched page, zones and
+  methods, and the demo link.
 
 ## Bugs
 
@@ -198,12 +211,10 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Of what is left, 13 and 16 are reports-only in principle,
-14 needs root items 4 and 30, 15's series needs the lab gate in root item
-31, and 12 is recurring upkeep. Two of them are not ready to start: 13 is
-parked because every link needs a page for the plotted activity, and 16
-needs the event id from core. The efficiency floor landed here; its metric
-card follows in the root session.
+items 24 and 25. Of what is left, 13 is reports-only but parked because every
+link needs a page for the plotted activity, 14 needs root items 4 and 30,
+15's series needs the lab gate in root item 31, and 12 is recurring upkeep.
+The efficiency floor and the planned-event page landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -337,34 +348,9 @@ card follows in the root session.
     - **All-runs series**: only after the lab passes it — a second labelled line
       over every run with HR, distance and duration, never merged into the
       steady aggregate. Both lines carry their own label.
-    - **Card**: the efficiency card gains the floor (owed since it landed, see
-      Done) and the second series.
+    - **Card**: the efficiency card gains the second series.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
-
-16. **A page for planned events, linked from the activities tab.** The tab now
-    lists planned and missed sessions, but their date and name are plain text
-    (`esc`), so there is nothing to open — the completed rows link to
-    `activity/<id>.html` and the planned ones do not.
-    - **Page**: `event/<id>.html`, a short page in the shape of the activity
-      page — date, name, sport, planned duration/distance/load, methods and
-      targets, the planned zone distribution from `event_zone_times`, and the
-      description. The session report already renders the day's planned
-      workout, so the formatting exists; this is a page around it.
-    - **Event id (landed).** `Event.id` is now a model field and
-      `repository.events()` populates it, so the page can be keyed by id. A
-      date-and-sport slug would not do: the demo already has two sessions on
-      one day.
-    - **Links**: the date and name of a planned or missed row link to it; the
-      status column stays text.
-    - **Plan vs actual**: once `event_activity_links` lands (root item 4), the
-      page shows the resulting activity and the delta. Until then, match by
-      date and sport the way the tab already does, and label the match as
-      approximate.
-    - **Nav**: back to All activities; the demo already generates planned
-      events, so the page appears there.
-    - **Tests**: a planned row links to its page, a missed row too, the page
-      renders zones and methods, and the demo coverage test still passes.
 
 ## Tests and docs
 
@@ -381,7 +367,10 @@ Covered now:
   equivalent-time table at every standard distance, and the CLI `races`
   report and the Performance tab print the same predictions;
 - the PB progression plots pace on a min/km axis, skips Trail and Other,
-  and labels Trail/Other bests as raw in the tables.
+  and labels Trail/Other bests as raw in the tables;
+- planned-event pages: a planned and a missed row link to their page, the
+  page renders zones and methods, and a matched event shows the approximate
+  plan-vs-actual table.
 
 New work should add:
 

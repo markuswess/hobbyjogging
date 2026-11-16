@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from datetime import date
 from urllib.parse import quote
 
@@ -37,6 +36,14 @@ def activity_filename(activity_id: str) -> str:
 
 def activity_href(activity_id: str) -> str:
     return f"activity/{activity_filename(activity_id)}"
+
+
+def event_filename(event_id: str) -> str:
+    return f"{quote(str(event_id), safe='')}.html"
+
+
+def event_href(event_id: str) -> str:
+    return f"event/{event_filename(event_id)}"
 
 
 def _km_cell(distance_m: float) -> str:
@@ -124,6 +131,31 @@ def overview_page(
     )
 
 
+def match_planned_events(
+    activities: list[Activity],
+    events: list[Event],
+) -> dict[str, Activity]:
+    """Match events to activities by date and sport, one activity per event.
+
+    Exact links wait on ``event_activity_links``; the tab and the event pages
+    share this rule so a row and its page never disagree.
+    """
+    pools: dict[tuple[date, str], list[Activity]] = {}
+
+    for activity in activities:
+        pools.setdefault((activity.date, activity.type), []).append(activity)
+
+    matches: dict[str, Activity] = {}
+
+    for event in events:
+        pool = pools.get((event.date, event.type))
+
+        if pool:
+            matches[event.id] = pool.pop(0)
+
+    return matches
+
+
 def activities_page(
     *,
     generated_at: str,
@@ -138,9 +170,7 @@ def activities_page(
     """Completed activities plus the planned sessions that have no match."""
     today = today or date.today()
     rows: list[tuple[date, list[str]]] = []
-    unmatched = Counter(
-        (activity.date, activity.type) for activity in activities
-    )
+    matched = match_planned_events(activities, events or [])
 
     for activity in activities:
         href = activity_href(activity.id)
@@ -164,19 +194,20 @@ def activities_page(
         ))
 
     for event in events or []:
-        key = (event.date, event.type)
-
-        if unmatched[key]:
-            unmatched[key] -= 1
+        if event.id in matched:
             continue
+
+        href = event_href(event.id) if event.id else None
+        date_cell = str(event.date)
+        name_cell = event.name or sport_label(event)
 
         rows.append((
             event.date,
             [
-                esc(str(event.date)),
+                link(href, date_cell) if href else esc(date_cell),
                 "missed" if event.date < today else "planned",
                 esc(sport_label(event)),
-                esc(event.name or sport_label(event)),
+                link(href, name_cell) if href else esc(name_cell),
                 esc(format_methods(event)),
                 esc(format_targets(event)),
                 esc(fmt_time(event.duration_s)) if event.duration_s else "-",
@@ -236,6 +267,36 @@ def activity_page(
 
     return page(
         title=f"Session {activity.date}",
+        body=body,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            root="../",
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="activities",
+        root="../",
+    )
+
+
+def event_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    demo_label: str | None = None,
+    event: Event,
+    report_html: str,
+) -> str:
+    """Render one planned event as a short page."""
+    body = (
+        f'<p>{link("../activities.html", "← All activities")}</p>'
+        + card(None, f'<div class="report">{report_html}</div>')
+    )
+
+    return page(
+        title=f"Planned {event.date}",
         body=body,
         generated_at=generated_at,
         health_html=banner(

@@ -117,12 +117,15 @@ def _source():
         },
         events=[
             Event(
+                id="ev-subt",
                 date=TODAY + timedelta(days=1),
                 name="5x5 subT",
                 type="run",
                 distance_m=12000,
                 duration_s=3000,
                 training_load=60,
+                workout_methods=["intervals"],
+                workout_targets=["threshold"],
                 zone_kind="pace",
                 zone_times=[
                     EventZoneTime("Z1", 600, 1),
@@ -131,6 +134,7 @@ def _source():
                 ],
             ),
             Event(
+                id="ev-long",
                 date=TODAY + timedelta(days=3),
                 name="Long",
                 type="run",
@@ -139,6 +143,7 @@ def _source():
                 training_load=80,
             ),
             Event(
+                id="ev-marathon",
                 date=TODAY + timedelta(days=40),
                 name="Autumn Marathon",
                 type="run",
@@ -152,11 +157,13 @@ def _source():
                 name="Travel note",
             ),
             Event(
+                id="ev-matched",
                 date=TODAY - timedelta(days=1),
                 name="Matched easy",
                 type="run",
             ),
             Event(
+                id="ev-missed",
                 date=TODAY - timedelta(days=5),
                 name="Missed tempo",
                 type="run",
@@ -317,6 +324,27 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Continuous", activities)
             self.assertIn("Base", activities)
             self.assertIn("activities are hidden by import review", activities)
+            self.assertIn('href="event/ev-subt.html"', activities)
+            self.assertIn('href="event/ev-missed.html"', activities)
+
+            planned = (target / "event" / "ev-subt.html").read_text()
+            self.assertIn("Planned 2026-11-10", planned)
+            self.assertIn("5x5 subT", planned)
+            self.assertIn("Planned pace times", planned)
+            self.assertIn("Z3 25:00", planned)
+            self.assertIn("Intervals", planned)
+            self.assertIn("Threshold", planned)
+            self.assertIn("12.0 km", planned)
+            self.assertIn('href="../activities.html"', planned)
+
+            # A matched event has no tab row, so its page is reached from the
+            # session report's planned block and carries the approximate
+            # plan-vs-actual comparison.
+            matched = (target / "event" / "ev-matched.html").read_text()
+            self.assertIn("Plan vs actual", matched)
+            self.assertIn("approximate", matched)
+            self.assertIn("../activity/run1.html", matched)
+            self.assertFalse((target / "event" / "ev-marathon.html").exists())
 
             analysis = (target / "analysis.html").read_text()
             self.assertIn("Analysis · 2024-11-09 → 2026-11-09", analysis)
@@ -383,6 +411,7 @@ class DashboardBuildTests(unittest.TestCase):
             )
             self.assertIn("../index.html", detail)
             self.assertIn('href="../activities.html"', detail)
+            self.assertIn('href="../event/ev-matched.html"', detail)
 
             health = (target / "health.html").read_text()
             self.assertIn("Review queue", health)
