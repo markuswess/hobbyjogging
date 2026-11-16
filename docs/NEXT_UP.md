@@ -344,7 +344,10 @@ one takes the next free number, so cross-references stay valid.
       carries the route and the device name, sport can be mapped from the
       activity, and events are Intervals-authoritative. Docs are split per tier
       (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
-      document, so the resource list comes from `/api` instead.
+      document, so the resource list comes from `/api` instead. The activity
+      collection is **`/api/v1/activity` (singular)** with `page` and
+      `itemsPerPage`; its `time[...]` filters are ignored, so read all pages
+      and filter the range locally.
     - **Fallback if the API regresses**: `runalyze.com/my/exports` offers a
       CSV/JSON export from the web UI, the same pattern as the Strava bulk
       export. It is the backstop for a bulk history load, not the starting
@@ -357,7 +360,8 @@ one takes the next free number, so cross-references stay valid.
       `src/CoreBundle/Entity/`. Design against the spec — it already shaped the
       race-result, weather and threshold items (18, 7, 8).
     - **Payload findings (Nov 2026, read-scoped token)**: the activity object
-      has 81 fields (87 in the detail). `vo2max` is Runalyze's *effective*
+      has 82 fields in the collection and 88 in the detail (measured by the
+      phase 1 inventory). `vo2max` is Runalyze's *effective*
       estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
       `vo2max_runalyze` must name which one — take `vo2max` and note the others
       as alternatives, never a Garmin value. Tags are not in the activity
@@ -380,6 +384,14 @@ one takes the next free number, so cross-references stay valid.
       and per year, writing nothing; (2) comments and tags into the chosen text
       home; (3) gear with cross-source identity; (4) race results;
       (5) `vo2max_runalyze` as the second owner; (6) the reports.
+    - **Phase 1 result (Nov 2026)**: the import package ships the read-only
+      client and the inventory. Live run: 2,841 activities (2019–2026), 82
+      collection fields / 88 detail fields, `equipment` answers 200, and the
+      four expected 403s. Phase 2 (comments/tags) is the next package task; it
+      needs the text-home decision (item 1) and can start from the `/api/v1/tag`
+      collection the API root lists. Root housekeeping: update the package
+      description in `docs/AGENTS.md` (still says phase 1) and fold the access
+      facts into `SOURCE_NOTES.md`.
     - **Gear identity**: gear records become
       `source_records(record_type='gear')` plus `equipment` rows, linked
       through `activity_equipment` with `source='runalyze'`. Cross-source
