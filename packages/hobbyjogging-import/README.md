@@ -259,6 +259,40 @@ expected; the nested activity payload carries the route and device name. Tests
 use recorded JSON fixtures under `tests/fixtures/runalyze/` and never call the
 live API.
 
+### Enrichment (phase 2)
+
+Phase 2 imports the two fields Runalyze holds that the canonical record has no
+better source for. Both live in the activity **detail** payload:
+
+- `note` fills `activities.description` **only when it is blank** (Intervals,
+  the sheet, and manual edits keep their text);
+- `tags` replace Runalyze's own tag set in `activity_tags` (`source='runalyze'`);
+  manual tags survive.
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze enrich --dry-run
+```
+
+Matching is temporal plus distance (Runalyze exposes no Garmin id); a distance
+mismatch or an ambiguous temporal match is skipped, never guessed. Runalyze
+never writes `name`, timing, or distance. Unmatched rows are not created here;
+`--output PATH` writes them (with a reason) for the later activity phase.
+
+```text
+Runalyze enrich dry run: 9 activities
+  matched: 9
+  unmatched: 0
+  ambiguous: 0
+  comments filled: 0
+  comments kept (not blank): 0
+  activities tagged: 3 (5 tags)
+  detail requests: 9
+```
+
+Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
+`--output PATH`, and `--database PATH`. Enrichment is idempotent: a second run
+reports `activities tagged: 0` until the Runalyze note or tags change.
+
 ## Source precedence
 
 There is one fixed source rule: `moving_s` and `elapsed_s` are always

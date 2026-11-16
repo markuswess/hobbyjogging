@@ -382,18 +382,24 @@ one takes the next free number, so cross-references stay valid.
       `activities.description` only when it is blank (item 1).
     - **Phases**: (1) **done, import package** — a read-only client and
       `runalyze inventory --dry-run` that reports what is available per field
-      and per year, writing nothing; (2) comments and tags into the chosen text
-      home; (3) gear with cross-source identity; (4) race results;
+      and per year, writing nothing; (2) **done, import package** — comments
+      and tags into `activities.description` (blank-fill) and `activity_tags`;
+      (3) gear with cross-source identity; (4) race results;
       (5) `vo2max_runalyze` as the second owner; (6) the reports.
     - **Phase 1 result (Nov 2026)**: the import package ships the read-only
       client and the inventory. Live run: 2,841 activities (2019–2026), 82
       collection fields, 85–88 non-null detail fields (153 in the schema),
       `equipment` answers 200, and the four expected 403s. Comments are `note`;
       tags are detail-only; `title` is the Garmin auto-title and never becomes
-      `activities.name`. Phase 2 (comments/tags) is the next package task: the
-      text home is decided (`activities.description` blank-fill, tags in
-      `activity_tags`), and it enriches matched rows and reports the unmatched
-      ones for the later activity phase.
+      `activities.name`.
+    - **Phase 2 result (Nov 2026)**: `runalyze enrich` fills a blank
+      `description` from `note`, imports detail `tags` into `activity_tags`
+      under `source='runalyze'` (manual tags survive), and reports
+      unmatched/ambiguous rows (`--output` JSON). Matching is temporal plus
+      distance; `name`, timing and distance are never written. Validated on a
+      DB copy over one week: 9/9 matched, 5 tags on 3 activities, second run a
+      no-op. Phase 3 (gear) is next and still needs the cross-source identity
+      decision below.
     - **Gear identity**: gear records become
       `source_records(record_type='gear')` plus `equipment` rows, linked
       through `activity_equipment` with `source='runalyze'`. Cross-source

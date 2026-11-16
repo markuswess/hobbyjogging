@@ -20,6 +20,7 @@ from .ods import OdsError, read_sheets
 from .parsers import build_parser
 from .review_cli import run_review
 from .runalyze import RunalyzeClient, format_inventory, run_inventory
+from .runalyze_import import RunalyzeEnricher, format_enrich_summary
 from .sheet_import import SheetImporter, format_sheet_summary
 from .sync import format_sync_summary, run_sync
 
@@ -233,9 +234,15 @@ def _run_sheet_inspect(args, parser: argparse.ArgumentParser) -> int:
 
 
 def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
-    if args.runalyze_action != "inventory":
-        parser.error(f"unknown runalyze command: {args.runalyze_action}")
+    if args.runalyze_action == "inventory":
+        return _run_runalyze_inventory(args, parser)
+    if args.runalyze_action == "enrich":
+        return _run_runalyze_enrich(args, parser)
 
+    parser.error(f"unknown runalyze command: {args.runalyze_action}")
+
+
+def _run_runalyze_inventory(args, parser: argparse.ArgumentParser) -> int:
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be greater than zero")
     if args.per_page <= 0:
@@ -262,6 +269,47 @@ def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
         base_url=client.base_url,
     )
     print(format_inventory(summary))
+    return 0
+
+
+def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+    if args.per_page <= 0:
+        parser.error("--per-page must be greater than zero")
+    if (
+        args.start is not None
+        and args.end is not None
+        and args.start > args.end
+    ):
+        parser.error("--since must not be after --to")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            client = RunalyzeClient(base_url=args.base_url)
+            summary = RunalyzeEnricher(
+                connection,
+                client=client,
+            ).enrich(
+                start=args.start,
+                end=args.end,
+                limit=args.limit,
+                per_page=args.per_page,
+                dry_run=args.dry_run,
+                output=args.output,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(format_enrich_summary(summary))
+    print(f"Database: {args.database or default_database_path()}")
     return 0
 
 

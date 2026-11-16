@@ -1,0 +1,34 @@
+[
+  {
+    "id": 201,
+    "date_time": "2024-03-01T08:00:00+01:00",
+    "duration": 3600,
+    "elapsed_time": 3700,
+    "distance": 10.0,
+    "sport_id": 1
+  },
+  {
+    "id": 202,
+    "date_time": "2024-03-02T08:00:00+01:00",
+    "duration": 1800,
+    "elapsed_time": 1800,
+    "distance": 5.0,
+    "sport_id": 1
+  },
+  {
+    "id": 203,
+    "date_time": "2024-03-03T08:00:00+01:00",
+    "duration": 2400,
+    "elapsed_time": 2400,
+    "distance": 7.0,
+    "sport_id": 1
+  },
+  {
+    "id": 204,
+    "date_time": "2024-03-02T08:00:00+01:00",
+    "duration": 1800,
+    "elapsed_time": 1800,
+    "distance": 6.0,
+    "sport_id": 1
+  }
+]

@@ -209,6 +209,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="report only; the inventory never writes",
     )
 
+    runalyze_enrich = runalyze_sub.add_parser(
+        "enrich",
+        help="fill blank descriptions and import tags for matched activities",
+    )
+    runalyze_enrich.add_argument("--since", dest="start", type=date_arg)
+    runalyze_enrich.add_argument("--to", dest="end", type=date_arg)
+    runalyze_enrich.add_argument(
+        "--limit",
+        type=int,
+        help="enrich at most this many Runalyze activities",
+    )
+    runalyze_enrich.add_argument(
+        "--per-page",
+        type=int,
+        default=100,
+        help="activities per API page (default: 100)",
+    )
+    runalyze_enrich.add_argument(
+        "--base-url",
+        help="override the API base URL (default: RUNALYZE_API_BASE_URL)",
+    )
+    runalyze_enrich.add_argument("--database", type=Path)
+    runalyze_enrich.add_argument(
+        "--output",
+        type=Path,
+        help="write the unmatched/ambiguous rows as JSON",
+    )
+    runalyze_enrich.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing",
+    )
+
     garmin = subparsers.add_parser(
         "garmin",
         help="fetch original FIT files from Garmin Connect",

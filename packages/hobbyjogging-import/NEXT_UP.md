@@ -5,12 +5,18 @@ on.
 
 ## Done
 
+- **Runalyze phase 2.** `runalyze enrich` fills a blank `description` from the
+  Runalyze `note`, imports detail `tags` into `activity_tags` under
+  `source='runalyze'` (manual tags survive), and reports unmatched/ambiguous
+  rows (`--output` JSON). Matching is temporal plus distance; `name`, timing
+  and distance are never written. Validated on a DB copy: one week, 9/9
+  matched, 5 tags on 3 activities, second run a no-op.
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
   240/min pacing, numbered pages, local `--since`/`--to` filtering) and
   `runalyze inventory --dry-run`, which probes the known endpoints and reports
   activity-field coverage per year without writing. Verified live: 2,841
   activities (2019–2026), 88 fields in the detail payload, and the four
-  expected 403 endpoints. Tests use recorded fixtures. Phases 2–6 remain in
+  expected 403 endpoints. Tests use recorded fixtures. Phases 3–6 remain in
   root item 12.
 - **Sheet routes.** `Strecke`/`Streckennummer` resolve to a canonical route
   (number first, then the name's number when unambiguous) and the activity is

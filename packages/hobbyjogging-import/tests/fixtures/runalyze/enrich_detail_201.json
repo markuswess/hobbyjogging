@@ -1,0 +1,11 @@
+{
+  "id": 201,
+  "date_time": "2024-03-01T08:00:00+01:00",
+  "title": "Morning Run",
+  "note": "Runalyze comment",
+  "tags": [
+    {"id": 1, "tag": "Race"},
+    {"id": 2, "tag": "Hilly"}
+  ],
+  "vo2max": 53.0
+}
