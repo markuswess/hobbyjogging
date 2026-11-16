@@ -1,9 +1,9 @@
 # Next up: reports package
 
-Updated 2026-11-15.
+Updated 2026-11-16.
 
-Current focus: the demo data; item 13 is parked on its page-coverage cost,
-14 needs root items 4 and 30, and the rest need a core or root change.
+Current focus: the demo data; no short item is unblocked, item 13 is parked
+on its page-coverage cost, and 16 waits on the event id.
 
 ## Done
 
@@ -186,9 +186,12 @@ _None._
 ## Next
 
 Items 1-8 and 11 need a core or root change first, and 9 and 10 need root
-items 24 and 25. Items 13-14 are reports-only; 15 needs the lab gate in
-root item 31, and 12 is recurring upkeep. Item 13 is parked: the click
-handler is small, but every link needs a page for the plotted activity.
+items 24 and 25. Of what is left, 13 and 16 are reports-only in principle,
+14 needs root items 4 and 30, 15's series needs the lab gate in root item
+31, and 12 is recurring upkeep. Two of them are not ready to start: 13 is
+parked because every link needs a page for the plotted activity, and 16
+needs the event id from core. 15's 40-minute floor can ship alone, but its
+metric card is root-owned.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -339,6 +342,11 @@ handler is small, but every link needs a page for the plotted activity.
       targets, the planned zone distribution from `event_zone_times`, and the
       description. The session report already renders the day's planned
       workout, so the formatting exists; this is a page around it.
+    - **Needs the event id.** The `events` table has one, but `Event` drops
+      it: `repository.events()` selects `id` and never passes it to the
+      model, so a root session must expose it before the page can be keyed
+      by id. A date and sport slug is no substitute — the demo already has
+      two sessions on one day.
     - **Links**: the date and name of a planned or missed row link to it; the
       status column stays text.
     - **Plan vs actual**: once `event_activity_links` lands (root item 4), the
