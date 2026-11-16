@@ -4,6 +4,12 @@ Updated 2026-11-12.
 
 ## Done
 
+- **`fartlek` is back for unstructured quality.** The token is in the core
+  vocabulary (quality, mutually exclusive with `intervals`, aliases
+  `fahrtspiel`/`fartlek_run`), the sheet's `fs` code maps to `fartlek` +
+  `vo2max`, and `fartlek_from_fs_v1` converted 40 activities on the real DB
+  (20 kept manual method rows and were skipped; 34 missing targets filled with
+  `vo2max`). The display kind lands with item 3 and the reports list.
 - **VO2max is per sport, and the report now says so.** Message 140 carries the
   estimate for the activity's own sport, so `vo2max_garmin` on a ride is the
   cycling value — the data was right and no backfill was needed. The charts
@@ -228,36 +234,6 @@ _None._
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
 
-2. **Bring back `fartlek` for unstructured quality** (core + import +
-   maintenance + reports). `intervals` has become a mixed bucket: of the 561
-   activities carrying it, **170 have zero WORK reps** and 22 have 1–2, 47
-   have no target, and 40 spend >75% of the session in WORK. The sheet code
-   `fs` (Fahrtspiel) is the proof: **60 activities, 54 now `intervals`, 38 of
-   them with zero WORK reps**.
-   - **The distinction to preserve**: `fartlek` means *never structured*;
-     `intervals` means *structured reps intended*, even when the device data
-     is missing. Relabelling the latter would lie about the session, so
-     missing reps stay `intervals` and become an audit data-gap item instead.
-   - **Core**: add `fartlek` to `WORKOUT_METHODS` and `QUALITY_METHODS`; it is
-     mutually exclusive with `intervals`, and it always makes a session
-     quality. Map `fs` to `fartlek` + a `vo2max` target in `SHEET_TYPE_CODES`,
-     and add the aliases (`fahrtspiel`, `fartlek_run`).
-     `category_for_sets` returns the new `quality/fartlek` kind (item 3).
-   - **Backfill `fartlek_from_fs_v1`**: rewrite the sheet-`fs` activities from
-     `intervals` to `fartlek` (source `backfill`, skip manual rows), leaving
-     their targets alone except for filling a missing one with `vo2max`.
-     Idempotent and dry-run.
-   - **Reports**: a `fartlek` label in the breakdown and the category column;
-     exclude it from the subT rep-length buckets and every rep-count/duration
-     analysis by construction (it has no reps to measure). The `tempo`-style
-     read-time fallback must not turn a fartlek into `intervals`.
-   - **Why this does not contradict the `tempo` retirement**: `tempo`
-     duplicated the target (continuous + threshold); `fartlek` expresses
-     structure, which the target axis cannot say.
-   - **Tests**: `fs` maps to fartlek+vo2max; fartlek is quality; fartlek never
-     round-trips to `intervals`; the 54 fs rows convert and manual rows do not;
-     the subT buckets ignore fartlek.
-
 3. **Derive the display category from the stored sets** (core + reports).
    `classify()` currently re-derives the category from name, duration and
    intervals even when the activity is classified, so the display contradicts
@@ -270,7 +246,7 @@ _None._
      priority: `race` → race, `long_run` → longrun, `fartlek` → fartlek,
      `intervals`/`progression` → intervals, `continuous`+`threshold` → tempo,
      `continuous`+`recovery` → recovery, `continuous` → easy, empty → unknown.
-     `quality/fartlek` is a **new display kind** (item 2), deliberately not
+     `quality/fartlek` is a **new display kind** here, deliberately not
      folded into `intervals/other`, so rep-based analyses stay clean. It must
      round-trip with `classification_for_category` for every mapped pair; the
      only intentional ambiguity is `{continuous}, {base}`, which is `easy`

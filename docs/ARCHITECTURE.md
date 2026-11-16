@@ -276,13 +276,16 @@ SQLite, forward-only migrations. Schema version 11.
 
 Workout classification is set-based and orthogonal:
 
-- **Methods** — `continuous`, `intervals`, `long_run`, `progression`, `race`,
-  `strides`, `other`. A tempo run is `continuous` with a `threshold` target;
-  the retired `tempo` token normalizes to `continuous`.
+- **Methods** — `continuous`, `intervals`, `fartlek`, `long_run`,
+  `progression`, `race`, `strides`, `other`. A tempo run is `continuous` with a
+  `threshold` target; the retired `tempo` token normalizes to `continuous`.
+  `fartlek` means *never structured*: `intervals` means reps were intended,
+  even when the device data is missing.
 - **Targets** — `base`, `lt1`, `subthreshold`, `threshold`, `vo2max`, `speed`,
   `marathon`, `recovery`, `other`.
-- **Quality** is derived: any quality method (`intervals`, `long_run`,
-  `progression`, `race`) or target (`lt1`, `subthreshold`, `threshold`,
+- **Quality** is derived: any quality method (`intervals`, `fartlek`,
+  `long_run`, `progression`, `race`) or target (`lt1`, `subthreshold`,
+  `threshold`,
   `vo2max`, `speed`, `marathon`) makes a session quality;
   base/recovery only is non-quality; no values is unknown. Strides never make
   a session quality by themselves.

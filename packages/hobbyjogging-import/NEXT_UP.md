@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Fartlek for the sheet `fs` code.** `SHEET_TYPE_CODES` maps `fs` to
+  `fartlek` + `vo2max`, with the `fahrtspiel` / `fartlek_run` aliases, so new
+  sheet imports land in the right bucket. The existing rows were converted by
+  `fartlek_from_fs_v1`.
 - **FIT scan manifest.** Routine scans (`sync`) skip files whose resolved
   path, size and mtime match the `fit_scan_files` manifest, so non-activity
   FITs are not re-read. Deleted files are pruned, `--full` ignores the
@@ -146,11 +150,6 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
-- **Fartlek instead of intervals for the sheet `fs` code.** `SHEET_TYPE_CODES`
-  maps `fs` to `intervals` with no target today, which is how 54 historical
-  fartleks ended up in the intervals bucket (38 with zero WORK reps). Map it to
-  `fartlek` + `vo2max` once the core method exists, and add the
-  `fahrtspiel` / `fartlek_run` aliases.
 - **Athlete thresholds and zone configs.** Write `athlete_thresholds`
   snapshots and `zone_configs` rows (reusing identical boundaries) and set the
   activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,

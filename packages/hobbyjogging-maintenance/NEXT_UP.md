@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`fartlek_from_fs_v1`.** Converted the sheet-`fs` activities from
+  `intervals` to `fartlek`, filling a missing target with `vo2max` and skipping
+  manual rows entirely. Applied to the real DB: 60 activities, 40 converted,
+  20 kept manual methods, 34 targets filled.
 - **Recurring workout-set derivation.** `workout_sets_current` is a
   `recompute` task that derives methods/targets for activities that have none,
   using the same classifier/sheet helpers as the backfill. It fills gaps only:
@@ -38,9 +42,6 @@ This file records what the package is still waiting on.
 - **`drop_classification_tags_v1`** (backfill). Remove the sheet's
   `Trainigstyp` codes from `activity_tags`, keeping manual tags and orthogonal
   labels (`hills`, `bad data`); idempotent, dry-run. See root item 19.
-- **`fartlek_from_fs_v1`** (backfill). Rewrite the sheet-`fs` activities from
-  `intervals` to `fartlek` (54 today, 38 of them with no WORK reps), skipping
-  manual rows and filling a missing target with `vo2max`. Idempotent, dry-run.
 - **`athlete_thresholds_v1`** and **`activity_zone_configs_v1`**
   (backfills). Create threshold snapshots and zone configs from the stored
   payloads and set the activity FK columns; idempotent, dry-run.
