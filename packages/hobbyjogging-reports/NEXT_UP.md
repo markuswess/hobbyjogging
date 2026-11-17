@@ -284,8 +284,9 @@ this list keeps the recent decisions only.
   missing days show; planned time weeks are faded zone-coloured bars in both
   the hours and share panels, with the current week's plan stacked on its
   actual bar and the share panel normalized to the combined week; each week
-  stacks hard done, hard planned, easy done, easy planned. Planned load sits
-  on days without an actual load. The total EWMAs and the zone EWMA stack
+  stacks hard done, hard planned, easy done, easy planned. Total time reads in
+  hours while the hard averages use a right-hand minutes axis. Planned load
+  sits on days without an actual load. The total EWMAs and the zone EWMA stack
   project through the plan (dashed for the totals, a translucent area for the
   zones), use the shared
   7-solid/42-dashed/182-dash-dot scheme, carry the same pale halo as the

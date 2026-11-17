@@ -475,6 +475,27 @@ class TimeChartTests(unittest.TestCase):
         self.assertIn("hard 42d avg (weekly)", html)
         self.assertIn("hard 182d avg (weekly)", html)
         self.assertIn('"text":"22%"', html)
+        self.assertIn(
+            "hard minutes " + chr(92) + "u002f week",
+            html,
+        )
+
+        index = html.index("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.index("[", index):]
+        )
+        hard = [
+            trace
+            for trace in data
+            if str(trace.get("name", "")).startswith("hard ")
+        ]
+
+        self.assertTrue(hard)
+        self.assertTrue(
+            all(trace.get("yaxis") == "y3" for trace in hard)
+        )
+        # 1000 s/week of hard running is 116.7 minutes, not 1.94 hours.
+        self.assertIn("116.66", html)
 
     def test_time_chart_flips_zones_and_adds_a_share_panel(self):
         weeks = [

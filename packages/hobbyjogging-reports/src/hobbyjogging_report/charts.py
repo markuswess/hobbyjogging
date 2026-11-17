@@ -71,6 +71,7 @@ from .style import (
     SPIKE_COLOR,
     SUBT_HR_RANGE,
     SUBT_PACE_RANGE,
+    HARD_MINUTES_STEP,
     TIME_Y_MIN,
     TIME_Y_STEP,
     TOTAL_LINE_COLORS,
@@ -294,6 +295,7 @@ def _plot_average_lines(
     dash: dict[str, str] | None = None,
     row: int | None = None,
     col: int | None = None,
+    yaxis: str | None = None,
 ):
     actual = [point for point in points if not point.projected]
     projected = [point for point in points if point.projected]
@@ -343,7 +345,15 @@ def _plot_average_lines(
     # earlier line at a crossing; the pale halo is what keeps a line legible
     # over the bars.
     for x, y, style, _opacity, _name, _show in series:
-        _outline(figure, x, y, style["width"], row=row, col=col)
+        _outline(
+            figure,
+            x,
+            y,
+            style["width"],
+            row=row,
+            col=col,
+            yaxis=yaxis,
+        )
 
     for x, y, style, opacity, name, showlegend in series:
         _add(
@@ -356,6 +366,7 @@ def _plot_average_lines(
                 line=style,
                 opacity=opacity,
                 showlegend=showlegend,
+                yaxis=yaxis,
             ),
             row=row,
             col=col,
@@ -630,6 +641,9 @@ def plot_time(
     )
 
     rows = 3 if zone_points else 2
+    # Hard running is read in minutes per week, on its own right-hand axis;
+    # the bar and total axes stay in hours.
+    hard_axis = f"y{rows + 1}" if hard_points else None
     subplot_titles = ["", "share of weekly running time"]
 
     if zone_points:
@@ -873,7 +887,7 @@ def plot_time(
             figure,
             hard_points,
             windows,
-            scale=time_scale / 3600,
+            scale=time_scale / 60,
             label=lambda attribute, days: (
                 f"hard {days}d avg (weekly)"
             ),
@@ -887,9 +901,31 @@ def plot_time(
                 attribute: LINE_STYLES[getattr(windows, attribute)]
                 for attribute in ("base", "fitness", "fatigue")
             },
-            row=1,
-            col=1,
+            # No row/col: adding through a subplot would snap the trace back
+            # to the row's primary axis.
+            yaxis=hard_axis,
         )
+
+        hard_ceiling = _axis_ceiling(
+            [
+                getattr(point, attribute) * time_scale / 60
+                for point in hard_points
+                for attribute in ("base", "fitness")
+            ],
+            step=HARD_MINUTES_STEP,
+            floor=HARD_MINUTES_STEP,
+        )
+        figure.update_layout({
+            f"yaxis{hard_axis[1:]}": {
+                "overlaying": "y",
+                "side": "right",
+                "anchor": "x",
+                "title": {"text": "hard minutes / week"},
+                "range": [0, hard_ceiling],
+                "showgrid": False,
+                "dtick": HARD_MINUTES_STEP,
+            },
+        })
 
     axis_weeks = sorted(
         set(week_dates if weeks else [])
@@ -2718,6 +2754,7 @@ def _outline(
     *,
     row: int | None = None,
     col: int | None = None,
+    yaxis: str | None = None,
 ) -> None:
     """A pale halo under an EWMA line so it reads over the bars."""
     _add(
@@ -2729,6 +2766,7 @@ def _outline(
             line={"color": "rgba(255, 255, 255, 0.85)", "width": width + 2.5},
             hoverinfo="skip",
             showlegend=False,
+            yaxis=yaxis,
         ),
         row=row,
         col=col,
