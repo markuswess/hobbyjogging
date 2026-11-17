@@ -27,7 +27,6 @@ from ..html import markdown_to_html
 from ..links import resolve_activity_links
 from ..model import AverageWindows
 from ..overview import overview_report
-from ..planned import planned_report
 from ..race_report import race_report
 from ..recovery_report import WINDOWS as RECOVERY_WINDOWS, recovery_report
 from ..review import exclude_review
@@ -274,15 +273,6 @@ def build_dashboard(
         ),
         demote=1,
     )
-    planned_html = markdown_to_html(
-        planned_report(
-            today + timedelta(days=1),
-            today + timedelta(days=14),
-            source,
-            today=today,
-        ),
-        demote=1,
-    )
     mark("reports", phase)
 
     phase = perf_counter()
@@ -356,7 +346,6 @@ def build_dashboard(
             end=today,
             overview_html=overview_html,
             daily_html=daily_html,
-            planned_html=planned_html,
             volume_bars=volume_bars,
             planned_bars=planned_bars,
             volume_series=volume_series,

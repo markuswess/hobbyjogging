@@ -72,7 +72,6 @@ def overview_page(
     end: date,
     overview_html: str,
     daily_html: str,
-    planned_html: str,
     volume_bars: list[tuple[date, float, float, float]],
     planned_bars: list[tuple[date, float, float, float]],
     volume_series: ZoneGroupSeries,
@@ -114,7 +113,6 @@ def overview_page(
         card(None, f'<div class="report">{overview_html}</div>')
         + card("Overview", volume_html)
         + card(None, f'<div class="report">{daily_html}</div>')
-        + card(None, f'<div class="report">{planned_html}</div>')
         + f'<p>{link("activities.html", "All activities →")}</p>'
     )
 

@@ -36,12 +36,12 @@ Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
   cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
-  the next 14 days; the main overview chart; the daily report; and the
-  planned workouts for the next 14 days. Upcoming races live on the
-  Performance tab.
-  The EWMA overview, the daily report, and the planned section are the
-  rendered `overview`, `daily`, and `planned` Markdown reports; the chart
-  uses the last 182 days plus the next 14 by default.
+  the next 14 days; the main overview chart; and the daily report. Upcoming
+  races live on the Performance tab, and the plan itself on the activities
+  tab (rows and event pages), so Overview no longer repeats the planned
+  report. The EWMA overview and the daily report are the rendered `overview`
+  and `daily` Markdown reports; the chart uses the last 182 days plus the next
+  14 by default.
 - `activities.html` — a training log: the recent activities (default 50) with
   workout methods and targets, linked to per-activity pages, plus a row for
   every planned event in the shown range and the next 14 days that has no

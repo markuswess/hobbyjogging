@@ -261,7 +261,6 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("1h15", index)
             self.assertIn("16.0", index)
             self.assertIn("15min", index)
-            self.assertIn("5x5 subT", index)
             self.assertIn(">Overview</h2>", index)
             self.assertIn("hard 7d", index)
             self.assertIn("hard 42d", index)
@@ -275,8 +274,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("2026-09-01", index)
             self.assertIn("2026-11-23", index)
             self.assertIn("Daily Training Report", index)
-            self.assertIn("Planned Workouts", index)
-            self.assertIn("Z3+4 uses each event's planned zone kind", index)
+            self.assertNotIn("Planned Workouts", index)
             self.assertNotIn("Plan vs actual", index)
             self.assertNotIn("Training load", index)
             self.assertNotIn("Quality sessions", index)
@@ -557,8 +555,9 @@ class DashboardBuildTests(unittest.TestCase):
                 "No activities found",
                 (target / "activities.html").read_text(),
             )
-            self.assertIn(
-                "No planned sessions",
+            # The plan lives on the activities tab, not Overview.
+            self.assertNotIn(
+                "Planned Workouts",
                 (target / "index.html").read_text(),
             )
             self.assertIn(
