@@ -28,19 +28,19 @@ Outputs
 
 Decision
 --------
-The setting is a ceiling, so absolute closeness is not the test. The
-pre-registered criteria are:
+The setting is a target for threshold sessions and a ceiling for subT/LT1
+sessions, so absolute closeness is not the test. The revised criteria are:
 
-- compliance: at most 5% of WORK reps faster than the setting pace or above
-  LTHR;
+- threshold target: at most 15% of WORK reps over the pace setting or above
+  LTHR, with a median overshoot <= 3 s/km and <= 2 bpm;
+- subT/LT1 ceiling: at most 5% of reps over either limit;
 - execution stability: work-rep HR SD <= 3 bpm across measured intervals;
 - relative tracking: change in setting and change in measured pace correlate
-  (>= 0.6);
-- margin stability: the setting-minus-measured pace margin does not drift.
+  (>= 0.6).
 
-Passing the compliance and relative criteria means the setting is a useful
-prescription; it still is not a measured LT2. Failing relative tracking means
-it is a manual input, not a fitness signal.
+Passing means the setting is a useful target/reference; it still is not a
+measured LT2. Failing relative tracking means it is a manual input, not a
+fitness signal.
 
     uv run --env-file .env python experiments/threshold_pace.py
 """
@@ -205,12 +205,16 @@ def percentile(values: list[float], q: float) -> float:
 
 
 def compliance(primary: list[dict], snapshots) -> dict:
-    """Per-rep ceiling checks and the margin distribution."""
+    """Per-rep overshoots, session margins, and signed range deltas."""
     total_reps = 0
     pace_violations = 0
     hr_violations = 0
+    pace_overshoots = []
+    hr_overshoots = []
     session_pace_margins = []
+    session_pace_pct = []
     session_hr_margins = []
+    session_hr_delta = []
 
     for effort in primary:
         snapshot = interval_for(effort["date"], snapshots)
@@ -222,27 +226,37 @@ def compliance(primary: list[dict], snapshots) -> dict:
             continue
 
         session_pace_margins.append(effort["pace"] - setting_pace)
+        session_pace_pct.append(
+            100.0 * (effort["pace"] - setting_pace) / setting_pace
+        )
 
         if effort["hr"] is not None and snapshot.lthr:
             session_hr_margins.append(snapshot.lthr - effort["hr"])
+            session_hr_delta.append(effort["hr"] - snapshot.lthr)
 
         for rep in effort["rep_details"]:
             total_reps += 1
             if rep["pace"] < setting_pace:
                 pace_violations += 1
+                pace_overshoots.append(setting_pace - rep["pace"])
             if (
                 snapshot.lthr
                 and rep["hr"] is not None
                 and rep["hr"] > snapshot.lthr
             ):
                 hr_violations += 1
+                hr_overshoots.append(rep["hr"] - snapshot.lthr)
 
     return {
         "reps": total_reps,
         "pace_violations": pace_violations,
         "hr_violations": hr_violations,
+        "pace_overshoots": pace_overshoots,
+        "hr_overshoots": hr_overshoots,
         "pace_margins": session_pace_margins,
+        "pace_pct": session_pace_pct,
         "hr_margins": session_hr_margins,
+        "hr_delta": session_hr_delta,
     }
 
 
@@ -616,51 +630,103 @@ def main() -> None:
             headers=["metric", "value"],
         )
 
-        # Ceiling compliance and execution quality.
+        # Ceiling/target behaviour and execution quality.
         stats = compliance(primary, run_snapshots)
+        secondary_stats = compliance(secondary, run_snapshots)
         pace_rate = (
             stats["pace_violations"] / stats["reps"] if stats["reps"] else None
         )
         hr_rate = (
             stats["hr_violations"] / stats["reps"] if stats["reps"] else None
         )
+        secondary_pace_rate = (
+            secondary_stats["pace_violations"] / secondary_stats["reps"]
+            if secondary_stats["reps"]
+            else None
+        )
+        secondary_hr_rate = (
+            secondary_stats["hr_violations"] / secondary_stats["reps"]
+            if secondary_stats["reps"]
+            else None
+        )
 
-        print("\nceiling compliance (threshold-target work reps):")
+        def overshoot_row(name: str, item: dict) -> tuple:
+            reps = item["reps"]
+            pace = item["pace_overshoots"]
+            hr = item["hr_overshoots"]
+            return (
+                name,
+                reps,
+                f"{len(pace)} ({100 * len(pace) / reps:.0f}%)"
+                if reps
+                else "-",
+                f"{median(pace):.1f}" if pace else "-",
+                f"{percentile(pace, 0.9):.1f}" if pace else "-",
+                f"{max(pace):.1f}" if pace else "-",
+                f"{len(hr)} ({100 * len(hr) / reps:.0f}%)"
+                if reps
+                else "-",
+                f"{median(hr):.1f}" if hr else "-",
+                f"{percentile(hr, 0.9):.1f}" if hr else "-",
+                f"{max(hr):.1f}" if hr else "-",
+            )
+
+        print("\nper-rep overshoot (pace faster than setting, HR above LTHR):")
         table(
             [
-                ("work reps", stats["reps"]),
+                overshoot_row("threshold target", stats),
+                overshoot_row("subT/LT1", secondary_stats),
+            ],
+            headers=[
+                "population",
+                "reps",
+                "pace over",
+                "median s/km",
+                "p90",
+                "max",
+                "HR over",
+                "median bpm",
+                "p90",
+                "max",
+            ],
+        )
+
+        def share_within(values: list[float], limit: float) -> float:
+            if not values:
+                return 0.0
+            return 100.0 * sum(abs(value) <= limit for value in values) / len(
+                values
+            )
+
+        print("\nsession range (signed: pace slower positive, HR above positive):")
+        table(
+            [
                 (
-                    "faster than setting",
-                    f"{stats['pace_violations']} "
-                    f"({100 * pace_rate:.0f}%)"
-                    if pace_rate is not None
-                    else "-",
+                    "pace (% of setting)",
+                    len(stats["pace_pct"]),
+                    f"{share_within(stats['pace_pct'], 3):.0f}%",
+                    f"{share_within(stats['pace_pct'], 5):.0f}%",
+                    f"{share_within(stats['pace_pct'], 10):.0f}%",
                 ),
                 (
-                    "HR above LTHR",
-                    f"{stats['hr_violations']} "
-                    f"({100 * hr_rate:.0f}%)"
-                    if hr_rate is not None
-                    else "-",
-                ),
-                (
-                    "session pace margin (measured - setting)",
-                    f"median {median(stats['pace_margins']):+.1f} s/km, "
-                    f"IQR {percentile(stats['pace_margins'], 0.25):+.1f}.."
-                    f"{percentile(stats['pace_margins'], 0.75):+.1f}"
-                    if stats["pace_margins"]
-                    else "-",
-                ),
-                (
-                    "session HR margin (LTHR - measured)",
-                    f"median {median(stats['hr_margins']):+.1f} bpm, "
-                    f"IQR {percentile(stats['hr_margins'], 0.25):+.1f}.."
-                    f"{percentile(stats['hr_margins'], 0.75):+.1f}"
-                    if stats["hr_margins"]
-                    else "-",
+                    "HR (bpm from LTHR)",
+                    len(stats["hr_delta"]),
+                    f"{share_within(stats['hr_delta'], 3):.0f}%",
+                    f"{share_within(stats['hr_delta'], 5):.0f}%",
+                    f"{share_within(stats['hr_delta'], 10):.0f}%",
                 ),
             ],
-            headers=["check", "value"],
+            headers=["measure", "sessions", "±3", "±5", "±10"],
+        )
+        print(
+            f"session pace margin: median "
+            f"{median(stats['pace_margins']):+.1f} s/km, "
+            f"IQR {percentile(stats['pace_margins'], 0.25):+.1f}.."
+            f"{percentile(stats['pace_margins'], 0.75):+.1f}; "
+            f"session HR margin (LTHR - measured): median "
+            f"{median(stats['hr_margins']):+.1f} bpm."
+            if stats["pace_margins"] and stats["hr_margins"]
+            else "session margins: insufficient data"
         )
 
         print("\nHR lag by work-rep length:")
@@ -804,33 +870,60 @@ def main() -> None:
             headers=["population", "intervals", "median |delta|"],
         )
 
-        # Verdict against the ceiling/prescription criteria.
-        if (
+        # Verdict against the target/ceiling criteria.
+        pace_over_median = (
+            median(stats["pace_overshoots"])
+            if stats["pace_overshoots"]
+            else None
+        )
+        hr_over_median = (
+            median(stats["hr_overshoots"])
+            if stats["hr_overshoots"]
+            else None
+        )
+        threshold_ok = (
             pace_rate is not None
             and hr_rate is not None
+            and pace_rate <= 0.15
+            and hr_rate <= 0.15
+            and (pace_over_median is None or pace_over_median <= 3.0)
+            and (hr_over_median is None or hr_over_median <= 2.0)
+        )
+        subt_ok = (
+            (secondary_pace_rate is None or secondary_pace_rate <= 0.05)
+            and (secondary_hr_rate is None or secondary_hr_rate <= 0.05)
+        )
+
+        if (
+            threshold_ok
+            and subt_ok
             and hr_sd is not None
             and relative_corr is not None
         ):
-            if (
-                pace_rate <= 0.05
-                and hr_rate <= 0.05
-                and hr_sd <= 3
-                and relative_corr >= 0.6
-            ):
-                verdict = "corroborated as a prescription"
-            elif pace_rate > 0.2 or hr_rate > 0.2 or relative_corr < 0:
-                verdict = "uncorroborated"
+            if hr_sd <= 3 and relative_corr >= 0.6:
+                verdict = "corroborated as a target/reference"
             else:
                 verdict = "mixed"
-            print(f"\nverdict: {verdict}")
-            print(
-                "Absolute delta is expected for a ceiling; compliance, "
-                "execution stability and relative movement are the tests. "
-                f"Only {len(measured_intervals)} intervals have enough "
-                "measured efforts, so the change correlation is suggestive."
-            )
+        elif pace_rate is not None and (
+            pace_rate > 0.3 or (relative_corr is not None and relative_corr < 0)
+        ):
+            verdict = "uncorroborated"
         else:
-            print("\nverdict: insufficient data for the ceiling criteria")
+            verdict = "mixed"
+
+        print(f"\nverdict: {verdict}")
+        print(
+            f"threshold target: {100 * pace_rate:.0f}% of reps over pace, "
+            f"{100 * hr_rate:.0f}% over LTHR; median overshoot "
+            f"{pace_over_median if pace_over_median is not None else '-'} s/km / "
+            f"{hr_over_median if hr_over_median is not None else '-'} bpm. "
+            f"subT/LT1: "
+            f"{100 * secondary_pace_rate if secondary_pace_rate is not None else '-'}% "
+            f"pace / "
+            f"{100 * secondary_hr_rate if secondary_hr_rate is not None else '-'}% "
+            "HR over. Only four measured intervals, so the change correlation "
+            "is suggestive; the setting is a reference, not a measured LT2."
+        )
 
         # Plot: setting step line plus measured efforts.
         figure = go.Figure()
