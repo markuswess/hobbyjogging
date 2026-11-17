@@ -368,6 +368,11 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("RPE 182d", analysis)
             self.assertIn("Pace vs heart rate", analysis)
             self.assertIn("weather on 1 of", analysis)
+            # The next 14 days' plan appears on the volume, time and load
+            # charts, beyond the actual window.
+            self.assertIn("planned km", analysis)
+            self.assertIn("planned zones", analysis)
+            self.assertIn('"name":"planned"', analysis)
             self.assertIn("avg HR (bpm)", analysis)
             self.assertNotIn("subT and LT1 intervals", analysis)
             self.assertEqual(4, analysis.count("Plotly.newPlot"))

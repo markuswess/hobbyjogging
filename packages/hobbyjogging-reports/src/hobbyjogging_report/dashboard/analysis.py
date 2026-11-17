@@ -11,6 +11,7 @@ from ..analysis import (
     RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
     average_warmup_days,
+    daily_planned_load,
     distance_averages,
     load_metrics,
     pace_hr_points,
@@ -18,6 +19,9 @@ from ..analysis import (
     rpe_metrics,
     time_averages,
     week_bounds,
+    weekly_planned_distance,
+    weekly_planned_time,
+    weekly_planned_time_by_zone,
     weekly_run_distance,
     weekly_time_by_zone,
     zone_time_averages,
@@ -51,8 +55,9 @@ def build_analysis_section(
     start: date,
     end: date,
     include_review: bool = False,
+    future_days: int = 0,
 ) -> AnalysisSection:
-    """Build the volume, time, and load charts."""
+    """Build the volume, time, and load charts, plus any future plan."""
     windows = AverageWindows()
     warmup_days = average_warmup_days(windows)
     activities, _ = exclude_review(
@@ -68,6 +73,25 @@ def build_analysis_section(
     runs = [
         activity for activity in display if activity.type in RUN_TYPES
     ]
+    plan_start = end + timedelta(days=1)
+    plan_end = end + timedelta(days=future_days)
+    events = (
+        source.events(plan_start, plan_end) if future_days > 0 else []
+    )
+    planned_distance = weekly_planned_distance(
+        events,
+        plan_start,
+        plan_end,
+    )
+    planned_time = weekly_planned_time(events, plan_start, plan_end)
+    planned_zone_weeks = weekly_planned_time_by_zone(
+        events,
+        plan_start,
+        plan_end,
+        kind="pace",
+        zone_count=ZONE_COUNT,
+    )
+    planned_load = daily_planned_load(events, end, plan_end)
 
     weekly_distance = weekly_run_distance(display)
     distance_points = distance_averages(
@@ -82,6 +106,7 @@ def build_analysis_section(
             weekly_distance,
             "",
             distance_points=distance_points,
+            planned_distance=planned_distance,
             as_html=True,
         )
         if any(activity.distance_m for activity in runs)
@@ -124,6 +149,8 @@ def build_analysis_section(
                 zone_count=ZONE_COUNT,
             ),
             zone_window_days=windows.base,
+            planned_time=planned_time,
+            planned_zone_weeks=planned_zone_weeks,
             windows=windows,
             as_html=True,
         )
@@ -150,6 +177,7 @@ def build_analysis_section(
                 windows=windows,
                 warmup_days=warmup_days,
             ),
+            planned_load=planned_load,
             as_html=True,
         )
         if any(point.load > 0 for point in load_points)
