@@ -546,6 +546,46 @@ class TimeMetricsTests(unittest.TestCase):
         self.assertGreater(points[1].fatigue, 0)
         self.assertGreater(points[1].fatigue, points[0].fatigue)
 
+    def test_time_averages_project_hard_zone_time(self):
+        events = [
+            Event(
+                date=date(2026, 10, 2),
+                type="run",
+                zone_kind="pace",
+                zone_times=[
+                    EventZoneTime("Z1", 1800, 1),
+                    EventZoneTime("Z3", 3600, 3),
+                ],
+            ),
+        ]
+
+        points = time_averages(
+            [
+                Activity(
+                    id="a",
+                    date=D,
+                    type="run",
+                    duration_s=3600,
+                    pace_zone_times=[600, 900, 1200, 900],
+                )
+            ],
+            D,
+            D,
+            warmup_days=10,
+            zones=(3, 4),
+            events=events,
+            projected_end=date(2026, 10, 2),
+        )
+
+        self.assertEqual(2, len(points))
+        self.assertEqual(
+            [False, True],
+            [point.projected for point in points],
+        )
+        # Only the planned Z3 time counts; the easy half is ignored.
+        self.assertEqual(3600, points[-1].time_s)
+        self.assertGreater(points[-1].fitness, points[0].fitness)
+
     def test_weekly_time_by_zone_uses_pace_zones_and_monday_weeks(self):
         activities = [
             Activity(

@@ -296,6 +296,7 @@ def _plot_average_lines(
     row: int | None = None,
     col: int | None = None,
     yaxis: str | None = None,
+    projection_label: str = "avg projection",
 ):
     actual = [point for point in points if not point.projected]
     projected = [point for point in points if point.projected]
@@ -379,7 +380,7 @@ def _plot_average_lines(
                 x=[],
                 y=[],
                 mode="lines",
-                name="avg projection",
+                name=projection_label,
                 line={
                     "color": AVERAGE_COLORS["base"],
                     "width": 2,
@@ -929,6 +930,7 @@ def plot_time(
             # No row/col: adding through a subplot would snap the trace back
             # to the row's primary axis.
             yaxis=hard_axis,
+            projection_label="hard projection",
         )
 
     axis_weeks = sorted(

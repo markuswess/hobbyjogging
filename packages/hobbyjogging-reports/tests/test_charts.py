@@ -514,6 +514,41 @@ class TimeChartTests(unittest.TestCase):
             hard[0]["y"][0] / 60 / hours[1],
         )
 
+    def test_hard_ewmas_project_through_the_plan(self):
+        weeks = [TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 900, 0], 0)]
+        hard = [
+            TimePoint(D, 1200, 1000, 1100, 1150),
+            TimePoint(
+                date(2026, 1, 12),
+                1800,
+                1100,
+                1200,
+                1250,
+                projected=True,
+            ),
+        ]
+
+        html = plot_time(weeks, "", hard_points=hard, as_html=True)
+
+        self.assertIn("hard projection", html)
+
+        index = html.index("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.index("[", index):]
+        )
+        projected = [
+            trace
+            for trace in data
+            if trace.get("yaxis") == "y3"
+            and trace.get("opacity") == 0.55
+            and trace.get("line", {}).get("dash") == "dash"
+        ]
+
+        self.assertEqual(3, len(projected))
+        self.assertTrue(
+            all(len(trace["x"]) == 2 for trace in projected)
+        )
+
     def test_time_chart_flips_zones_and_adds_a_share_panel(self):
         weeks = [
             TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 900, 0], 600),

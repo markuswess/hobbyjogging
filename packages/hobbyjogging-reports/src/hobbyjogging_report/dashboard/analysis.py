@@ -141,6 +141,9 @@ def build_analysis_section(
         week_end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=plan_end,
+        projection_start=end,
         zones=(3, 4),
     )
     time_html = (

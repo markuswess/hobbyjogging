@@ -102,7 +102,8 @@ def time_averages(
     ``events`` and ``projected_end`` are given, the averages continue
     through planned time; those points are marked ``projected``. Pass
     ``zones`` (1-based) to average only those pace zones, e.g. ``(3, 4)``
-    for hard running; such series are not projected.
+    for hard running; a zone-filtered series projects from the planned zone
+    time in the same zones.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
@@ -114,7 +115,6 @@ def time_averages(
         events is not None
         and projected_end is not None
         and projected_end > projection_start
-        and zones is None
     )
     series_end = projection_start if projected else end
 
@@ -135,15 +135,24 @@ def time_averages(
         ]
 
     if projected:
-        series = _extend_series(
-            series,
-            daily_planned_time(
+        if zones is None:
+            planned = daily_planned_time(
                 events,
                 series_end + timedelta(days=1),
                 projected_end,
-            ),
-            projected_end,
-        )
+            )
+        else:
+            planned = [
+                (day, sum(values[index - 1] for index in zones))
+                for day, values in daily_planned_zone_time(
+                    events,
+                    series_end + timedelta(days=1),
+                    projected_end,
+                    zone_count=max(zones),
+                )
+            ]
+
+        series = _extend_series(series, planned, projected_end)
     else:
         projection_start = None
 
