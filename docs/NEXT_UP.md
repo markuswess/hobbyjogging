@@ -941,6 +941,40 @@ one takes the next free number, so cross-references stay valid.
     - **Open**: a code-level tag lexicon vs a `tag_semantics` table/CLI; the
       audit can list unmapped tags first.
 
+38. **Session-average metrics now, streams later** (core + import + maintenance
+    + reports; later). The session-level aggregates are already in the raw
+    payloads and the FIT archive, but most are not stored: FIT session fields
+    (cadence, stride, vertical oscillation, stance time/percent/balance,
+    vertical ratio, respiration, power, calories, training effect, altitude),
+    Intervals (cadence 83 %, stride 82 %, calories 100 %, altitude 98 %),
+    Runalyze (dynamics 79 %, GAP 80 %, power 97 %) and the sheet
+    (cadence/contact/oscillation ~33 %). Extract the session averages; leave
+    per-second streams in the FIT archive for later.
+    - **Audit first**: list every session-average field, its coverage, units and
+      conflicts across the four sources; reuse item 37's raw-field audit.
+    - **Schema**: one `activity_metrics` row per activity (like
+      `activity_weather`), with nullable Tier 1 columns: cadence (spm), stride
+      (m), vertical oscillation (mm), stance time (ms/percent), stance balance
+      (%), vertical ratio (%), respiration, power (rides), calories, training
+      effect, GAP (m/s), average/min/max altitude. The first source owns the
+      row and later sources fill gaps; FIT is the authority for
+      device-measured dynamics, Runalyze fills gaps, and Intervals owns
+      cadence/stride/calories/altitude where FIT has none. Tier 2 (climb score,
+      percentage hilly, power variability, HR recovery, decoupling, efficiency
+      factor, TRIMP) stays in the raw payload until a report needs it.
+    - **Extraction**: extend `FitSession` and the FIT parser, then backfill from
+      `source_records.raw_path`; map the Intervals, Runalyze and sheet payloads
+      and backfill them too. Calories is the quick win: FIT already parses it
+      and drops it, and Intervals/Runalyze cover it at ~100 %.
+    - **Reports/lab**: session-report lines and dynamics/power charts; derived
+      metrics (decoupling, efficiency, critical speed) stay in the lab with a
+      metric card.
+    - **Streams later**: keep the raw FIT archive as the stream source; add a
+      stream index/metadata table and parse on demand or into Parquet. Do not
+      put per-second rows in the canonical SQLite database.
+    - **Sequence**: after the Runalyze import and the historical refurbishment
+      (item 37); the audit can run earlier.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 

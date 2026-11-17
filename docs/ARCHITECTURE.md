@@ -22,20 +22,24 @@ see [NEXT_UP.md](NEXT_UP.md); for working conventions see
 
 ## Stages
 
-The work has moved in six stages. **Canonical pipeline**: one SQLite database
-as the single ground truth, several sources merged into one activity with
-provenance kept and conflicts surfaced, and a review workflow that makes the
-data trustworthy. **Review and editing**: triage, manual overrides that survive
-reimports, durable exclusion, and activity linking. **Reports and dashboard**:
-Markdown reports, charts and a static dashboard over the same analysis layer.
-**More sources**: the FIT archive, Intervals.icu and the Garmin Personal API are
-in, the historical spreadsheet is imported, and Runalyze enrichment is in
-progress (phases 1–2 landed). **Race tracking**: planned races linked to the
-completed activities, official results, and race reports. **Later**: platform
-independence (owning edits, comments, planning and subjective wellness
-locally), a small front end over the database, and a deterministic LLM coaching
-bundle. The first three are done, the fourth and fifth are in progress, and
-the last is deliberately dormant; the stage-level work lives in
+The work has moved in seven stages. **Canonical pipeline**: one SQLite
+database as the single ground truth, several sources merged into one activity
+with provenance kept and conflicts surfaced, and a review workflow that makes
+the data trustworthy. **Review and editing**: triage, manual overrides that
+survive reimports, durable exclusion, and activity linking. **Reports and
+dashboard**: Markdown reports, charts and a static dashboard over the same
+analysis layer. **More sources**: the FIT archive, Intervals.icu and the Garmin
+Personal API are in, the historical spreadsheet is imported, and Runalyze
+enrichment is in progress (phases 1–2 landed). **Race tracking**: planned races
+linked to the completed activities, official results, and race reports.
+**Data depth**: session-average metrics from the FIT session, Intervals,
+Runalyze and the sheet — cadence, stride, running dynamics, power, calories,
+GAP, altitude — come next; per-second streams stay in the raw FIT archive and
+are parsed on demand later. **Later**: platform independence (owning edits,
+comments, planning and subjective wellness locally), a small front end over the
+database, and a deterministic LLM coaching bundle. The first three are done,
+the fourth and fifth are in progress, data depth is queued after them, and the
+last is deliberately dormant; the stage-level work lives in
 [NEXT_UP.md](NEXT_UP.md), while this file records the structure and the rules.
 
 ## Where the data comes from
@@ -670,6 +674,9 @@ dashboard: the view models make it cheap to add later.
 - No direct remote database access; clients read rendered pages.
 - Generic CSV import remains optional/deferred. Runalyze is covered by its API,
   not by CSV.
+- Per-second activity streams are not stored as SQLite rows. The raw FIT
+  archive is the stream source; a stream index and an on-demand reader (or
+  Parquet materialisation) are deferred until a consumer needs them.
 - The Runalyze Garmin-id gap means matching stays temporal; exact linking can
   be added if Runalyze ever exposes the external activity id.
 
