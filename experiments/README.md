@@ -69,7 +69,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Durability / decoupling | Do I fade within long runs, and is durability improving? | candidate | — | 2026-11-13 |
 | Efficiency vs duration (start-up + drift) | Is session efficiency duration-dependent, and do a start-up term and drift explain it? | parked | `efficiency_duration.py` | 2026-11-13 |
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
-| Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? | candidate | — | 2026-11-13 |
+| Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | candidate | — | 2026-11-16 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
@@ -116,3 +116,13 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   not only a mix artifact, but the index is not clean enough to promote.
   Revisit with tempo/threshold efforts that cover the reference HR, or with
   streams. Evidence: `experiments/aerobic_threshold.py`.
+
+### Retired notes
+
+- **Work-interval efficiency** — retired 2026-11-17: already implemented for
+  subT/LT1 through `subt_work_points` / `subt_session_point`, and rendered in
+  the subT report, subT EWMA, session report and subT chart. 156 of 159
+  sessions with `subthreshold` or `lt1` targets are name-matched, so a
+  target-based selection would add almost nothing. The remaining interval
+  workouts are VO2max/speed/fartlek, where work-rep efficiency is
+  intensity-specific and not comparable to aerobic efficiency.
