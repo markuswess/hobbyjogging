@@ -345,6 +345,15 @@ this list keeps the recent decisions only.
   counts plus the category counts, and the demo gained a bike and an other
   item.
 
+- **Threshold trend.** The Compare tab gains a threshold chart from the run
+  `athlete_thresholds` snapshots: LTHR and max HR as step lines, threshold
+  pace on a reversed min/km axis (one line per snapshot period, carried to
+  today), and official race paces as markers with name and distance. The
+  subT report adds `Δ threshold` per work block against the setting in
+  effect. `DatabaseSource` now exposes `athlete_thresholds()` and
+  `race_results()`; the demo writes four run snapshots and gives its latest
+  three races official results.
+
 - **Running-only load.** The promoted cross-training load-transfer handoff
   (best transfer factor 0) is consumed: the load chart stacks running and
   cross load but computes base/fitness/fatigue from running only, the
@@ -390,13 +399,11 @@ lists and the season/illness bands landed here.
    steps, CTL/ATL; readiness and stress are empty in the payloads) plus a
    weight trend from `wellness_days` (schema v19).
 
-5. **Threshold trend and era-correct zones.** The dated snapshots landed
-   (schema v14/v15) and `DataSource.athlete_thresholds()` returns them, so the
-   LTHR/threshold-pace/max-HR chart beside VO2max, the subT comparison with the
-   period's threshold pace, and the race-derived series from the official
-   results (schema v16) are reports-only. Normalizing zone times through each
-   activity's config needs that config id on the model first: the database
-   column exists, but the repository query and `Activity` drop it.
+5. **Era-correct zone times.** Normalizing zone times through each
+   activity's own config needs that config id on the model first: the
+   database column exists, but the repository query and `Activity` drop it.
+   The threshold trend (LTHR/max-HR/threshold-pace chart, subT comparison and
+   official race paces) has landed.
 
 6. **Elevation in the reports.** The columns landed (schema v12) but the
    repository's activity query and the `Activity` model drop
@@ -552,7 +559,10 @@ Covered now:
   and a longest streak from before the analysis window;
 - gear categories: the grouping order and labels, per-category report
   sections, the chart traces/colours and retired fading, and the demo's bike
-  and other items.
+  and other items;
+- thresholds: the run snapshot series, the pace-at lookup, the chart traces
+  and official race markers, the subT `Δ threshold` column, and the demo's
+  snapshots and official results.
 
 New work should add:
 

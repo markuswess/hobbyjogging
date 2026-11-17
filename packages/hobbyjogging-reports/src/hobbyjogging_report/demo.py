@@ -147,6 +147,8 @@ def _write_demo(
     _write_wellness(writer, activities, start, today, rng)
     events = _write_events(writer, activities, today)
     periods = _write_periods(writer, start, today)
+    _write_thresholds(writer, start, today)
+    _write_race_results(writer, activities)
 
     if with_review_items:
         _write_review_items(writer, activities)
@@ -165,6 +167,52 @@ _DEMO_SEASONS = (
     (30 * 7, 60 * 7 - 1, "Marathon build"),
     (60 * 7, None, "Norwegian block"),
 )
+
+
+def _write_thresholds(writer, start: date, today: date) -> None:
+    """Write a plausible run threshold series for the story."""
+    span = max((today - start).days, 1)
+    rows = []
+
+    # A threshold sits slower than 10k race pace; the story's 10k is ~3:42.
+    for share, pace in (
+        (0.0, 4.30),
+        (0.35, 4.35),
+        (0.72, 4.40),
+        (1.0, 4.45),
+    ):
+        day = start + timedelta(days=int(span * share))
+        rows.append({
+            "effective_from": day.isoformat(),
+            "sport": "run",
+            "max_hr": 192.0,
+            "lthr": 174.0,
+            "threshold_pace_mps": pace,
+        })
+
+    writer.replace_athlete_thresholds(rows, source="demo")
+
+
+def _write_race_results(writer, activities: list[dict]) -> None:
+    """Give the latest demo races an official distance and time."""
+    races = [
+        activity
+        for activity in activities
+        if "race" in activity["methods"]
+    ]
+    races.sort(key=lambda activity: activity["day"])
+
+    for activity in races[-3:]:
+        values = activity["values"]
+        writer.upsert_race_result(
+            activity["id"],
+            source="demo",
+            name=activity["name"],
+            official_distance_m=round(values["distance_m"], 1),
+            official_time_s=round(values["duration_s"]),
+            officially_measured=True,
+            status="completed",
+        )
 
 
 def _write_periods(writer, start: date, today: date) -> int:

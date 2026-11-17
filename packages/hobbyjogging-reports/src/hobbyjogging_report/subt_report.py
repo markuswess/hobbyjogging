@@ -7,8 +7,10 @@ from hobbyjogging_core.datasource import DataSource
 from .analysis import (
     is_lt1_activity,
     is_subt_activity,
+    running_thresholds,
     subt_report_blocks,
     subt_report_summary,
+    threshold_at,
 )
 from .command_support import resting_hr_lookup
 from .format import (
@@ -68,6 +70,13 @@ def subt_report(
         intervals_by_id,
         resting_hr=resting_hr_lookup(source, start, end),
     )
+    thresholds = running_thresholds(source.athlete_thresholds())
+
+    def threshold_pace(day):
+        point = threshold_at(thresholds, day)
+        return point.pace_s_per_km if point else None
+
+    lookup = threshold_pace if thresholds else None
 
     lines = [f"# {title}", f"{start} → {end}"]
 
@@ -96,6 +105,12 @@ def subt_report(
             "each group."
         )
 
+    if lookup is not None:
+        lines.append(
+            "\nΔ threshold is the work pace minus the run threshold "
+            "setting in effect; positive is slower."
+        )
+
     by_category = {}
 
     for block in blocks:
@@ -108,6 +123,11 @@ def subt_report(
             continue
 
         lines.append(f"\n## {subt_category_label(summary.category)}")
-        lines.extend(format_subt_block_table(category_blocks))
+        lines.extend(
+            format_subt_block_table(
+                category_blocks,
+                threshold_lookup=lookup,
+            )
+        )
 
     return "\n".join(lines)

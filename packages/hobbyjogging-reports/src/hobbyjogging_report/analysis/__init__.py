@@ -125,6 +125,13 @@ from .races import (
 )
 from .recovery import RecoveryBand, RecoveryBands, recovery_bands, recovery_trends
 from .rpe import daily_session_rpe, rpe_metrics
+from .thresholds import (
+    RacePacePoint,
+    ThresholdPoint,
+    race_pace_points,
+    running_thresholds,
+    threshold_at,
+)
 from .streaks import (
     DEFAULT_STREAK_LIMIT,
     MIN_STREAK_RUN_S,
@@ -195,12 +202,15 @@ __all__ = [
     "RACE_BUCKETS",
     "RaceResult",
     "RiegelFit",
+    "RacePacePoint",
     "RunStreak",
     "StreakTableRow",
     "StreakSummary",
+    "ThresholdPoint",
     "is_streak_run",
     "run_streaks",
     "streak_summary",
+    "threshold_at",
     "streak_table_rows",
     "STANDARD_BUCKETS",
     "STANDARD_DISTANCES",
@@ -247,6 +257,7 @@ __all__ = [
     "pb_progressions",
     "personal_bests",
     "race_bucket",
+    "race_pace_points",
     "race_results",
     "riegel_reference",
     "riegel_time",
@@ -272,6 +283,7 @@ __all__ = [
     "RecoveryBands",
     "recovery_bands",
     "recovery_trends",
+    "running_thresholds",
     "retirement_candidates",
     "robust_baseline",
     "robust_baselines",

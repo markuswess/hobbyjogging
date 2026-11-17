@@ -2,6 +2,7 @@ import unittest
 from datetime import date, timedelta
 from functools import partial
 
+from hobbyjogging_core.model import AthleteThreshold
 from hobbyjogging_report.analysis import (
     subt_blocks,
     subt_report_blocks,
@@ -228,6 +229,26 @@ class SubtReportRenderingTests(unittest.TestCase):
         self.assertIn("| Short | 1 | 1 | 1:30 | 0.3 |", report)
         # 1680 s and 5.6 km total over two weeks.
         self.assertIn("| **Total** | 1 | 6 | 14:00 | 2.8 |", report)
+
+    def test_report_compares_work_pace_with_the_period_threshold(self):
+        source = FakeSource(
+            [self.activity],
+            {"mixed": mixed_intervals()},
+            thresholds=[
+                AthleteThreshold(
+                    effective_from=date(2026, 1, 1),
+                    sport="run",
+                    threshold_pace_mps=4.0,
+                )
+            ],
+        )
+
+        report = subt_report(D1, D2, "subT Report", source)
+
+        self.assertIn("Δ threshold", report)
+        # 4.0 m/s is 250 s/km; the reps run at 300 s/km.
+        self.assertIn("+50 s/km", report)
+        self.assertIn("positive is slower", report)
 
     def test_lt1_session_gets_its_own_table(self):
         lt1 = activity(

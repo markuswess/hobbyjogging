@@ -12,6 +12,8 @@ from ..analysis import (
     compare_year_ewma,
     compare_year_planned_ewma,
     pace_hr_points,
+    race_pace_points,
+    running_thresholds,
     STEADY_BAND_LABEL,
     vo2max_measurements,
 )
@@ -19,6 +21,7 @@ from ..charts import (
     plot_compare,
     plot_compare_pace_hr,
     plot_compare_vo2max,
+    plot_thresholds,
 )
 from ..command_support import activity_start, resting_hr_lookup
 from ..compare import compare_report
@@ -31,6 +34,9 @@ NO_PACE_HR = (
     '<p class="muted">No runs with pace and heart rate to compare.</p>'
 )
 NO_VO2MAX = '<p class="muted">No Garmin VO2max readings to compare.</p>'
+NO_THRESHOLD = (
+    '<p class="muted">No threshold snapshots or official race results.</p>'
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +47,7 @@ class CompareSection:
     time_html: str
     efficiency_html: str
     vo2max_html: str
+    threshold_html: str
     pace_hr_html: str
     years_report_html: str
     months_report_html: str
@@ -75,6 +82,8 @@ def build_compare_section(
         weather_lookup=source.activity_weather,
     )
     vo2max = vo2max_measurements(activities, start, today)
+    thresholds = running_thresholds(source.athlete_thresholds())
+    races = race_pace_points(source.race_results())
 
     def chart(metric: str) -> str:
         series = compare_year_ewma(
@@ -118,6 +127,17 @@ def build_compare_section(
             plot_compare_vo2max(vo2max, "", as_html=True)
             if vo2max
             else NO_VO2MAX
+        ),
+        threshold_html=(
+            plot_thresholds(
+                thresholds,
+                races,
+                "",
+                today=today,
+                as_html=True,
+            )
+            if thresholds or races
+            else NO_THRESHOLD
         ),
         pace_hr_html=(
             plot_compare_pace_hr(pace_hr, "", as_html=True)

@@ -29,6 +29,8 @@ from .analysis import (
     pace_hr_trends,
     pace_hr_year_efficiency,
     pace_s_per_km,
+    RacePacePoint,
+    ThresholdPoint,
     recovery_bands,
     riegel_reference,
     riegel_time,
@@ -2629,6 +2631,174 @@ def plot_equipment(
         hovermode="closest",
     )
     _crosshair(figure)
+
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1200,
+    )
+
+
+def plot_thresholds(
+    thresholds: list[ThresholdPoint],
+    races: list[RacePacePoint] | None = None,
+    output: str = "",
+    *,
+    today: date | None = None,
+    title: str = "Threshold and official race pace",
+    as_html: bool = False,
+) -> str:
+    """Run LTHR/max-HR snapshots with threshold and race pace on the right."""
+    _require_data(thresholds, races)
+    today = today or date.today()
+    snapshots = sorted(thresholds, key=lambda point: point.date)
+    races = sorted(races or [], key=lambda point: point.date)
+    figure = go.Figure()
+
+    def series(getter):
+        values = [
+            (point.date, getter(point))
+            for point in snapshots
+            if getter(point) is not None
+        ]
+
+        if values and values[-1][0] < today:
+            values.append((today, values[-1][1]))
+
+        return values
+
+    lthr = series(lambda point: point.lthr)
+    max_hr = series(lambda point: point.max_hr)
+    pace = series(lambda point: point.pace_s_per_km)
+
+    for values, name, color, dash in (
+        (lthr, "LTHR", "#d62728", "solid"),
+        (max_hr, "Max HR", "#1f77b4", "dash"),
+    ):
+        if not values:
+            continue
+
+        figure.add_trace(
+            go.Scatter(
+                x=[day for day, _ in values],
+                y=[value for _, value in values],
+                mode="lines+markers",
+                name=name,
+                line={
+                    "color": color,
+                    "width": 2,
+                    "shape": "hv",
+                    "dash": dash,
+                },
+                marker={"size": 5, "color": color},
+            )
+        )
+
+    if pace:
+        figure.add_trace(
+            go.Scatter(
+                x=[day for day, _ in pace],
+                y=[value for _, value in pace],
+                mode="lines+markers",
+                name="Threshold pace",
+                yaxis="y2",
+                line={
+                    "color": "#2ca02c",
+                    "width": 2,
+                    "shape": "hv",
+                },
+                marker={"size": 5, "color": "#2ca02c"},
+                customdata=[format_pace(value) for _, value in pace],
+                hovertemplate="%{x}<br>%{customdata}<extra></extra>",
+            )
+        )
+
+    if races:
+        figure.add_trace(
+            go.Scatter(
+                x=[point.date for point in races],
+                y=[point.pace_s_per_km for point in races],
+                mode="markers",
+                name="Official race pace",
+                yaxis="y2",
+                marker={
+                    "symbol": "diamond",
+                    "size": 9,
+                    "color": "#9467bd",
+                    "line": {"color": "#222222", "width": 1},
+                },
+                text=[
+                    f"{point.name} ({point.distance_m / 1000:.1f} km)"
+                    for point in races
+                ],
+                customdata=[
+                    format_pace(point.pace_s_per_km)
+                    for point in races
+                ],
+                hovertemplate=(
+                    "%{x}<br>%{text}<br>%{customdata}<extra></extra>"
+                ),
+            )
+        )
+
+    hr_values = [
+        value
+        for values in (lthr, max_hr)
+        for _, value in values
+    ]
+
+    if hr_values:
+        figure.update_yaxes(
+            title_text="heart rate (bpm)",
+            range=[min(hr_values) - 5, max(hr_values) + 5],
+            dtick=10,
+        )
+    else:
+        figure.update_yaxes(title_text="heart rate (bpm)")
+
+    figure.update_xaxes(title_text="date")
+
+    if pace:
+        pace_values = [value for _, value in pace]
+        low = min(pace_values) - 8
+        high = max(pace_values) + 8
+
+        if races:
+            race_values = [point.pace_s_per_km for point in races]
+            low = min(low, min(race_values) - 8)
+            high = max(high, max(race_values) + 8)
+
+        ticks = [
+            value
+            for value in range(
+                int(low // 10 * 10),
+                int(high) + 11,
+                10,
+            )
+        ]
+        figure.update_layout(
+            yaxis2={
+                "title": "pace (min/km)",
+                "overlaying": "y",
+                "side": "right",
+                "range": [high, low],
+                "tickvals": ticks,
+                "ticktext": [format_pace(value) for value in ticks],
+                "showgrid": False,
+            },
+        )
+
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=900,
+        margin={"l": 60, "r": 70, "t": 70, "b": 110},
+        legend=_legend_below(),
+        hovermode="x unified",
+    )
+    _crosshair(figure, second_y=True)
 
     return _render(
         figure,

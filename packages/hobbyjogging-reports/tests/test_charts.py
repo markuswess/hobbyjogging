@@ -22,12 +22,15 @@ from hobbyjogging_report.charts import (
     plot_overview,
     plot_recovery,
     plot_subt,
+    plot_thresholds,
     plot_time,
     plot_vo2max,
     plot_volume,
 )
 from hobbyjogging_report.analysis import (
     EquipmentStat,
+    RacePacePoint,
+    ThresholdPoint,
     equivalent_times,
     fit_riegel,
     pb_progressions,
@@ -1771,6 +1774,43 @@ class EquipmentChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_equipment([], str(Path(tmp) / "gear.png"))
+
+
+class ThresholdChartTests(unittest.TestCase):
+
+    def test_threshold_steps_and_official_race_pace(self):
+        thresholds = [
+            ThresholdPoint(D, 174.0, 192.0, 222.0),
+            ThresholdPoint(date(2026, 6, 1), 174.0, 192.0, 214.0),
+        ]
+        races = [
+            RacePacePoint(
+                date(2026, 10, 1),
+                230.0,
+                "Autumn 10k",
+                10000.0,
+            )
+        ]
+
+        html = plot_thresholds(
+            thresholds,
+            races,
+            "",
+            today=date(2026, 11, 1),
+            as_html=True,
+        )
+        data = plotly_data(html)
+        traces = {trace.get("name"): trace for trace in data}
+
+        self.assertEqual(
+            {"LTHR", "Max HR", "Threshold pace", "Official race pace"},
+            set(traces),
+        )
+        self.assertEqual("y2", traces["Threshold pace"]["yaxis"])
+        self.assertEqual("y2", traces["Official race pace"]["yaxis"])
+        self.assertEqual([230.0], traces["Official race pace"]["y"])
+        self.assertIn("Autumn 10k (10.0 km)", html)
+        self.assertIn("3:42", html)
 
 
 class CompareVo2maxChartTests(unittest.TestCase):

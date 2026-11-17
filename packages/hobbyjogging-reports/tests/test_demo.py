@@ -137,6 +137,28 @@ class DemoGeneratorTests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_demo_has_thresholds_and_official_race_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                thresholds = connection.execute(
+                    "SELECT COUNT(*) FROM athlete_thresholds "
+                    "WHERE source = 'demo'"
+                ).fetchone()[0]
+                results = connection.execute(
+                    "SELECT COUNT(*) FROM race_results "
+                    "WHERE source = 'demo'"
+                ).fetchone()[0]
+            finally:
+                connection.close()
+
+            self.assertEqual(4, thresholds)
+            self.assertEqual(3, results)
+
     def test_demo_has_three_seasons_and_two_illness_ranges(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(
@@ -618,7 +640,12 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Running streaks",
                 ),
                 "nsa.html": ("NSA", "subT"),
-                "compare.html": ("Compare", "Year comparison"),
+                "compare.html": (
+                    "Compare",
+                    "Year comparison",
+                    "Threshold and official race pace",
+                    "Official race pace",
+                ),
                 "recovery.html": ("Recovery Report", "Data completeness"),
                 "performance.html": (
                     "Upcoming races",

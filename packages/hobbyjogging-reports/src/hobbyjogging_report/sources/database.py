@@ -10,10 +10,12 @@ from hobbyjogging_core.db.repository import TrainingRepository
 from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
+    AthleteThreshold,
     Equipment,
     Event,
     Interval,
     Lap,
+    RaceResult,
     ReviewItem,
     TrainingPeriod,
     WellnessDay,
@@ -76,6 +78,12 @@ class DatabaseSource:
 
     def training_periods(self) -> list[TrainingPeriod]:
         return self.repository.training_periods()
+
+    def athlete_thresholds(self) -> list[AthleteThreshold]:
+        return self.repository.athlete_thresholds()
+
+    def race_results(self) -> list[RaceResult]:
+        return self.repository.race_results()
 
     def earliest_activity_date(self) -> date | None:
         """Return the first non-excluded activity date, if any."""

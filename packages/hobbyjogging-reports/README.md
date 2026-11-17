@@ -89,10 +89,12 @@ Pages:
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
   182), with dashed projected volume/time lines that follow actual values
   through today and then the plan, a Garmin running VO2max line plot with one
-  raw value per activity, a pace-vs-heart-rate scatter coloured by year with
-  weather in its hover and one dashed steady-efficiency line per year
-  (`HR = RHR + v·60/E`, with the yearly `E` values in the chart note), plus
-  the year and month comparison reports (which include the period average
+  raw value per activity, a threshold chart with LTHR, max HR, the
+  threshold-pace steps and official race paces, a pace-vs-heart-rate scatter
+  coloured by year with weather in its hover and one dashed steady-efficiency
+  line per year (`HR = RHR + v·60/E`, with the yearly `E` values in the chart
+  note), plus the year and month comparison reports (which include the period
+  average
   Garmin VO2max and a weighted efficiency column). All charts show only the
   five most recent years by default; older years remain available from the
   legend. The efficiency chart drops years with
@@ -261,7 +263,9 @@ stay compact (`1h02`).
   (label, kind, dates or ongoing, days inside the range) and the illness
   days inside the range.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
-  short/medium/long/LT1. Shows work-block and summary tables.
+  short/medium/long/LT1. Shows work-block and summary tables; when run
+  threshold snapshots exist, each block adds its work pace minus the
+  threshold setting in effect (`Δ threshold`, positive = slower).
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
   HM, M, trail, other with short-course tolerance), upcoming races, a
   Riegel exponent fit over every race, and equivalent-time predictions at

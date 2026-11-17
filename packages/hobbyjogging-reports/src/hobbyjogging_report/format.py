@@ -946,17 +946,52 @@ def format_subt_summary_table(
     return lines
 
 
-def format_subt_block_table(blocks: list[SubtBlock]):
-    """Render one category's work blocks as a Markdown table."""
-    lines = [
+def _pace_delta(seconds: float | None) -> str:
+    if seconds is None:
+        return "-"
+
+    rounded = round(seconds)
+
+    if rounded == 0:
+        return "0"
+
+    sign = "+" if rounded > 0 else "-"
+    return f"{sign}{abs(rounded)} s/km"
+
+
+def format_subt_block_table(
+    blocks: list[SubtBlock],
+    *,
+    threshold_lookup=None,
+):
+    """Render one category's work blocks as a Markdown table.
+
+    ``threshold_lookup(day)`` adds the work pace minus the run threshold
+    setting in effect; positive means slower than the setting.
+    """
+    with_threshold = threshold_lookup is not None
+    header = (
         "| Date | Session | Reps | Work time | Work km | Pace | "
-        "Fastest | Slowest | Avg HR | Max HR | "
-        "Efficiency (m/excess beat) |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-    ]
+        + ("Δ threshold | " if with_threshold else "")
+        + "Fastest | Slowest | Avg HR | Max HR | "
+        "Efficiency (m/excess beat) |"
+    )
+    columns = 12 if with_threshold else 11
+    rule = "|---|---|" + "---:|" * (columns - 2)
+    lines = [header, rule]
 
     for block in blocks:
         name = table_text(block.activity_name) or "-"
+        threshold = (
+            threshold_lookup(block.date)
+            if with_threshold
+            else None
+        )
+        delta = (
+            block.pace_s_per_km - threshold
+            if threshold is not None and block.pace_s_per_km is not None
+            else None
+        )
 
         lines.append(
             f"| {block.date} | {name} | "
@@ -964,7 +999,8 @@ def format_subt_block_table(blocks: list[SubtBlock]):
             f"{fmt_clock(block.total_time_s)} | "
             f"{_km_cell(block.total_distance_m, 2)} | "
             f"{_pace_cell(block.pace_s_per_km)} | "
-            f"{_pace_cell(block.fastest_pace_s_per_km)} | "
+            + (f"{_pace_delta(delta)} | " if with_threshold else "")
+            + f"{_pace_cell(block.fastest_pace_s_per_km)} | "
             f"{_pace_cell(block.slowest_pace_s_per_km)} | "
             f"{_hr_cell(block.avg_hr)} | "
             f"{_hr_cell(block.max_hr)} | "
