@@ -10,7 +10,7 @@ from hobbyjogging_core.datasource import DataSource
 from ..analysis import average_warmup_days
 from ..charts import plot_subt
 from ..command_support import subt_session_points
-from ..html import markdown_to_html
+from ..html import collapse_tables, markdown_to_html
 from ..model import AverageWindows
 from ..review import exclude_review
 from ..subt_ewma_report import subt_ewma_markdown
@@ -57,14 +57,17 @@ def build_nsa_section(
             if window_points
             else NO_SUBT
         ),
-        subt_report_html=markdown_to_html(
-            subt_report(
-                start,
-                end,
-                "subT Report",
-                source,
-                include_review=include_review,
+        subt_report_html=collapse_tables(
+            markdown_to_html(
+                subt_report(
+                    start,
+                    end,
+                    "subT Report",
+                    source,
+                    include_review=include_review,
+                ),
+                demote=1,
             ),
-            demote=1,
+            prefix="subt",
         ),
     )

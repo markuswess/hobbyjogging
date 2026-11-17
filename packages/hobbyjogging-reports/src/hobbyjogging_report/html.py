@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from html import escape
 
 import markdown
@@ -114,6 +115,57 @@ def table(
         '<span class="less">Show fewer</span>'
         "</label></p>"
     )
+
+
+_TABLE_BLOCK = re.compile(r"<table>(.*?)</table>", re.DOTALL)
+_TABLE_ROW = re.compile(r"<tr>(.*?)</tr>", re.DOTALL)
+_TABLE_CELL = re.compile(r"<t([hd])([^>]*)>(.*?)</t[hd]>", re.DOTALL)
+
+
+def collapse_tables(html: str, *, prefix: str) -> str:
+    """Give long rendered tables the dashboard's collapsible treatment.
+
+    Markdown tables cannot collapse, so a rendered table is parsed back into
+    headers and rows and re-rendered through :func:`table`. Tables at or below
+    :data:`TABLE_COLLAPSE_ROWS` are returned unchanged. ``prefix`` keeps the
+    toggle ids unique on a page.
+    """
+    count = 0
+
+    def replace(match: re.Match) -> str:
+        nonlocal count
+        rows = _TABLE_ROW.findall(match.group(1))
+
+        if len(rows) < 2:
+            return match.group(0)
+
+        header = _TABLE_CELL.findall(rows[0])
+        body = [
+            [
+                cell
+                for _kind, _attrs, cell in _TABLE_CELL.findall(row)
+            ]
+            for row in rows[1:]
+        ]
+
+        if len(body) <= TABLE_COLLAPSE_ROWS:
+            return match.group(0)
+
+        count += 1
+        numeric = tuple(
+            index
+            for index, (_kind, attrs, _cell) in enumerate(header)
+            if "text-align: right" in attrs
+        )
+
+        return table(
+            [cell for _kind, _attrs, cell in header],
+            body,
+            numeric=numeric,
+            collapse=f"{prefix}-{count}",
+        )
+
+    return _TABLE_BLOCK.sub(replace, html)
 
 
 def stat_grid(stats) -> str:

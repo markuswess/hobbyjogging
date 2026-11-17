@@ -58,10 +58,14 @@ Pages:
   and two dashed efficiency lines, over the last two years
   (`--analysis-days`, default 731). Runs with stored weather carry the
   temperature and wind in their hover and the chart notes how many runs have
-  it and the range those cover.
+  it and the range those cover. The next `--future-days` (default 14) are
+  drawn as well: a dashed planned-km line, planned zone bars with a total-time
+  outline, and planned load bars on days without an actual load.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
-  `subT Report` over the last year.
+  `subT Report` over the last year. The report's long per-category tables
+  collapse past 20 rows like the activities log (the summary stays open);
+  sessions read newest first.
 - `compare.html` — volume (km/week), time (hours/week), and efficiency EWMA lines
   per calendar year over a fixed Jan–Dec axis (`--compare-window`, default
   182), with dashed projected volume/time lines that follow actual values

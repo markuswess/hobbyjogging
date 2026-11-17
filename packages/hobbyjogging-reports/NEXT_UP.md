@@ -3,8 +3,7 @@
 Updated 2026-11-16.
 
 Current focus: the demo data; 2's max-HR half and 5's threshold trend are
-open, 15-16 are small dashboard passes, 12 is parked, and the rest need a core
-or root change or the lab gate.
+open, 12 is parked, and the rest need a core or root change or the lab gate.
 
 ## Done
 
@@ -270,6 +269,19 @@ this list keeps the recent decisions only.
   the pale markers, the points keep their year colours, and the chart note
   lists every year's `E`. Years without two usable steady runs get no line.
 
+- **The Analysis charts show the plan.** Volume, time and load now draw the
+  next `future_days` (the same window as Overview): a dashed planned-km line,
+  planned zone bars with a total-time outline, and planned load bars on days
+  without an actual load. The plan series come from the existing
+  `weekly_planned_*`/`daily_planned_load` helpers, and the axes extend to the
+  last planned week.
+
+- **NSA subT tables collapse.** `collapse_tables()` re-renders long tables from
+  the subT report's HTML through the same checkbox helper as the activities
+  log, so the per-category tables collapse past 20 rows while the summary
+  stays open. The demo's category tables (38, 46 and 112 rows) show the
+  toggle; the CLI report stays plain Markdown.
+
 - **Reports list their periods newest first.** The Compare tab's year and
   month comparison tables now start with the most recent period (chart series
   stay chronological), and the subT report blocks sort newest first within
@@ -299,7 +311,7 @@ and social titles (7). Item 13 has its data (`event_activity_links`, schema
 v21), item 10 is handed to root item 36 for its illness ranges and resumes
 here after the maintenance fix, and 14's series needs the lab gate in root
 item 31. Item 12 stays parked on its page-coverage cost, 11 is recurring
-upkeep, and 15-16 are reports-only polish from a dashboard pass. The
+upkeep. The dashboard polish pass is finished. The
 efficiency floor, the planned-event page, the streaks report and the
 collapsible lists landed here.
 
@@ -460,29 +472,6 @@ collapsible lists landed here.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
 
-15. **Future plans on the Analysis charts.** The volume, time-by-zone and load
-    charts draw actuals only; the Overview already draws the plan. Pass the
-    planned series for the next `future_days` (default 14), extend the date
-    axis, and style them like the overview (hatched bars, dashed lines, a
-    legend entry). Reuse `daily_planned_distance`/`daily_planned_time`/
-    `daily_planned_load` and the planned zone weeks instead of fetching a
-    second plan window.
-    - **Tests**: planned marks appear after today, a day with a run keeps the
-      actual, no plan leaves the charts as they are, and the axis covers the
-      future window.
-
-16. **NSA: collapse the subT report tables.** The per-category tables run on;
-    on the NSA tab that is a long scroll. The newest-first order landed with
-    the blocks; what remains is collapsing the long category tables past the
-    same 20-row threshold as the activities table.
-    - **Where**: the tab renders `subt_report` Markdown, which cannot collapse,
-      so render the per-category tables through `html.table(collapse=...)` or
-      wrap the rendered section in `<details>`, keeping the summary table open.
-      CLI output stays plain Markdown.
-    - **Tests**: a long category table gets the toggle with every row still in
-      the HTML, a short one stays plain, the summary stays open, and the demo's
-      subT report still renders.
-
 ## Tests and docs
 
 Covered now:
@@ -517,8 +506,9 @@ Covered now:
   "tempo" name, keeps the session out of the subT/LT1 sets, and the demo now
   carries one;
 - newest-first periods in the Compare tables and the subT blocks, the
-  Overview page no longer carrying the planned report, and the per-year
-  efficiency lines (values, pale-run contrast, and the no-steady-run case).
+  Overview page no longer carrying the planned report, the per-year
+  efficiency lines (values, pale-run contrast, and the no-steady-run case),
+  the analysis charts' planned traces, and the collapsible Markdown tables.
 
 New work should add:
 

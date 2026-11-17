@@ -1,6 +1,11 @@
 import unittest
 
-from hobbyjogging_report.html import TABLE_COLLAPSE_ROWS, table
+from hobbyjogging_report.html import (
+    TABLE_COLLAPSE_ROWS,
+    collapse_tables,
+    markdown_to_html,
+    table,
+)
 
 
 def rows(count):
@@ -39,6 +44,27 @@ class TableTests(unittest.TestCase):
 
         self.assertNotIn("table-toggle", html)
         self.assertNotIn("extra-row", html)
+
+    def test_long_markdown_tables_get_the_toggle(self):
+        rows = "\n".join(f"| run {index} | {index} |" for index in range(25))
+        rendered = collapse_tables(
+            markdown_to_html(f"| Name | N |\n|---|---:|\n{rows}\n"),
+            prefix="subt",
+        )
+
+        self.assertIn('class="table-toggle"', rendered)
+        self.assertIn("Show all 25 rows", rendered)
+        self.assertEqual(25, rendered.count("<td>run "))
+        self.assertIn('<th class="num">N</th>', rendered)
+
+    def test_short_markdown_tables_stay_plain(self):
+        rendered = collapse_tables(
+            markdown_to_html("| Name | N |\n|---|---:|\n| a | 1 |\n"),
+            prefix="subt",
+        )
+
+        self.assertNotIn("table-toggle", rendered)
+        self.assertIn("<td>a</td>", rendered)
 
     def test_the_key_links_the_toggle_and_its_label(self):
         html = table(["Name"], rows(TABLE_COLLAPSE_ROWS + 1), collapse="races")
