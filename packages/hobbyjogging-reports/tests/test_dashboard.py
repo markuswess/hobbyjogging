@@ -15,6 +15,7 @@ from hobbyjogging_core.model import (
     WellnessDay,
 )
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
+from hobbyjogging_report.dashboard.analysis import build_analysis_section
 from hobbyjogging_report.dashboard.lab import _bench_guide, build_lab_section
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
@@ -370,6 +371,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("RPE 42d", analysis)
             self.assertIn("RPE 182d", analysis)
             self.assertIn("Pace vs heart rate", analysis)
+            self.assertIn("Running streaks", analysis)
+            self.assertIn("across all history", analysis)
             self.assertIn("weather on 1 of", analysis)
             # The next 14 days' plan appears on the volume, time and load
             # charts, beyond the actual window.
@@ -546,6 +549,40 @@ class DashboardBuildTests(unittest.TestCase):
             recovery,
         )
         self.assertIn("2 of 60 days have wellness data", recovery)
+
+    def test_analysis_streaks_use_all_history(self):
+        old_start = TODAY - timedelta(days=100)
+        activities = [
+            activity(
+                id=f"old{index}",
+                date=old_start + timedelta(days=index),
+                duration_s=1800,
+                distance_m=5000,
+            )
+            for index in range(10)
+        ]
+        activities.extend(
+            activity(
+                id=f"new{index}",
+                date=TODAY - timedelta(days=index),
+                duration_s=1800,
+                distance_m=5000,
+            )
+            for index in range(3)
+        )
+
+        section = build_analysis_section(
+            FakeSource(activities=activities),
+            start=TODAY - timedelta(days=30),
+            end=TODAY,
+        )
+
+        self.assertIn("<strong>Current:</strong> 3 days", section.streaks_html)
+        self.assertIn("13 run days across all history", section.streaks_html)
+        # A ten-day streak before the analysis window is still the longest.
+        self.assertIn(str(old_start), section.streaks_html)
+        self.assertIn(">10</td>", section.streaks_html)
+        self.assertIn("today run", section.streaks_html)
 
     def test_recovery_plots_span_the_two_year_window(self):
         wellness = [

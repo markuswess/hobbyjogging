@@ -612,7 +612,11 @@ class DemoGeneratorTests(unittest.TestCase):
             markers = {
                 "index.html": ("Training overview", "Daily Training Report"),
                 "activities.html": ("Activities", "Easy", "planned"),
-                "analysis.html": ("Analysis", "Pace vs heart rate"),
+                "analysis.html": (
+                    "Analysis",
+                    "Pace vs heart rate",
+                    "Running streaks",
+                ),
                 "nsa.html": ("NSA", "subT"),
                 "compare.html": ("Compare", "Year comparison"),
                 "recovery.html": ("Recovery Report", "Data completeness"),

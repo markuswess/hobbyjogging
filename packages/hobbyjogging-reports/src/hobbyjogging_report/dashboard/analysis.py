@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    MIN_STREAK_RUN_S,
     RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
     average_warmup_days,
@@ -17,6 +18,7 @@ from ..analysis import (
     pace_hr_points,
     resting_hr_baselines,
     rpe_metrics,
+    streak_summary,
     time_averages,
     week_bounds,
     weekly_planned_distance,
@@ -27,6 +29,9 @@ from ..analysis import (
     zone_time_averages,
 )
 from ..charts import plot_load, plot_pace_hr, plot_time, plot_volume
+from ..command_support import activity_start
+from ..format import fmt_time
+from ..html import esc, table
 from ..model import AverageWindows
 from ..review import exclude_review
 
@@ -48,6 +53,7 @@ class AnalysisSection:
     time_html: str
     load_html: str
     pace_hr_html: str
+    streaks_html: str
 
 
 def build_analysis_section(
@@ -61,10 +67,16 @@ def build_analysis_section(
     """Build the volume, time, and load charts, plus any future plan."""
     windows = AverageWindows()
     warmup_days = average_warmup_days(windows)
-    activities, _ = exclude_review(
-        source.activities(start - timedelta(days=warmup_days), end),
+    all_activities, _ = exclude_review(
+        source.activities(activity_start(source, end), end),
         include_review=include_review,
     )
+    activities = [
+        activity
+        for activity in all_activities
+        if start - timedelta(days=warmup_days) <= activity.date <= end
+    ]
+    streaks = streak_summary(all_activities, end, limit=5)
     display = [
         activity
         for activity in activities
@@ -242,4 +254,67 @@ def build_analysis_section(
         time_html=time_html,
         load_html=load_html,
         pace_hr_html=pace_hr_html,
+        streaks_html=_streaks_card(streaks),
     )
+
+
+def _streak_line(streak) -> str:
+    return (
+        f"{streak.days} days, {streak.start} → {streak.end}, "
+        f"{streak.distance_m / 1000:.1f} km, "
+        f"{fmt_time(streak.duration_s)}"
+    )
+
+
+def _streaks_card(streaks) -> str:
+    """Compact current + longest streaks for the Analysis tab."""
+    parts = []
+
+    if streaks.current is None:
+        last = (
+            f" (last run {streaks.last_run})"
+            if streaks.last_run
+            else ""
+        )
+        parts.append(f'<p>No current streak{esc(last)}.</p>')
+    else:
+        state = (
+            "today run" if streaks.today_run else "today not run yet"
+        )
+        parts.append(
+            f'<p><strong>Current:</strong> '
+            f'{esc(_streak_line(streaks.current))} ({state})</p>'
+        )
+
+    parts.append(
+        f'<p class="muted">{streaks.streak_count} streaks, '
+        f'{streaks.run_days} run days across all history.</p>'
+    )
+
+    rows = [
+        [
+            esc(str(streak.start)),
+            esc(str(streak.end)),
+            str(streak.days),
+            f"{streak.distance_m / 1000:.1f} km",
+            esc(fmt_time(streak.duration_s)),
+        ]
+        for streak in streaks.longest
+    ]
+    parts.append(
+        table(
+            ["Start", "End", "Days", "Distance", "Time"],
+            rows,
+            numeric=(2, 3, 4),
+            empty="No streaks yet.",
+        )
+    )
+    minutes = MIN_STREAK_RUN_S // 60
+    parts.append(
+        f'<p class="muted">A streak day needs one run of at least '
+        f"{minutes} minutes; a rest day ends the streak and a ride never "
+        "extends it. The longest list uses all history, not the analysis "
+        "window.</p>"
+    )
+
+    return "".join(parts)

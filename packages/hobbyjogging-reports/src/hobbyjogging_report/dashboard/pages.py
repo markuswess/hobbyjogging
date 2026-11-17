@@ -466,6 +466,7 @@ def analysis_page(
         + card("Weekly running time by pace zone", section.time_html)
         + card("Training load and session RPE", section.load_html)
         + card("Pace vs heart rate", section.pace_hr_html)
+        + card("Running streaks", section.streaks_html)
     )
 
     return page(
