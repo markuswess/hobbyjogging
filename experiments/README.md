@@ -86,7 +86,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (needs 2022+ gear) | blocked | — | 2026-11-13 |
 | Polarization index | How polarized is my zone distribution, and does it beat the Z3+4 share? | candidate | — | 2026-11-13 |
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
-| Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | candidate | — | 2026-11-17 |
+| Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | promoted | `cross_training_load.py` | 2026-11-17 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (recent years only: weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-16 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the full Runalyze weather fields are pending) | candidate | — | 2026-11-17 |
@@ -103,6 +103,18 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   nothing incremental and year only overfits. Handoff: document the small
   session/elevation caveat in the efficiency/HR-speed card; no curved line and
   no reports code change. Evidence: `experiments/efficiency_line_shape.py`.
+- **Cross-training load transfer** — promoted 2026-11-17. Cross load is 9–26%
+  of annual load, but 42-day running and cross loads correlate weakly with
+  steady efficiency (raw +0.04 / −0.06; year-adjusted +0.05 / −0.04). Adding
+  cross load does not improve the model (R² 0.074, cross coefficient negative,
+  bootstrap `k` −10..+25), and the transfer grid's best `k` is **0.0** (R² flat
+  0.071–0.073). Weeks with ≥20% cross load show slightly lower efficiency
+  (2.409 vs 2.445), but this is confounded. Handoff: use running-only load for
+  the running-fitness series and keep cross load as context; do not apply a
+  positive transfer factor. Load starts in 2019 and efficiency in 2022, so the
+  cycling-heavy 2020 phase is not covered; the load signal itself is weak, so
+  this rejects a positive factor rather than proving a physiological one.
+  Evidence: `experiments/cross_training_load.py`.
 
 ### Rejected
 
