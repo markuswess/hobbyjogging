@@ -63,7 +63,9 @@ Pages:
   current week's actual bar), planned zone bars in the same faded zone colours
   as the actuals in both the time and share panels (the current week's plan
   stacks on its actual bar, with the share panel normalized to the combined
-  week), and planned load bars on days without an actual load. The zone EWMA
+  week), and planned load bars on days without an actual load. Each week
+  stacks hard done, hard planned, easy done, easy planned from the bottom up.
+  The zone EWMA
   stack and the total EWMAs project through the plan, with the projected zone
   area drawn translucent; the averages use the shared line scheme (7d solid,
   42d dashed, 182d dash-dot) and the same pale halo as the overview so they

@@ -651,256 +651,174 @@ def plot_time(
     )
 
     week_dates = [week.week for week in weeks]
-    totals = [
-        (sum(week.zones) + week.unzoned) / 3600 for week in weeks
-    ]
-    actual_hours = dict(zip(week_dates, totals))
-
-    planned_zone_dates = {week.week for week in planned_zone_weeks}
-    planned_zone_by_week = {week.week: week for week in planned_zone_weeks}
+    display_weeks = sorted(
+        set(week_dates) | {week.week for week in planned_zone_weeks}
+    )
+    actual_week_totals = {
+        week.week: (sum(week.zones) + week.unzoned) / 3600
+        for week in weeks
+    }
+    planned_week_totals = {
+        week.week: (sum(week.zones) + week.unzoned) / 3600
+        for week in planned_zone_weeks
+    }
     planned_time_by_week = {
         week: seconds / 3600
         for week, seconds in planned_time or []
-        if week not in planned_zone_dates
+        if week not in planned_week_totals
     }
+    # In an overlapping week the share panel normalizes to the combined
+    # actual and planned time; a total-only plan has no zone split, so it
+    # leaves the shares alone.
+    share_totals = {
+        week: actual_week_totals.get(week, 0.0)
+        + planned_week_totals.get(week, 0.0)
+        for week in display_weeks
+    }
+    hour_bottom = {week: 0.0 for week in display_weeks}
+    share_bottom = {week: 0.0 for week in display_weeks}
 
-    def planned_hours(week: date) -> float:
-        zone_week = planned_zone_by_week.get(week)
+    def add_segment(weeks, values, name, color, *, legend):
+        """One stacked bar segment, in hours and as a share."""
+        xs = list(weeks)
 
-        if zone_week is not None:
-            return (sum(zone_week.zones) + zone_week.unzoned) / 3600
+        if not xs:
+            return
 
-        return planned_time_by_week.get(week, 0.0)
-
-    # A week with both actual and planned time shares one bar: the plan for
-    # the rest of the week stacks on the actual, and the share panel
-    # normalizes both to the combined week.
-    combined = [
-        total + planned_hours(week)
-        for total, week in zip(totals, week_dates)
-    ]
-
-    if weeks:
-        bottoms = [0.0] * len(weeks)
-        unzoned = [week.unzoned / 3600 for week in weeks]
+        _add(
+            figure,
+            go.Bar(
+                x=xs,
+                y=[values[week] for week in xs],
+                base=[hour_bottom[week] for week in xs],
+                name=name,
+                width=WEEK_MS,
+                showlegend=legend,
+                marker_color=color,
+            ),
+            row=1,
+            col=1,
+        )
         shares = [
-            value / total * 100 if total else 0.0
-            for value, total in zip(unzoned, combined)
-        ]
-
-        if any(unzoned):
-            _add(
-                figure,
-                go.Bar(
-                    x=week_dates,
-                    y=unzoned,
-                    base=bottoms,
-                    name="Unzoned",
-                    width=WEEK_MS,
-                    marker_color=UNZONED_COLOR,
-                ),
-                row=1,
-                col=1,
-            )
-            _add(
-                figure,
-                go.Bar(
-                    x=week_dates,
-                    y=shares,
-                    base=[0.0] * len(weeks),
-                    name="Unzoned",
-                    width=WEEK_MS,
-                    showlegend=False,
-                    marker_color=UNZONED_COLOR,
-                ),
-                row=2,
-                col=1,
-            )
-            bottoms = [
-                bottom + value
-                for bottom, value in zip(bottoms, unzoned)
-            ]
-            percent_bottoms = list(shares)
-
-        else:
-            percent_bottoms = [0.0] * len(weeks)
-
-        # Highest zones at the bottom, Z1 on top.
-        for index in reversed(range(zone_count)):
-            values = [week.zones[index] / 3600 for week in weeks]
-            shares = [
-                value / total * 100 if total else 0.0
-                for value, total in zip(values, combined)
-            ]
-            color = ZONE_COLORS[index % len(ZONE_COLORS)]
-            _add(
-                figure,
-                go.Bar(
-                    x=week_dates,
-                    y=values,
-                    base=bottoms,
-                    name=f"Z{index + 1}",
-                    width=WEEK_MS,
-                    marker_color=color,
-                ),
-                row=1,
-                col=1,
-            )
-            _add(
-                figure,
-                go.Bar(
-                    x=week_dates,
-                    y=shares,
-                    base=percent_bottoms,
-                    name=f"Z{index + 1}",
-                    width=WEEK_MS,
-                    showlegend=False,
-                    marker_color=color,
-                ),
-                row=2,
-                col=1,
-            )
-            bottoms = [
-                bottom + value
-                for bottom, value in zip(bottoms, values)
-            ]
-            percent_bottoms = [
-                bottom + value
-                for bottom, value in zip(percent_bottoms, shares)
-            ]
-
-    if planned_zone_weeks:
-        planned_zone_totals = [
-            (sum(week.zones) + week.unzoned) / 3600
-            for week in planned_zone_weeks
-        ]
-        combined_planned = [
-            actual_hours.get(week.week, 0.0) + total
-            for week, total in zip(planned_zone_weeks, planned_zone_totals)
-        ]
-        planned_bottoms = [
-            actual_hours.get(week.week, 0.0)
-            for week in planned_zone_weeks
-        ]
-        planned_percent_bottoms = [
             (
-                actual_hours.get(week.week, 0.0) / total * 100
-                if total
+                values[week] / share_totals[week] * 100
+                if share_totals[week]
                 else 0.0
             )
-            for week, total in zip(planned_zone_weeks, combined_planned)
+            for week in xs
         ]
-        planned_unzoned = [
-            week.unzoned / 3600 for week in planned_zone_weeks
-        ]
+        _add(
+            figure,
+            go.Bar(
+                x=xs,
+                y=shares,
+                base=[share_bottom[week] for week in xs],
+                name=name,
+                width=WEEK_MS,
+                showlegend=False,
+                marker_color=color,
+            ),
+            row=2,
+            col=1,
+        )
 
-        if any(planned_unzoned):
-            shares = [
-                value / total * 100 if total else 0.0
-                for value, total in zip(planned_unzoned, combined_planned)
-            ]
-            _add(
-                figure,
-                go.Bar(
-                    x=[week.week for week in planned_zone_weeks],
-                    y=planned_unzoned,
-                    base=planned_bottoms,
-                    name="planned unzoned",
-                    width=WEEK_MS,
-                    marker={"color": _fade(UNZONED_COLOR, 0.45)},
-                ),
-                row=1,
-                col=1,
-            )
-            _add(
-                figure,
-                go.Bar(
-                    x=[week.week for week in planned_zone_weeks],
-                    y=shares,
-                    base=planned_percent_bottoms,
-                    name="planned unzoned",
-                    width=WEEK_MS,
-                    showlegend=False,
-                    marker={"color": _fade(UNZONED_COLOR, 0.45)},
-                ),
-                row=2,
-                col=1,
-            )
-            planned_bottoms = [
-                bottom + value
-                for bottom, value in zip(planned_bottoms, planned_unzoned)
-            ]
-            planned_percent_bottoms = [
-                bottom + value
-                for bottom, value in zip(planned_percent_bottoms, shares)
-            ]
+        for week, share in zip(xs, shares):
+            hour_bottom[week] += values[week]
+            share_bottom[week] += share
 
-        for index in reversed(range(zone_count)):
-            values = [
-                week.zones[index] / 3600
-                for week in planned_zone_weeks
-            ]
-            first = index == zone_count - 1
-            color = _fade(
-                ZONE_COLORS[index % len(ZONE_COLORS)],
-                0.45,
-            )
-            _add(
-                figure,
-                go.Bar(
-                    x=[week.week for week in planned_zone_weeks],
-                    y=values,
-                    base=planned_bottoms,
-                    name=planned_zone_label if first else None,
-                    width=WEEK_MS,
-                    showlegend=first,
-                    marker={"color": color},
-                ),
-                row=1,
-                col=1,
-            )
-            shares = [
-                value / total * 100 if total else 0.0
-                for value, total in zip(values, combined_planned)
-            ]
-            _add(
-                figure,
-                go.Bar(
-                    x=[week.week for week in planned_zone_weeks],
-                    y=shares,
-                    base=planned_percent_bottoms,
-                    width=WEEK_MS,
-                    showlegend=False,
-                    marker={"color": color},
-                ),
-                row=2,
-                col=1,
-            )
-            planned_bottoms = [
-                bottom + value
-                for bottom, value in zip(planned_bottoms, values)
-            ]
-            planned_percent_bottoms = [
-                bottom + value
-                for bottom, value in zip(planned_percent_bottoms, shares)
-            ]
+    # Unzoned first, then each zone's actual with its plan directly above, so
+    # a week reads bottom to top as hard done, hard planned, easy done, easy
+    # planned.
+    unzoned_actual = {
+        week.week: week.unzoned / 3600 for week in weeks if week.unzoned
+    }
+    add_segment(
+        unzoned_actual.keys(),
+        unzoned_actual,
+        "Unzoned",
+        UNZONED_COLOR,
+        legend=True,
+    )
+    unzoned_planned = {
+        week.week: week.unzoned / 3600
+        for week in planned_zone_weeks
+        if week.unzoned
+    }
+    add_segment(
+        unzoned_planned.keys(),
+        unzoned_planned,
+        "planned unzoned",
+        _fade(UNZONED_COLOR, 0.45),
+        legend=True,
+    )
+
+    planned_legend = True
+
+    # Two blocks per week: hard (Z3+) and easy (Z1-2), each with the actual
+    # time first and the plan for the rest of the week directly above it.
+    for group in (
+        tuple(range(zone_count - 1, 1, -1)),
+        tuple(range(min(1, zone_count - 1), -1, -1)),
+    ):
+        for planned in (False, True):
+            for index in group:
+                color = ZONE_COLORS[index % len(ZONE_COLORS)]
+
+                if planned:
+                    values_for_week = {
+                        week.week: week.zones[index] / 3600
+                        for week in planned_zone_weeks
+                    }
+                    add_segment(
+                        values_for_week.keys(),
+                        values_for_week,
+                        planned_zone_label if planned_legend else None,
+                        _fade(color, 0.45),
+                        legend=planned_legend,
+                    )
+                    planned_legend = False
+                else:
+                    values_for_week = {
+                        week.week: week.zones[index] / 3600
+                        for week in weeks
+                    }
+                    add_segment(
+                        values_for_week.keys(),
+                        values_for_week,
+                        f"Z{index + 1}",
+                        color,
+                        legend=True,
+                    )
 
     planned_totals = [
         (week, seconds / 3600)
         for week, seconds in planned_time or []
-        if week not in planned_zone_dates
+        if week not in planned_week_totals
     ]
-    planned_marks = [
-        (week, actual_hours.get(week, 0.0) + planned_hours(week))
-        for week in (
-            [week.week for week in planned_zone_weeks]
-            + [week for week, _ in planned_totals]
+
+    if planned_totals:
+        weeks = [week for week, _ in planned_totals]
+        values = [value for _, value in planned_totals]
+        _add(
+            figure,
+            go.Bar(
+                x=weeks,
+                y=values,
+                base=[hour_bottom.get(week, 0.0) for week in weeks],
+                name="planned total",
+                width=WEEK_MS,
+                marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
+            ),
+            row=1,
+            col=1,
         )
-    ]
+
+        for week, value in planned_totals:
+            hour_bottom[week] = hour_bottom.get(week, 0.0) + value
 
     ceiling = max(
         _axis_ceiling(
-            totals + [value for _, value in planned_marks],
+            list(hour_bottom.values()),
             step=TIME_Y_STEP,
             floor=TIME_Y_MIN,
         ),
@@ -915,27 +833,14 @@ def plot_time(
         ),
     )
 
-    if planned_totals:
-        _add(
-            figure,
-            go.Bar(
-                x=[week for week, _ in planned_totals],
-                y=[value for _, value in planned_totals],
-                base=[
-                    actual_hours.get(week, 0.0)
-                    for week, _ in planned_totals
-                ],
-                name="planned total",
-                width=WEEK_MS,
-                marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
-            ),
-            row=1,
-            col=1,
-        )
+    totals_by_week = dict(zip(week_dates, (
+        actual_week_totals[w] for w in week_dates
+    )))
+    totals_by_week.update(hour_bottom)
 
     _clipped_markers(
         figure,
-        list(zip(week_dates, totals)) + planned_marks,
+        list(totals_by_week.items()),
         ceiling,
         "h",
         row=1,
@@ -988,8 +893,8 @@ def plot_time(
 
     axis_weeks = sorted(
         set(week_dates if weeks else [])
-        | {week for week, _ in planned_time or []}
-        | planned_zone_dates
+        | set(planned_week_totals)
+        | set(planned_time_by_week)
     )
 
     if axis_weeks:

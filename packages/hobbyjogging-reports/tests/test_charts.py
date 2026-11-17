@@ -355,6 +355,38 @@ class TimeChartTests(unittest.TestCase):
 
         self.assertTrue(stacked)
 
+    def test_zones_stack_hard_done_hard_planned_easy_done_easy_planned(self):
+        week = date(2026, 1, 5)
+        weeks = [TimeZoneWeek(week, [3600, 3600, 3600, 3600], 0)]
+        planned = [TimeZoneWeek(week, [3600, 3600, 3600, 3600])]
+        points = [TimePoint(D, 3600, 3000, 3200, 3300)]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=points,
+            planned_zone_weeks=planned,
+            windows=AverageWindows(),
+            as_html=True,
+        )
+
+        index = html.index("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.index("[", index):]
+        )
+        bars = [
+            trace
+            for trace in data
+            if trace.get("type") == "bar"
+            and trace.get("yaxis") == "y"
+            and trace.get("x") == [week.isoformat()]
+        ]
+
+        self.assertEqual(
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+            [trace["base"][0] for trace in bars],
+        )
+
     def test_the_projected_zone_area_is_transparent(self):
         weeks = [TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 0, 0], 0)]
         points = [TimePoint(D, 7200, 6000, 6500, 7000)]
@@ -484,11 +516,11 @@ class TimeChartTests(unittest.TestCase):
         # Bottom to top: unzoned, Z4, Z3, Z2, Z1.
         self.assertEqual(
             ["Unzoned", "Z4", "Z3", "Z2", "Z1"],
-            [trace["name"] for trace in absolute],
+            [trace.get("name") for trace in absolute if trace.get("name")],
         )
         self.assertEqual(
             ["Unzoned", "Z4", "Z3", "Z2", "Z1"],
-            [trace["name"] for trace in percent],
+            [trace.get("name") for trace in percent if trace.get("name")],
         )
         self.assertEqual(
             100.0,
