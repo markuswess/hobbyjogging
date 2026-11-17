@@ -7,7 +7,7 @@ from datetime import date
 
 from hobbyjogging_core.model import Event
 
-from .common import _planned_events, week_start
+from .common import RUN_TYPES, _planned_events, week_start
 
 
 def weekly_planned_distance(
@@ -89,6 +89,28 @@ def daily_planned_load(
             totals[event.date] += event.training_load
 
     return sorted(totals.items())
+
+
+def daily_planned_load_split(
+    events: list[Event],
+    start: date,
+    end: date,
+) -> tuple[list[tuple[date, float]], list[tuple[date, float]]]:
+    """Planned running and cross load per day, oldest first.
+
+    Days without planned load are skipped in both lists.
+    """
+    running: dict[date, float] = defaultdict(float)
+    cross: dict[date, float] = defaultdict(float)
+
+    for event in _planned_events(events, start, end):
+        if not event.training_load:
+            continue
+
+        target = running if event.type in RUN_TYPES else cross
+        target[event.date] += event.training_load
+
+    return sorted(running.items()), sorted(cross.items())
 
 
 def planned_workout_dates(

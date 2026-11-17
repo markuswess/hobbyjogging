@@ -335,6 +335,13 @@ this list keeps the recent decisions only.
   load inside each episode. Illness days stay in the aggregates. The
   Recovery and Health tab embeds it over that tab's two-year window.
 
+- **Running-only load.** The promoted cross-training load-transfer handoff
+  (best transfer factor 0) is consumed: the load chart stacks running and
+  cross load but computes base/fitness/fatigue from running only, the
+  overview's row is now `Run load / week`, planned load is split by sport,
+  and compare load counts runs only. Cross load stays as context. The
+  `docs/METRICS.md` card for the handoff is still a root step.
+
 ## Bugs
 
 _None._

@@ -253,7 +253,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Cross / week", index)
             self.assertIn("Run time / week", index)
             self.assertIn("Run km / week", index)
-            self.assertIn("Load / week", index)
+            self.assertIn("Run load / week", index)
             self.assertIn("Z3+4 / week", index)
             self.assertIn("7-day EWMA", index)
             self.assertIn("42-day EWMA", index)
@@ -375,7 +375,7 @@ class DashboardBuildTests(unittest.TestCase):
             # charts, beyond the actual window.
             self.assertIn("planned km", analysis)
             self.assertIn("planned zones", analysis)
-            self.assertIn('"name":"planned load"', analysis)
+            self.assertIn('"name":"planned run"', analysis)
             self.assertIn("avg HR (bpm)", analysis)
             self.assertNotIn("subT and LT1 intervals", analysis)
             self.assertEqual(4, analysis.count("Plotly.newPlot"))

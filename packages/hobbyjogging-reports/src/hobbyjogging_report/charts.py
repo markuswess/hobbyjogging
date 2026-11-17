@@ -102,6 +102,7 @@ AVERAGE_COLORS = {
 
 VOLUME_BAR_COLOR = "lightgrey"
 LOAD_BAR_COLOR = "#b0bec5"
+CROSS_LOAD_COLOR = "#d8cfc2"
 
 ZONE_COLORS = (
     "#8ecae6",
@@ -1532,6 +1533,7 @@ def plot_load(
     output: str,
     *,
     planned_load: list[tuple[date, float]] | None = None,
+    planned_cross_load: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
     rpe_points: list[RpePoint] | None = None,
     load_scale: float = 7.0,
@@ -1541,45 +1543,68 @@ def plot_load(
 ) -> str:
     """Weekly load bars with weekly EWMA lines and session RPE on a right axis.
 
-    Bars sum the daily load of each Monday-to-Sunday week; the averages are
-    scaled to the same per-week units. Planned load stacks on the current
-    week's actual bar as faded, hatched bars.
+    Bars stack running and cross load for each Monday-to-Sunday week; the
+    running-fitness averages are scaled to the same per-week units. Cross
+    load is context: it does not feed the averages, because the lab found no
+    positive transfer to running fitness. Planned load stacks on the current
+    week's actual bars as faded, hatched bars.
     """
     _require_data(points)
     windows = windows or AverageWindows()
     actual = [point for point in points if not point.projected]
 
-    weekly: dict[date, float] = {}
+    weekly_run: dict[date, float] = {}
+    weekly_cross: dict[date, float] = {}
 
     for point in actual:
         week = week_start(point.date)
-        weekly[week] = weekly.get(week, 0.0) + point.load
+        weekly_run[week] = weekly_run.get(week, 0.0) + point.load
+        weekly_cross[week] = (
+            weekly_cross.get(week, 0.0) + point.cross_load
+        )
 
-    weekly_load = sorted(weekly.items())
-    actual_by_week = dict(weekly_load)
-    planned: list[tuple[date, float]] = []
+    actual_weeks = sorted(set(weekly_run) | set(weekly_cross))
+    weekly_total = {
+        week: weekly_run.get(week, 0.0) + weekly_cross.get(week, 0.0)
+        for week in actual_weeks
+    }
+    planned_run: dict[date, float] = {}
+    planned_cross: dict[date, float] = {}
 
-    if planned_load:
+    if planned_load or planned_cross_load:
         actual_days = {
-            point.date for point in actual if point.load > 0
+            point.date
+            for point in actual
+            if point.load > 0 or point.cross_load > 0
         }
-        planned_by_week: dict[date, float] = {}
 
-        for day, value in planned_load:
-            if day in actual_days:
-                continue
-            week = week_start(day)
-            planned_by_week[week] = planned_by_week.get(week, 0.0) + value
+        for source, target in (
+            (planned_load, planned_run),
+            (planned_cross_load, planned_cross),
+        ):
+            for day, value in source or []:
+                if day in actual_days:
+                    continue
+                week = week_start(day)
+                target[week] = target.get(week, 0.0) + value
 
-        planned = sorted(planned_by_week.items())
-
+    planned_weeks = sorted(set(planned_run) | set(planned_cross))
+    planned_run = {week: planned_run.get(week, 0.0) for week in planned_weeks}
+    planned_cross = {
+        week: planned_cross.get(week, 0.0) for week in planned_weeks
+    }
     planned_marks = [
-        (week, value + actual_by_week.get(week, 0.0))
-        for week, value in planned
+        (
+            week,
+            weekly_total.get(week, 0.0)
+            + planned_run[week]
+            + planned_cross[week],
+        )
+        for week in planned_weeks
     ]
     ceiling = max(
         _axis_ceiling(
-            [value for _, value in weekly_load]
+            list(weekly_total.values())
             + [value for _, value in planned_marks],
             step=LOAD_WEEK_Y_STEP,
             floor=LOAD_WEEK_Y_MIN,
@@ -1594,10 +1619,7 @@ def plot_load(
             floor=LOAD_WEEK_Y_MIN,
         ),
     )
-    axis_weeks = sorted(
-        {week for week, _ in weekly_load}
-        | {week for week, _ in planned}
-    )
+    axis_weeks = sorted(set(actual_weeks) | set(planned_weeks))
 
     figure = go.Figure()
 
@@ -1614,34 +1636,70 @@ def plot_load(
             labels=True,
         )
 
-    if weekly_load:
+    if any(weekly_run.values()):
         figure.add_bar(
-            x=[week for week, _ in weekly_load],
-            y=[value for _, value in weekly_load],
-            name="weekly load",
+            x=actual_weeks,
+            y=[weekly_run.get(week, 0.0) for week in actual_weeks],
+            name="running load",
             width=WEEK_MS,
             marker_color=LOAD_BAR_COLOR,
         )
 
-    if planned:
+    if any(weekly_cross.values()):
         figure.add_bar(
-            x=[week for week, _ in planned],
-            y=[value for _, value in planned],
-            # The current week already has an actual bar; stack the plan for
-            # its remaining days on top of it.
-            base=[actual_by_week.get(week, 0.0) for week, _ in planned],
-            name="planned load",
+            x=actual_weeks,
+            y=[weekly_cross.get(week, 0.0) for week in actual_weeks],
+            base=[weekly_run.get(week, 0.0) for week in actual_weeks],
+            name="cross load",
             width=WEEK_MS,
-            marker={
-                "color": _fade(LOAD_BAR_COLOR, 0.45),
-                "line": {"color": "#9aa5b1", "width": 0.6},
-                "pattern": {
-                    "shape": PLANNED_PATTERN,
-                    "fgcolor": "#9aa5b1",
-                    "solidity": 0.45,
-                },
-            },
+            marker_color=CROSS_LOAD_COLOR,
         )
+
+    if planned_weeks:
+        run_base = [weekly_total.get(week, 0.0) for week in planned_weeks]
+        cross_base = list(run_base)
+
+        if any(planned_run.values()):
+            figure.add_bar(
+                x=planned_weeks,
+                y=[planned_run[week] for week in planned_weeks],
+                # The current week already has actual bars; stack the plan
+                # for its remaining days on top of them.
+                base=run_base,
+                name="planned run",
+                width=WEEK_MS,
+                marker={
+                    "color": _fade(LOAD_BAR_COLOR, 0.45),
+                    "line": {"color": "#9aa5b1", "width": 0.6},
+                    "pattern": {
+                        "shape": PLANNED_PATTERN,
+                        "fgcolor": "#9aa5b1",
+                        "solidity": 0.45,
+                    },
+                },
+            )
+            cross_base = [
+                value + planned_run[week]
+                for value, week in zip(run_base, planned_weeks)
+            ]
+
+        if any(planned_cross.values()):
+            figure.add_bar(
+                x=planned_weeks,
+                y=[planned_cross[week] for week in planned_weeks],
+                base=cross_base,
+                name="planned cross",
+                width=WEEK_MS,
+                marker={
+                    "color": _fade(CROSS_LOAD_COLOR, 0.45),
+                    "line": {"color": "#9aa5b1", "width": 0.6},
+                    "pattern": {
+                        "shape": PLANNED_PATTERN,
+                        "fgcolor": "#9aa5b1",
+                        "solidity": 0.45,
+                    },
+                },
+            )
 
     _plot_average_lines(
         figure,
@@ -1681,9 +1739,11 @@ def plot_load(
                 )
             )
 
+    totals_by_week = dict(weekly_total)
+    totals_by_week.update(planned_marks)
     _clipped_markers(
         figure,
-        list(weekly_load) + planned_marks,
+        list(totals_by_week.items()),
         ceiling,
         "load",
     )
@@ -2662,7 +2722,7 @@ def plot_compare(
     ylabels = {
         "volume": "km / week",
         "time": "hours / week",
-        "load": "load / day",
+        "load": "running load / day",
         "runs": "runs / day",
         "efficiency": f"m / excess beat (steady {STEADY_BAND_LABEL})",
     }

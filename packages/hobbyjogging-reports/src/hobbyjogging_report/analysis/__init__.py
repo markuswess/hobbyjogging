@@ -71,6 +71,7 @@ from .common import (
 )
 from .load import (
     daily_run_distance,
+    daily_run_load,
     daily_training_load,
     distance_averages,
     load_metrics,
@@ -87,6 +88,7 @@ from .pace_hr import (
 from .planned import (
     daily_planned_distance,
     daily_planned_load,
+    daily_planned_load_split,
     daily_planned_time,
     planned_workout_dates,
     weekly_planned_distance,
@@ -214,9 +216,11 @@ __all__ = [
     "compare_year_planned_ewma",
     "daily_planned_distance",
     "daily_planned_load",
+    "daily_planned_load_split",
     "daily_planned_time",
     "daily_planned_zone_time",
     "daily_run_distance",
+    "daily_run_load",
     "daily_run_time",
     "daily_session_rpe",
     "daily_training_load",

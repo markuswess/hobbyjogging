@@ -77,7 +77,7 @@ class AverageWindows:
 
 @dataclass
 class LoadPoint:
-    """Daily training load plus its smoothed averages."""
+    """Daily running load, other-sport load, and smoothed averages."""
 
     date: date
     load: float
@@ -85,6 +85,7 @@ class LoadPoint:
     fitness: float
     fatigue: float
     projected: bool = False
+    cross_load: float = 0.0
 
 
 @dataclass

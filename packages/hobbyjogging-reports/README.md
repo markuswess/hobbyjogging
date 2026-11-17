@@ -35,7 +35,8 @@ seconds and the number of cache misses.
 Pages:
 
 - `index.html` — a 7/42/182-day EWMA overview (weekly equivalents of runs,
-  cross sessions, time, km, load, and Z3+4) plus a planned weekly average for
+  cross sessions, time, km, running load, and Z3+4) plus a planned weekly
+  average for
   the next 14 days; the main overview chart; and the daily report. Upcoming
   races live on the Performance tab, and the plan itself on the activities
   tab (rows and event pages), so Overview no longer repeats the planned
@@ -236,7 +237,7 @@ stay compact (`1h02`).
 - **daily** — Yesterday's activities, today's planned workout,
   and recovery (HRV / RHR / sleep) from the last nights.
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
-  km, load, and Z3+4, plus the planned weekly average for the next 14
+  km, running load, and Z3+4, plus the planned weekly average for the next 14
   days, plus an Efficiency row in the same table using the trailing
   7/42/182-day weighted steady efficiency (40–75 min, no planned value).
 - **weekly** — Aggregated running and cross-training stats,
@@ -316,13 +317,15 @@ stay compact (`1h02`).
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
   default. Bigger weeks above the axis are marked and clipped.
-- **load** — Weekly training load (the sum of each Monday-to-Sunday week)
-  with 182-day base, 42-day fitness and 7-day fatigue exponentially weighted
-  averages scaled to load per week, plus weekly planned load stacked on the
-  current week, and the three session-RPE EWMAs on a right-hand axis (RPE
-  carries the last rated value between sessions). The RPE axis is scaled to
-  the RPE series (minimum 6), not to the load axis, so the overlay always
-  fits.
+- **load** — Weekly load bars stacked as running and cross load (the sum of
+  each Monday-to-Sunday week), with 182-day base, 42-day fitness and 7-day
+  fatigue exponentially weighted averages of **running** load only, scaled to
+  load per week. Cross load stays as context and does not feed the averages;
+  the lab found no positive transfer to running fitness. Planned running and
+  cross load stack on the current week, and the three session-RPE EWMAs sit
+  on a right-hand axis (RPE carries the last rated value between sessions).
+  The RPE axis is scaled to the RPE series (minimum 6), not to the load axis,
+  so the overlay always fits.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
   at the bottom; Z1/Z2 in blues and Z3/Z4 in reds), with 182/42/7-day time
   averages, a share-of-week panel, a per-zone EWMA panel, and planned weekly
@@ -499,19 +502,21 @@ as the direct CLI.
 
 ### Load chart
 
-`load` shows weekly training load as bars plus three exponentially weighted
-averages, all in load per week:
+`load` shows weekly load bars stacked as running and cross load, plus three
+exponentially weighted averages of **running** load, all in load per week:
 
 - **Base (182d)** — long-term training base
 - **Fitness (42d)** — medium-term fitness
 - **Fatigue (7d)** — short-term fatigue
 
 The averages use time-constant EWMA (`alpha = 1 - exp(-1 / days)`) and are
-computed with history before the displayed range and scaled by seven to
-per-week units. Planned load continues the averages into the future as
-dashed lines and stacks on the current week's actual bar as faded, hatched
-bars. Change the horizons with `--base-days`, `--fitness-days`, and
-`--fatigue-days`.
+computed from running load with history before the displayed range and scaled
+by seven to per-week units. Cross load is drawn as context but excluded from
+the averages, following the lab's cross-training load transfer result (the
+best transfer factor is zero). Planned running and cross load continue the
+averages into the future as dashed lines and stack on the current week's
+actual bars as faded, hatched bars. Change the horizons with `--base-days`,
+`--fitness-days`, and `--fatigue-days`.
 
 Activities without `training_load` are treated as zero load and get a note.
 The database currently only has load data from late 2025, so the 182-day

@@ -11,7 +11,7 @@ from ..analysis import (
     RESTING_HR_WINDOW_DAYS,
     RUN_TYPES,
     average_warmup_days,
-    daily_planned_load,
+    daily_planned_load_split,
     distance_averages,
     load_metrics,
     pace_hr_points,
@@ -95,7 +95,11 @@ def build_analysis_section(
         kind="pace",
         zone_count=ZONE_COUNT,
     )
-    planned_load = daily_planned_load(events, end, plan_end)
+    planned_run_load, planned_cross_load = daily_planned_load_split(
+        events,
+        end,
+        plan_end,
+    )
 
     weekly_distance = weekly_run_distance(display)
     distance_points = distance_averages(
@@ -197,11 +201,15 @@ def build_analysis_section(
                 windows=windows,
                 warmup_days=warmup_days,
             ),
-            planned_load=planned_load,
+            planned_load=planned_run_load,
+            planned_cross_load=planned_cross_load,
             periods=periods,
             as_html=True,
         )
-        if any(point.load > 0 for point in load_points)
+        if any(
+            point.load > 0 or point.cross_load > 0
+            for point in load_points
+        )
         else NO_LOAD
     )
 

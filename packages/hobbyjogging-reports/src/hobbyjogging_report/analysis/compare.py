@@ -355,10 +355,13 @@ def _daily_metric(
         if not (start <= activity.date <= end):
             continue
 
-        if metric == "load":
-            value = activity.training_load or 0.0
-        elif activity.type not in RUN_TYPES:
+        if activity.type not in RUN_TYPES:
             continue
+
+        if metric == "load":
+            # Running load only; cross load does not transfer to running
+            # fitness (experiments/README.md, cross-training load transfer).
+            value = activity.training_load or 0.0
         elif metric == "runs":
             value = 1.0
         elif metric == "volume":

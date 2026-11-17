@@ -89,7 +89,8 @@ class OverviewReportTests(unittest.TestCase):
         self.assertEqual("0.5", _row(report, "Cross / week")[-1])
         self.assertEqual("30min", _row(report, "Run time / week")[-1])
         self.assertEqual("5.0", _row(report, "Run km / week")[-1])
-        self.assertEqual("30", _row(report, "Load / week")[-1])
+        self.assertEqual("20", _row(report, "Run load / week")[-1])
+        self.assertIn("Load counts running only", report)
         self.assertEqual("5min", _row(report, "Z3+4 / week")[-1])
         self.assertEqual(
             [

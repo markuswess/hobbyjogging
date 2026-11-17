@@ -293,7 +293,7 @@ def run_load_chart(
     """Render weekly load and its base/fitness/fatigue EWMA lines."""
     from .analysis import (
         average_warmup_days,
-        daily_planned_load,
+        daily_planned_load_split,
         load_metrics,
         rpe_metrics,
     )
@@ -334,10 +334,17 @@ def run_load_chart(
         projected_end=planned_end,
     )
 
+    planned_run, planned_cross = daily_planned_load_split(
+        events,
+        end + timedelta(days=1),
+        planned_end,
+    )
+
     path = plot_load(
         points,
         output=output,
-        planned_load=daily_planned_load(events, start, planned_end),
+        planned_load=planned_run,
+        planned_cross_load=planned_cross,
         windows=windows,
         rpe_points=rpe_metrics(
             activities,
@@ -666,7 +673,9 @@ def run_compare_chart(
             f"Year comparison — steady efficiency "
             f"({STEADY_BAND_LABEL}), {window}-day EWMA"
             if metric == "efficiency"
-            else f"Year comparison — {metric}, {window}-day EWMA"
+            else f"Year comparison — "
+            f"{'running ' if metric == 'load' else ''}"
+            f"{metric}, {window}-day EWMA"
         ),
         planned_series=compare_year_planned_ewma(
             activities,

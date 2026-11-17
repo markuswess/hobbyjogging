@@ -4,6 +4,7 @@ from functools import partial
 
 from hobbyjogging_report.analysis import (
     daily_planned_load,
+    daily_planned_load_split,
     daily_planned_zone_time,
     daily_run_distance,
     daily_run_time,
@@ -246,6 +247,59 @@ class LoadMetricsTests(unittest.TestCase):
         self.assertEqual(0, points[0].base)
         self.assertEqual(0, points[0].fitness)
         self.assertEqual(0, points[0].fatigue)
+
+    def test_load_metrics_keep_cross_load_out_of_the_averages(self):
+        activities = [
+            Activity(id="run", date=D, type="run", training_load=100),
+            Activity(id="ride", date=D, type="ride", training_load=50),
+        ]
+
+        points = load_metrics(
+            activities,
+            D,
+            D,
+            warmup_days=10,
+        )
+        run_only = load_metrics(
+            [Activity(id="run", date=D, type="run", training_load=100)],
+            D,
+            D,
+            warmup_days=10,
+        )
+
+        self.assertEqual(100, points[-1].load)
+        self.assertEqual(50, points[-1].cross_load)
+        self.assertAlmostEqual(
+            run_only[-1].fitness,
+            points[-1].fitness,
+        )
+        self.assertAlmostEqual(
+            run_only[-1].fatigue,
+            points[-1].fatigue,
+        )
+
+    def test_load_metrics_split_projected_running_and_cross(self):
+        events = [
+            Event(date=D + timedelta(days=1), type="run", training_load=100),
+            Event(
+                date=D + timedelta(days=1),
+                type="ride",
+                training_load=40,
+            ),
+        ]
+
+        points = load_metrics(
+            [Activity(id="run", date=D, type="run", training_load=100)],
+            D,
+            D,
+            warmup_days=10,
+            events=events,
+            projected_end=D + timedelta(days=1),
+        )
+
+        self.assertEqual(100, points[-1].load)
+        self.assertEqual(40, points[-1].cross_load)
+        self.assertTrue(points[-1].projected)
 
     def test_load_metrics_project_planned_load(self):
         events = [
@@ -1093,6 +1147,39 @@ class PlannedWorkoutTests(unittest.TestCase):
                 date(2026, 10, 31),
             ),
         )
+
+    def test_daily_planned_load_split_separates_sports(self):
+        events = [
+            Event(
+                date=date(2026, 9, 28),
+                type="run",
+                training_load=34,
+            ),
+            Event(
+                date=date(2026, 9, 28),
+                type="ride",
+                training_load=20,
+            ),
+            Event(
+                date=date(2026, 9, 29),
+                type="run",
+                training_load=None,
+            ),
+            Event(
+                date=date(2026, 9, 30),
+                type="",
+                training_load=10,
+            ),
+        ]
+
+        running, cross = daily_planned_load_split(
+            events,
+            date(2026, 9, 1),
+            date(2026, 10, 31),
+        )
+
+        self.assertEqual([(date(2026, 9, 28), 34)], running)
+        self.assertEqual([(date(2026, 9, 28), 20)], cross)
 
     def test_planned_workout_dates_skips_notes_and_keeps_duplicates(self):
         events = [

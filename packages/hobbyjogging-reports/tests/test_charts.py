@@ -2097,7 +2097,11 @@ class LoadChartTests(unittest.TestCase):
 
         html = plot_load(points, "", as_html=True)
         data = plotly_data(html)
-        bars = [trace for trace in data if trace.get("type") == "bar"]
+        bars = {
+            trace["name"]: trace
+            for trace in data
+            if trace.get("type") == "bar"
+        }
         lines = [
             trace
             for trace in data
@@ -2105,13 +2109,16 @@ class LoadChartTests(unittest.TestCase):
             and trace.get("name", "").endswith("d)")
         ]
 
-        self.assertEqual(1, len(bars))
+        self.assertEqual({"running load"}, set(bars))
         self.assertEqual(
             ["2025-12-29", "2026-01-05"],
-            bars[0]["x"],
+            bars["running load"]["x"],
         )
-        self.assertEqual([50.0, 50.0], bars[0]["y"])
-        self.assertEqual(7 * 24 * 60 * 60 * 1000, bars[0]["width"])
+        self.assertEqual([50.0, 50.0], bars["running load"]["y"])
+        self.assertEqual(
+            7 * 24 * 60 * 60 * 1000,
+            bars["running load"]["width"],
+        )
 
         # Every average is 7x the daily EWMA, so it reads in load per week.
         self.assertEqual(
@@ -2130,6 +2137,35 @@ class LoadChartTests(unittest.TestCase):
 
         self.assertEqual([], hoverable_unnamed(data))
 
+    def test_load_stacks_cross_load_and_its_own_plan(self):
+        points = [
+            LoadPoint(D, 50.0, 40.0, 45.0, 48.0),
+            LoadPoint(D + timedelta(days=1), 0.0, 40.0, 45.0, 48.0,
+                      cross_load=30.0),
+        ]
+
+        html = plot_load(
+            points,
+            "",
+            planned_load=[(D + timedelta(days=3), 20.0)],
+            planned_cross_load=[(D + timedelta(days=3), 10.0)],
+            as_html=True,
+        )
+        data = plotly_data(html)
+        bars = {
+            trace["name"]: trace
+            for trace in data
+            if trace.get("type") == "bar"
+        }
+
+        self.assertEqual(50.0, bars["running load"]["y"][0])
+        self.assertEqual([50.0], bars["cross load"]["base"])
+        self.assertEqual(30.0, bars["cross load"]["y"][0])
+        self.assertEqual([80.0], bars["planned run"]["base"])
+        self.assertEqual([20.0], bars["planned run"]["y"])
+        self.assertEqual([100.0], bars["planned cross"]["base"])
+        self.assertEqual([10.0], bars["planned cross"]["y"])
+
     def test_planned_load_stacks_on_the_partial_week(self):
         points = [LoadPoint(D, 50.0, 40.0, 45.0, 48.0)]
 
@@ -2147,7 +2183,7 @@ class LoadChartTests(unittest.TestCase):
         planned = [
             trace
             for trace in data
-            if trace.get("name") == "planned load"
+            if trace.get("name") == "planned run"
         ]
 
         self.assertEqual(1, len(planned))

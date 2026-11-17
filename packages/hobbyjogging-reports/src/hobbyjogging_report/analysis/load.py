@@ -15,7 +15,7 @@ from .averages import (
 )
 from .common import RUN_TYPES, week_start
 from ..model import AverageWindows, DistancePoint, LoadPoint
-from .planned import daily_planned_distance, daily_planned_load
+from .planned import daily_planned_distance, daily_planned_load_split
 from ..series import daily_sums
 
 
@@ -40,6 +40,29 @@ def daily_training_load(
 
     for activity in activities:
         if not (start <= activity.date <= end):
+            continue
+
+        by_day[activity.date] = (
+            by_day.get(activity.date, 0.0)
+            + (activity.training_load or 0.0)
+        )
+
+    return daily_sums(by_day, start, end)
+
+
+def daily_run_load(
+    activities: list[Activity],
+    start: date,
+    end: date,
+) -> list[tuple[date, float]]:
+    """Sum running training load per day, filling rest days with zero."""
+    by_day: dict[date, float] = {}
+
+    for activity in activities:
+        if not (start <= activity.date <= end):
+            continue
+
+        if activity.type not in RUN_TYPES:
             continue
 
         by_day[activity.date] = (
@@ -86,10 +109,13 @@ def load_metrics(
 ) -> list[LoadPoint]:
     """Return daily load with base, fitness, and fatigue EWMAs.
 
+    ``load`` is running load; other sports ride along as ``cross_load``
+    context. The averages are computed from running load only, because cross
+    load does not transfer to running fitness (see experiments/README.md).
     ``activities`` must include the warm-up range before ``start`` so the
     long average does not begin at zero mid-report. When ``events`` and
     ``projected_end`` are given, the averages continue through planned
-    load; those points are marked ``projected``.
+    running load; those points are marked ``projected``.
     """
     windows = windows or DEFAULT_AVERAGE_WINDOWS
 
@@ -105,20 +131,27 @@ def load_metrics(
     series_end = projection_start if projected else end
 
     warm_start = start - timedelta(days=warmup_days)
-    series = daily_training_load(activities, warm_start, series_end)
+    series = daily_run_load(activities, warm_start, series_end)
+    total_by_day = dict(
+        daily_training_load(activities, warm_start, series_end)
+    )
+    cross = [
+        (day, max(0.0, total_by_day.get(day, 0.0) - value))
+        for day, value in series
+    ]
 
     if projected:
-        series = _extend_series(
-            series,
-            daily_planned_load(
-                events,
-                series_end + timedelta(days=1),
-                projected_end,
-            ),
+        planned_run, planned_cross = daily_planned_load_split(
+            events,
+            series_end + timedelta(days=1),
             projected_end,
         )
+        series = _extend_series(series, planned_run, projected_end)
+        cross = _extend_series(cross, planned_cross, projected_end)
     else:
         projection_start = None
+
+    cross_by_day = dict(cross)
 
     rows = _average_rows(
         series,
@@ -135,6 +168,7 @@ def load_metrics(
             fitness=fitness,
             fatigue=fatigue,
             projected=projected_value,
+            cross_load=cross_by_day.get(day, 0.0),
         )
         for day, value, base, fitness, fatigue, projected_value in rows
     ]

@@ -517,6 +517,36 @@ class CompareYearEwmaTests(unittest.TestCase):
         self.assertAlmostEqual(jan1, points[date(2026, 1, 1)])
         self.assertAlmostEqual(jan2, points[date(2026, 1, 2)])
 
+    def test_load_metric_ignores_cross_training(self):
+        activities = [
+            activity(
+                id="run",
+                date=date(2026, 1, 2),
+                training_load=100,
+            ),
+            activity(
+                id="ride",
+                date=date(2026, 1, 2),
+                type="ride",
+                training_load=50,
+            ),
+        ]
+
+        series = compare_year_ewma(
+            activities,
+            "load",
+            7,
+            today=date(2026, 1, 3),
+        )
+        points = dict(series[0][1])
+        alpha = 1 - math.exp(-1 / 7)
+        seed = 100 / 3
+        jan1 = (1 - alpha) * seed
+        jan2 = alpha * 100 + (1 - alpha) * jan1
+
+        self.assertAlmostEqual(jan1, points[date(2026, 1, 1)])
+        self.assertAlmostEqual(jan2, points[date(2026, 1, 2)])
+
     def test_each_year_starts_where_the_previous_one_ended(self):
         activities = [
             activity(id="a", date=date(2025, 7, 1), distance_m=10000)

@@ -21,7 +21,7 @@ from .analysis import (
     average_warmup_days,
     daily_run_distance,
     daily_run_time,
-    daily_training_load,
+    daily_run_load,
     daily_zone_time,
     event_zone_time,
     resting_hr_baselines,
@@ -81,7 +81,7 @@ def overview_ewma(
     run_distance = [
         value for _, value in daily_run_distance(activities, start, end)
     ]
-    load = [value for _, value in daily_training_load(activities, start, end)]
+    load = [value for _, value in daily_run_load(activities, start, end)]
     z3_z4 = [
         sum(zones[2:4])
         for _, zones in daily_zone_time(
@@ -112,7 +112,7 @@ def overview_ewma(
             "distance",
             weekly(run_distance),
         ),
-        EwmaRow("load", "Load / week", "load", weekly(load)),
+        EwmaRow("load", "Run load / week", "load", weekly(load)),
         EwmaRow("z3_z4_s", "Z3+4 / week", "time", weekly(z3_z4)),
     ]
 
@@ -170,7 +170,8 @@ def planned_overview(
         cross=len(cross),
         run_time_s=sum(event.duration_s or 0 for event in runs),
         run_distance_m=sum(event.distance_m or 0 for event in runs),
-        load=sum(event.training_load or 0 for event in selected),
+        # Running load only; cross load is context, not running fitness.
+        load=sum(event.training_load or 0 for event in runs),
         z3_z4_s=sum(
             event_zone_time(event, (3, 4)) or 0
             for event in runs
@@ -314,6 +315,9 @@ def overview_report(
         "",
         "Weekly equivalents of the daily EWMA ending today; the last column "
         f"is {planned_note}.",
+        "",
+        "Load counts running only; cross load is context in the load "
+        "chart and does not feed the running-fitness averages.",
         "",
         "Steady efficiency is the trailing weighted sum(distance) / "
         f"sum(excess beats), in {EFFICIENCY_UNIT}, for non-quality runs "
