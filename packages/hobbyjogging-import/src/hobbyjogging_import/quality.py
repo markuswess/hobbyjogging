@@ -43,6 +43,7 @@ MOVING_TIME_MISMATCH_FLOOR_S = 600.0
 MOVING_EXCEEDS_RECORDING_S = 60.0
 
 AMBIGUOUS_MATCH = "ambiguous_match"
+AMBIGUOUS_EQUIPMENT = "ambiguous_equipment"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
 CONFLICT = "field_conflict"
@@ -52,6 +53,7 @@ WORKOUT_CLASSIFICATION = "workout_classification"
 # Every category the CLI accepts, in menu order.
 REVIEW_CATEGORIES = (
     AMBIGUOUS_MATCH,
+    AMBIGUOUS_EQUIPMENT,
     CONFLICT,
     QUALITY,
     DUPLICATE,

@@ -255,6 +255,29 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    runalyze_gear = runalyze_sub.add_parser(
+        "gear",
+        help="resolve stored Runalyze gear into equipment and activity links",
+    )
+    runalyze_gear.add_argument("--since", dest="start", type=date_arg)
+    runalyze_gear.add_argument("--to", dest="end", type=date_arg)
+    runalyze_gear.add_argument(
+        "--limit",
+        type=int,
+        help="process at most this many gear records",
+    )
+    runalyze_gear.add_argument("--database", type=Path)
+    runalyze_gear.add_argument(
+        "--output",
+        type=Path,
+        help="write the ambiguous gear resolutions as JSON",
+    )
+    runalyze_gear.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing",
+    )
+
     garmin = subparsers.add_parser(
         "garmin",
         help="fetch original FIT files from Garmin Connect",

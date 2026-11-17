@@ -5,6 +5,16 @@ on.
 
 ## Done
 
+- **Runalyze phase 3.** Offline `runalyze gear` reads the stored activity
+  payloads' `equipment` arrays and resolves each gear record by
+  co-occurrence → exact normalized name → new `runalyze:equipment:<id>` row,
+  then links activities (`source='runalyze'`; first shoe/bike primary, rest
+  secondary) without touching sheet or manual links. Ambiguity opens a
+  non-hiding `ambiguous_equipment` item. Validated on a DB copy: 807 payloads,
+  21 gear records (16 shoes, 4 bikes, 1 other), 796 activity links (774
+  primary, 22 secondary); no gear has sheet co-occurrence or a name match yet,
+  and the second run is a no-op. The co-occurrence/name branches are covered
+  by fixtures and will apply when the 2019–2021 payloads arrive; re-run then.
 - **Runalyze phase 2.** `runalyze enrich` fills a blank `description` from the
   Runalyze `note`, imports detail `tags` into `activity_tags` under
   `source='runalyze'` (manual tags survive), and reports unmatched/ambiguous
@@ -146,29 +156,6 @@ on.
 
 ## Next
 
-- **Runalyze phase 3: gear identity and activity links.** The core contract is
-  ready: `ambiguous_equipment` is a non-hiding review category and
-  `TrainingWriter.link_equipment_source` attaches a gear source record to a
-  matched equipment row without changing it. Build an offline `runalyze gear`
-  command (`--dry-run`, `--since/--to`, `--limit`, `--output`) that reads the
-  stored activity payloads' `equipment` arrays (no activity-detail fetch),
-  resolves each gear record with the co-occurrence → exact normalized name →
-  new-row rule in root item 12, and writes `source_records(record_type='gear')`,
-  `equipment`, `equipment_source_links` and `activity_equipment`
-  (`source='runalyze'`). Do not strip colour/size parentheticals when matching
-  names; co-occurrence is the bridge. The first shoe/bike item is primary, the
-  rest secondary; an existing sheet primary is preserved; manual links win.
-  Brand/model stay empty on new rows; a matched row is never rewritten.
-  Add `ambiguous_equipment` to `REVIEW_CATEGORIES`. The current 616 payloads
-  hold 21 gear items (752 activities with one, 22 with two, 33 with none);
-  categories 78697 shoes, 78699 bikes, 379240 Thule/other. Fetch
-  `/api/v1/equipment/category` once for the names (or cache it) after the
-  activity import frees the API window. Co-occurrence cannot be validated on
-  the real data until the 2019–2021 payloads arrive, so test that branch with
-  fixtures; new-row and exact-name matching can run now. Tests cover
-  co-occurrence, split ambiguity, unique/ambiguous names, 2022+ rows,
-  primary/secondary, sheet-primary preservation, manual links, idempotency and
-  dry-run.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with

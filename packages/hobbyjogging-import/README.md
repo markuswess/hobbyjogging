@@ -316,6 +316,42 @@ activities take roughly a dozen windows, so run it in `tmux`/`nohup` if the
 terminal may close. `--wait` cannot be combined with `--dry-run` or
 `--refresh` (both defeat the stored-detail resume).
 
+### Gear (phase 3)
+
+Gear is resolved **offline** from the stored detail payloads — no API request:
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze gear --dry-run
+```
+
+Each Runalyze gear record resolves in this order:
+
+1. **Co-occurrence** with the sheet shoes on its matched activities (at least
+   3 activities, one sheet item on at least 80% of them).
+2. **Name**: exact normalized match against existing `equipment.name` or
+   `brand + model` (colour/size parentheticals are not stripped).
+3. **New row** `runalyze:equipment:<id>`: type from the category (78697 shoe,
+   78699 bike, else other), dates and notes from the payload, brand/model empty.
+
+A split co-occurrence or several name matches opens a non-hiding
+`ambiguous_equipment` review item; nothing is guessed. For each activity the
+first shoe/bike item is primary and the rest secondary; sheet and manual links
+win, and a matched row is never rewritten. Re-runs are idempotent; scope with
+`--since`/`--to`/`--limit` and write the ambiguous cases with `--output PATH`.
+Re-run after the 2019–2021 payloads arrive so co-occurrence can resolve the
+older gear.
+
+```text
+Runalyze gear: 807 payloads, 21 gear records
+  created: 21
+  linked existing: 0
+  already linked: 0
+  ambiguous: 0
+  ambiguous resolved: 0
+  review items recorded: 0
+  activity links: 796 (774 primary, 22 secondary, 0 already present)
+```
+
 ## Source precedence
 
 There is one fixed source rule: `moving_s` and `elapsed_s` are always

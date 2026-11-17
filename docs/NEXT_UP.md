@@ -398,8 +398,9 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `runalyze inventory --dry-run` that reports what is available per field
       and per year, writing nothing; (2) **done, import package** — comments
       and tags into `activities.description` (blank-fill) and `activity_tags`;
-      (3) gear with cross-source identity; (4) race results;
-      (5) `vo2max_runalyze` as the second owner; (6) the reports.
+      (3) **done, import package** — gear identity and activity links;
+      (4) race results; (5) `vo2max_runalyze` as the second owner;
+      (6) the reports.
     - **Phase 1 result (Nov 2026)**: the import package ships the read-only
       client and the inventory. Live run: 2,841 activities (2019–2026), 82
       collection fields, 85–88 non-null detail fields (153 in the schema),
@@ -421,10 +422,17 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and continues with the remainder; `--refresh` forces a re-fetch, and
       `--wait` sleeps through the windows unattended until the range is done.
       The budget is 240 requests per window (~1 hour), so a full history needs
-      about 12 windows. The real DB is untouched. Phase 3 (gear) is next and
-      uses the identity rule below; before it runs, test whether the
-      collection's `fields` parameter can return `tags`/`equipment` and avoid
-      one detail request per activity.
+      about 12 windows. The real DB is untouched. Phase 3 followed; the
+      collection `fields` trick remains a possible saving for the full
+      enrichment, to test when a window is free.
+    - **Phase 3 result (Nov 2026)**: offline `runalyze gear` resolves the
+      stored payloads' `equipment` arrays with the rule below and writes gear
+      source records, equipment rows and activity links. Validated on a DB
+      copy with 807 payloads: 21 gear records (16 shoes, 4 bikes, 1 other),
+      796 activity links (774 primary, 22 secondary), no co-occurrence or name
+      matches yet, and a second run is a no-op. Co-occurrence and name matches
+      are fixture-tested; re-run after the 2019–2021 payloads arrive. The real
+      DB is untouched.
     - **Gear identity (decided)**: gear records become
       `source_records(record_type='gear', external_id='runalyze:<id>')` plus
       `equipment` rows, linked through `activity_equipment` with
@@ -451,7 +459,7 @@ editing, analysis and lab work; phase 3 is the dormant future.
       category, and `TrainingWriter.link_equipment_source` attaches a gear
       source record to a matched equipment row without overwriting its
       name/brand/model/dates. The offline `runalyze gear` command and the
-      identity logic are handed to the import package.
+      identity logic live in the import package.
     - **Health entries**: Runalyze's Injury & Sickness Tracking records start
       and end dates; map them to `training_periods` illness ranges, never
       markers. Weight and sleep fill `wellness_days`.
