@@ -998,6 +998,21 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and the historical refurbishment (item 37); phase 3 for streams. The
       audit can run earlier.
 
+39. **Running-only load card** (docs). Write the promoted cross-training
+    load-transfer handoff into `docs/METRICS.md`: the running-fitness load
+    series uses **running load only**, cross load is context, and no positive
+    transfer factor applies (best `k = 0`). Validation to record: cross load
+    is 9–26 % of annual load; 42-day running/cross correlations with steady
+    efficiency +0.04 / −0.06 raw and +0.05 / −0.04 year-adjusted; adding cross
+    load gives R² 0.074 with a negative coefficient and bootstrap `k`
+    −10..+25; the transfer grid is flat at R² 0.071–0.073 with best `k = 0.0`;
+    weeks ≥20 % cross read 2.409 vs 2.445 efficiency, confounded. Renderers:
+    load chart (bars split running/cross, running-only EWMAs), overview
+    `Run load / week`, compare load metric, planned load split by sport.
+    Code landed in the reports package (`66dd91b`); evidence
+    `experiments/cross_training_load.py`. Mirror the card in the metrics
+    catalogue if item 24 carries load.
+
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
 
