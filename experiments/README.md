@@ -57,6 +57,8 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 
 - `blocked` — never started; a named prerequisite (data, schema, gear) is
   missing. No experiment file.
+- `promoted` — passed the lab and handed to a package or the root session; the
+  experiment file stays as evidence.
 - `parked` — tested; evidence exists but the result is inconclusive or
   deferred. The experiment file is kept; revisit when the named condition
   changes.
@@ -68,7 +70,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 |---|---|---|---|---|
 | Durability / decoupling | Do I fade within long runs, and is durability improving? | candidate | — | 2026-11-13 |
 | Efficiency vs duration (start-up + drift) | Is session efficiency duration-dependent, and do a start-up term and drift explain it? | parked | `efficiency_duration.py` | 2026-11-13 |
-| Efficiency line shape and confounders | Is the HR-speed line linear, does another curve fit better, and how much do terrain, weather and duration tighten the scatter? | experimenting | `efficiency_line_shape.py` | 2026-11-17 |
+| Efficiency line shape and confounders | Is the HR-speed line linear, does another curve fit better, and how much do terrain, weather and duration tighten the scatter? | promoted | `efficiency_line_shape.py` | 2026-11-17 |
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
@@ -89,6 +91,17 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the full Runalyze weather fields are pending) | candidate | — | 2026-11-17 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs a pointwise grade profile; activity gain/loss is not enough) | blocked | — | 2026-11-16 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
+
+### Promoted notes
+
+- **Efficiency line shape and confounders** — promoted 2026-11-17. The
+  current line through resting HR beats free linear, quadratic, log and
+  piecewise forms in time-CV; the offset-quadratic term is not supported
+  (`c = -0.26 bpm/(m/s)²`, 95% CI `-1.01..+0.34`). Adding session mix and
+  elevation cuts time-CV RMSE by ~0.5 bpm (7.46 → 6.98); temperature adds
+  nothing incremental and year only overfits. Handoff: document the small
+  session/elevation caveat in the efficiency/HR-speed card; no curved line and
+  no reports code change. Evidence: `experiments/efficiency_line_shape.py`.
 
 ### Rejected
 
