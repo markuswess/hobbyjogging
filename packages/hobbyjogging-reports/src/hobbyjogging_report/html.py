@@ -402,21 +402,24 @@ CROSSHAIR_JS = """
     }
 
     plot.__stackCrosshair = true;
-    var base = "shapes[" + ((plot.layout.shapes || []).length) + "]";
-    var add = {};
-    add[base] = {
-      type: "line",
-      xref: "x",
-      yref: "paper",
-      x0: "2000-01-01",
-      x1: "2000-01-01",
-      y0: 0,
-      y1: 1,
-      layer: "above",
-      line: { color: "#7f7f7f", width: 0, dash: "dot" }
-    };
-    Plotly.relayout(plot, add);
+    plot.style.position = "relative";
 
+    // One dotted line over the whole plot area. It is a plain positioned
+    // element, so moving it never redraws the Plotly figure.
+    var guide = document.createElement("div");
+    guide.className = "stack-crosshair";
+    guide.style.position = "absolute";
+    guide.style.top = "0";
+    guide.style.left = "0";
+    guide.style.width = "0";
+    guide.style.borderLeft = "1px dotted #7f7f7f";
+    guide.style.pointerEvents = "none";
+    guide.style.display = "none";
+    guide.style.zIndex = "5";
+    plot.appendChild(guide);
+
+    // The per-axis x spikes stop at the panel edge and would duplicate the
+    // guide; the y spike inside the hovered panel stays useful.
     var spikes = {};
     Object.keys(plot.layout).forEach(function (key) {
       if (/^xaxis[0-9]*$/.test(key)) {
@@ -425,26 +428,51 @@ CROSSHAIR_JS = """
     });
     Plotly.relayout(plot, spikes);
 
-    plot.on("plotly_hover", function (event) {
-      var points = (event && event.points) || [];
-      var move = {};
+    var frame = null;
+    var pending = null;
 
-      for (var i = 0; i < points.length; i += 1) {
-        if (points[i].x !== undefined && points[i].x !== null) {
-          move[base + ".x0"] = points[i].x;
-          move[base + ".x1"] = points[i].x;
-          move[base + ".line.width"] = 1;
-          Plotly.relayout(plot, move);
-          return;
-        }
+    function place(event) {
+      var size = plot._fullLayout && plot._fullLayout._size;
+      var mouse = event && event.event;
+
+      if (!size || !mouse || mouse.clientX === undefined) {
+        return;
       }
+
+      var rect = plot.getBoundingClientRect();
+      var left = mouse.clientX - rect.left;
+      left = Math.max(size.l, Math.min(size.l + size.w, left));
+
+      guide.style.top = size.t + "px";
+      guide.style.height = size.h + "px";
+      guide.style.transform = "translateX(" + left + "px)";
+      guide.style.display = "block";
+    }
+
+    plot.on("plotly_hover", function (event) {
+      pending = event;
+
+      if (frame !== null) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(function () {
+        frame = null;
+
+        if (pending) {
+          place(pending);
+        }
+
+        pending = null;
+      });
     });
 
-    plot.on("plotly_unhover", function () {
-      var hide = {};
-      hide[base + ".line.width"] = 0;
-      Plotly.relayout(plot, hide);
-    });
+    function hide() {
+      guide.style.display = "none";
+    }
+
+    plot.on("plotly_unhover", hide);
+    plot.addEventListener("mouseleave", hide);
   }
 
   function init() {

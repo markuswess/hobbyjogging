@@ -283,6 +283,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Plotly.newPlot", index)
             self.assertIn("plotly.min.js", index)
             self.assertIn("plotly_hover", index)
+            self.assertIn("stack-crosshair", index)
+            self.assertIn("requestAnimationFrame", index)
             self.assertIn('class="repo"', index)
             self.assertIn(
                 'href="https://github.com/markuswess/hobbyjogging"',
