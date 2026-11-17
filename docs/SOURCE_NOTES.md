@@ -143,8 +143,11 @@ event `duration_s` is therefore the planned **moving** duration, and
 ## Runalyze
 
 The personal API is read-only for the current token. The base is
-`https://runalyze.com/api/v1`, the header is `token: <key>`, and requests are
-paced to 240/minute.
+`https://runalyze.com/api/v1` and the header is `token: <key>`. The budget is
+**240 requests per window** (roughly an hour); `Retry-After` and
+`X-RateLimit-Reset` give the exact reset, and the client stops cleanly on a
+429. One activity detail is one request, so a full history of 2,841 activities
+needs about 12 windows.
 
 - The activity collection is **`/api/v1/activity` (singular)** with `page` and
   `itemsPerPage`. Its `time[...]` filters are ignored, so read every page and
