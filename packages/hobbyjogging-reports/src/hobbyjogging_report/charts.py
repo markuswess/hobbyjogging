@@ -141,9 +141,21 @@ COMPARE_COLORS = (
 )
 
 
+COMPARE_COLOR_ANCHOR_YEAR = 2026
+
+
 def compare_color(year: int) -> str:
-    """Stable per-year compare color, independent of the plotted year set."""
-    return COMPARE_COLORS[(year - 2009) % len(COMPARE_COLORS)]
+    """A stable per-year compare colour, strongest contrast for recent years.
+
+    The palette runs backwards from the anchor year, so the newest years get
+    the saturated colours and old years fade out. A year keeps one colour
+    across every compare chart and the colour does not depend on the plotted
+    range. Move the anchor forward when the data does; each year beyond it
+    takes the next (lighter) colour, so bump it before the palette wraps.
+    """
+    return COMPARE_COLORS[
+        (COMPARE_COLOR_ANCHOR_YEAR - year) % len(COMPARE_COLORS)
+    ]
 
 
 def _darker(color: str, factor: float = 0.6) -> str:

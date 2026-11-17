@@ -1335,10 +1335,21 @@ class ComparePaceHrChartTests(unittest.TestCase):
 
 class CompareChartTests(unittest.TestCase):
 
-    def test_compare_color_is_anchored_on_a_fixed_year(self):
-        self.assertEqual("#1f77b4", compare_color(2009))
+    def test_compare_color_gives_the_newest_years_the_strongest_colors(self):
+        # The anchor year gets the first (saturated) palette colour, then the
+        # recent years follow; the oldest years fade into the pale tail.
+        self.assertEqual("#1f77b4", compare_color(2026))
+        self.assertEqual("#ff7f0e", compare_color(2025))
+        self.assertEqual("#2ca02c", compare_color(2024))
         self.assertNotEqual(compare_color(2009), compare_color(2026))
+
+    def test_compare_color_is_stable_per_year(self):
         self.assertEqual(compare_color(2023), compare_color(2023))
+        self.assertNotEqual(compare_color(2022), compare_color(2023))
+        self.assertEqual(
+            len({compare_color(year) for year in range(2009, 2027)}),
+            18,
+        )
 
     def test_all_compare_charts_share_one_year_color(self):
         year = 2023

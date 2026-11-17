@@ -31,12 +31,15 @@ this list keeps the recent decisions only.
   upcoming races, while bucket and limit leave them alone. Limit caps the
   result rows only, so PBs still use every matching race. Tests cover
   defaults, combined filters, truncation, and empty results.
-- **Stable compare colors.** All three compare charts map a year through
-  `compare_color(year)`, anchored on 2009, so a year keeps one color across
-  the volume/time/load/runs/efficiency, pace/HR, and VO2max charts, and the
-  colors no longer shuffle when the data range or `--compare-window`
-  changes. The 18 colors cover 2009–2026 without collision; tests pin the
-  mapping and check all three charts.
+- **Stable compare colors, strongest for the newest years.** All compare
+  charts map a year through `compare_color(year)`, anchored on a fixed year
+  (2026 today) and running backwards: the newest years get the saturated
+  colours and old years fade into the pale tail. A year keeps one colour
+  across the volume/time/load/runs/efficiency, pace/HR, and VO2max charts, the
+  colours no longer shuffle when the data range or `--compare-window`
+  changes, and a fixed anchor means dropping old years does not recolour
+  anything. The 18 colours cover 2009–2026 without collision; tests pin the
+  newest-first mapping and check all three charts.
 - **One segment table in the session report.** The report now prints typed
   intervals when there is more than one, otherwise device laps when there is
   more than one, and nothing when there is a single segment on each side.
