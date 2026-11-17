@@ -23,6 +23,7 @@ EXPECTED = {
     "race",
     "races",
     "streaks",
+    "sickness",
     "planned",
     "session",
     "classify",

@@ -329,6 +329,11 @@ this list keeps the recent decisions only.
   cold). The pace/HR scatter stays unshaded because its x-axis is pace; item
   14 holds the idea.
 
+- **Sickness report.** `reports.sh sickness` lists illness episodes in a
+  range (default 365 days): episode count, illness-day share, longest and
+  current/last episode, and a newest-first table with the sessions, time and
+  load inside each episode. Illness days stay in the aggregates.
+
 ## Bugs
 
 _None._

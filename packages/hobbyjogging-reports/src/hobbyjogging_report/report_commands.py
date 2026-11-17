@@ -14,6 +14,7 @@ from .period_report import period_report, summary
 from .planned import planned_report
 from .race_report import race_report, races_report
 from .recovery_report import recovery_report
+from .sickness_report import DEFAULT_SICKNESS_DAYS, sickness_report
 from .subt_ewma_report import subt_ewma_report
 from .streak_report import streaks_report
 from .subt_report import subt_report
@@ -42,6 +43,7 @@ def run_demo_command(parsed, source, include_review):
             f"- Wellness days: {summary.wellness_days}",
             f"- Planned events: {summary.events}",
             f"- Equipment: {summary.equipment}",
+            f"- Training periods: {summary.periods}",
             f"- Open review items: {review_note}",
             "",
             "Build the demo dashboard with:",
@@ -195,6 +197,16 @@ def run_streaks_command(parsed, source, include_review):
     return streaks_report(
         source,
         limit=parsed,
+        include_review=include_review,
+    )
+
+
+def run_sickness_command(parsed, source, include_review):
+    start, end = parsed
+    return sickness_report(
+        source,
+        start=start,
+        end=end,
         include_review=include_review,
     )
 

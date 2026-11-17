@@ -276,6 +276,11 @@ stay compact (`1h02`).
   so cross-training cannot hold a running streak. All history from the first
   activity is used, review-excluded runs do not count, and a run later today
   is not reported as a missed day.
+- **sickness** — Illness episodes in a range (default the last 365 days):
+  episode count, illness days and their share of the range, the longest and
+  current (or last) episode, and a newest-first table of each episode with
+  the sessions, time and load done inside it. Illness days are shaded, never
+  excluded from the aggregates.
 - **equipment** — Gear mileage and use from `equipment` →
   `activity_equipment` → activities: sessions, km, km/month, last used,
   target/wear, coverage per year, and retirement candidates. Shoes without

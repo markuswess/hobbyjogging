@@ -39,6 +39,7 @@ from .activity_list import (
     DEFAULT_COLUMNS,
     parse_activities_args,
 )
+from .sickness_report import DEFAULT_SICKNESS_DAYS
 from .report_commands import (
     run_activities_command,
     run_all_command,
@@ -56,6 +57,7 @@ from .report_commands import (
     run_recovery_report_command,
     run_report_command,
     run_session_command,
+    run_sickness_command,
     run_streaks_command,
     run_subt_ewma_report_command,
     run_subt_report_command,
@@ -221,6 +223,20 @@ COMMANDS = {
         ),
         parse=parse_streaks_args,
         run=run_streaks_command,
+    ),
+    "sickness": Command(
+        "sickness",
+        "Illness episodes and the training inside them",
+        "sickness [--days N] [--from DATE] [--to DATE]",
+        (
+            "reports.sh sickness",
+            "reports.sh sickness --days 730",
+        ),
+        parse=partial(
+            parse_report_args,
+            default_days=DEFAULT_SICKNESS_DAYS,
+        ),
+        run=run_sickness_command,
     ),
     "race": Command(
         "race",

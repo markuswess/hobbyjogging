@@ -11,6 +11,7 @@ from hobbyjogging_report.demo import generate_demo_database
 from hobbyjogging_report.equipment_report import equipment_report
 from hobbyjogging_report.race_report import race_report, races_report
 from hobbyjogging_report.sessions import session_report
+from hobbyjogging_report.sickness_report import sickness_report
 from hobbyjogging_report.sources import create_source
 from hobbyjogging_report.streak_report import streaks_report
 from hobbyjogging_report.subt_ewma_report import subt_ewma_report
@@ -71,6 +72,18 @@ class DemoCoverageTests(unittest.TestCase):
                     "| Start | End | Days | Distance | Time |",
                 ):
                     self.assertIn(marker, streaks)
+
+                sickness = sickness_report(
+                    source,
+                    start=date(2026, 1, 1),
+                    end=TODAY,
+                )
+                for marker in (
+                    "# Sickness report",
+                    "| Chest cold |",
+                    "- Episodes: 1",
+                ):
+                    self.assertIn(marker, sickness)
 
                 ewma = subt_ewma_report(source, today=TODAY)
                 for marker in (
