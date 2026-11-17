@@ -1257,6 +1257,66 @@ class ComparePaceHrChartTests(unittest.TestCase):
                     str(Path(tmp) / "compare-pace-hr.png"),
                 )
 
+    def test_efficiency_lines_follow_each_year(self):
+        points = [
+            PaceHrPoint(
+                date(2025, 3, 1),
+                300.0,
+                150.0,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+                steady=True,
+            ),
+            PaceHrPoint(
+                date(2025, 9, 1),
+                300.0,
+                150.0,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+                steady=True,
+            ),
+            PaceHrPoint(
+                date(2026, 3, 1),
+                300.0,
+                121.0,
+                resting_hr=40,
+                distance_m=12500,
+                excess_beats=5000,
+                steady=True,
+            ),
+            PaceHrPoint(
+                date(2026, 9, 1),
+                300.0,
+                121.0,
+                resting_hr=40,
+                distance_m=12500,
+                excess_beats=5000,
+                steady=True,
+            ),
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertIn('"dash":"dash"', html)
+        self.assertIn("2026 efficiency: E = 2.50", html)
+        self.assertIn(
+            "dashed: steady efficiency per year (2025 2.00, 2026 2.50)",
+            html,
+        )
+
+    def test_no_efficiency_lines_without_steady_runs(self):
+        points = [
+            PaceHrPoint(date(2025, 6, 1), 300.0, 150.0),
+            PaceHrPoint(date(2025, 7, 1), 290.0, 152.0),
+        ]
+
+        html = plot_compare_pace_hr(points, "", as_html=True)
+
+        self.assertNotIn('"dash":"dash"', html)
+        self.assertNotIn("steady efficiency per year", html)
+
     def test_marker_symbols_follow_each_point_category(self):
         points = [
             PaceHrPoint(D, 300.0, 150.0, "Easy", category="easy"),

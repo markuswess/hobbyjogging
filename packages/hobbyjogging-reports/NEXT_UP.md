@@ -3,7 +3,7 @@
 Updated 2026-11-16.
 
 Current focus: the demo data; 2's max-HR half and 5's threshold trend are
-open, 15-17 are small dashboard passes, 12 is parked, and the rest need a core
+open, 15-16 are small dashboard passes, 12 is parked, and the rest need a core
 or root change or the lab gate.
 
 ## Done
@@ -263,6 +263,13 @@ this list keeps the recent decisions only.
   weekly planned averages and the `planned` CLI report stay. Tests assert the
   card is absent and the tab still carries the plan.
 
+- **Efficiency lines on the Compare by-year scatter.** The by-year pace/HR
+  chart now draws one dashed line per year, `HR = RHR + v·60/E`, with the
+  year's weighted steady efficiency over the steady band and its median
+  resting-HR baseline. The line takes a darkened year colour so it reads over
+  the pale markers, the points keep their year colours, and the chart note
+  lists every year's `E`. Years without two usable steady runs get no line.
+
 - **Reports list their periods newest first.** The Compare tab's year and
   month comparison tables now start with the most recent period (chart series
   stay chronological), and the subT report blocks sort newest first within
@@ -292,7 +299,7 @@ and social titles (7). Item 13 has its data (`event_activity_links`, schema
 v21), item 10 is handed to root item 36 for its illness ranges and resumes
 here after the maintenance fix, and 14's series needs the lab gate in root
 item 31. Item 12 stays parked on its page-coverage cost, 11 is recurring
-upkeep, and 15-17 are reports-only polish from a dashboard pass. The
+upkeep, and 15-16 are reports-only polish from a dashboard pass. The
 efficiency floor, the planned-event page, the streaks report and the
 collapsible lists landed here.
 
@@ -453,17 +460,7 @@ collapsible lists landed here.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
 
-15. **Efficiency lines on the Compare by-year plot.** The Analysis pace/HR
-    chart draws a dashed efficiency line per half; the Compare version ("Pace
-    vs heart rate by year") has the same cloud coloured by year but no
-    efficiency lines, so the two views disagree. Add them with the same
-    parameters and annotation, and say they use the steady band.
-    - **Open**: which plot is meant. The by-year pace/HR scatter is the one
-      without efficiency lines today; the year-comparison chart already has an
-      efficiency chart of its own. Confirm when picking it up, and decide
-      whether the lines are per half (like Analysis) or one per visible year.
-
-16. **Future plans on the Analysis charts.** The volume, time-by-zone and load
+15. **Future plans on the Analysis charts.** The volume, time-by-zone and load
     charts draw actuals only; the Overview already draws the plan. Pass the
     planned series for the next `future_days` (default 14), extend the date
     axis, and style them like the overview (hatched bars, dashed lines, a
@@ -474,7 +471,7 @@ collapsible lists landed here.
       actual, no plan leaves the charts as they are, and the axis covers the
       future window.
 
-17. **NSA: collapse the subT report tables.** The per-category tables run on;
+16. **NSA: collapse the subT report tables.** The per-category tables run on;
     on the NSA tab that is a long scroll. The newest-first order landed with
     the blocks; what remains is collapsing the long category tables past the
     same 20-row threshold as the activities table.
@@ -519,8 +516,9 @@ Covered now:
 - fartlek: the stored method classifies as `quality/fartlek` even with a
   "tempo" name, keeps the session out of the subT/LT1 sets, and the demo now
   carries one;
-- newest-first periods in the Compare tables and the subT blocks, and the
-  Overview page no longer carrying the planned report.
+- newest-first periods in the Compare tables and the subT blocks, the
+  Overview page no longer carrying the planned report, and the per-year
+  efficiency lines (values, pale-run contrast, and the no-steady-run case).
 
 New work should add:
 

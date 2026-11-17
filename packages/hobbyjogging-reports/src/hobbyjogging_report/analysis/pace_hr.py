@@ -187,41 +187,73 @@ def pace_hr_efficiency_lines(
     lines = []
 
     for label, chunk in halves:
-        usable = [
-            point
-            for point in chunk
-            if point.steady
-            and point.distance_m > 0
-            and point.excess_beats > 0
-            and point.resting_hr is not None
-        ]
+        line = _efficiency_line(label, chunk)
 
-        if len(usable) < 2:
-            continue
+        if line is not None:
+            lines.append(line)
 
-        distance = sum(point.distance_m for point in usable)
-        beats = sum(point.excess_beats for point in usable)
+    return lines
 
-        if distance <= 0 or beats <= 0:
-            continue
 
-        efficiency = distance / beats
-        resting_hr = median(
-            point.resting_hr for point in usable
-        )
-        speeds = [point.speed_m_s for point in usable]
+def _efficiency_line(
+    label: str,
+    points: list[PaceHrPoint],
+) -> PaceHrEfficiencyLine | None:
+    """One labelled efficiency line over the usable steady runs, if any."""
+    usable = [
+        point
+        for point in points
+        if point.steady
+        and point.distance_m > 0
+        and point.excess_beats > 0
+        and point.resting_hr is not None
+    ]
 
-        lines.append(
-            PaceHrEfficiencyLine(
-                label=label,
-                points=len(usable),
-                speed_low=min(speeds),
-                speed_high=max(speeds),
-                resting_hr=resting_hr,
-                efficiency=efficiency,
-                slope=60 / efficiency,
-                intercept=resting_hr,
-            )
-        )
+    if len(usable) < 2:
+        return None
+
+    distance = sum(point.distance_m for point in usable)
+    beats = sum(point.excess_beats for point in usable)
+
+    if distance <= 0 or beats <= 0:
+        return None
+
+    efficiency = distance / beats
+    resting_hr = median(point.resting_hr for point in usable)
+    speeds = [point.speed_m_s for point in usable]
+
+    return PaceHrEfficiencyLine(
+        label=label,
+        points=len(usable),
+        speed_low=min(speeds),
+        speed_high=max(speeds),
+        resting_hr=resting_hr,
+        efficiency=efficiency,
+        slope=60 / efficiency,
+        intercept=resting_hr,
+    )
+
+
+def pace_hr_year_efficiency(
+    points: list[PaceHrPoint],
+) -> list[PaceHrEfficiencyLine]:
+    """One efficiency line per calendar year, for the compare view.
+
+    The year's weighted ``sum(distance) / sum(excess beats)`` over the steady
+    band, anchored on the year's median resting-HR baseline. Years with fewer
+    than two usable steady runs get no line.
+    """
+    by_year: dict[int, list[PaceHrPoint]] = {}
+
+    for point in points:
+        by_year.setdefault(point.date.year, []).append(point)
+
+    lines = []
+
+    for year in sorted(by_year):
+        line = _efficiency_line(str(year), by_year[year])
+
+        if line is not None:
+            lines.append(line)
 
     return lines

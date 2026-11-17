@@ -6,6 +6,7 @@ from hobbyjogging_report.analysis import (
     pace_hr_efficiency_lines,
     pace_hr_points,
     pace_hr_trends,
+    pace_hr_year_efficiency,
 )
 from hobbyjogging_report.model import PaceHrPoint
 from hobbyjogging_core.model import ActivityWeather
@@ -152,6 +153,45 @@ class PaceHrTests(unittest.TestCase):
 
         self.assertEqual(["easy", "intervals"], [p.category for p in points])
         self.assertEqual([True, False], [p.steady for p in points])
+
+    def test_year_efficiency_uses_each_years_steady_runs(self):
+        points = [
+            PaceHrPoint(
+                date(2025, 3, 1),
+                300.0,
+                150.0,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+                steady=True,
+            ),
+            PaceHrPoint(
+                date(2025, 9, 1),
+                300.0,
+                150.0,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+                steady=True,
+            ),
+            PaceHrPoint(
+                date(2026, 3, 1),
+                300.0,
+                150.0,
+                resting_hr=50,
+                distance_m=10000,
+                excess_beats=5000,
+                steady=False,
+            ),
+        ]
+
+        lines = pace_hr_year_efficiency(points)
+
+        self.assertEqual(["2025"], [line.label for line in lines])
+        self.assertEqual(2, lines[0].points)
+        self.assertAlmostEqual(2.0, lines[0].efficiency)
+        self.assertAlmostEqual(50.0, lines[0].intercept)
+        self.assertAlmostEqual(150.0, lines[0].at(1000 / 300))
 
     def test_points_carry_weather_when_the_caller_supplies_it(self):
         weather = ActivityWeather(temp_c=12.0, wind_speed_ms=3.0)

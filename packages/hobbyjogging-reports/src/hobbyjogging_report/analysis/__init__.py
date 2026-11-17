@@ -82,6 +82,7 @@ from .pace_hr import (
     pace_hr_efficiency_lines,
     pace_hr_points,
     pace_hr_trends,
+    pace_hr_year_efficiency,
 )
 from .planned import (
     daily_planned_distance,
@@ -249,6 +250,7 @@ __all__ = [
     "pace_hr_efficiency_lines",
     "pace_hr_points",
     "pace_hr_trends",
+    "pace_hr_year_efficiency",
     "pace_s_per_km",
     "planned_workout_dates",
     "RecoveryBand",

@@ -24,6 +24,7 @@ from .analysis import (
     SUBT_CATEGORIES,
     pace_hr_efficiency_lines,
     pace_hr_trends,
+    pace_hr_year_efficiency,
     pace_s_per_km,
     recovery_bands,
     riegel_reference,
@@ -143,6 +144,19 @@ COMPARE_COLORS = (
 def compare_color(year: int) -> str:
     """Stable per-year compare color, independent of the plotted year set."""
     return COMPARE_COLORS[(year - 2009) % len(COMPARE_COLORS)]
+
+
+def _darker(color: str, factor: float = 0.6) -> str:
+    """Darken a hex colour so a line stays legible over pale markers."""
+    if not color.startswith("#") or len(color) != 7:
+        return color
+
+    return "rgb({}, {}, {})".format(
+        *(
+            int(int(color[index:index + 2], 16) * factor)
+            for index in (1, 3, 5)
+        )
+    )
 
 
 def _require_data(*series) -> None:
@@ -1768,6 +1782,46 @@ def plot_compare_pace_hr(
             )
         )
 
+    efficiency_lines = pace_hr_year_efficiency(points)
+
+    for line in efficiency_lines:
+        hover = (
+            f"{line.label} efficiency: E = {line.efficiency:.2f} "
+            f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm "
+            f"(n={line.points} steady runs)"
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=[line.speed_low, line.speed_high],
+                y=[
+                    line.at(line.speed_low),
+                    line.at(line.speed_high),
+                ],
+                mode="lines",
+                name=f"{line.label} efficiency",
+                line={
+                    "color": _darker(compare_color(int(line.label))),
+                    "width": 1.8,
+                    "dash": "dash",
+                },
+                text=[hover, hover],
+                hoverinfo="text",
+                showlegend=False,
+            )
+        )
+
+    efficiency_note = ""
+
+    if efficiency_lines:
+        efficiency_note = (
+            "dashed: steady efficiency per year ("
+            + ", ".join(
+                f"{line.label} {line.efficiency:.2f}"
+                for line in efficiency_lines
+            )
+            + ")"
+        )
+
     _style_pace_hr_axes(figure)
     symbols = [
         category
@@ -1791,6 +1845,7 @@ def plot_compare_pace_hr(
                     if (weather_line := _weather_summary(points))
                     else ""
                 )
+                + (f"<br>{efficiency_note}" if efficiency_note else "")
             ),
             xref="paper",
             yref="paper",
