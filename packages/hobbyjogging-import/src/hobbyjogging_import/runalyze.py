@@ -10,17 +10,16 @@ that currently answer 403.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from typing import Callable, Protocol
+from typing import Protocol
 
 import requests
 
 from .config import runalyze_api_key, runalyze_base_url
 
-REQUESTS_PER_MINUTE = 240
-MIN_REQUEST_INTERVAL_S = 60.0 / REQUESTS_PER_MINUTE
+# The API budget is 240 requests per window (roughly an hour); the exact reset
+# comes back in Retry-After / X-RateLimit-Reset and the client stops on 429.
 
 # Endpoint label -> path. The collection is singular (`activity`), matching
 # the API root at /api. The four 403 endpoints stay listed so the inventory
@@ -102,7 +101,12 @@ class RunalyzeRateLimitError(RuntimeError):
 
 
 class RunalyzeClient:
-    """Read-only Runalyze client with client-side rate limiting."""
+    """Read-only Runalyze client.
+
+    The server owns the budget (240 requests per window). The client sends
+    requests as needed and stops on 429 with the reset information, so a long
+    enrichment resumes in the next window instead of guessing a pace.
+    """
 
     def __init__(
         self,
@@ -111,8 +115,6 @@ class RunalyzeClient:
         *,
         timeout: int = 20,
         session: object | None = None,
-        clock: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep,
     ):
         key = api_key or runalyze_api_key()
         if not key:
@@ -122,9 +124,6 @@ class RunalyzeClient:
         self.base_url = (base_url or runalyze_base_url()).rstrip("/")
         self.timeout = timeout
         self.session = session or requests.Session()
-        self._clock = clock
-        self._sleep = sleep
-        self._last_request: float | None = None
 
     def get(
         self,
@@ -136,7 +135,6 @@ class RunalyzeClient:
         The inventory must report 403s, so the client leaves status handling to
         the caller.
         """
-        self._throttle()
         response = self.session.get(
             f"{self.base_url}/{path.lstrip('/')}",
             headers={
@@ -146,7 +144,6 @@ class RunalyzeClient:
             params=params,
             timeout=self.timeout,
         )
-        self._last_request = self._clock()
 
         if response.status_code == 429:
             raise RunalyzeRateLimitError(
@@ -228,14 +225,6 @@ class RunalyzeClient:
             for item in items
             if _in_range(item, start, end)
         ]
-
-    def _throttle(self) -> None:
-        if self._last_request is None:
-            return
-        elapsed = self._clock() - self._last_request
-        wait = MIN_REQUEST_INTERVAL_S - elapsed
-        if wait > 0:
-            self._sleep(wait)
 
 
 @dataclass(frozen=True)

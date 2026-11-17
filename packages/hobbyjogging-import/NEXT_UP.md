@@ -9,9 +9,12 @@ on.
   Runalyze `note`, imports detail `tags` into `activity_tags` under
   `source='runalyze'` (manual tags survive), and reports unmatched/ambiguous
   rows (`--output` JSON). Matching is temporal plus distance; `name`, timing
-  and distance are never written. A mid-run 429 stops cleanly, keeps the rows
-  already processed, and marks the import run `partial`. Validated on a DB
-  copy: one week, 9/9 matched, 5 tags on 3 activities, second run a no-op.
+  and distance are never written. A mid-run 429 stops cleanly, lists
+  `processed`/`not processed`, keeps the rows already processed, and marks the
+  import run `partial`. Re-runs skip details whose stored `edited_at` is
+  current and linked to the same activity, so the next window continues with
+  the remainder (`--refresh` forces a re-fetch). Validated on a DB copy: one
+  week, 9/9 matched, 5 tags on 3 activities, second run a no-op.
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
   rate-limit-aware, numbered pages, local `--since`/`--to` filtering) and
   `runalyze inventory --dry-run`, which probes the known endpoints and reports
@@ -141,19 +144,6 @@ on.
 
 ## Next
 
-- **Runalyze enrich summary on a 429.** When the rate limit stops a run, the
-  summary must say how many activities were processed and how many were not
-  reached. A 472-row 2025 dry run stopped after 211 details and printed
-  `unmatched: 0`, hiding the 261 unprocessed rows. Add a `not_processed` (or
-  `processed`) count to `RunalyzeEnrichSummary` and the formatter, and correct
-  the rate-limit model: 240 requests per window (~1 hour), not 240/minute, so
-  the client relies on the 429/reset headers instead of a 0.25 s pace.
-- **Runalyze enrich resumability.** A re-run of the same range restarts at the
-  first activity and hits the same 429, so "re-run after the reset" does not
-  make progress. Skip activities whose detail is already stored and enriched,
-  or persist a cursor, so the next run continues with the remainder. Add a
-  test that a 429 mid-range followed by a second run processes only the
-  unprocessed rows. Until this lands, use month-sized ranges.
 - **Runalyze phase 3: gear identity and activity links.** Read the detail
   payload's `equipment` array (full `EquipmentDto` objects, so no separate gear
   fetch), resolve each gear record with the co-occurrence → name → new-row rule

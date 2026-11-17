@@ -310,6 +310,7 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
                 limit=args.limit,
                 per_page=args.per_page,
                 dry_run=args.dry_run,
+                refresh=args.refresh,
                 output=args.output,
             )
         except RuntimeError as exc:

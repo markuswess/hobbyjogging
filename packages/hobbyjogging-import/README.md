@@ -281,7 +281,10 @@ never writes `name`, timing, or distance. Unmatched rows are not created here;
 
 ```text
 Runalyze enrich dry run: 9 activities
+  processed: 9
+  not processed: 0
   matched: 9
+  already enriched: 0
   unmatched: 0
   ambiguous: 0
   comments filled: 0
@@ -291,11 +294,14 @@ Runalyze enrich dry run: 9 activities
 ```
 
 Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
-`--output PATH`, and `--database PATH`. Enrichment is idempotent: a second run
-reports `activities tagged: 0` until the Runalyze note or tags change. The
-240-request window means a full history needs several ranges; a mid-run 429
-stops cleanly, keeps the rows already processed, records the import run as
-`partial`, and the command can be re-run after the reset.
+`--refresh`, `--output PATH`, and `--database PATH`. Enrichment is idempotent
+and resumable: each detail is stored in `source_records`, and a re-run skips
+activities whose stored `edited_at` is current and linked to the same
+canonical row. After a mid-run 429, the next run continues with the remainder.
+`--refresh` forces re-fetching; a fully current run reports
+`already enriched: N` and `activities tagged: 0` until the note or tags change.
+The 240-request window means a full history needs several runs; a stopped run
+lists `processed`/`not processed` and is marked `partial`.
 
 ## Source precedence
 

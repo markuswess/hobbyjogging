@@ -400,18 +400,19 @@ one takes the next free number, so cross-references stay valid.
       under `source='runalyze'` (manual tags survive), and reports
       unmatched/ambiguous rows (`--output` JSON). Matching is temporal plus
       distance; `name`, timing and distance are never written. A mid-run 429
-      stops cleanly, keeps the rows already processed, and marks the import
-      run `partial`. Validated on a DB copy over one week: 9/9 matched, 5 tags
-      on 3 activities, second run a no-op. A 2025 dry run saw 472 activities,
-      processed 211 before a 429 (all matched), and left 261 unprocessed; the
-      summary currently says `unmatched: 0`, which hides the unprocessed rows.
-      The budget is 240 requests per window (~1 hour), so a full history needs
-      about 12 windows. A re-run of the same range restarts at the first
-      activity and hits the same 429, so the enricher needs a skip/cursor before
-      a full run; month-sized ranges are the workaround. The real DB is
-      untouched. Phase 3 (gear) is next and uses the identity rule below;
-      before it runs, test whether the collection's `fields` parameter can
-      return `tags`/`equipment` and avoid one detail request per activity.
+      stops cleanly, keeps the rows already processed, reports
+      `processed`/`not processed`, and marks the import run `partial`.
+      Validated on a DB copy over one week: 9/9 matched, 5 tags on 3 activities,
+      second run a no-op. A 2025 dry run saw 472 activities, processed 211
+      before a 429 (all matched), and now reports the 261 unprocessed rows.
+      Details are stored in `source_records`, so a re-run skips activities
+      whose stored `edited_at` is current and linked to the same canonical row
+      and continues with the remainder; `--refresh` forces a re-fetch. The
+      budget is 240 requests per window (~1 hour), so a full history needs
+      about 12 windows. The real DB is untouched. Phase 3 (gear) is next and
+      uses the identity rule below; before it runs, test whether the
+      collection's `fields` parameter can return `tags`/`equipment` and avoid
+      one detail request per activity.
     - **Gear identity (decided)**: gear records become
       `source_records(record_type='gear', external_id='runalyze:<id>')` plus
       `equipment` rows, linked through `activity_equipment` with

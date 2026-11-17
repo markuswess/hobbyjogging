@@ -241,6 +241,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="report what would change without writing",
     )
+    runalyze_enrich.add_argument(
+        "--refresh",
+        action="store_true",
+        help="re-fetch details even when the stored copy is current",
+    )
 
     garmin = subparsers.add_parser(
         "garmin",

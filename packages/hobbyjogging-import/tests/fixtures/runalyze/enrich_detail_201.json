@@ -7,5 +7,6 @@
     {"id": 1, "tag": "Race"},
     {"id": 2, "tag": "Hilly"}
   ],
-  "vo2max": 53.0
+  "vo2max": 53.0,
+  "edited_at": 1700000000
 }

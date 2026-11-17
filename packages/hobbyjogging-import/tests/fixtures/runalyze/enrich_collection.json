@@ -5,7 +5,8 @@
     "duration": 3600,
     "elapsed_time": 3700,
     "distance": 10.0,
-    "sport_id": 1
+    "sport_id": 1,
+    "edited_at": 1700000000
   },
   {
     "id": 202,
@@ -13,7 +14,8 @@
     "duration": 1800,
     "elapsed_time": 1800,
     "distance": 5.0,
-    "sport_id": 1
+    "sport_id": 1,
+    "edited_at": 1700000100
   },
   {
     "id": 203,
@@ -21,7 +23,8 @@
     "duration": 2400,
     "elapsed_time": 2400,
     "distance": 7.0,
-    "sport_id": 1
+    "sport_id": 1,
+    "edited_at": 1700000200
   },
   {
     "id": 204,
@@ -29,6 +32,7 @@
     "duration": 1800,
     "elapsed_time": 1800,
     "distance": 6.0,
-    "sport_id": 1
+    "sport_id": 1,
+    "edited_at": 1700000300
   }
 ]

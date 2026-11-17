@@ -148,7 +148,10 @@ class RunalyzeEnrichTests(unittest.TestCase):
         summary = self.enricher.enrich()
 
         self.assertEqual(4, summary.activities_seen)
+        self.assertEqual(4, summary.processed)
+        self.assertEqual(0, summary.not_processed)
         self.assertEqual(2, summary.matched)
+        self.assertEqual(0, summary.already_enriched)
         self.assertEqual(2, summary.unmatched)
         self.assertEqual(0, summary.ambiguous)
         self.assertEqual(2, summary.detail_fetches)
@@ -207,12 +210,18 @@ class RunalyzeEnrichTests(unittest.TestCase):
             {"id": 2, "tag": "Hilly"},
             {"id": 4, "tag": "New"},
         ]
+        self.details["201"]["edited_at"] = 1700000999
+        for row in self.client.activities_payload:
+            if row["id"] == 201:
+                row["edited_at"] = 1700000999
 
         summary = self.enricher.enrich()
 
         self.assertEqual(0, summary.comments_filled)
-        self.assertEqual(2, summary.comments_kept)
+        self.assertEqual(1, summary.comments_kept)
         self.assertEqual(1, summary.activities_tagged)
+        self.assertEqual(1, summary.already_enriched)
+        self.assertEqual(1, summary.detail_fetches)
         self.assertEqual(
             {("Hilly", "runalyze", 0), ("New", "runalyze", 0)},
             self._tags("a1"),
@@ -221,6 +230,8 @@ class RunalyzeEnrichTests(unittest.TestCase):
     def test_dry_run_writes_nothing(self):
         summary = self.enricher.enrich(dry_run=True)
 
+        self.assertEqual(4, summary.processed)
+        self.assertEqual(0, summary.not_processed)
         self.assertEqual(1, summary.comments_filled)
         self.assertEqual(2, summary.activities_tagged)
         self.assertIsNone(summary.run_id)
@@ -307,6 +318,8 @@ class RunalyzeEnrichTests(unittest.TestCase):
 
         self.assertEqual(1, summary.matched)
         self.assertEqual(1, summary.detail_fetches)
+        self.assertEqual(2, summary.processed)
+        self.assertEqual(2, summary.not_processed)
         self.assertTrue(summary.stopped_reason)
         self.assertEqual("Runalyze comment", self._row("a1")["description"])
         self.assertEqual(
@@ -322,6 +335,48 @@ class RunalyzeEnrichTests(unittest.TestCase):
             "SELECT status FROM import_runs ORDER BY id DESC LIMIT 1"
         ).fetchone()["status"]
         self.assertEqual("partial", status)
+
+    def test_resumes_after_a_rate_limit(self):
+        first_client = FakeRunalyze(
+            _fixture("enrich_collection.json"),
+            {"201": self.details["201"]},
+            rate_limited={"202"},
+        )
+        first = RunalyzeEnricher(
+            self.conn,
+            client=first_client,
+        ).enrich()
+        self.assertEqual(1, first.matched)
+        self.assertEqual(2, first.not_processed)
+
+        second_client = FakeRunalyze(
+            _fixture("enrich_collection.json"),
+            self.details,
+        )
+        second = RunalyzeEnricher(
+            self.conn,
+            client=second_client,
+        ).enrich()
+
+        self.assertEqual(1, second.already_enriched)
+        self.assertEqual(1, second.detail_fetches)
+        self.assertEqual(["202"], second_client.detail_calls)
+        self.assertEqual(4, second.processed)
+        self.assertEqual(0, second.not_processed)
+        self.assertEqual(1, second.matched)
+        self.assertEqual(
+            {("Easy", "runalyze", 0)},
+            self._tags("a2"),
+        )
+
+    def test_refresh_re_fetches_current_details(self):
+        self.enricher.enrich()
+
+        summary = self.enricher.enrich(refresh=True)
+
+        self.assertEqual(0, summary.already_enriched)
+        self.assertEqual(2, summary.detail_fetches)
+        self.assertEqual(["201", "202"], self.client.detail_calls[-2:])
 
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)
@@ -348,6 +403,7 @@ class RunalyzeEnrichCliTests(unittest.TestCase):
                 "2024-12-31",
                 "--limit",
                 "10",
+                "--refresh",
                 "--output",
                 "/tmp/unmatched.json",
             ]
@@ -356,6 +412,7 @@ class RunalyzeEnrichCliTests(unittest.TestCase):
         self.assertEqual("runalyze", args.command)
         self.assertEqual("enrich", args.runalyze_action)
         self.assertTrue(args.dry_run)
+        self.assertTrue(args.refresh)
         self.assertEqual(date(2024, 1, 1), args.start)
         self.assertEqual(date(2024, 12, 31), args.end)
         self.assertEqual(10, args.limit)

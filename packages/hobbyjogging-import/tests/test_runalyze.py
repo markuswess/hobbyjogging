@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from hobbyjogging_import.cli import build_parser, run_runalyze
 from hobbyjogging_import.runalyze import (
-    MIN_REQUEST_INTERVAL_S,
     RunalyzeClient,
     RunalyzeRateLimitError,
     RunalyzeResponse,
@@ -190,8 +189,6 @@ class RunalyzeClientTests(unittest.TestCase):
             api_key="secret",
             base_url="https://example.test/api/v1",
             session=session,
-            clock=lambda: 0.0,
-            sleep=lambda seconds: None,
         )
 
         with self.assertRaises(RunalyzeRateLimitError) as caught:
@@ -200,24 +197,6 @@ class RunalyzeClientTests(unittest.TestCase):
         self.assertEqual(60, caught.exception.retry_after_s)
         self.assertEqual(240, caught.exception.limit)
         self.assertIn("rate limit", str(caught.exception))
-
-    def test_requests_are_paced_to_the_rate_limit(self):
-        session = FakeSession(
-            lambda url, params: FakeResponse(200, {})
-        )
-        sleeps = []
-        client = RunalyzeClient(
-            api_key="secret",
-            base_url="https://example.test/api/v1",
-            session=session,
-            clock=lambda: 0.0,
-            sleep=sleeps.append,
-        )
-
-        client.get("ping")
-        client.get("ping")
-
-        self.assertEqual([MIN_REQUEST_INTERVAL_S], sleeps)
 
     def test_missing_token_raises(self):
         with patch(

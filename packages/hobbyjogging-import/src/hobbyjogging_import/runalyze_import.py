@@ -41,7 +41,10 @@ class RunalyzeEnrichSummary:
     run_id: int | None = None
     dry_run: bool = False
     activities_seen: int = 0
+    processed: int = 0
+    not_processed: int = 0
     matched: int = 0
+    already_enriched: int = 0
     unmatched: int = 0
     ambiguous: int = 0
     detail_fetches: int = 0
@@ -84,6 +87,7 @@ class RunalyzeEnricher:
         limit: int | None = None,
         per_page: int = 100,
         dry_run: bool = False,
+        refresh: bool = False,
         output: str | Path | None = None,
     ) -> RunalyzeEnrichSummary:
         summary = RunalyzeEnrichSummary(dry_run=dry_run)
@@ -96,6 +100,7 @@ class RunalyzeEnricher:
                     "start": start.isoformat() if start else None,
                     "end": end.isoformat() if end else None,
                     "limit": limit,
+                    "refresh": refresh,
                 },
             )
 
@@ -109,7 +114,17 @@ class RunalyzeEnricher:
                 activities = activities[:limit]
             summary.activities_seen = len(activities)
 
-            matched = self._match_all(activities, summary)
+            stored = self._stored_details()
+            matched = self._match_all(
+                activities,
+                summary,
+                stored=stored,
+                refresh=refresh,
+            )
+            summary.not_processed = max(
+                0,
+                summary.activities_seen - summary.processed,
+            )
 
             if not dry_run:
                 with self.connection:
@@ -129,6 +144,8 @@ class RunalyzeEnricher:
                     records_skipped=(
                         summary.unmatched
                         + summary.ambiguous
+                        + summary.already_enriched
+                        + summary.not_processed
                     ),
                     error=summary.stopped_reason or None,
                 )
@@ -156,10 +173,14 @@ class RunalyzeEnricher:
         self,
         activities: list[dict],
         summary: RunalyzeEnrichSummary,
+        *,
+        stored: dict[str, tuple[dict, str | None]],
+        refresh: bool,
     ) -> dict[str, _Matched]:
         matched: dict[str, _Matched] = {}
 
         for activity in activities:
+            summary.processed += 1
             if not isinstance(activity, dict):
                 continue
 
@@ -175,6 +196,15 @@ class RunalyzeEnricher:
                 summary.unmatched_rows.append(
                     _unmatched_row(activity, reason)
                 )
+                continue
+
+            if not refresh and self._already_enriched(
+                stored,
+                external_id,
+                activity.get("edited_at"),
+                activity_id,
+            ):
+                summary.already_enriched += 1
                 continue
 
             try:
@@ -251,6 +281,60 @@ class RunalyzeEnricher:
 
         match = viable[0]
         return match.activity_id, "", match.confidence
+
+    def _already_enriched(
+        self,
+        stored: dict[str, tuple[dict, str | None]],
+        external_id: str,
+        edited_at: object,
+        activity_id: str,
+    ) -> bool:
+        """True when the stored detail is current and linked to this activity.
+
+        A re-run after a rate-limit stop then skips the rows already processed
+        instead of restarting at the first activity.
+        """
+        entry = stored.get(external_id)
+        if entry is None:
+            return False
+
+        payload, linked_activity = entry
+        if linked_activity != activity_id:
+            return False
+
+        current = _edited_at(edited_at)
+        if current is None:
+            return False
+        return _edited_at(payload.get("edited_at")) == current
+
+    def _stored_details(self) -> dict[str, tuple[dict, str | None]]:
+        rows = self.connection.execute(
+            """
+            SELECT sr.external_id, sr.payload_json, als.activity_id
+            FROM source_records sr
+            LEFT JOIN activity_sources als
+                ON als.source_record_id = sr.id
+            WHERE sr.source = ? AND sr.record_type = 'activity'
+            """,
+            (SOURCE,),
+        ).fetchall()
+
+        stored: dict[str, tuple[dict, str | None]] = {}
+        for row in rows:
+            try:
+                payload = json.loads(row["payload_json"] or "{}")
+            except ValueError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            external_id = str(row["external_id"])
+            linked = row["activity_id"]
+            entry = stored.get(external_id)
+            if entry is None or (entry[1] is None and linked is not None):
+                stored[external_id] = (payload, linked)
+
+        return stored
 
     def _distance_ok(
         self,
@@ -384,7 +468,10 @@ def format_enrich_summary(summary: RunalyzeEnrichSummary) -> str:
     label = "Runalyze enrich dry run" if summary.dry_run else "Runalyze enrich"
     lines = [
         f"{label}: {summary.activities_seen} activities",
+        f"  processed: {summary.processed}",
+        f"  not processed: {summary.not_processed}",
         f"  matched: {summary.matched}",
+        f"  already enriched: {summary.already_enriched}",
         f"  unmatched: {summary.unmatched}",
         f"  ambiguous: {summary.ambiguous}",
         f"  comments filled: {summary.comments_filled}",
@@ -490,6 +577,11 @@ def _number(value: object) -> float | None:
         return float(str(value))
     except (TypeError, ValueError):
         return None
+
+
+def _edited_at(value: object) -> int | None:
+    number = _number(value)
+    return int(number) if number is not None else None
 
 
 def _payload_json(payload: object) -> str:
