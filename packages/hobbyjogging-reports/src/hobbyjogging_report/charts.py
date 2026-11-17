@@ -1843,6 +1843,17 @@ def plot_pace_hr(
     trends = pace_hr_trends(points)
     colors = ("#1f77b4", "#d62728")
     notes = []
+    efficiency_lines = pace_hr_efficiency_lines(points)
+
+    # All halos go down before the trend and efficiency lines, so none of
+    # them can cut an earlier line at a crossing.
+    for line in efficiency_lines:
+        _outline(
+            figure,
+            [line.speed_low, line.speed_high],
+            [line.at(line.speed_low), line.at(line.speed_high)],
+            1.6,
+        )
 
     for trend, color in zip(trends, colors):
         figure.add_trace(
@@ -1868,8 +1879,6 @@ def plot_pace_hr(
         "second half": colors[1],
     }
 
-    efficiency_lines = pace_hr_efficiency_lines(points)
-
     for line in efficiency_lines:
         figure.add_trace(
             go.Scatter(
@@ -1883,7 +1892,7 @@ def plot_pace_hr(
                 line={
                     "color": color_for[line.label],
                     "width": 1.6,
-                    "dash": "dash",
+                    "dash": "longdash",
                 },
                 hoverinfo="skip",
             )
@@ -1991,6 +2000,14 @@ def plot_compare_pace_hr(
     efficiency_lines = pace_hr_year_efficiency(points)
 
     for line in efficiency_lines:
+        _outline(
+            figure,
+            [line.speed_low, line.speed_high],
+            [line.at(line.speed_low), line.at(line.speed_high)],
+            1.8,
+        )
+
+    for line in efficiency_lines:
         hover = (
             f"{line.label} efficiency: E = {line.efficiency:.2f} "
             f"{EFFICIENCY_UNIT}, RHR {line.resting_hr:.0f} bpm "
@@ -2008,7 +2025,7 @@ def plot_compare_pace_hr(
                 line={
                     "color": _darker(compare_color(int(line.label))),
                     "width": 1.8,
-                    "dash": "dash",
+                    "dash": "longdash",
                 },
                 text=[hover, hover],
                 hoverinfo="text",

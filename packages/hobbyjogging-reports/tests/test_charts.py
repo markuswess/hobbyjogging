@@ -1202,6 +1202,16 @@ class PaceHrChartTests(unittest.TestCase):
         self.assertIn("RHR 50.00 bpm", html)
         self.assertIn("outlined points", html)
         self.assertIn("all runs are shown", html)
+        self.assertIn('"dash":"longdash"', html)
+        self.assertEqual(
+            2,
+            html.count('"color":"rgba(255, 255, 255, 0.85)"'),
+        )
+        # The halos are drawn before the lines they lift off the points.
+        self.assertLess(
+            html.index('"color":"rgba(255, 255, 255, 0.85)"'),
+            html.index("first half efficiency"),
+        )
 
     def test_pace_hr_chart_outlines_only_steady_band_points(self):
         points = [
@@ -1667,8 +1677,12 @@ class ComparePaceHrChartTests(unittest.TestCase):
 
         html = plot_compare_pace_hr(points, "", as_html=True)
 
-        self.assertIn('"dash":"dash"', html)
+        self.assertIn('"dash":"longdash"', html)
         self.assertIn("2026 efficiency: E = 2.50", html)
+        self.assertEqual(
+            2,
+            html.count('"color":"rgba(255, 255, 255, 0.85)"'),
+        )
         self.assertIn(
             "dashed: steady efficiency per year (2025 2.00, 2026 2.50)",
             html,
@@ -1682,7 +1696,11 @@ class ComparePaceHrChartTests(unittest.TestCase):
 
         html = plot_compare_pace_hr(points, "", as_html=True)
 
-        self.assertNotIn('"dash":"dash"', html)
+        self.assertNotIn('"dash":"longdash"', html)
+        self.assertNotIn(
+            '"color":"rgba(255, 255, 255, 0.85)"',
+            html,
+        )
         self.assertNotIn("steady efficiency per year", html)
 
     def test_marker_symbols_follow_each_point_category(self):
