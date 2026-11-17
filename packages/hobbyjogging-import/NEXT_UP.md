@@ -198,6 +198,18 @@ on.
   Rules fire only when the evidence exists; ungated, the counts explode with
   history artefacts (162 / 45 / 69). A changed suggestion supersedes the old
   item.
+- **Pace/HR outlier scan.** Add a dataset-wide quality rule that fits the
+  steady-run pace/HR relationship (robust, per year or a rolling window) and
+  records a `quality` review item when a run's average HR is far from the
+  expected value for its pace. Start with steady easy/recovery runs only;
+  exclude trail/race/interval sessions and heat/elevation explanations, or
+  carry them in the item context. A first pass at 3.5 MAD / 12 bpm flagged 37
+  gross points, many legitimate, so calibrate on the steady subset before
+  enabling. Run it from `review scan` (a new `--outliers` flag or a separate
+  command), prune when an edit or a model change clears the flag, and let the
+  reports mark the flagged points later. Using `quality` hides the activity
+  until reviewed; decide whether that is wanted or a non-hiding category is
+  needed.
 - **Duplicate/overlap detection.** Flag two activities that are the same
   session: same sport, overlapping start (±15 min) or same day, distance
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review

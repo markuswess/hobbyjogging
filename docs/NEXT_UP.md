@@ -916,6 +916,12 @@ one takes the next free number, so cross-references stay valid.
       `Trail` tag and route names; open `consistency` review items instead of
       changing the sport automatically. Calibrate the threshold on the 31
       measured candidates first.
+    - **Pace/HR outliers** (import): fit the steady-run pace/HR relationship
+      (robust, per year or a rolling window) and open a review item for extreme
+      residuals. Exclude trail/race/interval sessions and heat/elevation
+      explanations; a first pass at 3.5 MAD / 12 bpm flagged 37 gross points,
+      many of them legitimate, so calibrate on the steady subset before
+      enabling it.
     - **Illness candidates** (maintenance): `krank`, `verkühlt`, `Infekt`,
       `Magen-Darm`, `Fieber`, `Grippe`, `erkältet` are active evidence;
       `wieder gesund` closes a range; `schlapp` is ignored. Compare the
