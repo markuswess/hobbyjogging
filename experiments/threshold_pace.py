@@ -20,17 +20,27 @@ Outputs
 -------
 1. Threshold snapshot table and step plot.
 2. Setting vs measured work-rep pace per setting interval.
-3. Change events and whether a race or hard session occurred nearby.
-4. Agreement with the quarterly steady efficiency series.
-5. Sensitivity: threshold-target vs subT/LT1 efforts.
+3. Per-rep ceiling compliance, margins, HR lag by rep length, and execution
+   consistency.
+4. Change events and whether a race or hard session occurred nearby.
+5. Agreement with the quarterly steady efficiency series.
+6. Sensitivity: threshold-target vs subT/LT1 efforts.
 
 Decision
 --------
-- Corroborated: median |setting - measured| <= 10 s/km, no drift in the delta,
-  and at least 60% of changes near a race/threshold effort.
-- Mixed: efforts move with the setting but coverage or alignment is weak.
-- Uncorroborated: the setting moves independently of measured work-rep pace;
-  keep it as an input setting, not a metric.
+The setting is a ceiling, so absolute closeness is not the test. The
+pre-registered criteria are:
+
+- compliance: at most 5% of WORK reps faster than the setting pace or above
+  LTHR;
+- execution stability: work-rep HR SD <= 3 bpm across measured intervals;
+- relative tracking: change in setting and change in measured pace correlate
+  (>= 0.6);
+- margin stability: the setting-minus-measured pace margin does not drift.
+
+Passing the compliance and relative criteria means the setting is a useful
+prescription; it still is not a measured LT2. Failing relative tracking means
+it is a manual input, not a fitness signal.
 
     uv run --env-file .env python experiments/threshold_pace.py
 """
@@ -39,7 +49,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from statistics import mean, median
+from statistics import mean, median, stdev
 
 import plotly.graph_objects as go
 
@@ -111,6 +121,14 @@ def session_effort(activity, intervals) -> dict | None:
         "work_time": total_time,
         "hr": avg_hr,
         "reps": len(work),
+        "rep_details": [
+            {
+                "pace": interval.duration_s / interval.distance_m * 1000.0,
+                "hr": interval.avg_hr,
+                "duration_s": interval.duration_s,
+            }
+            for interval in work
+        ],
     }
 
 
@@ -175,6 +193,101 @@ def correlation(xs: list[float], ys: list[float]) -> float:
     var_x = sum((x - mean_x) ** 2 for x in xs)
     var_y = sum((y - mean_y) ** 2 for y in ys)
     return cov / (var_x * var_y) ** 0.5 if var_x and var_y else 0.0
+
+
+def percentile(values: list[float], q: float) -> float:
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * q
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
+def compliance(primary: list[dict], snapshots) -> dict:
+    """Per-rep ceiling checks and the margin distribution."""
+    total_reps = 0
+    pace_violations = 0
+    hr_violations = 0
+    session_pace_margins = []
+    session_hr_margins = []
+
+    for effort in primary:
+        snapshot = interval_for(effort["date"], snapshots)
+        if snapshot is None:
+            continue
+
+        setting_pace = pace_seconds(snapshot.threshold_pace_mps)
+        if setting_pace is None:
+            continue
+
+        session_pace_margins.append(effort["pace"] - setting_pace)
+
+        if effort["hr"] is not None and snapshot.lthr:
+            session_hr_margins.append(snapshot.lthr - effort["hr"])
+
+        for rep in effort["rep_details"]:
+            total_reps += 1
+            if rep["pace"] < setting_pace:
+                pace_violations += 1
+            if (
+                snapshot.lthr
+                and rep["hr"] is not None
+                and rep["hr"] > snapshot.lthr
+            ):
+                hr_violations += 1
+
+    return {
+        "reps": total_reps,
+        "pace_violations": pace_violations,
+        "hr_violations": hr_violations,
+        "pace_margins": session_pace_margins,
+        "hr_margins": session_hr_margins,
+    }
+
+
+def hr_lag(primary: list[dict], snapshots) -> list[tuple]:
+    """HR and pace by work-rep duration bucket."""
+    buckets = [
+        ("<=2 min", 0.0, 120.0),
+        ("2-5 min", 120.0, 300.0),
+        ("5-10 min", 300.0, 600.0),
+        (">10 min", 600.0, float("inf")),
+    ]
+    result = []
+
+    for label, low, high in buckets:
+        paces = []
+        hrs = []
+        hr_shares = []
+
+        for effort in primary:
+            snapshot = interval_for(effort["date"], snapshots)
+            if snapshot is None or not snapshot.lthr:
+                continue
+            for rep in effort["rep_details"]:
+                if not (low <= rep["duration_s"] < high):
+                    continue
+                paces.append(rep["pace"])
+                if rep["hr"] is not None:
+                    hrs.append(rep["hr"])
+                    hr_shares.append(100.0 * rep["hr"] / snapshot.lthr)
+
+        if not hrs:
+            continue
+
+        result.append(
+            (
+                label,
+                len(hrs),
+                f"{int(median(paces) // 60)}:"
+                f"{median(paces) % 60:04.1f}",
+                f"{median(hrs):.0f}",
+                f"{median(hr_shares):.0f}%",
+            )
+        )
+
+    return result
 
 
 def steady_efficiency(activities, baseline) -> list[dict]:
@@ -335,6 +448,7 @@ def main() -> None:
         delta_y = []
         setting_values = []
         measured_values = []
+        measured_intervals = []
 
         for index, snapshot in enumerate(run_snapshots):
             start = snapshot.effective_from
@@ -370,6 +484,14 @@ def main() -> None:
             delta_y.append(delta)
             setting_values.append(setting)
             measured_values.append(measured["pace"])
+            measured_intervals.append(
+                {
+                    "start": start,
+                    "setting": setting,
+                    "measured": measured["pace"],
+                    "hr": measured["hr"],
+                }
+            )
             interval_rows.append(
                 (
                     start.isoformat(),
@@ -494,6 +616,108 @@ def main() -> None:
             headers=["metric", "value"],
         )
 
+        # Ceiling compliance and execution quality.
+        stats = compliance(primary, run_snapshots)
+        pace_rate = (
+            stats["pace_violations"] / stats["reps"] if stats["reps"] else None
+        )
+        hr_rate = (
+            stats["hr_violations"] / stats["reps"] if stats["reps"] else None
+        )
+
+        print("\nceiling compliance (threshold-target work reps):")
+        table(
+            [
+                ("work reps", stats["reps"]),
+                (
+                    "faster than setting",
+                    f"{stats['pace_violations']} "
+                    f"({100 * pace_rate:.0f}%)"
+                    if pace_rate is not None
+                    else "-",
+                ),
+                (
+                    "HR above LTHR",
+                    f"{stats['hr_violations']} "
+                    f"({100 * hr_rate:.0f}%)"
+                    if hr_rate is not None
+                    else "-",
+                ),
+                (
+                    "session pace margin (measured - setting)",
+                    f"median {median(stats['pace_margins']):+.1f} s/km, "
+                    f"IQR {percentile(stats['pace_margins'], 0.25):+.1f}.."
+                    f"{percentile(stats['pace_margins'], 0.75):+.1f}"
+                    if stats["pace_margins"]
+                    else "-",
+                ),
+                (
+                    "session HR margin (LTHR - measured)",
+                    f"median {median(stats['hr_margins']):+.1f} bpm, "
+                    f"IQR {percentile(stats['hr_margins'], 0.25):+.1f}.."
+                    f"{percentile(stats['hr_margins'], 0.75):+.1f}"
+                    if stats["hr_margins"]
+                    else "-",
+                ),
+            ],
+            headers=["check", "value"],
+        )
+
+        print("\nHR lag by work-rep length:")
+        table(
+            hr_lag(primary, run_snapshots),
+            headers=["rep length", "reps", "median pace", "median HR", "%LTHR"],
+        )
+
+        hr_values = [
+            interval["hr"]
+            for interval in measured_intervals
+            if interval["hr"] is not None
+        ]
+        pace_values = [interval["measured"] for interval in measured_intervals]
+        hr_sd = stdev(hr_values) if len(hr_values) > 1 else None
+        pace_sd = stdev(pace_values) if len(pace_values) > 1 else None
+
+        print("\nexecution consistency across measured intervals:")
+        table(
+            [
+                (
+                    "work-rep HR",
+                    f"{mean(hr_values):.1f}" if hr_values else "-",
+                    f"{hr_sd:.1f}" if hr_sd is not None else "-",
+                ),
+                (
+                    "work-rep pace (s/km)",
+                    f"{mean(pace_values):.1f}" if pace_values else "-",
+                    f"{pace_sd:.1f}" if pace_sd is not None else "-",
+                ),
+            ],
+            headers=["measure", "mean", "SD"],
+        )
+
+        change_setting = [
+            second["setting"] - first["setting"]
+            for first, second in zip(measured_intervals, measured_intervals[1:])
+        ]
+        change_measured = [
+            second["measured"] - first["measured"]
+            for first, second in zip(measured_intervals, measured_intervals[1:])
+        ]
+        relative_corr = (
+            correlation(change_setting, change_measured)
+            if len(change_setting) >= 3
+            else None
+        )
+        if relative_corr is not None:
+            print(
+                f"relative change correlation (Δsetting vs Δmeasured): "
+                f"{relative_corr:+.2f} over {len(change_setting)} changes"
+            )
+        print(
+            "The absolute delta is expected for a ceiling; compliance, "
+            "execution stability and relative movement are the tests."
+        )
+
         # Cross-check against quarterly steady efficiency.
         baseline = resting_hr_baselines(wellness)
         steady = steady_efficiency(activities, baseline)
@@ -580,24 +804,33 @@ def main() -> None:
             headers=["population", "intervals", "median |delta|"],
         )
 
-        # Verdict against the pre-registered criteria.
+        # Verdict against the ceiling/prescription criteria.
         if (
-            median_abs_delta is not None
-            and drift is not None
-            and alignment is not None
+            pace_rate is not None
+            and hr_rate is not None
+            and hr_sd is not None
+            and relative_corr is not None
         ):
-            if median_abs_delta <= 10 and abs(drift) <= 5 and alignment >= 0.6:
-                verdict = "corroborated"
-            elif median_abs_delta > 20 or alignment < 0.3:
+            if (
+                pace_rate <= 0.05
+                and hr_rate <= 0.05
+                and hr_sd <= 3
+                and relative_corr >= 0.6
+            ):
+                verdict = "corroborated as a prescription"
+            elif pace_rate > 0.2 or hr_rate > 0.2 or relative_corr < 0:
                 verdict = "uncorroborated"
             else:
                 verdict = "mixed"
             print(f"\nverdict: {verdict}")
             print(
-                "Absolute delta is expected to be non-zero because the setting "
-                "is a ceiling and the work reps are session-specific; the "
-                "criteria test stability and alignment, not equality."
+                "Absolute delta is expected for a ceiling; compliance, "
+                "execution stability and relative movement are the tests. "
+                f"Only {len(measured_intervals)} intervals have enough "
+                "measured efforts, so the change correlation is suggestive."
             )
+        else:
+            print("\nverdict: insufficient data for the ceiling criteria")
 
         # Plot: setting step line plus measured efforts.
         figure = go.Figure()

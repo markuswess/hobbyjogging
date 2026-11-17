@@ -119,10 +119,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 - **Threshold pace trend (athlete_thresholds)** — tested: the setting moved
   3:38 → 3:26 min/km (2019–2026), 10 of 13 changes occurred within ±14 days of
   a race or hard session, and quarterly efficiency correlates +0.67 with
-  threshold speed. But measured threshold-target work reps are 15–22 s/km
-  slower (HR ~164 vs LTHR 174), only four setting intervals have ≥3 measured
-  efforts, and the pre-registered criteria call it mixed. Revisit with official
-  race results or efforts at LTHR. Evidence: `experiments/threshold_pace.py`.
+  threshold speed. Measured threshold-target work reps are 15–22 s/km slower
+  (HR ~164 vs LTHR 174), only four setting intervals have ≥3 measured efforts,
+  and 9% of 934 work reps went faster than the setting or above LTHR. Session
+  averages stay below the ceiling (+15.8 s/km, +9.7 bpm margin), execution HR
+  is very stable (SD 0.9 bpm), pace SD is 5.4 s/km, and rep HR is 94–97% LTHR
+  across rep lengths. Setting vs measured correlates +0.81, relative changes
+  +0.73. The 5% compliance bar calls it mixed; the substance is a prescription
+  that is mostly followed, not a measured LT2. Revisit with official race
+  results or efforts at LTHR, and characterize the 9% overshoots. Evidence:
+  `experiments/threshold_pace.py`.
 
 ### Retired notes
 
