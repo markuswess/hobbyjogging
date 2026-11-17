@@ -243,6 +243,15 @@ class VolumeChartTests(unittest.TestCase):
         self.assertIn('"name":"182d avg (weekly)"', html)
         self.assertIn('"dash":"dash"', html)
         self.assertIn('"dash":"dashdot"', html)
+        # Shortest window first, so the smoothest line ends up on top.
+        self.assertLess(
+            html.index('"name":"7d avg (weekly)"'),
+            html.index('"name":"42d avg (weekly)"'),
+        )
+        self.assertLess(
+            html.index('"name":"42d avg (weekly)"'),
+            html.index('"name":"182d avg (weekly)"'),
+        )
 
     def test_volume_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
