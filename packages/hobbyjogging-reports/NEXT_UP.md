@@ -340,7 +340,7 @@ this list keeps the recent decisions only.
   cross load but computes base/fitness/fatigue from running only, the
   overview's row is now `Run load / week`, planned load is split by sport,
   and compare load counts runs only. Cross load stays as context. The
-  `docs/METRICS.md` card for the handoff is still a root step.
+  `docs/METRICS.md` card is handed off as root item 39.
 
 ## Bugs
 
