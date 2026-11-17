@@ -146,18 +146,29 @@ on.
 
 ## Next
 
-- **Runalyze phase 3: gear identity and activity links.** Read the detail
-  payload's `equipment` array (full `EquipmentDto` objects, so no separate gear
-  fetch), resolve each gear record with the co-occurrence → name → new-row rule
-  in root item 12, and write `source_records(record_type='gear')`,
+- **Runalyze phase 3: gear identity and activity links.** The core contract is
+  ready: `ambiguous_equipment` is a non-hiding review category and
+  `TrainingWriter.link_equipment_source` attaches a gear source record to a
+  matched equipment row without changing it. Build an offline `runalyze gear`
+  command (`--dry-run`, `--since/--to`, `--limit`, `--output`) that reads the
+  stored activity payloads' `equipment` arrays (no activity-detail fetch),
+  resolves each gear record with the co-occurrence → exact normalized name →
+  new-row rule in root item 12, and writes `source_records(record_type='gear')`,
   `equipment`, `equipment_source_links` and `activity_equipment`
-  (`source='runalyze'`). The first shoe/bike item is primary, the rest
-  secondary; manual links win; a split co-occurrence or a name matching several
-  rows opens `ambiguous_equipment`. Brand/model stay empty. Before the full
-  run, test whether the collection's `fields` parameter can return
-  `tags`/`equipment`; if it can, use it to avoid one detail request per
-  activity. Tests cover co-occurrence, unique and ambiguous names, 2022+ new
-  rows and idempotency.
+  (`source='runalyze'`). Do not strip colour/size parentheticals when matching
+  names; co-occurrence is the bridge. The first shoe/bike item is primary, the
+  rest secondary; an existing sheet primary is preserved; manual links win.
+  Brand/model stay empty on new rows; a matched row is never rewritten.
+  Add `ambiguous_equipment` to `REVIEW_CATEGORIES`. The current 616 payloads
+  hold 21 gear items (752 activities with one, 22 with two, 33 with none);
+  categories 78697 shoes, 78699 bikes, 379240 Thule/other. Fetch
+  `/api/v1/equipment/category` once for the names (or cache it) after the
+  activity import frees the API window. Co-occurrence cannot be validated on
+  the real data until the 2019–2021 payloads arrive, so test that branch with
+  fixtures; new-row and exact-name matching can run now. Tests cover
+  co-occurrence, split ambiguity, unique/ambiguous names, 2022+ rows,
+  primary/secondary, sheet-primary preservation, manual links, idempotency and
+  dry-run.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with

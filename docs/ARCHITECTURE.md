@@ -537,14 +537,15 @@ comments, tags, gear, and the Runalyze VO2max estimate:
 ## Review workflow
 
 Review categories: `ambiguous_match`, `field_conflict`, `quality`,
-`duplicate`, `manual_flag`, `workout_classification`.
+`duplicate`, `manual_flag`, `workout_classification`, `ambiguous_equipment`.
 
 `workout_classification` items are `info`-level: the activity's data is fine,
-it just has no decided workout method/target. They therefore never hide an
-activity from reports (unlike the other categories). Triage `(k)` shows the
-classifier and sheet proposals and writes the chosen sets as manual values
-(`1` classifier, `2` sheet, `m` merge, `n` leave unclassified). A resolved
-decision is not reopened; changed proposals supersede the old item.
+it just has no decided workout method/target. `ambiguous_equipment` items are
+also `info`-level: the activity is fine, only the gear identity is uncertain.
+Neither hides an activity from reports (unlike the other categories). Triage
+`(k)` shows the classifier and sheet proposals and writes the chosen sets as
+manual values (`1` classifier, `2` sheet, `m` merge, `n` leave unclassified).
+A resolved decision is not reopened; changed proposals supersede the old item.
 
 - `review list`, `show`, `resolve`, `ignore`, `flag`, `scan` — non-interactive
   queue management and backfill.

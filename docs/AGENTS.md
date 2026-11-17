@@ -140,6 +140,9 @@ Cross-package changes must leave all four suites green.
 - A linked race event gives its activity the `race` method under `race_link`;
   a manual link or a manual method set wins, and an ambiguous match becomes an
   `ambiguous_race` review item rather than a guess.
+- A gear record that matches an existing equipment item only adds a source
+  link; it never overwrites that item's name, brand, model or dates. An
+  ambiguous match opens a non-hiding `ambiguous_equipment` review item.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
 - Workout methods/targets are set-based (`activity_workout_*`,
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;

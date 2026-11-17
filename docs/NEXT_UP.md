@@ -441,12 +441,17 @@ editing, analysis and lab work; phase 3 is the dormant future.
          a category-derived type (`shoe`, `bike`, `other`), `notes`, and
          `date_start`/`date_end` → `acquired_on`/`retired_on`; brand and model
          stay empty because the payload has none.
-      A split co-occurrence or a name matching several rows opens an
-      `ambiguous_equipment` review item with the candidates; never guess (the
-      two "Lunge C-Dur" pairs differ only by colour and date). 2022+ gear has
-      no sheet counterpart and simply creates new rows. For each matched
-      activity, the first shoe/bike item is primary and the rest secondary; a
-      manual link wins.
+      A split co-occurrence or a name matching several rows opens a
+      non-hiding `ambiguous_equipment` review item with the candidates; never
+      guess (the two "Lunge C-Dur" pairs differ only by colour and date).
+      2022+ gear has no sheet counterpart and simply creates new rows. For each
+      matched activity, the first shoe/bike item is primary and the rest
+      secondary; a manual link wins.
+    - **Phase 3 contract (done)**: `ambiguous_equipment` is a non-hiding review
+      category, and `TrainingWriter.link_equipment_source` attaches a gear
+      source record to a matched equipment row without overwriting its
+      name/brand/model/dates. The offline `runalyze gear` command and the
+      identity logic are handed to the import package.
     - **Health entries**: Runalyze's Injury & Sickness Tracking records start
       and end dates; map them to `training_periods` illness ranges, never
       markers. Weight and sleep fill `wellness_days`.
