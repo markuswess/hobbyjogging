@@ -221,8 +221,8 @@ this list keeps the recent decisions only.
   `analysis/streaks.py` does the grouping (two runs on one day count once,
   with both added), the current streak ends today or yesterday, and
   review-excluded runs never count. On the real log: current 23 days, best 117
-  days of 961 streaks. The dashboard card waits for a week of use, per the
-  gate.
+  days of 961 streaks. The CLI has run for a week, so the dashboard card is
+  queued as item 16.
 
 - **Long dashboard lists collapse.** `html.table()` takes a unique `collapse`
   key: past `TABLE_COLLAPSE_ROWS` (20) it renders a native checkbox and hides
@@ -504,6 +504,15 @@ lists and the season/illness bands landed here.
     category, per-category targets and retirement candidates, and keep the
     summary counts. Decide whether the tab gets separate sections or one chart
     with category colours.
+
+16. **Streaks on the Analysis tab.** The CLI gate is satisfied. Add a card
+    to `AnalysisSection`/`analysis_page` from `analysis.streak_summary`:
+    current streak (days, span, km, time, whether today is already run), the
+    longest streaks (limit 5 or 10), and the total count. Decide whether the
+    longest list uses all history or the analysis window; the current streak
+    must use today. Reuse the existing formatters and the review-excluded
+    rule. Tests: current/no current, longest list, window vs all history,
+    excluded runs, and demo coverage.
 
 ## Tests and docs
 
