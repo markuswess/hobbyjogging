@@ -76,7 +76,8 @@ def build_analysis_section(
     ]
     # Weekly bars start with the next full week; the EWMA projections use the
     # daily plan from tomorrow, so the rest of the current week is not lost.
-    plan_start = week_end + timedelta(days=1)
+    plan_start = end + timedelta(days=1)
+    next_week = week_end + timedelta(days=1)
     plan_end = end + timedelta(days=future_days)
     events = (
         source.events(end, plan_end) if future_days > 0 else []
@@ -86,10 +87,10 @@ def build_analysis_section(
         plan_start,
         plan_end,
     )
-    planned_time = weekly_planned_time(events, plan_start, plan_end)
+    planned_time = weekly_planned_time(events, next_week, plan_end)
     planned_zone_weeks = weekly_planned_time_by_zone(
         events,
-        plan_start,
+        next_week,
         plan_end,
         kind="pace",
         zone_count=ZONE_COUNT,

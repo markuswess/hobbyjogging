@@ -298,7 +298,10 @@ def _plot_average_lines(
     actual = [point for point in points if not point.projected]
     projected = [point for point in points if point.projected]
     colors = colors or AVERAGE_COLORS
-    dash = dash or {}
+    dash = {
+        attribute: LINE_STYLES[getattr(windows, attribute)]
+        for attribute in ("base", "fitness", "fatigue")
+    } | (dash or {})
 
     # Shortest window first, so the smoothest line ends up on top.
     for attribute in ("fatigue", "fitness", "base"):
@@ -486,13 +489,34 @@ def plot_volume(
             marker_color=VOLUME_BAR_COLOR,
         )
 
+    actual_by_week = dict(data)
+    planned_by_week = dict(planned_distance or [])
+    planned_marks = [
+        (week, value + actual_by_week.get(week, 0.0))
+        for week, value in planned_by_week.items()
+    ]
+
     if planned_distance:
         figure.add_bar(
             x=[week for week, _ in planned_distance],
             y=[value for _, value in planned_distance],
+            # The current week already has an actual bar; stack the plan for
+            # its remaining days on top of it.
+            base=[
+                actual_by_week.get(week, 0.0)
+                for week, _ in planned_distance
+            ],
             name="planned km",
             width=WEEK_MS,
-            marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
+            marker={
+                "color": _fade(VOLUME_BAR_COLOR, 0.45),
+                "line": {"color": "#9aa5b1", "width": 0.6},
+                "pattern": {
+                    "shape": "/",
+                    "fgcolor": "#9aa5b1",
+                    "solidity": 0.45,
+                },
+            },
         )
 
     if distance_points:
@@ -507,7 +531,7 @@ def plot_volume(
     ceiling = max(
         _axis_ceiling(
             [value for _, value in data]
-            + [value for _, value in planned_distance or []],
+            + [value for _, value in planned_marks],
             step=VOLUME_Y_STEP,
             floor=VOLUME_Y_MIN,
         ),
@@ -524,7 +548,7 @@ def plot_volume(
 
     _clipped_markers(
         figure,
-        list(data) + list(planned_distance or []),
+        list(data) + planned_marks,
         ceiling,
         "km",
     )

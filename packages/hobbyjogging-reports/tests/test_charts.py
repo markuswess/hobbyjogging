@@ -187,6 +187,46 @@ class VolumeChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
+    def test_planned_weeks_stack_on_the_actual_and_use_the_hatch(self):
+        data = [(date(2026, 1, 5), 30.0)]
+        distance_points = [DistancePoint(D, 8.0, 7.0, 7.5, 7.8)]
+
+        html = plot_volume(
+            data,
+            "",
+            distance_points=distance_points,
+            planned_distance=[
+                (date(2026, 1, 5), 12.0),
+                (date(2026, 1, 12), 45.0),
+            ],
+            as_html=True,
+        )
+
+        self.assertIn('"name":"planned km"', html)
+        # The current week's plan sits on top of its actual bar.
+        self.assertIn('"base":[30.0,0.0]', html)
+        self.assertIn('"fgcolor":"#9aa5b1"', html)
+        self.assertIn('"solidity":0.45', html)
+
+    def test_average_lines_use_the_shared_line_scheme(self):
+        distance_points = [
+            DistancePoint(D + timedelta(days=index), 8.0, 7.0, 7.5, 7.8)
+            for index in range(3)
+        ]
+
+        html = plot_volume(
+            [(D, 30.0)],
+            "",
+            distance_points=distance_points,
+            as_html=True,
+        )
+
+        self.assertIn('"name":"7d avg (weekly)"', html)
+        self.assertIn('"name":"42d avg (weekly)"', html)
+        self.assertIn('"name":"182d avg (weekly)"', html)
+        self.assertIn('"dash":"dash"', html)
+        self.assertIn('"dash":"dashdot"', html)
+
     def test_volume_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

@@ -279,12 +279,13 @@ this list keeps the recent decisions only.
   lists every year's `E`. Years without two usable steady runs get no line.
 
 - **The Analysis charts show the plan, 42 days ahead.** Volume, time and load
-  draw the next 42 days: planned weeks as faded bars in the running-volume
-  colour, planned zone bars in the same faded zone colours as the actuals, and
-  planned load bars on days without an actual load. The EWMAs continue through
-  the plan as dashed projections and the axes extend to the last planned week.
-  Weekly planned bars start at the next full week (the daily projection covers
-  the rest of this one), and the series come from the existing
+  draw the next 42 days. Planned volume weeks are faded, hatched bars in the
+  same grey as the actuals, stacked on the current week's actual bar so its
+  missing days show; planned time weeks are faded zone-coloured bars starting
+  at the next full week; planned load sits on days without an actual load.
+  The EWMAs continue through the plan as dashed projections, use the shared
+  7-solid/42-dashed/182-dash-dot scheme, and the axes extend to the last
+  planned week. Series come from the existing
   `weekly_planned_*`/`daily_planned_load` helpers.
 
 - **NSA subT tables collapse.** `collapse_tables()` re-renders long tables from
