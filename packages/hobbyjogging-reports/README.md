@@ -175,7 +175,9 @@ zone (`Z4 planned`), projections under the line they extend, and subT session
 markers by category. An unnamed trace would surface as `trace N`, which says
 nothing about the series, so range sticks and halos skip the hover instead.
 
-Generation builds a temporary directory and atomically swaps it into place.
+Every page carries a GitHub link to the source repository in the top-right
+corner. Generation builds a temporary directory and atomically swaps it into
+place.
 It refuses to replace a non-empty directory unless it is a previous
 dashboard (marked with `.hobbyjogging-dashboard`).
 

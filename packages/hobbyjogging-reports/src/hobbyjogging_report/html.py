@@ -209,6 +209,11 @@ body {
   color: #1f2933;
 }
 header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   background: #1f2933;
   color: #fff;
   padding: 14px 24px;
@@ -220,6 +225,13 @@ nav a {
   margin-right: 16px;
 }
 nav a.active, nav a:hover { color: #fff; }
+header .repo {
+  color: #cbd2d9;
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+header .repo:hover { color: #fff; }
 main { max-width: 1180px; margin: 0 auto; padding: 24px; }
 .demo-banner {
   margin-bottom: 16px;
@@ -375,6 +387,9 @@ NAV = (
 )
 
 
+REPO_URL = "https://github.com/markuswess/hobbyjogging"
+
+
 def page(
     *,
     title: str,
@@ -420,6 +435,7 @@ def page(
 <body>
 <header>
   <nav><span class="brand">hobbyjogging</span>{nav}</nav>
+  <a class="repo" href="{REPO_URL}" target="_blank" rel="noopener">GitHub ↗</a>
 </header>
 <main>
 {demo_banner}

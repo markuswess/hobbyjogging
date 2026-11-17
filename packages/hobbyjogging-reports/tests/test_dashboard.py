@@ -282,6 +282,11 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertNotIn("Quality sessions", index)
             self.assertIn("Plotly.newPlot", index)
             self.assertIn("plotly.min.js", index)
+            self.assertIn('class="repo"', index)
+            self.assertIn(
+                'href="https://github.com/markuswess/hobbyjogging"',
+                index,
+            )
             self.assertIn("activities with open review items are hidden", index)
             self.assertIn("Recovery and Health", index)
             self.assertIn(">Data Health</a>", index)
