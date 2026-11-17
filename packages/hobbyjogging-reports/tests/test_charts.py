@@ -233,6 +233,7 @@ class VolumeChartTests(unittest.TestCase):
         self.assertIn('"base":[30.0,0.0]', html)
         self.assertIn('"fgcolor":"#9aa5b1"', html)
         self.assertIn('"solidity":0.45', html)
+        self.assertIn('"barmode":"overlay"', html)
 
     def test_average_lines_get_the_pale_halo_before_the_lines(self):
         distance_points = [
@@ -1021,19 +1022,31 @@ class AdaptiveAxisTests(unittest.TestCase):
         self.assertIn('"range":[0,100]', html)
         self.assertIn("clipped above 2 h", html)
 
-    def test_load_axis_ignores_the_ultra_day(self):
+    def test_load_axis_ignores_the_ultra_week(self):
+        # Twelve Monday-to-Sunday weeks, the last with one 349-load day.
+        start = date(2025, 12, 29)
         points = [
-            LoadPoint(D + timedelta(days=index), 40.0, 35.0, 38.0, 40.0)
-            for index in range(30)
+            LoadPoint(
+                start + timedelta(days=index),
+                40.0,
+                35.0,
+                38.0,
+                40.0,
+            )
+            for index in range(12 * 7)
         ]
-        points.append(
-            LoadPoint(D + timedelta(days=30), 349.0, 40.0, 42.0, 60.0)
+        points[-1] = LoadPoint(
+            start + timedelta(days=12 * 7 - 1),
+            349.0,
+            40.0,
+            42.0,
+            60.0,
         )
 
         html = plot_load(points, "", as_html=True)
 
-        self.assertIn('"range":[0,50.0]', html)
-        self.assertIn("349.00 load (bar clipped)", html)
+        self.assertIn('"range":[0,400.0]', html)
+        self.assertIn("589.00 load (bar clipped)", html)
 
     def test_rpe_overlay_gets_its_own_scale(self):
         html = plot_load(
@@ -1043,8 +1056,8 @@ class AdaptiveAxisTests(unittest.TestCase):
             as_html=True,
         )
 
-        # The load axis follows the load; the RPE axis covers its own values.
-        self.assertIn('"range":[0,75.0]', html)
+        # The weekly load axis follows the load; the RPE axis covers RPE.
+        self.assertIn('"range":[0,400.0]', html)
         self.assertIn('"range":[0,8.0]', html)
 
     def test_overview_axis_ignores_the_long_day(self):
@@ -1880,6 +1893,84 @@ class LoadChartTests(unittest.TestCase):
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
+
+    def test_load_bars_are_weekly_and_the_lines_match_that_unit(self):
+        points = [
+            LoadPoint(date(2025, 12, 29), 30.0, 30.0, 31.0, 32.0),
+            LoadPoint(date(2025, 12, 30), 20.0, 32.0, 33.0, 34.0),
+            LoadPoint(date(2026, 1, 5), 50.0, 34.0, 35.0, 36.0),
+        ]
+
+        html = plot_load(points, "", as_html=True)
+        data = plotly_data(html)
+        bars = [trace for trace in data if trace.get("type") == "bar"]
+        lines = [
+            trace
+            for trace in data
+            if trace.get("name")
+            and trace.get("name", "").endswith("d)")
+        ]
+
+        self.assertEqual(1, len(bars))
+        self.assertEqual(
+            ["2025-12-29", "2026-01-05"],
+            bars[0]["x"],
+        )
+        self.assertEqual([50.0, 50.0], bars[0]["y"])
+        self.assertEqual(7 * 24 * 60 * 60 * 1000, bars[0]["width"])
+
+        # Every average is 7x the daily EWMA, so it reads in load per week.
+        self.assertEqual(
+            ["Fatigue (7d)", "Fitness (42d)", "Base (182d)"],
+            [trace["name"] for trace in lines],
+        )
+        for trace in lines:
+            attribute = trace["name"].split(" ")[0].lower()
+            self.assertEqual(
+                [
+                    round(getattr(point, attribute) * 7, 6)
+                    for point in points
+                ],
+                [round(value, 6) for value in trace["y"]],
+            )
+
+        self.assertEqual([], hoverable_unnamed(data))
+
+    def test_planned_load_stacks_on_the_partial_week(self):
+        points = [LoadPoint(D, 50.0, 40.0, 45.0, 48.0)]
+
+        html = plot_load(
+            points,
+            "",
+            planned_load=[
+                (D, 55.0),
+                (date(2026, 1, 3), 20.0),
+                (date(2026, 1, 5), 60.0),
+            ],
+            as_html=True,
+        )
+        data = plotly_data(html)
+        planned = [
+            trace
+            for trace in data
+            if trace.get("name") == "planned load"
+        ]
+
+        self.assertEqual(1, len(planned))
+        # The planned day with an actual is dropped; the rest stacks on the
+        # current week and an empty week starts at zero.
+        self.assertEqual(
+            ["2025-12-29", "2026-01-05"],
+            planned[0]["x"],
+        )
+        self.assertEqual([20.0, 60.0], planned[0]["y"])
+        self.assertEqual([50.0, 0.0], planned[0]["base"])
+        self.assertEqual(
+            "/",
+            planned[0]["marker"]["pattern"]["shape"],
+        )
+        self.assertIn('"barmode":"overlay"', html)
+        self.assertEqual([], hoverable_unnamed(data))
 
     def test_load_chart_draws_shortest_window_first(self):
         points = [

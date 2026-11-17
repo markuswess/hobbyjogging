@@ -63,7 +63,8 @@ Pages:
   current week's actual bar), planned zone bars in the same faded zone colours
   as the actuals in both the time and share panels (the current week's plan
   stacks on its actual bar, with the share panel normalized to the combined
-  week), and planned load bars on days without an actual load. Each week
+  week), and weekly planned load stacked on the current week's actual bar.
+  Each week
   stacks hard done, hard planned, easy done, easy planned from the bottom up.
   Running time reads in hours on the left; the hard-running averages sit on a
   right-hand axis in minutes per week that mirrors the hour ticks (2 h =
@@ -305,11 +306,13 @@ stay compact (`1h02`).
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
   default. Bigger weeks above the axis are marked and clipped.
-- **load** — Daily training load with 182-day base, 42-day fitness,
-  and 7-day fatigue exponentially weighted averages, plus planned load and
-  the three session-RPE EWMAs on a right-hand axis (RPE carries the last
-  rated value between sessions). The RPE axis is scaled to the RPE series
-  (minimum 6), not to the load axis, so the overlay always fits.
+- **load** — Weekly training load (the sum of each Monday-to-Sunday week)
+  with 182-day base, 42-day fitness and 7-day fatigue exponentially weighted
+  averages scaled to load per week, plus weekly planned load stacked on the
+  current week, and the three session-RPE EWMAs on a right-hand axis (RPE
+  carries the last rated value between sessions). The RPE axis is scaled to
+  the RPE series (minimum 6), not to the load axis, so the overlay always
+  fits.
 - **time** — Weekly running time stacked by pace zone (Z1 on top, higher zones
   at the bottom; Z1/Z2 in blues and Z3/Z4 in reds), with 182/42/7-day time
   averages, a share-of-week panel, a per-zone EWMA panel, and planned weekly
@@ -486,17 +489,19 @@ as the direct CLI.
 
 ### Load chart
 
-`load` shows daily training load as bars plus three exponentially weighted
-averages:
+`load` shows weekly training load as bars plus three exponentially weighted
+averages, all in load per week:
 
 - **Base (182d)** — long-term training base
 - **Fitness (42d)** — medium-term fitness
 - **Fatigue (7d)** — short-term fatigue
 
 The averages use time-constant EWMA (`alpha = 1 - exp(-1 / days)`) and are
-computed with history before the displayed range. Planned load continues
-the averages into the future as dashed lines. Change the horizons with
-`--base-days`, `--fitness-days`, and `--fatigue-days`.
+computed with history before the displayed range and scaled by seven to
+per-week units. Planned load continues the averages into the future as
+dashed lines and stacks on the current week's actual bar as faded, hatched
+bars. Change the horizons with `--base-days`, `--fitness-days`, and
+`--fatigue-days`.
 
 Activities without `training_load` are treated as zero load and get a note.
 The database currently only has load data from late 2025, so the 182-day

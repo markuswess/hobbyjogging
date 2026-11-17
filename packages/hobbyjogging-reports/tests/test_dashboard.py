@@ -373,7 +373,7 @@ class DashboardBuildTests(unittest.TestCase):
             # charts, beyond the actual window.
             self.assertIn("planned km", analysis)
             self.assertIn("planned zones", analysis)
-            self.assertIn('"name":"planned"', analysis)
+            self.assertIn('"name":"planned load"', analysis)
             self.assertIn("avg HR (bpm)", analysis)
             self.assertNotIn("subT and LT1 intervals", analysis)
             self.assertEqual(4, analysis.count("Plotly.newPlot"))

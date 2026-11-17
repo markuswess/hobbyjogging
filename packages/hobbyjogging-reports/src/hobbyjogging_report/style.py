@@ -51,8 +51,10 @@ TIME_Y_STEP = 1.0
 TIME_Y_MIN = 2.0
 # Mirrors the time axis's 2-hour ticks, so 2 h and 120 min share a line.
 HARD_MINUTES_STEP = 120.0
-LOAD_Y_STEP = 25.0
-LOAD_Y_MIN = 25.0
+# Weekly load is the sum of seven-ish daily loads, so its step is coarser
+# than a daily chart's.
+LOAD_WEEK_Y_STEP = 100.0
+LOAD_WEEK_Y_MIN = 200.0
 MINUTES_Y_STEP = 15.0
 MINUTES_Y_MIN = 45.0
 RPE_AXIS_MIN = 6.0  # the RPE overlay gets its own scale, fitted to the chart

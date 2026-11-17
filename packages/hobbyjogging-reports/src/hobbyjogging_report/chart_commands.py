@@ -288,7 +288,7 @@ def run_load_chart(
     planned_end: date | None = None,
     include_review: bool = False,
 ) -> None:
-    """Render daily load and its base/fitness/fatigue EWMA lines."""
+    """Render weekly load and its base/fitness/fatigue EWMA lines."""
     from .analysis import (
         average_warmup_days,
         daily_planned_load,

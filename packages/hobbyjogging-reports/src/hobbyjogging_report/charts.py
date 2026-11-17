@@ -29,6 +29,7 @@ from .analysis import (
     recovery_bands,
     riegel_reference,
     riegel_time,
+    week_start,
 )
 from .format import fmt_clock, fmt_time, format_pace, format_weather
 from .model import (
@@ -58,8 +59,8 @@ from .style import (
     HARD_PLANNED_COLOR,
     LINE_STYLES,
     LINE_WIDTHS,
-    LOAD_Y_MIN,
-    LOAD_Y_STEP,
+    LOAD_WEEK_Y_MIN,
+    LOAD_WEEK_Y_STEP,
     MINUTES_Y_MIN,
     MINUTES_Y_STEP,
     PLANNED_PATTERN,
@@ -95,6 +96,7 @@ AVERAGE_COLORS = {
 }
 
 VOLUME_BAR_COLOR = "lightgrey"
+LOAD_BAR_COLOR = "#b0bec5"
 
 ZONE_COLORS = (
     "#8ecae6",
@@ -277,6 +279,9 @@ def _base_layout(figure, *, title: str, xlabel: str, ylabel: str):
         title=title,
         xaxis_title=xlabel,
         yaxis_title=ylabel,
+        # Planned bars stack on the actual bar of the same week; the grouped
+        # default would place them side by side instead.
+        barmode="overlay",
         height=800,
         margin={"l": 60, "r": 30, "t": 60, "b": 100},
         legend=_legend_below(),
@@ -390,18 +395,6 @@ def _plot_average_lines(
             row=row,
             col=col,
         )
-
-
-def _planned_total_bars(figure, values, *, label: str = "planned"):
-    figure.add_bar(
-        x=[day for day, _ in values],
-        y=[value for _, value in values],
-        name=label,
-        marker={
-            "color": "rgba(0, 0, 0, 0)",
-            "line": {"color": "black", "width": 1.2},
-        },
-    )
 
 
 def _bulk_range(values, *, step: float) -> list[float] | None:
@@ -1452,102 +1445,166 @@ def plot_subt(
 def plot_load(
     points: list[LoadPoint],
     output: str,
+    *,
     planned_load: list[tuple[date, float]] | None = None,
     windows: AverageWindows | None = None,
     rpe_points: list[RpePoint] | None = None,
-    title: str = "Training load",
+    load_scale: float = 7.0,
+    title: str = "Weekly training load and session RPE",
     as_html: bool = False,
 ) -> str:
-    """Daily load bars with EWMAs, plus session RPE on a right axis."""
+    """Weekly load bars with weekly EWMA lines and session RPE on a right axis.
+
+    Bars sum the daily load of each Monday-to-Sunday week; the averages are
+    scaled to the same per-week units. Planned load stacks on the current
+    week's actual bar as faded, hatched bars.
+    """
     _require_data(points)
     windows = windows or AverageWindows()
     actual = [point for point in points if not point.projected]
-    figure = go.Figure()
-    figure.add_bar(
-        x=[point.date for point in actual],
-        y=[point.load for point in actual],
-        name="daily load",
-        marker_color="lightgrey",
-    )
 
-    planned = []
+    weekly: dict[date, float] = {}
+
+    for point in actual:
+        week = week_start(point.date)
+        weekly[week] = weekly.get(week, 0.0) + point.load
+
+    weekly_load = sorted(weekly.items())
+    actual_by_week = dict(weekly_load)
+    planned: list[tuple[date, float]] = []
 
     if planned_load:
         actual_days = {
             point.date for point in actual if point.load > 0
         }
-        planned = [
-            (day, value)
-            for day, value in planned_load
-            if day not in actual_days
-        ]
+        planned_by_week: dict[date, float] = {}
 
-        if planned:
-            _planned_total_bars(figure, planned)
+        for day, value in planned_load:
+            if day in actual_days:
+                continue
+            week = week_start(day)
+            planned_by_week[week] = planned_by_week.get(week, 0.0) + value
+
+        planned = sorted(planned_by_week.items())
+
+    figure = go.Figure()
+
+    if weekly_load:
+        figure.add_bar(
+            x=[week for week, _ in weekly_load],
+            y=[value for _, value in weekly_load],
+            name="weekly load",
+            width=WEEK_MS,
+            marker_color=LOAD_BAR_COLOR,
+        )
+
+    if planned:
+        figure.add_bar(
+            x=[week for week, _ in planned],
+            y=[value for _, value in planned],
+            # The current week already has an actual bar; stack the plan for
+            # its remaining days on top of it.
+            base=[actual_by_week.get(week, 0.0) for week, _ in planned],
+            name="planned load",
+            width=WEEK_MS,
+            marker={
+                "color": _fade(LOAD_BAR_COLOR, 0.45),
+                "line": {"color": "#9aa5b1", "width": 0.6},
+                "pattern": {
+                    "shape": PLANNED_PATTERN,
+                    "fgcolor": "#9aa5b1",
+                    "solidity": 0.45,
+                },
+            },
+        )
 
     _plot_average_lines(
         figure,
         points,
         windows,
+        scale=load_scale,
         label=lambda attribute, days: f"{attribute.title()} ({days}d)",
     )
 
     rpe = [point for point in rpe_points or [] if point.base is not None]
+    rpe_windows = (("base", 182), ("fitness", 42), ("fatigue", 7))
 
-    for attribute, window in (
-        ("base", 182),
-        ("fitness", 42),
-        ("fatigue", 7),
-    ):
-        if not rpe:
-            break
-
-        figure.add_trace(
-            go.Scatter(
-                x=[point.date for point in rpe],
-                y=[getattr(point, attribute) for point in rpe],
-                mode="lines",
-                name=f"RPE {window}d",
+    if rpe:
+        # All halos go down before any line, as in the other charts.
+        for attribute, window in rpe_windows:
+            _outline(
+                figure,
+                [point.date for point in rpe],
+                [getattr(point, attribute) for point in rpe],
+                LINE_WIDTHS[window],
                 yaxis="y2",
-                line={
-                    "color": RPE_LINE_COLORS[window],
-                    "width": LINE_WIDTHS[window],
-                    "dash": LINE_STYLES[window],
-                },
             )
-        )
+
+        for attribute, window in rpe_windows:
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date for point in rpe],
+                    y=[getattr(point, attribute) for point in rpe],
+                    mode="lines",
+                    name=f"RPE {window}d",
+                    yaxis="y2",
+                    line={
+                        "color": RPE_LINE_COLORS[window],
+                        "width": LINE_WIDTHS[window],
+                        "dash": LINE_STYLES[window],
+                    },
+                )
+            )
+
+    planned_marks = [
+        (week, value + actual_by_week.get(week, 0.0))
+        for week, value in planned
+    ]
 
     ceiling = max(
         _axis_ceiling(
-            [point.load for point in actual]
-            + [value for _, value in planned],
-            step=LOAD_Y_STEP,
-            floor=LOAD_Y_MIN,
+            [value for _, value in weekly_load]
+            + [value for _, value in planned_marks],
+            step=LOAD_WEEK_Y_STEP,
+            floor=LOAD_WEEK_Y_MIN,
         ),
         _axis_ceiling(
             [
-                getattr(point, attribute)
+                getattr(point, attribute) * load_scale
                 for point in points
                 for attribute in ("base", "fitness")
             ],
-            step=LOAD_Y_STEP,
-            floor=LOAD_Y_MIN,
+            step=LOAD_WEEK_Y_STEP,
+            floor=LOAD_WEEK_Y_MIN,
         ),
     )
 
     _clipped_markers(
         figure,
-        [(point.date, point.load) for point in actual],
+        list(weekly_load) + planned_marks,
         ceiling,
         "load",
     )
-    figure.update_yaxes(range=[0, ceiling], dtick=LOAD_Y_STEP)
+    figure.update_yaxes(range=[0, ceiling], dtick=LOAD_WEEK_Y_STEP)
+
+    axis_weeks = sorted(
+        {week for week, _ in weekly_load}
+        | {week for week, _ in planned}
+    )
+
+    if axis_weeks:
+        figure.update_xaxes(
+            range=[
+                axis_weeks[0],
+                axis_weeks[-1] + timedelta(days=7),
+            ]
+        )
 
     _base_layout(
         figure,
         title=title,
-        xlabel="date",
-        ylabel="training load",
+        xlabel="week starting (Monday)",
+        ylabel="load / week",
     )
 
     if rpe:
