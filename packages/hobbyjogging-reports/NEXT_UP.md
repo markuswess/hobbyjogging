@@ -3,7 +3,8 @@
 Updated 2026-11-16.
 
 Current focus: the demo data; 2's max-HR half and 5's threshold trend are
-open, 12 is parked, and the rest need a core or root change or the lab gate.
+open, 15-19 are small dashboard passes, 12 is parked, and the rest need a
+core or root change or the lab gate.
 
 ## Done
 
@@ -272,15 +273,17 @@ _None._
 ## Next
 
 Schema v12-v16 moved the data under several items, so the picture changed:
-5's threshold trend is reports-only, and 2's weather half landed. What still needs core first: max HR and elevation on `Activity`
-(repository query and model drop them; items 2 and 6), the per-activity zone
-config ids (item 5's zone normalization), devices (1), routes (3), wellness
-extras (4) and social titles (7). Item 13 has its data (`event_activity_links`,
-schema v21), item 10 is handed to root item 36 for its illness ranges and
-resumes here after the maintenance fix, and 14's series needs the lab gate in
-root item 31. Item 12 stays parked on its
-page-coverage cost, and 11 is recurring upkeep. The efficiency floor, the planned-event page, the
-streaks report and the collapsible lists landed here.
+5's threshold trend is reports-only, and 2's weather half landed. What
+still needs core first: max HR and elevation on `Activity` (repository
+query and model drop them; items 2 and 6), the per-activity zone config ids
+(item 5's zone normalization), devices (1), routes (3), wellness extras (4)
+and social titles (7). Item 13 has its data (`event_activity_links`, schema
+v21), item 10 is handed to root item 36 for its illness ranges and resumes
+here after the maintenance fix, and 14's series needs the lab gate in root
+item 31. Item 12 stays parked on its page-coverage cost, 11 is recurring
+upkeep, and 15-19 are reports-only polish from a dashboard pass. The
+efficiency floor, the planned-event page, the streaks report and the
+collapsible lists landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -438,6 +441,56 @@ streaks report and the collapsible lists landed here.
     - **Card**: the efficiency card gains the second series.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
+
+15. **Efficiency lines on the Compare by-year plot.** The Analysis pace/HR
+    chart draws a dashed efficiency line per half; the Compare version ("Pace
+    vs heart rate by year") has the same cloud coloured by year but no
+    efficiency lines, so the two views disagree. Add them with the same
+    parameters and annotation, and say they use the steady band.
+    - **Open**: which plot is meant. The by-year pace/HR scatter is the one
+      without efficiency lines today; the year-comparison chart already has an
+      efficiency chart of its own. Confirm when picking it up, and decide
+      whether the lines are per half (like Analysis) or one per visible year.
+
+16. **Future plans on the Analysis charts.** The volume, time-by-zone and load
+    charts draw actuals only; the Overview already draws the plan. Pass the
+    planned series for the next `future_days` (default 14), extend the date
+    axis, and style them like the overview (hatched bars, dashed lines, a
+    legend entry). Reuse `daily_planned_distance`/`daily_planned_time`/
+    `daily_planned_load` and the planned zone weeks instead of fetching a
+    second plan window.
+    - **Tests**: planned marks appear after today, a day with a run keeps the
+      actual, no plan leaves the charts as they are, and the axis covers the
+      future window.
+
+17. **Drop the planned-workouts report from Overview.** The activities tab
+    carries the plan now (rows and event pages), so the embedded `planned`
+    Markdown card on Overview is a duplicate. Remove the card and the
+    `planned_html` parameter/computation; keep the planned bars in the overview
+    chart and the `planned` CLI report.
+    - **Tests**: `index.html` no longer contains "Planned Workouts", the
+      activities tab still carries planned rows and event links, and the page
+      has no dead parameter.
+
+18. **NSA: newest-first and collapsible subT report.** The subT report lists
+    sessions oldest first and its per-category tables run on; on the NSA tab
+    that is a long scroll. Reverse the block order so the report and the tab
+    agree, and collapse each per-category table past the same 20-row threshold
+    as the activities table.
+    - **Where**: the reorder belongs in `subt_report_blocks`/`subt_report`
+      (CLI and tab both get it); Markdown cannot collapse, so the dashboard
+      renders the per-category tables through `html.table(collapse=...)` or
+      wraps the rendered section in `<details>`, keeping the summary table
+      open. CLI output stays plain.
+    - **Tests**: newest-first in the report and the tab, a long category table
+      gets the toggle with every row still in the HTML, a short one stays
+      plain, and the demo's subT report still renders.
+
+19. **Compare reports newest first.** The Compare tab's "Training Comparison by
+    Year" and "by Month" tables list the oldest period first; put the most
+    recent on top. The chart series stay chronological.
+    - **Tests**: the first data row is the newest year/month, and the chart
+      series order is unchanged.
 
 ## Tests and docs
 
