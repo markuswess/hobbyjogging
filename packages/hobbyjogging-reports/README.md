@@ -58,9 +58,10 @@ Pages:
   and two dashed efficiency lines, over the last two years
   (`--analysis-days`, default 731). Runs with stored weather carry the
   temperature and wind in their hover and the chart notes how many runs have
-  it and the range those cover. The next `--future-days` (default 14) are
-  drawn as well: a dashed planned-km line, planned zone bars with a total-time
-  outline, and planned load bars on days without an actual load.
+  it and the range those cover. The next 42 days are drawn as well: planned
+  weeks as faded bars in the running-volume colour, planned zone bars in the
+  same faded zone colours as the actuals, and planned load bars on days without
+  an actual load. The EWMAs continue through the plan as dashed projections.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year. The report's long per-category tables

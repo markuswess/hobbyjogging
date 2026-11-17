@@ -225,7 +225,6 @@ def build_dashboard(
         start=analysis_start,
         end=today,
         include_review=include_review,
-        future_days=future_days,
     )
     mark("analysis", phase)
 

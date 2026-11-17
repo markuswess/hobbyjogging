@@ -93,6 +93,8 @@ AVERAGE_COLORS = {
     "fatigue": "#d62728",
 }
 
+VOLUME_BAR_COLOR = "lightgrey"
+
 ZONE_COLORS = (
     "#8ecae6",
     "#219ebc",
@@ -156,6 +158,17 @@ def compare_color(year: int) -> str:
     return COMPARE_COLORS[
         (COMPARE_COLOR_ANCHOR_YEAR - year) % len(COMPARE_COLORS)
     ]
+
+
+def _fade(color: str, alpha: float) -> str:
+    """The same colour at reduced opacity, for planned or ghost marks."""
+    if not color.startswith("#") or len(color) != 7:
+        return color
+
+    return "rgba({}, {}, {}, {})".format(
+        *(int(color[index:index + 2], 16) for index in (1, 3, 5)),
+        alpha,
+    )
 
 
 def _darker(color: str, factor: float = 0.6) -> str:
@@ -470,25 +483,16 @@ def plot_volume(
             y=[value for _, value in data],
             name="weekly km",
             width=WEEK_MS,
-            marker_color="lightgrey",
+            marker_color=VOLUME_BAR_COLOR,
         )
 
     if planned_distance:
-        xs = []
-        ys = []
-
-        for week, value in planned_distance:
-            xs.extend([week, week + timedelta(days=7), None])
-            ys.extend([value, value, None])
-
-        figure.add_trace(
-            go.Scatter(
-                x=xs,
-                y=ys,
-                mode="lines",
-                name="planned km",
-                line={"color": "black", "width": 1.5, "dash": "dash"},
-            )
+        figure.add_bar(
+            x=[week for week, _ in planned_distance],
+            y=[value for _, value in planned_distance],
+            name="planned km",
+            width=WEEK_MS,
+            marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
         )
 
     if distance_points:
@@ -725,20 +729,10 @@ def plot_time(
                     width=WEEK_MS,
                     showlegend=first,
                     marker={
-                        "color": "rgba(0, 0, 0, 0)",
-                        "line": {
-                            "color": ZONE_LINE_COLORS[
-                                index % len(ZONE_LINE_COLORS)
-                            ],
-                            "width": 1,
-                        },
-                        "pattern": {
-                            "shape": PLANNED_PATTERN,
-                            "fgcolor": ZONE_LINE_COLORS[
-                                index % len(ZONE_LINE_COLORS)
-                            ],
-                            "solidity": 0.35,
-                        },
+                        "color": _fade(
+                            ZONE_COLORS[index % len(ZONE_COLORS)],
+                            0.45,
+                        ),
                     },
                 ),
                 row=1,
@@ -784,10 +778,7 @@ def plot_time(
                 y=[value for _, value in planned_totals],
                 name="planned",
                 width=WEEK_MS,
-                marker={
-                    "color": "rgba(0, 0, 0, 0)",
-                    "line": {"color": "black", "width": 1.4},
-                },
+                marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
             ),
             row=1,
             col=1,

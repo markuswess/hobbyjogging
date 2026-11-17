@@ -31,6 +31,7 @@ from ..model import AverageWindows
 from ..review import exclude_review
 
 ZONE_COUNT = 4
+ANALYSIS_FUTURE_DAYS = 42
 NO_VOLUME = '<p class="muted">No running volume in this window.</p>'
 NO_TIME = '<p class="muted">No running time in this window.</p>'
 NO_LOAD = '<p class="muted">No training load in this window.</p>'
@@ -55,7 +56,7 @@ def build_analysis_section(
     start: date,
     end: date,
     include_review: bool = False,
-    future_days: int = 0,
+    future_days: int = ANALYSIS_FUTURE_DAYS,
 ) -> AnalysisSection:
     """Build the volume, time, and load charts, plus any future plan."""
     windows = AverageWindows()
@@ -73,10 +74,12 @@ def build_analysis_section(
     runs = [
         activity for activity in display if activity.type in RUN_TYPES
     ]
-    plan_start = end + timedelta(days=1)
+    # Weekly bars start with the next full week; the EWMA projections use the
+    # daily plan from tomorrow, so the rest of the current week is not lost.
+    plan_start = week_end + timedelta(days=1)
     plan_end = end + timedelta(days=future_days)
     events = (
-        source.events(plan_start, plan_end) if future_days > 0 else []
+        source.events(end, plan_end) if future_days > 0 else []
     )
     planned_distance = weekly_planned_distance(
         events,
@@ -100,6 +103,9 @@ def build_analysis_section(
         week_end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=plan_end,
+        projection_start=end,
     )
     volume_html = (
         plot_volume(
@@ -125,6 +131,9 @@ def build_analysis_section(
         week_end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=plan_end,
+        projection_start=end,
     )
     hard_points = time_averages(
         activities,
@@ -164,6 +173,9 @@ def build_analysis_section(
         end,
         windows=windows,
         warmup_days=warmup_days,
+        events=events,
+        projected_end=plan_end,
+        projection_start=end,
     )
     load_html = (
         plot_load(

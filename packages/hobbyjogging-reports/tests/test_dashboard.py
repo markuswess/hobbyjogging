@@ -151,6 +151,7 @@ def _source():
                 distance_m=42195,
                 training_load=150,
                 zone_kind="pace",
+                zone_times=[EventZoneTime("Z1", 3600, 1)],
                 workout_methods=["race"],
             ),
             Event(

@@ -278,12 +278,14 @@ this list keeps the recent decisions only.
   the pale markers, the points keep their year colours, and the chart note
   lists every year's `E`. Years without two usable steady runs get no line.
 
-- **The Analysis charts show the plan.** Volume, time and load now draw the
-  next `future_days` (the same window as Overview): a dashed planned-km line,
-  planned zone bars with a total-time outline, and planned load bars on days
-  without an actual load. The plan series come from the existing
-  `weekly_planned_*`/`daily_planned_load` helpers, and the axes extend to the
-  last planned week.
+- **The Analysis charts show the plan, 42 days ahead.** Volume, time and load
+  draw the next 42 days: planned weeks as faded bars in the running-volume
+  colour, planned zone bars in the same faded zone colours as the actuals, and
+  planned load bars on days without an actual load. The EWMAs continue through
+  the plan as dashed projections and the axes extend to the last planned week.
+  Weekly planned bars start at the next full week (the daily projection covers
+  the rest of this one), and the series come from the existing
+  `weekly_planned_*`/`daily_planned_load` helpers.
 
 - **NSA subT tables collapse.** `collapse_tables()` re-renders long tables from
   the subT report's HTML through the same checkbox helper as the activities
