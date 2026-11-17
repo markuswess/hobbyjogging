@@ -7,6 +7,15 @@ one SQLite file: every activity, its provenance and your decisions. Importers
 feed it, reports read it, and no service owns the truth. The goal is a
 trustworthy record of your training that outlives any app.
 
+## Live demo dashboard 
+
+A synthetic athlete, no personal data, rebuilt on every relevant push and
+weekly: <https://markuswess.github.io/hobbyjogging/>.
+
+```bash
+./demo.sh          # -> build/demo.db and build/site
+```
+
 ## The ideas
 
 - **One canonical record.** FIT files, Intervals.icu, the Garmin Personal API
@@ -29,14 +38,6 @@ trustworthy record of your training that outlives any app.
   data is a local file and the analysis runs on your machine, even if a service
   changes its pricing or disappears.
 
-## Live demo
-
-A synthetic athlete, no personal data, rebuilt on every relevant push and
-weekly: <https://markuswess.github.io/hobbyjogging/>.
-
-```bash
-./demo.sh          # -> build/demo.db and build/site
-```
 
 ## Quick start
 
