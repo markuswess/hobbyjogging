@@ -587,7 +587,7 @@ class StreakArgsTests(unittest.TestCase):
 class DashboardArgsTests(unittest.TestCase):
     def test_defaults(self):
         self.assertEqual(
-            (None, 14, 50, 182, 14, 182, 731, 182, False, (), None),
+            (None, 14, 50, 182, 14, 730, 731, 182, False, (), None),
             parse_dashboard_args([]),
         )
 

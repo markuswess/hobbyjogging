@@ -29,7 +29,7 @@ from ..model import AverageWindows
 from ..overview import overview_report
 from ..race_report import race_report
 from ..recovery_report import WINDOWS as RECOVERY_WINDOWS, recovery_report
-from ..sickness_report import DEFAULT_SICKNESS_DAYS, sickness_report
+from ..sickness_report import sickness_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .analysis import build_analysis_section
@@ -69,7 +69,8 @@ from ..zone_groups import (
 
 MARKER = ".hobbyjogging-dashboard"
 RACE_DAYS = 180
-RECOVERY_DAYS = RECOVERY_WINDOWS[-1]
+# The Recovery and Health tab covers two years for its plots and reports.
+RECOVERY_DAYS = 730
 ANALYSIS_DAYS = 731
 NSA_DAYS = 365
 
@@ -221,7 +222,7 @@ def build_dashboard(
     sickness_html = markdown_to_html(
         sickness_report(
             source,
-            start=today - timedelta(days=DEFAULT_SICKNESS_DAYS),
+            start=recovery_start,
             end=today,
         ),
         demote=1,

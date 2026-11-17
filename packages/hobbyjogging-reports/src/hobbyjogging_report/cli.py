@@ -5,7 +5,6 @@ from datetime import date, timedelta
 
 from .demo import DEFAULT_MONTHS, DEFAULT_SEED
 from .model import AverageWindows
-from .recovery_report import WINDOWS as RECOVERY_WINDOWS
 
 DEFAULT_PLANNED_DAYS = 28
 
@@ -272,6 +271,8 @@ def parse_dashboard_args(
     str | None,
 ]:
     """Parse dashboard output, windows, chart ranges, and reports."""
+    from .dashboard import RECOVERY_DAYS
+
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--output")
     parser.add_argument("--days", type=int, default=14)
@@ -281,7 +282,7 @@ def parse_dashboard_args(
     parser.add_argument(
         "--recovery-days",
         type=int,
-        default=RECOVERY_WINDOWS[-1],
+        default=RECOVERY_DAYS,
     )
     parser.add_argument("--analysis-days", type=int, default=731)
     parser.add_argument("--compare-window", type=int, default=182)

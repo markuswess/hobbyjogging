@@ -332,7 +332,8 @@ this list keeps the recent decisions only.
 - **Sickness report.** `reports.sh sickness` lists illness episodes in a
   range (default 365 days): episode count, illness-day share, longest and
   current/last episode, and a newest-first table with the sessions, time and
-  load inside each episode. Illness days stay in the aggregates.
+  load inside each episode. Illness days stay in the aggregates. The
+  Recovery and Health tab embeds it over that tab's two-year window.
 
 ## Bugs
 

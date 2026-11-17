@@ -292,7 +292,7 @@ class DashboardBuildTests(unittest.TestCase):
             recovery = (target / "recovery.html").read_text()
             self.assertIn("Recovery and Health", recovery)
             self.assertIn(
-                "Recovery and Health · 2026-05-12 → 2026-11-09",
+                "Recovery and Health · 2024-11-10 → 2026-11-09",
                 recovery,
             )
             self.assertIn("Recovery Report — Moving Averages", recovery)
@@ -304,7 +304,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("58 ms", recovery)
             self.assertIn('<h3>Night</h3>', recovery)
             self.assertIn("2026-11-08: HRV 60 ms, RHR 45 bpm, Sleep 8h00", recovery)
-            self.assertIn("2 of 182 days have wellness data", recovery)
+            self.assertIn("2 of 730 days have wellness data", recovery)
             self.assertIn(
                 '"range":["2026-11-07","2026-11-08"]',
                 recovery,
