@@ -132,11 +132,51 @@ class EquipmentReportTests(unittest.TestCase):
         report = equipment_report(source, today=D)
 
         self.assertIn("# Gear", report)
-        self.assertIn("| Gear | Type | Sessions | km |", report)
-        self.assertIn("| Demo Shoe | shoe | 1 | 7 |", report)
+        self.assertIn("## Shoes", report)
+        self.assertIn(
+            "| Gear | Sessions | km | km/month | Last used | "
+            "Target | Wear | Status | Notes |",
+            report,
+        )
+        self.assertIn("| Demo Shoe | 1 | 7 |", report)
         self.assertIn("## Coverage", report)
         self.assertIn("| 2026 | 1 | 0 |", report)
         self.assertIn("Retirement candidates", report)
+
+    def test_report_separates_shoes_bikes_and_other(self):
+        shoe = _shoe(id="shoe", name="Shoe")
+        bike = Equipment(id="bike", type="bike", name="Bike")
+        other = Equipment(id="other", type="other", name="Gym")
+        source = FakeSource(
+            [
+                activity(
+                    id="a",
+                    date=D,
+                    distance_m=10000,
+                    equipment=[shoe],
+                ),
+                activity(
+                    id="b",
+                    date=D,
+                    type="ride",
+                    distance_m=30000,
+                    equipment=[bike],
+                ),
+            ],
+            equipment=[shoe, bike, other],
+        )
+
+        report = equipment_report(source, today=D)
+
+        self.assertIn(
+            "3 items: 3 active, 0 retired "
+            "(1 shoe, 1 bike, 1 other).",
+            report,
+        )
+        self.assertLess(report.index("## Shoes"), report.index("## Bikes"))
+        self.assertLess(report.index("## Bikes"), report.index("## Other"))
+        self.assertIn("| Bike | 1 | 30 |", report)
+        self.assertIn("| Gym | 0 | 0 |", report)
 
     def test_report_without_equipment(self):
         report = equipment_report(FakeSource(), today=D)

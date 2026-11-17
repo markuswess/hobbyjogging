@@ -20,6 +20,7 @@ warnings.filterwarnings(
 from .analysis import (
     EFFICIENCY_UNIT,
     EquipmentStat,
+    group_equipment,
     PbProgression,
     RaceResult,
     STEADY_BAND_LABEL,
@@ -55,6 +56,7 @@ from .style import (
     EASY_COLOR,
     EASY_EDGE,
     EASY_PLANNED_COLOR,
+    EQUIPMENT_CATEGORY_COLORS,
     HARD_COLOR,
     HARD_EDGE,
     HARD_LINE_COLORS,
@@ -2562,32 +2564,39 @@ def plot_races(
 def plot_equipment(
     stats: list[EquipmentStat],
     output: str,
-    title: str = "Gear mileage",
+    title: str = "Gear mileage by category",
     as_html: bool = False,
 ) -> str:
-    """Horizontal mileage bars with target markers."""
+    """Horizontal mileage bars grouped and coloured by gear category."""
     _require_data(stats)
-    ordered = list(reversed(stats))
-    labels = [stat.label for stat in ordered]
-    colors = [
-        "#c7c7c7" if stat.retired else "#1f77b4"
-        for stat in ordered
-    ]
+    groups = group_equipment(stats)
+    colors_for = EQUIPMENT_CATEGORY_COLORS
+    legend_rank = {"shoe": 1, "bike": 2, "other": 3}
+    figure = go.Figure()
 
-    figure = go.Figure(
-        go.Bar(
+    # Add the groups in reverse so shoes sit at the top of the chart, while
+    # legendrank keeps the legend in shoes/bikes/other order.
+    for key, label, items in reversed(groups):
+        ordered = list(reversed(items))
+        color = colors_for[key]
+        figure.add_bar(
             x=[stat.distance_m / 1000 for stat in ordered],
-            y=labels,
+            y=[stat.label for stat in ordered],
             orientation="h",
-            name="mileage",
-            marker={"color": colors},
+            name=label,
+            marker={
+                "color": [
+                    _fade(color, 0.35) if stat.retired else color
+                    for stat in ordered
+                ],
+            },
             hovertemplate=(
                 "%{y}<br>%{x:.0f} km<extra></extra>"
             ),
+            legendrank=legend_rank[key],
         )
-    )
 
-    targets = [stat for stat in ordered if stat.target_distance_m]
+    targets = [stat for stat in stats if stat.target_distance_m]
     if targets:
         figure.add_trace(
             go.Scatter(

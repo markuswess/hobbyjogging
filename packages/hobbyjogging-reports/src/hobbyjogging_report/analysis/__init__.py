@@ -17,10 +17,13 @@ from .baseline import (
     robust_baselines,
 )
 from .equipment import (
+    EQUIPMENT_CATEGORY_LABELS,
+    EQUIPMENT_CATEGORY_ORDER,
     DEFAULT_SHOE_TARGET_M,
     EquipmentStat,
     equipment_coverage,
     equipment_usage,
+    group_equipment,
     retirement_candidates,
 )
 from .coverage import YearCoverage, yearly_coverage
@@ -169,6 +172,8 @@ __all__ = [
     "BASELINE_WINDOW_DAYS",
     "DEFAULT_ZONE_COUNT",
     "DEFAULT_SHOE_TARGET_M",
+    "EQUIPMENT_CATEGORY_LABELS",
+    "EQUIPMENT_CATEGORY_ORDER",
     "DEFAULT_STREAK_LIMIT",
     "EFFICIENCY_UNIT",
     "EquipmentStat",
@@ -233,6 +238,7 @@ __all__ = [
     "event_zone_seconds",
     "equipment_coverage",
     "equipment_usage",
+    "group_equipment",
     "equivalent_times",
     "event_zone_time",
     "fit_riegel",

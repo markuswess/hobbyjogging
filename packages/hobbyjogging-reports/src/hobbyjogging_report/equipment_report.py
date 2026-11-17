@@ -10,6 +10,7 @@ from .analysis import (
     DEFAULT_SHOE_TARGET_M,
     equipment_coverage,
     equipment_usage,
+    group_equipment,
     retirement_candidates,
 )
 from .command_support import activity_start
@@ -75,28 +76,40 @@ def equipment_report(
         lines.extend(["", "- No equipment records"])
         return "\n".join(lines)
 
+    groups = group_equipment(stats)
     active = sum(1 for stat in stats if not stat.retired)
+    counts = ", ".join(
+        f"{len(items)} "
+        f"{key if len(items) == 1 else label.lower()}"
+        for key, label, items in groups
+    )
     lines.extend([
         "",
         (
-            f"{len(stats)} items: {active} active, "
-            f"{len(stats) - active} retired."
+            f"{len(stats)} item{'s' if len(stats) != 1 else ''}: "
+            f"{active} active, {len(stats) - active} retired ({counts})."
         ),
-        "",
-        "| Gear | Type | Sessions | km | km/month | Last used | "
-        "Target | Wear | Status | Notes |",
-        "|---|---|---:|---:|---:|---|---:|---:|---|---|",
     ])
 
-    for stat in stats:
-        lines.append(
-            f"| {table_text(stat.label)} | {stat.equipment.type} | "
-            f"{stat.sessions} | {_km(stat.distance_m)} | "
-            f"{'-' if stat.km_per_month is None else f'{stat.km_per_month:.1f}'} | "
-            f"{_last_used(stat)} | {_target(stat)} | {_wear(stat)} | "
-            f"{'retired' if stat.retired else 'active'} | "
-            f"{table_text(stat.equipment.notes) or '-'} |"
-        )
+    for _key, label, items in groups:
+        lines.extend([
+            "",
+            f"## {label}",
+            "",
+            "| Gear | Sessions | km | km/month | Last used | "
+            "Target | Wear | Status | Notes |",
+            "|---|---:|---:|---:|---|---:|---:|---|---|",
+        ])
+
+        for stat in items:
+            lines.append(
+                f"| {table_text(stat.label)} | "
+                f"{stat.sessions} | {_km(stat.distance_m)} | "
+                f"{'-' if stat.km_per_month is None else f'{stat.km_per_month:.1f}'} | "
+                f"{_last_used(stat)} | {_target(stat)} | {_wear(stat)} | "
+                f"{'retired' if stat.retired else 'active'} | "
+                f"{table_text(stat.equipment.notes) or '-'} |"
+            )
 
     lines.extend([
         "",
@@ -115,8 +128,23 @@ def equipment_report(
         lines.append(f"| {year} | {with_gear} | {without_gear} |")
 
     if candidates:
-        lines.extend(["", "## Retirement candidates", ""])
-        for stat, reason in candidates:
-            lines.append(f"- {stat.label}: {reason}")
+        lines.extend(["", "## Retirement candidates"])
+        reasons = {
+            stat.equipment.id: reason for stat, reason in candidates
+        }
+
+        for _key, label, items in groups:
+            found = [
+                (stat, reasons[stat.equipment.id])
+                for stat in items
+                if stat.equipment.id in reasons
+            ]
+
+            if not found:
+                continue
+
+            lines.extend(["", f"### {label}", ""])
+            for stat, reason in found:
+                lines.append(f"- {stat.label}: {reason}")
 
     return "\n".join(lines)

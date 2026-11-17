@@ -13,6 +13,13 @@ EASY_EDGE = "#0077b6"
 HARD_EDGE = "#d00000"
 UNZONED_EDGE = "#969696"
 
+# Gear categories
+EQUIPMENT_CATEGORY_COLORS = {
+    "shoe": "#1f77b4",
+    "bike": "#2ca02c",
+    "other": "#9467bd",
+}
+
 # Averages
 EASY_LINE_COLORS = {
     7: "#48cae4",

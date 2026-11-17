@@ -1727,6 +1727,46 @@ class EquipmentChartTests(unittest.TestCase):
         self.assertIn("target", html)
         self.assertIn("Demo Shoe", html)
 
+    def test_equipment_chart_groups_categories_with_colours(self):
+        stats = [
+            EquipmentStat(
+                equipment=Equipment(id="s", type="shoe", name="Shoe"),
+                sessions=1,
+                distance_m=100000,
+            ),
+            EquipmentStat(
+                equipment=Equipment(id="b", type="bike", name="Bike"),
+                sessions=1,
+                distance_m=300000,
+            ),
+            EquipmentStat(
+                equipment=Equipment(id="o", type="other", name="Other"),
+                sessions=1,
+                distance_m=50000,
+            ),
+        ]
+
+        html = plot_equipment(stats, "", as_html=True)
+        data = plotly_data(html)
+        traces = [trace for trace in data if trace.get("type") == "bar"]
+
+        # Traces are added bottom-up so shoes sit at the top.
+        self.assertEqual(
+            ["Other", "Bikes", "Shoes"],
+            [trace["name"] for trace in traces],
+        )
+        self.assertEqual(
+            ["#9467bd", "#2ca02c", "#1f77b4"],
+            [trace["marker"]["color"][0] for trace in traces],
+        )
+        self.assertEqual(
+            {"Shoes": 1, "Bikes": 2, "Other": 3},
+            {
+                trace["name"]: trace["legendrank"]
+                for trace in traces
+            },
+        )
+
     def test_equipment_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

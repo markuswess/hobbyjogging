@@ -115,8 +115,10 @@ Pages:
   5k, 7k, 10k, 15k, HM, 30k and the marathon with the predicted and PB pace
   for each. Results and PBs link to per-race pages with splits and execution
   details.
-- `gear.html` (Gear) — gear mileage bars with target markers, the gear
-  table, per-year coverage with and without gear, and retirement candidates.
+- `gear.html` (Gear) — gear mileage bars grouped and coloured by category
+  (shoes, bikes, other) with target markers and faded retired bars, one table
+  section per category, per-year coverage with and without gear, and
+  retirement candidates grouped the same way.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
   HR, and sleep as interactive plotly panels over the last two years
@@ -293,7 +295,9 @@ stay compact (`1h02`).
   excluded from the aggregates.
 - **equipment** — Gear mileage and use from `equipment` →
   `activity_equipment` → activities: sessions, km, km/month, last used,
-  target/wear, coverage per year, and retirement candidates. Shoes without
+  target/wear and retirement candidates, split into shoes, bikes and other
+  sections. The chart groups and colours the same categories; the summary
+  keeps the overall and per-category counts. Shoes without
   `target_distance_m` use an 800 km default.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the

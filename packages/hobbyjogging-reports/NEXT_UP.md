@@ -3,7 +3,7 @@
 Updated 2026-11-17.
 
 Current focus: 5's threshold trend; 2's max-HR half needs core, 11 is parked,
-13 is behind the lab gate, and 14/15 are open ideas.
+13 is behind the lab gate, and 14 is an open idea.
 
 ## Done
 
@@ -338,6 +338,13 @@ this list keeps the recent decisions only.
   load inside each episode. Illness days stay in the aggregates. The
   Recovery and Health tab embeds it over that tab's two-year window.
 
+- **Gear by category.** The Gear tab and the `equipment` report split shoes,
+  bikes and other: the chart groups and colours the categories (retired bars
+  faded), each table has a section per category, and retirement candidates
+  are grouped the same way. The summary keeps the overall active/retired
+  counts plus the category counts, and the demo gained a bike and an other
+  item.
+
 - **Running-only load.** The promoted cross-training load-transfer handoff
   (best transfer factor 0) is consumed: the load chart stacks running and
   cross load but computes base/fitness/fatigue from running only, the
@@ -501,14 +508,6 @@ lists and the season/illness bands landed here.
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
 
-15. **Gear by category.** The Gear tab and the `equipment` report mix shoes,
-    bikes and other gear in one chart and table, so bike kilometres sit beside
-    shoe kilometres with different service lives. Split them by
-    `Equipment.type` (shoe, bike, other): grouped bars or one section per
-    category, per-category targets and retirement candidates, and keep the
-    summary counts. Decide whether the tab gets separate sections or one chart
-    with category colours.
-
 ## Tests and docs
 
 Covered now:
@@ -550,7 +549,10 @@ Covered now:
   volume/load, illness on every recovery panel, no periods leaving a chart
   unchanged, the Seasons table and illness days, and the demo's periods;
 - the Analysis streaks card: the current streak and today state, the totals,
-  and a longest streak from before the analysis window.
+  and a longest streak from before the analysis window;
+- gear categories: the grouping order and labels, per-category report
+  sections, the chart traces/colours and retired fading, and the demo's bike
+  and other items.
 
 New work should add:
 

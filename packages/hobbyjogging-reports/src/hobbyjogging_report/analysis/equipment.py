@@ -11,6 +11,19 @@ DEFAULT_SHOE_TARGET_M = 800_000.0
 MONTH_DAYS = 30.4375
 UNUSED_DAYS = 365
 
+# Gear is read by category, never as one mixed list.
+EQUIPMENT_CATEGORY_ORDER = ("shoe", "bike", "other")
+EQUIPMENT_CATEGORY_LABELS = {
+    "shoe": "Shoes",
+    "bike": "Bikes",
+    "other": "Other",
+}
+
+
+def equipment_category(type_: str) -> str:
+    """Fold an unknown equipment type into the Other group."""
+    return type_ if type_ in EQUIPMENT_CATEGORY_LABELS else "other"
+
 
 @dataclass(frozen=True)
 class EquipmentStat:
@@ -60,6 +73,24 @@ class EquipmentStat:
     @property
     def beyond_target(self) -> bool:
         return self.wear is not None and self.wear >= 1
+
+
+def group_equipment(
+    stats: list[EquipmentStat],
+) -> list[tuple[str, str, list[EquipmentStat]]]:
+    """Stats grouped by category, in a stable shoes/bikes/other order."""
+    grouped: dict[str, list[EquipmentStat]] = {
+        key: [] for key in EQUIPMENT_CATEGORY_ORDER
+    }
+
+    for stat in stats:
+        grouped[equipment_category(stat.equipment.type)].append(stat)
+
+    return [
+        (key, EQUIPMENT_CATEGORY_LABELS[key], grouped[key])
+        for key in EQUIPMENT_CATEGORY_ORDER
+        if grouped[key]
+    ]
 
 
 def equipment_usage(

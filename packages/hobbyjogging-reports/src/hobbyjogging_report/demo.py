@@ -1014,7 +1014,7 @@ def _shoe_for(
     periods: list[tuple[date, date, str]],
 ) -> str | None:
     if sport == "ride":
-        return None
+        return "demo-bike-1"
     if sport == "trail_run":
         return "demo-shoe-4"
 
@@ -1364,7 +1364,23 @@ def _write_equipment(
             notes="Synthetic demo equipment.",
         )
 
-    return len(shoes)
+    writer.upsert_equipment(
+        "demo-bike-1",
+        type="bike",
+        name="Road bike",
+        brand="Canyon",
+        model="Endurace",
+        acquired_on=start - timedelta(days=500),
+        notes="Synthetic demo equipment.",
+    )
+    writer.upsert_equipment(
+        "demo-other-1",
+        type="other",
+        name="Gym membership",
+        notes="Synthetic demo equipment.",
+    )
+
+    return len(shoes) + 2
 
 
 def _write_review_items(writer: TrainingWriter, activities: list[dict]) -> None:

@@ -118,7 +118,7 @@ class DemoGeneratorTests(unittest.TestCase):
             self.assertLessEqual(summary.activities, 1500)
             self.assertGreater(summary.wellness_days, 500)
             self.assertGreaterEqual(summary.events, 20)
-            self.assertEqual(4, summary.equipment)
+            self.assertEqual(6, summary.equipment)
             self.assertEqual(5, summary.periods)
 
             connection = open_database(summary.path)
@@ -627,7 +627,7 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Equivalent times",
                     "PB pace",
                 ),
-                "gear.html": ("Gear", "Coverage"),
+                "gear.html": ("Gear", "Shoes", "Bikes", "Other", "Coverage"),
                 "docs.html": ("Reports guide", "hobbyjogging-reports"),
                 "lab.html": (
                     "Lab session ground rules",

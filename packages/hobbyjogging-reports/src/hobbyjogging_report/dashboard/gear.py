@@ -11,6 +11,7 @@ from ..analysis import (
     DEFAULT_SHOE_TARGET_M,
     equipment_coverage,
     equipment_usage,
+    group_equipment,
     retirement_candidates,
 )
 from ..charts import plot_equipment
@@ -69,10 +70,16 @@ def build_gear_section(
             candidates_html="",
         )
 
+    groups = group_equipment(stats)
     active = sum(1 for stat in stats if not stat.retired)
+    counts = ", ".join(
+        f"{len(items)} "
+        f"{key if len(items) == 1 else label.lower()}"
+        for key, label, items in groups
+    )
     summary = (
-        f"<p>{len(stats)} items: {active} active, "
-        f"{len(stats) - active} retired.</p>"
+        f"<p>{len(stats)} item{'s' if len(stats) != 1 else ''}: "
+        f"{active} active, {len(stats) - active} retired ({counts}).</p>"
     )
 
     if excluded:
@@ -81,33 +88,37 @@ def build_gear_section(
             "review.</p>"
         )
 
-    rows = [
-        [
-            esc(stat.label),
-            esc(stat.equipment.type),
-            str(stat.sessions),
-            _km(stat.distance_m),
-            (
-                "-"
-                if stat.km_per_month is None
-                else f"{stat.km_per_month:.1f}"
-            ),
-            esc(stat.last_used or "-"),
-            _target_cell(stat),
-            "-" if stat.wear is None else f"{stat.wear * 100:.0f}%",
-            "retired" if stat.retired else "active",
+    table_html = ""
+
+    for key, label, items in groups:
+        rows = [
+            [
+                esc(stat.label),
+                str(stat.sessions),
+                _km(stat.distance_m),
+                (
+                    "-"
+                    if stat.km_per_month is None
+                    else f"{stat.km_per_month:.1f}"
+                ),
+                esc(stat.last_used or "-"),
+                _target_cell(stat),
+                "-" if stat.wear is None else f"{stat.wear * 100:.0f}%",
+                "retired" if stat.retired else "active",
+            ]
+            for stat in items
         ]
-        for stat in stats
-    ]
-    table_html = table(
-        [
-            "Gear", "Type", "Sessions", "km", "km/month", "Last used",
-            "Target", "Wear", "Status",
-        ],
-        rows,
-        numeric=(2, 3, 4, 7),
-        collapse="gear",
-    )
+        table_html += f"<h3>{esc(label)}</h3>"
+        table_html += table(
+            [
+                "Gear", "Sessions", "km", "km/month", "Last used",
+                "Target", "Wear", "Status",
+            ],
+            rows,
+            numeric=(1, 2, 3, 6),
+            collapse=f"gear-{key}",
+        )
+
     table_html += (
         '<p class="muted">`*` default shoe target '
         f"({DEFAULT_SHOE_TARGET_M / 1000:.0f} km); set "
@@ -123,16 +134,33 @@ def build_gear_section(
         numeric=(1, 2),
     )
 
-    candidates_html = (
-        "<ul>"
-        + "".join(
-            f"<li>{esc(stat.label)}: {esc(reason)}</li>"
-            for stat, reason in candidates
+    candidates_html = ""
+
+    if candidates:
+        reasons = {
+            stat.equipment.id: reason for stat, reason in candidates
+        }
+
+        for _key, label, items in groups:
+            found = [
+                (stat, reasons[stat.equipment.id])
+                for stat in items
+                if stat.equipment.id in reasons
+            ]
+
+            if not found:
+                continue
+
+            candidates_html += f"<h3>{esc(label)}</h3><ul>"
+            candidates_html += "".join(
+                f"<li>{esc(stat.label)}: {esc(reason)}</li>"
+                for stat, reason in found
+            )
+            candidates_html += "</ul>"
+    else:
+        candidates_html = (
+            '<p class="muted">No retirement candidates.</p>'
         )
-        + "</ul>"
-        if candidates
-        else '<p class="muted">No retirement candidates.</p>'
-    )
 
     return GearSection(
         summary_html=summary,

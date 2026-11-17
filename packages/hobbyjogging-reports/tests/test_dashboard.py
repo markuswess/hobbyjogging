@@ -483,6 +483,7 @@ class DashboardBuildTests(unittest.TestCase):
             gear = (target / "gear.html").read_text()
             self.assertIn(">Gear</a>", gear)
             self.assertIn("Demo Shoe", gear)
+            self.assertIn("Shoes", gear)
             self.assertIn("15", gear)
             self.assertIn("Retirement candidates", gear)
             self.assertIn("Plotly.newPlot", gear)
