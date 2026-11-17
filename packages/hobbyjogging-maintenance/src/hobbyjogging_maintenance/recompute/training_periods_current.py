@@ -6,8 +6,9 @@ dated periods:
 
 - a season runs from its start to the day before the next one, and the latest
   stays open;
-- a sickness or note is a one-day marker — the source says "sick today", not
-  how long, so the duration is never inferred. A manual row can extend it.
+- a sickness or note keeps the source's inclusive range: ``end_date_local``
+  when present, otherwise the start day. The source says how long it lasted,
+  so the range is stored; the recompute never invents an end.
 
 Manual rows are never removed: the recompute replaces only its own source.
 """
@@ -31,7 +32,7 @@ _COUNT_ORDER = ("events", "periods", "unchanged", "skipped")
 @task(
     "training_periods_current",
     kind="recompute",
-    description="Derive seasons and illness markers from the event notes.",
+    description="Derive seasons and illness ranges from the event notes.",
 )
 def training_periods_current(context: TaskContext) -> None:
     rows = _payload_rows(context)
@@ -40,7 +41,7 @@ def training_periods_current(context: TaskContext) -> None:
         return
 
     seasons: list[dict[str, object]] = []
-    markers: list[dict[str, object]] = []
+    ranges: list[dict[str, object]] = []
 
     for row in rows:
         payload = _payload(row["payload_json"])
@@ -69,16 +70,20 @@ def training_periods_current(context: TaskContext) -> None:
             })
             continue
 
-        markers.append({
+        end = _date(payload.get("end_date_local")) or day
+        if end < day:
+            end = day
+
+        ranges.append({
             "id": f"{SOURCE}:{category.lower()}:{event_id}",
             "kind": "illness" if category == SICK else "other",
             "label": name,
             "start": day,
-            "end": day,
+            "end": end,
             "source_record_id": row["source_record_id"],
         })
 
-    periods = _close_seasons(seasons) + markers
+    periods = _close_seasons(seasons) + ranges
     periods.sort(key=lambda item: (item["start"], item["id"]))
 
     existing = _existing(context)

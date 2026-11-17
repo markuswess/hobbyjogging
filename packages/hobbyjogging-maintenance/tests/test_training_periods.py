@@ -18,19 +18,22 @@ class TrainingPeriodsTests(unittest.TestCase):
         self.writer = TrainingWriter(self.conn)
         self.run_id = self.writer.start_import_run("test", {})
 
-    def _event(self, event_id, day, category, name):
+    def _event(self, event_id, day, category, name, *, end=None):
+        payload = {
+            "id": event_id,
+            "start_date_local": f"{day}T00:00:00",
+            "category": category,
+            "name": name,
+        }
+        if end is not None:
+            payload["end_date_local"] = f"{end}T00:00:00"
         self.writer.upsert_source_record(
             source="intervals",
             record_type="event",
             external_id=str(event_id),
             checksum=f"c-{event_id}",
             import_run_id=self.run_id,
-            payload_json=json.dumps({
-                "id": event_id,
-                "start_date_local": f"{day}T00:00:00",
-                "category": category,
-                "name": name,
-            }),
+            payload_json=json.dumps(payload),
         )
         self.conn.commit()
 
@@ -60,7 +63,27 @@ class TrainingPeriodsTests(unittest.TestCase):
             self._periods(),
         )
 
-    def test_a_sick_marker_is_a_single_day(self):
+    def test_a_sick_range_keeps_the_source_end(self):
+        self._event(
+            1, "2026-02-08", "SICK", "Schilddrüse", end="2026-03-09"
+        )
+
+        self._run()
+
+        self.assertEqual(
+            [
+                (
+                    "illness",
+                    "Schilddrüse",
+                    "2026-02-08",
+                    "2026-03-09",
+                    "intervals",
+                )
+            ],
+            self._periods(),
+        )
+
+    def test_a_sick_event_without_an_end_is_one_day(self):
         self._event(1, "2026-05-06", "SICK", "Krank")
 
         self._run()
@@ -70,13 +93,25 @@ class TrainingPeriodsTests(unittest.TestCase):
             self._periods(),
         )
 
-    def test_a_note_is_an_other_period(self):
-        self._event(1, "2026-06-22", "NOTE", "Dienstreise")
+    def test_an_end_before_the_start_falls_back_to_the_start(self):
+        self._event(1, "2026-05-06", "SICK", "Krank", end="2026-05-01")
 
         self._run()
 
         self.assertEqual(
-            [("other", "Dienstreise", "2026-06-22", "2026-06-22", "intervals")],
+            [("illness", "Krank", "2026-05-06", "2026-05-06", "intervals")],
+            self._periods(),
+        )
+
+    def test_a_note_keeps_its_range(self):
+        self._event(
+            1, "2026-06-22", "NOTE", "Dienstreise", end="2026-06-24"
+        )
+
+        self._run()
+
+        self.assertEqual(
+            [("other", "Dienstreise", "2026-06-22", "2026-06-24", "intervals")],
             self._periods(),
         )
 
@@ -105,7 +140,7 @@ class TrainingPeriodsTests(unittest.TestCase):
         self.assertIn("intervals", sources)
 
     def test_a_rerun_is_a_no_op(self):
-        self._event(1, "2026-05-06", "SICK", "Krank")
+        self._event(1, "2026-05-06", "SICK", "Krank", end="2026-05-10")
 
         self._run()
         result = self._run(force=True)
