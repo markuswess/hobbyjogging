@@ -422,17 +422,21 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and continues with the remainder; `--refresh` forces a re-fetch, and
       `--wait` sleeps through the windows unattended until the range is done.
       The budget is 240 requests per window (~1 hour), so a full history needs
-      about 12 windows. The real DB is untouched. Phase 3 followed; the
-      collection `fields` trick remains a possible saving for the full
-      enrichment, to test when a window is free.
+      about 12 windows. The real DB now has 807 activities (2025: 430, 2026:
+      377); the `--wait` process continues with about 2,031 still unprocessed
+      (2019–2024), so the activity enrichment remains partial. Phase 3
+      followed; the collection `fields` trick remains a possible saving for the
+      full enrichment, to test when a window is free.
     - **Phase 3 result (Nov 2026)**: offline `runalyze gear` resolves the
       stored payloads' `equipment` arrays with the rule below and writes gear
       source records, equipment rows and activity links. Validated on a DB
       copy with 807 payloads: 21 gear records (16 shoes, 4 bikes, 1 other),
       796 activity links (774 primary, 22 secondary), no co-occurrence or name
-      matches yet, and a second run is a no-op. Co-occurrence and name matches
-      are fixture-tested; re-run after the 2019–2021 payloads arrive. The real
-      DB is untouched.
+      matches yet, and a second run is a no-op. The real run matched that:
+      21 `runalyze:equipment:<id>` rows with empty brand/model, 21 gear source
+      records, 796 links and no review items. Co-occurrence and name matches
+      are fixture-tested; re-run after the 2019–2021 payloads arrive, when the
+      older gear IDs will have sheet shoes to match against.
     - **Gear identity (decided)**: gear records become
       `source_records(record_type='gear', external_id='runalyze:<id>')` plus
       `equipment` rows, linked through `activity_equipment` with
