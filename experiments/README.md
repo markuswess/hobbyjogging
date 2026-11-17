@@ -73,10 +73,10 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | candidate | — | 2026-11-16 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
-| Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? | candidate | — | 2026-11-13 |
-| Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (needs more races spanning the distances) | blocked | — | 2026-11-13 |
-| Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (needs more races spanning the distances) | blocked | — | 2026-11-13 |
-| Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague) | candidate | — | 2026-11-13 |
+| Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (needs Runalyze race results and links) | blocked | — | 2026-11-17 |
+| Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (needs more races spanning the distances; Runalyze results pending) | blocked | — | 2026-11-17 |
+| Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (needs more races spanning the distances; Runalyze results pending) | blocked | — | 2026-11-17 |
+| Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague; needs race results and links) | blocked | — | 2026-11-17 |
 | Garmin VO2max jumps | Why do the readings jump — terrain or device history? (sport-specific values are handled; canonical elevation and max HR are available) | candidate | `vo2max_jumps.py` | 2026-11-16 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? (superseded: elevation is canonical since v12) | retired | — | 2026-11-16 |
@@ -85,7 +85,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (recent years only: weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-16 |
-| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; wind/humidity/clouds are empty) | candidate | — | 2026-11-16 |
+| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the full Runalyze weather fields are pending) | candidate | — | 2026-11-17 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs a pointwise grade profile; activity gain/loss is not enough) | blocked | — | 2026-11-16 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
