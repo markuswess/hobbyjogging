@@ -654,17 +654,38 @@ def plot_time(
     totals = [
         (sum(week.zones) + week.unzoned) / 3600 for week in weeks
     ]
+    actual_hours = dict(zip(week_dates, totals))
+
+    planned_zone_dates = {week.week for week in planned_zone_weeks}
+    planned_zone_by_week = {week.week: week for week in planned_zone_weeks}
+    planned_time_by_week = {
+        week: seconds / 3600
+        for week, seconds in planned_time or []
+        if week not in planned_zone_dates
+    }
+
+    def planned_hours(week: date) -> float:
+        zone_week = planned_zone_by_week.get(week)
+
+        if zone_week is not None:
+            return (sum(zone_week.zones) + zone_week.unzoned) / 3600
+
+        return planned_time_by_week.get(week, 0.0)
+
+    # A week with both actual and planned time shares one bar: the plan for
+    # the rest of the week stacks on the actual, and the share panel
+    # normalizes both to the combined week.
+    combined = [
+        total + planned_hours(week)
+        for total, week in zip(totals, week_dates)
+    ]
 
     if weeks:
         bottoms = [0.0] * len(weeks)
         unzoned = [week.unzoned / 3600 for week in weeks]
         shares = [
-            (
-                value / total * 100
-                if total
-                else 0.0
-            )
-            for value, total in zip(unzoned, totals)
+            value / total * 100 if total else 0.0
+            for value, total in zip(unzoned, combined)
         ]
 
         if any(unzoned):
@@ -709,7 +730,7 @@ def plot_time(
             values = [week.zones[index] / 3600 for week in weeks]
             shares = [
                 value / total * 100 if total else 0.0
-                for value, total in zip(values, totals)
+                for value, total in zip(values, combined)
             ]
             color = ZONE_COLORS[index % len(ZONE_COLORS)]
             _add(
@@ -748,14 +769,26 @@ def plot_time(
                 for bottom, value in zip(percent_bottoms, shares)
             ]
 
-    planned_zone_dates = {week.week for week in planned_zone_weeks}
-
     if planned_zone_weeks:
-        planned_bottoms = [0.0] * len(planned_zone_weeks)
-        planned_percent_bottoms = [0.0] * len(planned_zone_weeks)
-        planned_week_totals = [
+        planned_zone_totals = [
             (sum(week.zones) + week.unzoned) / 3600
             for week in planned_zone_weeks
+        ]
+        combined_planned = [
+            actual_hours.get(week.week, 0.0) + total
+            for week, total in zip(planned_zone_weeks, planned_zone_totals)
+        ]
+        planned_bottoms = [
+            actual_hours.get(week.week, 0.0)
+            for week in planned_zone_weeks
+        ]
+        planned_percent_bottoms = [
+            (
+                actual_hours.get(week.week, 0.0) / total * 100
+                if total
+                else 0.0
+            )
+            for week, total in zip(planned_zone_weeks, combined_planned)
         ]
         planned_unzoned = [
             week.unzoned / 3600 for week in planned_zone_weeks
@@ -764,10 +797,7 @@ def plot_time(
         if any(planned_unzoned):
             shares = [
                 value / total * 100 if total else 0.0
-                for value, total in zip(
-                    planned_unzoned,
-                    planned_week_totals,
-                )
+                for value, total in zip(planned_unzoned, combined_planned)
             ]
             _add(
                 figure,
@@ -829,10 +859,9 @@ def plot_time(
                 row=1,
                 col=1,
             )
-            # The share panel carries the same plan, as planned shares.
             shares = [
                 value / total * 100 if total else 0.0
-                for value, total in zip(values, planned_week_totals)
+                for value, total in zip(values, combined_planned)
             ]
             _add(
                 figure,
@@ -861,14 +890,17 @@ def plot_time(
         for week, seconds in planned_time or []
         if week not in planned_zone_dates
     ]
-    planned_weeks = [
-        (week.week, (sum(week.zones) + week.unzoned) / 3600)
-        for week in planned_zone_weeks
-    ] + planned_totals
+    planned_marks = [
+        (week, actual_hours.get(week, 0.0) + planned_hours(week))
+        for week in (
+            [week.week for week in planned_zone_weeks]
+            + [week for week, _ in planned_totals]
+        )
+    ]
 
     ceiling = max(
         _axis_ceiling(
-            totals + [value for _, value in planned_weeks],
+            totals + [value for _, value in planned_marks],
             step=TIME_Y_STEP,
             floor=TIME_Y_MIN,
         ),
@@ -889,7 +921,11 @@ def plot_time(
             go.Bar(
                 x=[week for week, _ in planned_totals],
                 y=[value for _, value in planned_totals],
-                name="planned",
+                base=[
+                    actual_hours.get(week, 0.0)
+                    for week, _ in planned_totals
+                ],
+                name="planned total",
                 width=WEEK_MS,
                 marker_color=_fade(VOLUME_BAR_COLOR, 0.55),
             ),
@@ -899,7 +935,7 @@ def plot_time(
 
     _clipped_markers(
         figure,
-        list(zip(week_dates, totals)) + planned_weeks,
+        list(zip(week_dates, totals)) + planned_marks,
         ceiling,
         "h",
         row=1,
@@ -965,38 +1001,63 @@ def plot_time(
         )
 
     if zone_points:
-        actual_count = sum(
-            1 for point in zone_points if not point.projected
-        )
-        projected = [point for point in zone_points if point.projected]
+        actual_zone = [
+            point for point in zone_points if not point.projected
+        ]
+        projected_zone = [
+            point for point in zone_points if point.projected
+        ]
 
         for index in reversed(range(zone_count)):
-            _add(
-                figure,
-                go.Scatter(
-                    x=[point.date for point in zone_points],
-                    y=[
-                        point.zones[index] * zone_scale / 3600
-                        for point in zone_points
-                    ],
-                    mode="lines",
-                    name=f"Z{index + 1}",
-                    stackgroup="one",
-                    showlegend=False,
-                    line={
-                        "color": ZONE_LINE_COLORS[
-                            index % len(ZONE_LINE_COLORS)
-                        ],
-                        "width": 1.2,
-                    },
-                ),
-                row=3,
-                col=1,
-            )
+            line = {
+                "color": ZONE_LINE_COLORS[
+                    index % len(ZONE_LINE_COLORS)
+                ],
+                "width": 1.2,
+            }
 
-        if projected and actual_count:
+            if actual_zone:
+                _add(
+                    figure,
+                    go.Scatter(
+                        x=[point.date for point in actual_zone],
+                        y=[
+                            point.zones[index] * zone_scale / 3600
+                            for point in actual_zone
+                        ],
+                        mode="lines",
+                        name=f"Z{index + 1}",
+                        stackgroup="one",
+                        showlegend=False,
+                        line=line,
+                    ),
+                    row=3,
+                    col=1,
+                )
+
+            if projected_zone and actual_zone:
+                bridge = actual_zone[-1:] + projected_zone
+                _add(
+                    figure,
+                    go.Scatter(
+                        x=[point.date for point in bridge],
+                        y=[
+                            point.zones[index] * zone_scale / 3600
+                            for point in bridge
+                        ],
+                        mode="lines",
+                        stackgroup="projected",
+                        showlegend=False,
+                        opacity=0.35,
+                        line={**line, "dash": "dash"},
+                    ),
+                    row=3,
+                    col=1,
+                )
+
+        if projected_zone and actual_zone:
             figure.add_vline(
-                x=projected[0].date,
+                x=projected_zone[0].date,
                 line_width=1,
                 line_dash="dash",
                 line_color="#7f7f7f",

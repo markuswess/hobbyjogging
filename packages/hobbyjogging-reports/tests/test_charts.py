@@ -327,6 +327,59 @@ class TimeChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
+    def test_current_week_plan_stacks_on_the_actual_time(self):
+        week = date(2026, 1, 5)
+        weeks = [TimeZoneWeek(week, [1800, 1800, 0, 0], 0)]
+        points = [TimePoint(D, 3600, 3000, 3200, 3300)]
+        planned = [TimeZoneWeek(week, [3600, 0, 0, 0])]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=points,
+            planned_zone_weeks=planned,
+            windows=AverageWindows(),
+            as_html=True,
+        )
+
+        index = html.index("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.index("[", index):]
+        )
+        stacked = [
+            trace
+            for trace in data
+            if trace.get("type") == "bar"
+            and trace.get("base") == [1.0]
+        ]
+
+        self.assertTrue(stacked)
+
+    def test_the_projected_zone_area_is_transparent(self):
+        weeks = [TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 0, 0], 0)]
+        points = [TimePoint(D, 7200, 6000, 6500, 7000)]
+        zone_points = [
+            ZoneAveragePoint(D, [1200, 900, 300, 0]),
+            ZoneAveragePoint(
+                date(2026, 1, 20),
+                [1400, 800, 400, 100],
+                projected=True,
+            ),
+        ]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=points,
+            zone_points=zone_points,
+            zone_window_days=42,
+            windows=AverageWindows(),
+            as_html=True,
+        )
+
+        self.assertIn('"stackgroup":"projected"', html)
+        self.assertIn('"opacity":0.35', html)
+
     def test_share_panel_carries_the_planned_zones(self):
         weeks = [TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 0, 0], 0)]
         points = [TimePoint(D, 7200, 6000, 6500, 7000)]
