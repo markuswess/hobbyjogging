@@ -2,8 +2,9 @@
 
 Updated 2026-11-17.
 
-Current focus: 5's threshold trend; 2's max-HR half needs core, 11 is parked,
-13 is behind the lab gate, and 14 is an open idea.
+Current focus: routes, devices and wellness extras are now reports-ready;
+max HR and elevation still need core exposure, 11 is parked, 13 is behind the
+lab gate, and 14 is an open idea.
 
 ## Done
 
@@ -367,23 +368,25 @@ _None._
 
 ## Next
 
-Schema v12-v16 moved the data under several items, so the picture changed:
-5's threshold trend is reports-only, 2's weather half landed and the
-season/illness bands landed. What still needs core first: max HR and
-elevation on `Activity`
-(repository query and model drop them; items 2 and 6), the per-activity zone
-config ids (item 5's zone normalization), devices (1), routes (3), wellness
-extras (4) and social titles (7). Item 12 has its data
-(`event_activity_links`, schema v21); 13's series needs the lab gate in root
-item 31. Item 11 stays parked on its page-coverage cost, 10 is recurring
-upkeep, and 14 is an open idea. The dashboard polish pass is finished. The
-efficiency floor, the planned-event page, the streaks report, the collapsible
-lists and the season/illness bands landed here.
+Schema v12-v21 moved the data under several items, so the picture changed:
+the threshold trend and the season/illness bands landed, and devices (schema
+v17), routes (v20) and the wellness extras (v19) are now exposed on
+`Activity`/`WellnessDay`, so those three are reports-only. What still needs
+core first: max HR and elevation on `Activity` (the repository query and
+model drop them; items 2 and 6), the per-activity zone config ids (item 5)
+and social titles (7). Item 12 has its data (`event_activity_links`, schema
+v21); 13's series needs the lab gate in root item 31. Item 11 stays parked on
+its page-coverage cost, 10 is recurring upkeep, and 14 is an open idea. The
+dashboard polish pass is finished. The efficiency floor, the planned-event
+page, the streaks report, the collapsible lists, the season/illness bands and
+the threshold trend landed here.
 
-1. **Device timeline.** Depends on the root device registry. Add a device
-   timeline (which watch/computer recorded when, with activity counts), mark
-   device changes on the VO2max chart so a step is attributable to the watch,
-   and add a `- Device:` line to the session report.
+1. **Device timeline.** Devices are stored (schema v17: 6 devices) and
+   `Activity.device_id` is exposed; only `DatabaseSource.devices()` needs
+   delegating. Add a device timeline (which watch/computer recorded when,
+   with activity counts), mark device changes on the VO2max chart so a step
+   is attributable to the watch, and add a `- Device:` line to the session
+   report.
 
 2. **Max HR in the reports.** Weather landed: the session report, both
    pace/HR scatters and the health coverage table use it. Max HR is stored
@@ -392,12 +395,15 @@ lists and the season/illness bands landed here.
    checks, and the Max HR column beside weather in the coverage table.
 
 3. **Route grouping.** Group activities by route so pace, HR and efficiency
-   compare like-for-like, with a route page listing its best efforts. The data
-   is there (`routes` + `activity_routes`, schema v20; 36 routes, 384 links).
+   compare like-for-like, with a route page listing its best efforts. The
+   links are already on `Activity.routes` (`routes` + `activity_routes`,
+   schema v20; 36 routes, 384 links); expose `DatabaseSource.routes()` for the
+   full list, then build the grouping.
 
-4. **Wellness extras.** A readiness view (sleep score and quality, SpO2,
-   steps, CTL/ATL; readiness and stress are empty in the payloads) plus a
-   weight trend from `wellness_days` (schema v19).
+4. **Wellness extras.** The columns are exposed on `WellnessDay` (schema v19:
+   weight, sleep score and quality, SpO2, steps, floors, CTL/ATL; readiness
+   and stress are empty in the payloads), so this is reports-only: a
+   readiness view and a weight trend.
 
 5. **Era-correct zone times.** Normalizing zone times through each
    activity's own config needs that config id on the model first: the
