@@ -86,6 +86,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (needs 2022+ gear) | blocked | — | 2026-11-13 |
 | Polarization index | How polarized is my zone distribution, and does it beat the Z3+4 share? | candidate | — | 2026-11-13 |
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
+| Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | candidate | — | 2026-11-17 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (recent years only: weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-16 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the full Runalyze weather fields are pending) | candidate | — | 2026-11-17 |
