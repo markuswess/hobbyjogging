@@ -68,6 +68,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 |---|---|---|---|---|
 | Durability / decoupling | Do I fade within long runs, and is durability improving? | candidate | — | 2026-11-13 |
 | Efficiency vs duration (start-up + drift) | Is session efficiency duration-dependent, and do a start-up term and drift explain it? | parked | `efficiency_duration.py` | 2026-11-13 |
+| Efficiency line shape and confounders | Is the HR-speed line linear, does another curve fit better, and how much do terrain, weather and duration tighten the scatter? | candidate | — | 2026-11-17 |
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
