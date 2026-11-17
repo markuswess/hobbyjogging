@@ -263,9 +263,12 @@ _None._
 ## Next
 
 Numbers are labels, not a schedule: a completed item leaves a gap and a new
-one takes the next free number, so cross-references stay valid.
+one takes the next free number, so cross-references stay valid. The phases are
+defined in [ARCHITECTURE.md](ARCHITECTURE.md): phase 1 completes with all
+imports and the reports/dashboard; phase 2 is data depth, backfills, manual
+editing, analysis and lab work; phase 3 is the dormant future.
 
-1. **Activity editing, CLI first** (core + import). The only manual write
+1. **Activity editing, CLI first** (core + import; phase 2). The only manual write
    surface is `review edit`, which changes `duration_s`, `distance_m` and
    `sport`, and only with a review item attached. Name, description, RPE, feel,
    sub-sport, tags, classification and equipment have no free-form edit, no way
@@ -337,7 +340,8 @@ one takes the next free number, so cross-references stay valid.
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
 
-12. **Runalyze enrichment** (core + import + maintenance + reports; milestone).
+12. **Runalyze enrichment** (core + import + maintenance + reports; phase 1
+    milestone).
     Runalyze is the source that closes the 2022+ gap: gear identity (the sheet
     ends in 2021, so 2022–2026 has no gear at all), comments, tags, race
     results and `vo2max_runalyze`. It is not one import but a milestone with
@@ -460,8 +464,8 @@ one takes the next free number, so cross-references stay valid.
     - **After the import**: item 37 mines the tags and comments this import
       lands to refurbish historical classifications, illness ranges and season
       labels.
-13. **Homelab cutover**: DB + importer + dashboard generator + static server,
-   periodic backups, Tailscale/basic auth.
+13. **Homelab cutover** (phase 3): DB + importer + dashboard generator + static
+    server, periodic backups, Tailscale/basic auth.
 14. **Platform independence** (long-term, dormant; ingestion unchanged). The
     goal is to stop depending on Intervals.icu as the *system of record* — not
     to stop using it as transport. The trigger is a paywall or wanting out, so
@@ -491,9 +495,10 @@ one takes the next free number, so cross-references stay valid.
 15. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
    than duplicated here.
-16. **Social titles, descriptions and links** (core + import + reports; low
-    priority). Strava is the first social layer, but not the only possible one:
-    the title is a pun, the description sometimes a note, while the Intervals
+16. **Social titles, descriptions and links** (core + import + reports; phase
+    1, the remaining source import). Strava is the first social layer, but not
+    the only possible one: the title is a pun, the description sometimes a
+    note, while the Intervals
     title is the workout name. Both are worth keeping, and they must not
     compete — `name` is deliberately not a conflict field, so a social import
     writing it would be ignored (Intervals names are never blank) or open
@@ -896,7 +901,7 @@ one takes the next free number, so cross-references stay valid.
     descriptions describe interval sessions, and big races anchor seasons. The
     point is to fill empty fields and propose corrections, never to invent
     facts.
-    - **Sequence**: start after the Runalyze import (item 12) lands, so the
+    - **Sequence**: phase 2, after the Runalyze import (item 12) lands, so the
       tags and comments are complete; the audit itself is read-only and can run
       earlier.
     - **Audit first** (maintenance): a read-only report per field and year —
@@ -972,8 +977,9 @@ one takes the next free number, so cross-references stay valid.
     - **Streams later**: keep the raw FIT archive as the stream source; add a
       stream index/metadata table and parse on demand or into Parquet. Do not
       put per-second rows in the canonical SQLite database.
-    - **Sequence**: after the Runalyze import and the historical refurbishment
-      (item 37); the audit can run earlier.
+    - **Sequence**: phase 2 for session averages, after the Runalyze import
+      and the historical refurbishment (item 37); phase 3 for streams. The
+      audit can run earlier.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
