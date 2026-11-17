@@ -21,10 +21,12 @@ on.
   rows (`--output` JSON). Matching is temporal plus distance; `name`, timing
   and distance are never written. A mid-run 429 stops cleanly, lists
   `processed`/`not processed`, keeps the rows already processed, and marks the
-  import run `partial`. Re-runs skip details whose stored `edited_at` is
-  current and linked to the same activity, so the next window continues with
-  the remainder (`--refresh` forces a re-fetch). `--wait` automates the whole
-  history: it sleeps until each reset and resumes until the range is complete.
+  import run `partial`. Re-runs skip any stored detail already linked to the
+  same activity, so the next window continues with the remainder (`--refresh`
+  re-fetches to pick up edits). `--wait` fetches the collection once, sleeps
+  through the windows unattended and resumes until the range is complete.
+  (An earlier `edited_at` comparison re-fetched a growing prefix every window
+  and starved the new rows; the linked-detail skip fixed the slowdown.)
   Validated on a DB copy: one week, 9/9 matched, 5 tags on 3 activities,
   second run a no-op.
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,

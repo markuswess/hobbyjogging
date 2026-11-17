@@ -296,25 +296,27 @@ Runalyze enrich dry run: 9 activities
 Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
 `--refresh`, `--wait`, `--output PATH`, and `--database PATH`. Enrichment is
 idempotent and resumable: each detail is stored in `source_records`, and a
-re-run skips activities whose stored `edited_at` is current and linked to the
-same canonical row. After a mid-run 429, the next run continues with the
-remainder. `--refresh` forces re-fetching; a fully current run reports
-`already enriched: N` and `activities tagged: 0` until the note or tags change.
-The 240-request window means a full history needs several runs; a stopped run
-lists `processed`/`not processed` and is marked `partial`.
+re-run skips any activity whose stored detail is already linked to the same
+canonical row. After a mid-run 429, the next run continues with the remainder.
+`--refresh` re-fetches the stored details (use it to pick up edits made on the
+Runalyze side); a fully current run reports `already enriched: N` and
+`activities tagged: 0`. The 240-request window means a full history needs
+several runs; a stopped run lists `processed`/`not processed` and is marked
+`partial`.
 
-Run the whole history unattended; `--wait` sleeps until each reset and resumes:
+Run the whole history unattended; `--wait` fetches the collection once, sleeps
+until each reset, and resumes:
 
 ```bash
 uv run --env-file .env hobbyjogging-import runalyze enrich --wait \
   --output /tmp/runalyze-unmatched.json
 ```
 
-It prints a progress line per window (`rate limit: N not processed; sleeping
-Ns`) and finishes with one summary. At 240 requests per window, 2,841
-activities take roughly a dozen windows, so run it in `tmux`/`nohup` if the
-terminal may close. `--wait` cannot be combined with `--dry-run` or
-`--refresh` (both defeat the stored-detail resume).
+It prints a progress line per window (`window: N details, M skipped, K not
+processed; sleeping Ns`) and finishes with one summary. At 240 requests per
+window, 2,841 activities take roughly a dozen windows, so run it in
+`tmux`/`nohup` if the terminal may close. `--wait` cannot be combined with
+`--dry-run` or `--refresh` (both defeat the stored-detail resume).
 
 ### Gear (phase 3)
 

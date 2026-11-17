@@ -135,6 +135,7 @@ class RunalyzeEnricher:
         dry_run: bool,
         refresh: bool,
         output: str | Path | None,
+        activities: list[dict] | None = None,
     ) -> RunalyzeEnrichSummary:
         summary = RunalyzeEnrichSummary(dry_run=dry_run)
 
@@ -151,11 +152,12 @@ class RunalyzeEnricher:
             )
 
         try:
-            activities = self.client.activities(
-                start,
-                end,
-                per_page=per_page,
-            )
+            if activities is None:
+                activities = self.client.activities(
+                    start,
+                    end,
+                    per_page=per_page,
+                )
             if limit is not None:
                 activities = activities[:limit]
             summary.activities_seen = len(activities)
@@ -225,16 +227,13 @@ class RunalyzeEnricher:
         """Repeat the range across windows until everything is done."""
         aggregate = RunalyzeEnrichSummary(dry_run=False)
 
-        while True:
+        activities: list[dict] | None = None
+        while activities is None:
             try:
-                summary = self._enrich_once(
-                    start=start,
-                    end=end,
-                    limit=limit,
+                activities = self.client.activities(
+                    start,
+                    end,
                     per_page=per_page,
-                    dry_run=False,
-                    refresh=False,
-                    output=output,
                 )
             except RunalyzeRateLimitError as exc:
                 delay = _wait_seconds(exc.retry_after_s)
@@ -244,7 +243,21 @@ class RunalyzeEnricher:
                     flush=True,
                 )
                 time.sleep(delay)
-                continue
+
+        if limit is not None:
+            activities = activities[:limit]
+
+        while True:
+            summary = self._enrich_once(
+                start=start,
+                end=end,
+                limit=limit,
+                per_page=per_page,
+                dry_run=False,
+                refresh=False,
+                output=output,
+                activities=activities,
+            )
 
             aggregate.activities_seen = summary.activities_seen
             aggregate.processed = summary.processed
@@ -273,7 +286,9 @@ class RunalyzeEnricher:
 
             delay = _wait_seconds(summary.stopped_retry_after_s)
             print(
-                f"  rate limit: {summary.not_processed} not processed; "
+                f"  window: {summary.detail_fetches} details, "
+                f"{summary.already_enriched} skipped, "
+                f"{summary.not_processed} not processed; "
                 f"sleeping {delay:.0f}s",
                 flush=True,
             )
@@ -313,7 +328,6 @@ class RunalyzeEnricher:
             if not refresh and self._already_enriched(
                 stored,
                 external_id,
-                activity.get("edited_at"),
                 activity_id,
             ):
                 summary.already_enriched += 1
@@ -399,26 +413,22 @@ class RunalyzeEnricher:
         self,
         stored: dict[str, tuple[dict, str | None]],
         external_id: str,
-        edited_at: object,
         activity_id: str,
     ) -> bool:
-        """True when the stored detail is current and linked to this activity.
+        """True when the detail is stored and linked to this activity.
 
         A re-run after a rate-limit stop then skips the rows already processed
-        instead of restarting at the first activity.
+        instead of re-reading them. ``--refresh`` is the way to pick up edits
+        on the Runalyze side; comparing ``edited_at`` here proved unreliable
+        (null or differing collection values re-fetched the whole prefix every
+        window and starved the new rows).
         """
         entry = stored.get(external_id)
         if entry is None:
             return False
 
-        payload, linked_activity = entry
-        if linked_activity != activity_id:
-            return False
-
-        current = _edited_at(edited_at)
-        if current is None:
-            return False
-        return _edited_at(payload.get("edited_at")) == current
+        _, linked_activity = entry
+        return linked_activity == activity_id
 
     def _stored_details(self) -> dict[str, tuple[dict, str | None]]:
         rows = self.connection.execute(
@@ -690,11 +700,6 @@ def _number(value: object) -> float | None:
         return float(str(value))
     except (TypeError, ValueError):
         return None
-
-
-def _edited_at(value: object) -> int | None:
-    number = _number(value)
-    return int(number) if number is not None else None
 
 
 def _wait_seconds(retry_after_s: int | None) -> float:

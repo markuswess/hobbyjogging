@@ -29,8 +29,10 @@ class FakeRunalyze:
         self.details = details
         self.rate_limited = set(rate_limited)
         self.detail_calls = []
+        self.activity_calls = 0
 
     def activities(self, start, end, *, per_page=100):
+        self.activity_calls += 1
         return list(self.activities_payload)
 
     def get(self, path, params=None):
@@ -212,22 +214,28 @@ class RunalyzeEnrichTests(unittest.TestCase):
             {"id": 2, "tag": "Hilly"},
             {"id": 4, "tag": "New"},
         ]
-        self.details["201"]["edited_at"] = 1700000999
-        for row in self.client.activities_payload:
-            if row["id"] == 201:
-                row["edited_at"] = 1700000999
 
-        summary = self.enricher.enrich()
+        summary = self.enricher.enrich(refresh=True)
 
         self.assertEqual(0, summary.comments_filled)
-        self.assertEqual(1, summary.comments_kept)
+        self.assertEqual(2, summary.comments_kept)
         self.assertEqual(1, summary.activities_tagged)
-        self.assertEqual(1, summary.already_enriched)
-        self.assertEqual(1, summary.detail_fetches)
+        self.assertEqual(0, summary.already_enriched)
+        self.assertEqual(2, summary.detail_fetches)
         self.assertEqual(
             {("Hilly", "runalyze", 0), ("New", "runalyze", 0)},
             self._tags("a1"),
         )
+
+    def test_stored_details_are_not_refetched_without_refresh(self):
+        self.enricher.enrich()
+        self.details["201"]["note"] = "changed on Runalyze"
+
+        summary = self.enricher.enrich()
+
+        self.assertEqual(2, summary.already_enriched)
+        self.assertEqual(0, summary.detail_fetches)
+        self.assertEqual("Runalyze comment", self._row("a1")["description"])
 
     def test_dry_run_writes_nothing(self):
         summary = self.enricher.enrich(dry_run=True)
@@ -394,6 +402,7 @@ class RunalyzeEnrichTests(unittest.TestCase):
             summary = enricher.enrich(wait=True)
 
         sleep.assert_called_once_with(6.0)
+        self.assertEqual(1, client.activity_calls)
         self.assertEqual(0, summary.not_processed)
         self.assertEqual(2, summary.matched)
         self.assertEqual(2, summary.detail_fetches)
@@ -410,6 +419,17 @@ class RunalyzeEnrichTests(unittest.TestCase):
             self.enricher.enrich(wait=True, dry_run=True)
         with self.assertRaises(ValueError):
             self.enricher.enrich(wait=True, refresh=True)
+
+    def test_missing_edited_at_still_skips_the_stored_detail(self):
+        self.enricher.enrich()
+        for row in self.client.activities_payload:
+            row["edited_at"] = None
+
+        summary = self.enricher.enrich()
+
+        self.assertEqual(2, summary.already_enriched)
+        self.assertEqual(0, summary.detail_fetches)
+        self.assertEqual(0, summary.matched)
 
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)

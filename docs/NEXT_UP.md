@@ -417,16 +417,17 @@ editing, analysis and lab work; phase 3 is the dormant future.
       Validated on a DB copy over one week: 9/9 matched, 5 tags on 3 activities,
       second run a no-op. A 2025 dry run saw 472 activities, processed 211
       before a 429 (all matched), and now reports the 261 unprocessed rows.
-      Details are stored in `source_records`, so a re-run skips activities
-      whose stored `edited_at` is current and linked to the same canonical row
-      and continues with the remainder; `--refresh` forces a re-fetch, and
-      `--wait` sleeps through the windows unattended until the range is done.
-      The budget is 240 requests per window (~1 hour), so a full history needs
-      about 12 windows. The real DB now has 807 activities (2025: 430, 2026:
-      377); the `--wait` process continues with about 2,031 still unprocessed
-      (2019–2024), so the activity enrichment remains partial. Phase 3
-      followed; the collection `fields` trick remains a possible saving for the
-      full enrichment, to test when a window is free.
+      Details are stored in `source_records`, so a re-run skips any stored
+      detail already linked to the same canonical row and continues with the
+      remainder; `--refresh` re-fetches to pick up edits, and `--wait` fetches
+      the collection once and sleeps through the windows unattended until the
+      range is done. (The first skip compared `edited_at` and re-fetched a
+      growing prefix every window; the linked-detail skip fixes that
+      slowdown.) The budget is 240 requests per window (~1 hour), so a full
+      history needs a few windows. The real DB holds the 2025–2026 details;
+      the `--wait` run continues with the remaining 2019–2024 activities.
+      Phase 3 followed; the collection `fields` trick remains a possible
+      saving for the full enrichment, to test when a window is free.
     - **Phase 3 result (Nov 2026)**: offline `runalyze gear` resolves the
       stored payloads' `equipment` arrays with the rule below and writes gear
       source records, equipment rows and activity links. Validated on a DB
