@@ -326,12 +326,11 @@ still needs core first: max HR and elevation on `Activity` (repository
 query and model drop them; items 2 and 6), the per-activity zone config ids
 (item 5's zone normalization), devices (1), routes (3), wellness extras (4)
 and social titles (7). Item 13 has its data (`event_activity_links`, schema
-v21), item 10 is handed to root item 36 for its illness ranges and resumes
-here after the maintenance fix, and 14's series needs the lab gate in root
-item 31. Item 12 stays parked on its page-coverage cost, 11 is recurring
-upkeep. The dashboard polish pass is finished. The
-efficiency floor, the planned-event page, the streaks report and the
-collapsible lists landed here.
+v21), item 10's illness ranges are stored now and it resumes here, and 14's
+series needs the lab gate in root item 31. Item 12 stays parked on its
+page-coverage cost, 11 is recurring upkeep. The dashboard polish pass is
+finished. The efficiency floor, the planned-event page, the streaks report
+and the collapsible lists landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -386,14 +385,10 @@ collapsible lists landed here.
    example note. See root item 25.
 
 10. **Season and illness bands.** `training_periods` is stored (schema v18: 3
-    seasons, 25 illness markers, 4 notes), and the source carries real ranges:
-    every Intervals `SICK`/`NOTE` event has an `end_date_local` (the Feb–Mar
-    2026 thyroid episode is 2026-02-08 → 2026-03-09). The derived rows are
-    one-day because `training_periods_current` drops that end date. **Handed
-    off**: root item 36 fixes the recompute (read `end_date_local`, test a
-    ranged and a same-day payload, re-run it); this item resumes here
-    afterwards. Until then the reports draw one-day markers, and the shading
-    handles both shapes either way.
+    seasons, 25 illness ranges, 4 notes), and the recompute keeps the source's
+    inclusive `end_date_local` (the Feb–Mar 2026 thyroid episode is 2026-02-08
+    → 2026-03-09). The illness-range fix has landed, so this item resumes here;
+    the shading still handles a one-day period as a thin line.
     - **Chart**: one shared helper shades seasons on the volume and load charts
       with a quiet label at each visible band start, and illness periods on
       recovery and the analysis pace/HR chart (which carries the efficiency

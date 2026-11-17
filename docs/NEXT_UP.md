@@ -1,9 +1,16 @@
 # Status and next steps
 
-Updated 2026-11-16.
+Updated 2026-11-17.
 
 ## Done
 
+- **Illness and note periods keep their source ranges.** `training_periods_current`
+  now reads Intervals' `end_date_local` (inclusive) and falls back to the start
+  only when it is absent; a range never ends before it starts. Applied: all 25
+  illness and 4 note periods are multi-day, including the 2026-02-08 → 2026-03-09
+  thyroid episode (30 days). The reports' season and illness bands can resume
+  from the stored ranges. Runalyze's Injury & Sickness entries will map to the
+  same ranges, never markers.
 - **Routes are stored and linked (schema v20).** `routes` holds a named loop
   with a source-scoped `external_ref`, and `activity_routes` links an activity
   to the routes it covered (a table, since one run can cover several). The
@@ -36,11 +43,11 @@ Updated 2026-11-16.
 - **Training periods are stored (schema v18).** `training_periods` holds dated
   spans — season, plan, illness, travel, recovery — and `training_periods_current`
   derives them from the Intervals event notes: 3 seasons (VCM 23/24/25, each
-  closing the day before the next, the latest open), 25 one-day illness
-  markers and 4 travel/recovery notes. A marker's duration is never inferred;
-  the `period add|list|remove` CLI writes a manual range (an illness end, a
-  plan) and the recompute never removes it. The season/illness bands and the
-  calendar stay on the reports list.
+  closing the day before the next, the latest open), 25 illness periods and 4
+  travel/recovery notes. A source end date is stored inclusive; without one
+  the period stays one day. The `period add|list|remove` CLI writes a manual
+  range (an illness end, a plan) and the recompute never removes it. The
+  season/illness bands and the calendar stay on the reports list.
 - **Recording devices are stored (schema v17).** A `devices` table
   (manufacturer, product, serial, name, active dates) and a nullable
   `activities.device_id` — one recorder per activity, so no link table. FIT
@@ -436,6 +443,9 @@ one takes the next free number, so cross-references stay valid.
       no sheet counterpart and simply creates new rows. For each matched
       activity, the first shoe/bike item is primary and the rest secondary; a
       manual link wins.
+    - **Health entries**: Runalyze's Injury & Sickness Tracking records start
+      and end dates; map them to `training_periods` illness ranges, never
+      markers. Weight and sleep fill `wellness_days`.
     - **Import rules**: Runalyze never writes `name` — its title is a Garmin
       auto-title, and an unmatched row that creates the activity would own the
       name and block the Intervals session name the classifier reads. Its
@@ -876,26 +886,6 @@ one takes the next free number, so cross-references stay valid.
       storing streams.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
-
-36. **Keep illness ranges, not one-day markers** (maintenance; then reports).
-    The reports illness bands need real spans, and the source has them: every
-    Intervals `SICK`/`NOTE` event carries `end_date_local` — all 29 in the log
-    are multi-day (the Feb–Mar 2026 thyroid episode is 2026-02-08 → 2026-03-09).
-    `training_periods_current` writes `start = end` because it assumes the
-    source has no duration, so only one-day markers reach the reports.
-    - **Maintenance**: read `end_date_local` (fall back to
-      `start_date_local`), store it inclusive, matching the season end
-      convention. Extend `test_training_periods` with a ranged payload and a
-      same-day one, then re-run the recompute (`--dry-run` first on the real
-      DB).
-    - **Runalyze**: Injury & Sickness Tracking records start and end dates, so
-      the item 12 import should map health entries to `illness` periods with
-      ranges, never markers.
-    - **Hand back**: reports item 10 (season and illness bands) resumes once
-      the derived ranges exist; its chart code already handles a range and a
-      one-day marker.
-    - **Check**: `period list` shows the ranges, and a period report's illness
-      days match the event durations.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.

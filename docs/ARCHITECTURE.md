@@ -258,8 +258,10 @@ SQLite, forward-only migrations. Schema version 21.
 - `training_periods` (v18) — dated spans: seasons, plans, illness, travel,
   recovery. Intervals supplies the season starts (`SEASON_START`) and the
   sickness/travel notes (`SICK`/`NOTE`); a season ends the day before the next
-  one and the latest stays open, a marker is a one-day period and its duration
-  is never inferred. A manual row is never removed by the recompute.
+  one and the latest stays open. A sickness or note keeps the source's
+  inclusive `end_date_local` (falling back to the start), so the range is real
+  and the recompute never invents an end. A manual row is never removed by the
+  recompute.
 - `devices` (v17) — the recording devices: manufacturer, product, serial,
   name and active dates. One recorder per activity, so `activities.device_id`
   is a single nullable foreign key; the serial is what a text column could not

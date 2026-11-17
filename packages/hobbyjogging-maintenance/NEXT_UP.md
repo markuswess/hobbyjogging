@@ -18,10 +18,11 @@ This file records what the package is still waiting on.
   steps, floors climbed and CTL/ATL from the wellness payloads, with the
   sheet's `Gewicht nachher` as a weight fallback. Applied: 3,167 days; weight
   358, sleep score 1,493, SpO2 155, steps 966, CTL/ATL 3,022.
-- **`training_periods_current`.** Derives seasons, illness markers and notes
+- **`training_periods_current`.** Derives seasons, illness ranges and notes
   from the Intervals event payloads, closing each season the day before the
-  next and never inferring a marker's duration. Applied: 3 seasons, 25 illness
-  markers, 4 notes; runs in `sync.sh`.
+  next. It reads `end_date_local` inclusive (falling back to the start), so a
+  source range is kept and never invented. Applied: 3 seasons, 25 illness
+  ranges, 4 note ranges; runs in `sync.sh`.
 - **`activity_device_v1`.** Created the devices from the FIT
   `file.manufacturer/product/serial_number` and filled `activities.device_id`,
   with Intervals `device_name` only where FIT left it empty. Applied: 2,853
