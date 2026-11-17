@@ -26,7 +26,10 @@ from hobbyjogging_core.model import (
 
 # Review categories that do not make an activity's data untrusted. They stay
 # in the queue but never hide the activity from reports.
-NON_HIDING_REVIEW_CATEGORIES = ("workout_classification",)
+NON_HIDING_REVIEW_CATEGORIES = (
+    "workout_classification",
+    "ambiguous_equipment",
+)
 
 
 class TrainingRepository:
@@ -505,8 +508,9 @@ class TrainingRepository:
         activity_ids: list[str],
     ) -> set[str]:
         placeholders = ", ".join("?" for _ in activity_ids)
-        # A workout-classification item means "not labelled yet", not
-        # "untrusted data", so it must not hide the activity from reports.
+        # A workout-classification item means "not labelled yet" and an
+        # ambiguous-equipment item means "gear identity uncertain", not
+        # "untrusted data", so neither hides the activity from reports.
         hidden = ", ".join("?" for _ in NON_HIDING_REVIEW_CATEGORIES)
         rows = self.connection.execute(
             f"""

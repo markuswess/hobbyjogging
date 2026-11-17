@@ -1351,6 +1351,56 @@ class TrainingWriter:
 
         return existing is None
 
+    def link_equipment_source(
+        self,
+        equipment_id: str,
+        source_record_id: int,
+    ) -> bool:
+        """Attach a source record to an existing equipment row, unchanged.
+
+        A gear record that matches a sheet or manual item must not overwrite
+        that item's name, brand, model or dates; this records provenance only.
+        A source record points at one equipment row, so re-resolving it moves
+        the link. Returns ``True`` when a link was written or moved.
+        """
+        if not str(equipment_id).strip():
+            raise ValueError("equipment id must not be empty")
+
+        equipment = self.connection.execute(
+            "SELECT 1 FROM equipment WHERE id = ?",
+            (equipment_id,),
+        ).fetchone()
+        if equipment is None:
+            raise ValueError(f"unknown equipment: {equipment_id}")
+
+        source = self.connection.execute(
+            "SELECT 1 FROM source_records WHERE id = ?",
+            (source_record_id,),
+        ).fetchone()
+        if source is None:
+            raise ValueError(f"unknown source record: {source_record_id}")
+
+        existing = self.connection.execute(
+            """
+            SELECT equipment_id FROM equipment_source_links
+            WHERE source_record_id = ?
+            """,
+            (source_record_id,),
+        ).fetchone()
+        if existing is not None and existing["equipment_id"] == equipment_id:
+            return False
+
+        self.connection.execute(
+            """
+            INSERT INTO equipment_source_links (equipment_id, source_record_id)
+            VALUES (?, ?)
+            ON CONFLICT(source_record_id) DO UPDATE SET
+                equipment_id = excluded.equipment_id
+            """,
+            (equipment_id, source_record_id),
+        )
+        return True
+
     def link_activity_equipment(
         self,
         activity_id: str,

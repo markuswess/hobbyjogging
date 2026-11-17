@@ -306,6 +306,25 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertTrue(flagged["a3"])
         self.assertFalse(flagged["a2"])
 
+    def test_ambiguous_equipment_items_do_not_hide_activities(self):
+        self.conn.execute(
+            """
+            INSERT INTO review_items (
+                activity_id, category, detail, fingerprint, severity
+            ) VALUES ('a1', 'ambiguous_equipment', 'gear', 'fp-e', 'info')
+            """
+        )
+
+        activities = self.repository.activities(
+            date(2026, 10, 1),
+            date(2026, 10, 5),
+        )
+        flagged = {
+            activity.id: activity.needs_review for activity in activities
+        }
+
+        self.assertFalse(flagged["a1"])
+
     def test_review_items_are_mapped_newest_and_most_severe_first(self):
         self.conn.executemany(
             """

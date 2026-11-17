@@ -1691,6 +1691,49 @@ class EquipmentTests(unittest.TestCase):
         ).fetchall()
         self.assertEqual(["sheet:equipment:1"], [r[0] for r in linked])
 
+    def test_link_equipment_source_does_not_change_the_row(self):
+        self._equipment()
+        self.writer.upsert_equipment(
+            "runalyze:equipment:1",
+            type="shoe",
+            name="Runalyze shoe",
+        )
+        gear_source = self._source("runalyze", "g1", "c-gear")
+
+        self.assertTrue(
+            self.writer.link_equipment_source(
+                "sheet:equipment:1",
+                gear_source,
+            )
+        )
+        self.assertFalse(
+            self.writer.link_equipment_source(
+                "sheet:equipment:1",
+                gear_source,
+            )
+        )
+
+        row = self.conn.execute(
+            "SELECT name, brand, model FROM equipment "
+            "WHERE id = 'sheet:equipment:1'"
+        ).fetchone()
+        self.assertEqual("Asics GT-2000 1", row["name"])
+        self.assertEqual("Asics", row["brand"])
+        self.assertEqual("GT-2000 1", row["model"])
+
+        self.assertTrue(
+            self.writer.link_equipment_source(
+                "runalyze:equipment:1",
+                gear_source,
+            )
+        )
+        linked = self.conn.execute(
+            "SELECT equipment_id FROM equipment_source_links "
+            "WHERE source_record_id = ?",
+            (gear_source,),
+        ).fetchone()
+        self.assertEqual("runalyze:equipment:1", linked["equipment_id"])
+
     def test_link_equipment_is_idempotent_and_manual_wins(self):
         self._equipment()
 
