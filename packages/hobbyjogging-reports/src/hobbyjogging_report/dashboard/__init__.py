@@ -200,19 +200,26 @@ def build_dashboard(
     mark("data", phase)
 
     phase = perf_counter()
+    baseline_start = today - timedelta(days=BASELINE_WINDOW_DAYS - 1)
+    trend_start = min(recovery_start, baseline_start)
     wellness = source.wellness(
-        today - timedelta(days=BASELINE_WINDOW_DAYS + 6),
+        trend_start - timedelta(days=6),
         today,
     )
-    baseline_points = recovery_trends(
+    trend_points = recovery_trends(
         wellness,
-        today - timedelta(days=BASELINE_WINDOW_DAYS - 1),
+        trend_start,
         today,
         window_days=7,
     )
+    baseline_points = [
+        point
+        for point in trend_points
+        if baseline_start <= point.date <= today
+    ]
     recovery = [
         point
-        for point in baseline_points
+        for point in trend_points
         if recovery_start <= point.date <= today
     ]
     recovery_html = markdown_to_html(

@@ -547,6 +547,35 @@ class DashboardBuildTests(unittest.TestCase):
         )
         self.assertIn("2 of 60 days have wellness data", recovery)
 
+    def test_recovery_plots_span_the_two_year_window(self):
+        wellness = [
+            WellnessDay(
+                date=TODAY - timedelta(days=index),
+                hrv=60.0,
+                resting_hr=45.0,
+                sleep_s=8 * 3600,
+            )
+            for index in range(760)
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                FakeSource(wellness=wellness),
+                target,
+                today=TODAY,
+            )
+
+            recovery = (target / "recovery.html").read_text()
+
+        # More than a year of points reaches the chart, not just the baseline
+        # window used for its readiness bands.
+        self.assertIn(
+            (TODAY - timedelta(days=700)).isoformat(),
+            recovery,
+        )
+
     def test_empty_source_still_renders_pages(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "site"
