@@ -62,8 +62,9 @@ Pages:
   weeks as faded, hatched bars in the running-volume colour (stacked on the
   current week's actual bar), planned zone bars in the same faded zone colours
   as the actuals, and planned load bars on days without an actual load. The
-  EWMAs use the shared line scheme (7d solid, 42d dashed, 182d dash-dot) and
-  continue through the plan as dashed projections.
+  EWMAs use the shared line scheme (7d solid, 42d dashed, 182d dash-dot), carry
+  the same pale halo as the overview so they read over the bars, and continue
+  through the plan as dashed projections.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year. The report's long per-category tables

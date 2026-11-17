@@ -303,6 +303,8 @@ def _plot_average_lines(
         for attribute in ("base", "fitness", "fatigue")
     } | (dash or {})
 
+    series = []
+
     # Shortest window first, so the smoothest line ends up on top.
     for attribute in ("fatigue", "fitness", "base"):
         style = {
@@ -314,36 +316,50 @@ def _plot_average_lines(
             style["dash"] = dash[attribute]
 
         if actual:
-            _add(
-                figure,
-                go.Scatter(
-                    x=[point.date for point in actual],
-                    y=[getattr(point, attribute) * scale for point in actual],
-                    mode="lines",
-                    name=label(attribute, getattr(windows, attribute)),
-                    line=style,
-                ),
-                row=row,
-                col=col,
-            )
+            series.append((
+                [point.date for point in actual],
+                [getattr(point, attribute) * scale for point in actual],
+                style,
+                1.0,
+                label(attribute, getattr(windows, attribute)),
+                True,
+            ))
 
         if projected:
             bridge = actual[-1:] + projected
-            _add(
-                figure,
-                go.Scatter(
-                    x=[point.date for point in bridge],
-                    y=[
-                        getattr(point, attribute) * scale
-                        for point in bridge
-                    ],
-                    mode="lines",
-                    line={**style, "dash": "dash"},
-                    showlegend=False,
-                ),
-                row=row,
-                col=col,
-            )
+            series.append((
+                [point.date for point in bridge],
+                [
+                    getattr(point, attribute) * scale
+                    for point in bridge
+                ],
+                {**style, "dash": "dash"},
+                PROJECTED_OPACITY,
+                None,
+                False,
+            ))
+
+    # All halos go down before any line, so a later halo cannot cut an
+    # earlier line at a crossing; the pale halo is what keeps a line legible
+    # over the bars.
+    for x, y, style, _opacity, _name, _show in series:
+        _outline(figure, x, y, style["width"], row=row, col=col)
+
+    for x, y, style, opacity, name, showlegend in series:
+        _add(
+            figure,
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                name=name,
+                line=style,
+                opacity=opacity,
+                showlegend=showlegend,
+            ),
+            row=row,
+            col=col,
+        )
 
     if projected:
         _add(
@@ -2655,9 +2671,18 @@ def plot_recovery(
     )
 
 
-def _outline(figure, x: list, y: list, width: float) -> None:
+def _outline(
+    figure,
+    x: list,
+    y: list,
+    width: float,
+    *,
+    row: int | None = None,
+    col: int | None = None,
+) -> None:
     """A pale halo under an EWMA line so it reads over the bars."""
-    figure.add_trace(
+    _add(
+        figure,
         go.Scatter(
             x=x,
             y=y,
@@ -2665,7 +2690,9 @@ def _outline(figure, x: list, y: list, width: float) -> None:
             line={"color": "rgba(255, 255, 255, 0.85)", "width": width + 2.5},
             hoverinfo="skip",
             showlegend=False,
-        )
+        ),
+        row=row,
+        col=col,
     )
 
 

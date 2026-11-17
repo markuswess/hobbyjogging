@@ -284,8 +284,9 @@ this list keeps the recent decisions only.
   missing days show; planned time weeks are faded zone-coloured bars starting
   at the next full week; planned load sits on days without an actual load.
   The EWMAs continue through the plan as dashed projections, use the shared
-  7-solid/42-dashed/182-dash-dot scheme, and the axes extend to the last
-  planned week. Series come from the existing
+  7-solid/42-dashed/182-dash-dot scheme, carry the same pale halo as the
+  overview, and the axes extend to the last planned week. Series come from the
+  existing
   `weekly_planned_*`/`daily_planned_load` helpers.
 
 - **NSA subT tables collapse.** `collapse_tables()` re-renders long tables from

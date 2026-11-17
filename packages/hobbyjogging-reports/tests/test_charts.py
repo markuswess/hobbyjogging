@@ -208,6 +208,23 @@ class VolumeChartTests(unittest.TestCase):
         self.assertIn('"fgcolor":"#9aa5b1"', html)
         self.assertIn('"solidity":0.45', html)
 
+    def test_average_lines_get_the_pale_halo_before_the_lines(self):
+        distance_points = [
+            DistancePoint(D + timedelta(days=index), 8.0, 7.0, 7.5, 7.8)
+            for index in range(3)
+        ]
+
+        html = plot_volume(
+            [(D, 30.0)],
+            "",
+            distance_points=distance_points,
+            as_html=True,
+        )
+
+        halo = "rgba(255, 255, 255, 0.85)"
+        self.assertGreaterEqual(html.count(halo), 3)
+        self.assertLess(html.index(halo), html.index('"name":"7d avg'))
+
     def test_average_lines_use_the_shared_line_scheme(self):
         distance_points = [
             DistancePoint(D + timedelta(days=index), 8.0, 7.0, 7.5, 7.8)
