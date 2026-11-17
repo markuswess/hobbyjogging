@@ -120,6 +120,8 @@ SUBT_COLORS = {
 }
 CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
 WEEK_MS = 7 * 24 * 60 * 60 * 1000
+# The pace/HR scatters share one linear-speed x-axis; fits run across it.
+PACE_HR_SPEED_RANGE = (2.0, 5.2)
 COMPARE_VISIBLE_YEARS = 5
 
 COMPARE_COLORS = (
@@ -1730,7 +1732,7 @@ def _style_pace_hr_axes(figure) -> None:
     tick_speeds = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
     figure.update_xaxes(
         title_text="pace (min/km)",
-        range=[2.0, 5.2],
+        range=list(PACE_HR_SPEED_RANGE),
         tickvals=tick_speeds,
         ticktext=[format_pace(1000 / speed) for speed in tick_speeds],
     )
@@ -1850,8 +1852,8 @@ def plot_pace_hr(
     for line in efficiency_lines:
         _outline(
             figure,
-            [line.speed_low, line.speed_high],
-            [line.at(line.speed_low), line.at(line.speed_high)],
+            list(PACE_HR_SPEED_RANGE),
+            [line.at(speed) for speed in PACE_HR_SPEED_RANGE],
             1.6,
         )
 
@@ -1882,11 +1884,8 @@ def plot_pace_hr(
     for line in efficiency_lines:
         figure.add_trace(
             go.Scatter(
-                x=[line.speed_low, line.speed_high],
-                y=[
-                    line.at(line.speed_low),
-                    line.at(line.speed_high),
-                ],
+                x=list(PACE_HR_SPEED_RANGE),
+                y=[line.at(speed) for speed in PACE_HR_SPEED_RANGE],
                 mode="lines",
                 name=f"{line.label} efficiency",
                 line={
@@ -2002,8 +2001,8 @@ def plot_compare_pace_hr(
     for line in efficiency_lines:
         _outline(
             figure,
-            [line.speed_low, line.speed_high],
-            [line.at(line.speed_low), line.at(line.speed_high)],
+            list(PACE_HR_SPEED_RANGE),
+            [line.at(speed) for speed in PACE_HR_SPEED_RANGE],
             1.8,
         )
 
@@ -2015,11 +2014,8 @@ def plot_compare_pace_hr(
         )
         figure.add_trace(
             go.Scatter(
-                x=[line.speed_low, line.speed_high],
-                y=[
-                    line.at(line.speed_low),
-                    line.at(line.speed_high),
-                ],
+                x=list(PACE_HR_SPEED_RANGE),
+                y=[line.at(speed) for speed in PACE_HR_SPEED_RANGE],
                 mode="lines",
                 name=f"{line.label} efficiency",
                 line={

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_report.charts import (
+    PACE_HR_SPEED_RANGE,
     PACE_HR_SYMBOLS,
     PB_COLORS,
     _axis_ceiling,
@@ -1213,6 +1214,14 @@ class PaceHrChartTests(unittest.TestCase):
             html.index("first half efficiency"),
         )
 
+        lines = [
+            trace
+            for trace in plotly_data(html)
+            if trace.get("name") == "first half efficiency"
+        ]
+        self.assertEqual(1, len(lines))
+        self.assertEqual(list(PACE_HR_SPEED_RANGE), lines[0]["x"])
+
     def test_pace_hr_chart_outlines_only_steady_band_points(self):
         points = [
             PaceHrPoint(
@@ -1686,6 +1695,16 @@ class ComparePaceHrChartTests(unittest.TestCase):
         self.assertIn(
             "dashed: steady efficiency per year (2025 2.00, 2026 2.50)",
             html,
+        )
+
+        lines = [
+            trace
+            for trace in plotly_data(html)
+            if str(trace.get("name", "")).endswith(" efficiency")
+        ]
+        self.assertEqual(2, len(lines))
+        self.assertTrue(
+            all(trace["x"] == list(PACE_HR_SPEED_RANGE) for trace in lines)
         )
 
     def test_no_efficiency_lines_without_steady_runs(self):
