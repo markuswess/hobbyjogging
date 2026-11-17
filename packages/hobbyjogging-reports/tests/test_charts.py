@@ -327,6 +327,38 @@ class TimeChartTests(unittest.TestCase):
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
+    def test_share_panel_carries_the_planned_zones(self):
+        weeks = [TimeZoneWeek(date(2026, 1, 5), [3600, 1800, 0, 0], 0)]
+        points = [TimePoint(D, 7200, 6000, 6500, 7000)]
+        planned = [
+            TimeZoneWeek(date(2026, 1, 19), [3600, 1800, 900, 0]),
+        ]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=points,
+            planned_zone_weeks=planned,
+            windows=AverageWindows(),
+            as_html=True,
+        )
+
+        index = html.index("Plotly.newPlot(")
+        data, _ = json.JSONDecoder().raw_decode(
+            html[html.index("[", index):]
+        )
+        planned_shares = [
+            trace
+            for trace in data
+            if trace.get("type") == "bar"
+            and trace.get("yaxis") == "y2"
+            and str(trace.get("marker", {}).get("color", "")).startswith(
+                "rgba("
+            )
+        ]
+
+        self.assertEqual(4, len(planned_shares))
+
     def test_time_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

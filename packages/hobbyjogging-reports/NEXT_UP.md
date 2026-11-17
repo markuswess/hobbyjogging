@@ -282,8 +282,9 @@ this list keeps the recent decisions only.
   draw the next 42 days. Planned volume weeks are faded, hatched bars in the
   same grey as the actuals, stacked on the current week's actual bar so its
   missing days show; planned time weeks are faded zone-coloured bars starting
-  at the next full week; planned load sits on days without an actual load.
-  The EWMAs continue through the plan as dashed projections, use the shared
+  at the next full week in both the hours and share panels; planned load sits
+  on days without an actual load. The total EWMAs and the zone EWMA stack
+  project through the plan (dashed for the totals), use the shared
   7-solid/42-dashed/182-dash-dot scheme, carry the same pale halo as the
   overview, and the axes extend to the last planned week. Series come from the
   existing

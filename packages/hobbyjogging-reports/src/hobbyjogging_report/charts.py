@@ -752,6 +752,58 @@ def plot_time(
 
     if planned_zone_weeks:
         planned_bottoms = [0.0] * len(planned_zone_weeks)
+        planned_percent_bottoms = [0.0] * len(planned_zone_weeks)
+        planned_week_totals = [
+            (sum(week.zones) + week.unzoned) / 3600
+            for week in planned_zone_weeks
+        ]
+        planned_unzoned = [
+            week.unzoned / 3600 for week in planned_zone_weeks
+        ]
+
+        if any(planned_unzoned):
+            shares = [
+                value / total * 100 if total else 0.0
+                for value, total in zip(
+                    planned_unzoned,
+                    planned_week_totals,
+                )
+            ]
+            _add(
+                figure,
+                go.Bar(
+                    x=[week.week for week in planned_zone_weeks],
+                    y=planned_unzoned,
+                    base=planned_bottoms,
+                    name="planned unzoned",
+                    width=WEEK_MS,
+                    marker={"color": _fade(UNZONED_COLOR, 0.45)},
+                ),
+                row=1,
+                col=1,
+            )
+            _add(
+                figure,
+                go.Bar(
+                    x=[week.week for week in planned_zone_weeks],
+                    y=shares,
+                    base=planned_percent_bottoms,
+                    name="planned unzoned",
+                    width=WEEK_MS,
+                    showlegend=False,
+                    marker={"color": _fade(UNZONED_COLOR, 0.45)},
+                ),
+                row=2,
+                col=1,
+            )
+            planned_bottoms = [
+                bottom + value
+                for bottom, value in zip(planned_bottoms, planned_unzoned)
+            ]
+            planned_percent_bottoms = [
+                bottom + value
+                for bottom, value in zip(planned_percent_bottoms, shares)
+            ]
 
         for index in reversed(range(zone_count)):
             values = [
@@ -759,6 +811,10 @@ def plot_time(
                 for week in planned_zone_weeks
             ]
             first = index == zone_count - 1
+            color = _fade(
+                ZONE_COLORS[index % len(ZONE_COLORS)],
+                0.45,
+            )
             _add(
                 figure,
                 go.Bar(
@@ -768,19 +824,36 @@ def plot_time(
                     name=planned_zone_label if first else None,
                     width=WEEK_MS,
                     showlegend=first,
-                    marker={
-                        "color": _fade(
-                            ZONE_COLORS[index % len(ZONE_COLORS)],
-                            0.45,
-                        ),
-                    },
+                    marker={"color": color},
                 ),
                 row=1,
+                col=1,
+            )
+            # The share panel carries the same plan, as planned shares.
+            shares = [
+                value / total * 100 if total else 0.0
+                for value, total in zip(values, planned_week_totals)
+            ]
+            _add(
+                figure,
+                go.Bar(
+                    x=[week.week for week in planned_zone_weeks],
+                    y=shares,
+                    base=planned_percent_bottoms,
+                    width=WEEK_MS,
+                    showlegend=False,
+                    marker={"color": color},
+                ),
+                row=2,
                 col=1,
             )
             planned_bottoms = [
                 bottom + value
                 for bottom, value in zip(planned_bottoms, values)
+            ]
+            planned_percent_bottoms = [
+                bottom + value
+                for bottom, value in zip(planned_percent_bottoms, shares)
             ]
 
     planned_totals = [
