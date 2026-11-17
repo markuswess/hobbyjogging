@@ -83,5 +83,8 @@ Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on
 
-Nothing. The package owns schema evolution, backfills, recomputes, and their
-bookkeeping.
+- **Historical refurbishment** (root item 37). The read-only evidence audit is
+  the first maintenance slice; it starts after the Runalyze import settles.
+
+Nothing else. The package owns schema evolution, backfills, recomputes, and
+their bookkeeping.

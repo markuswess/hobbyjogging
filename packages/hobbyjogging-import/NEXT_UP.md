@@ -237,8 +237,11 @@ on.
 
 ## Waiting on
 
-Nothing. Runalyze phases 1–2 have landed; phases 3–6 are scoped in root item
-12.
+- **Historical refurbishment** (root item 37). The comment/tag workout
+  proposals and triage actions start after the Runalyze import settles.
+
+Nothing else. Runalyze phases 1–2 have landed; phases 3–6 are scoped in root
+item 12.
 
 ## Notes / risks
 

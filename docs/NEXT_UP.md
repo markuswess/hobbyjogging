@@ -457,6 +457,9 @@ one takes the next free number, so cross-references stay valid.
     - **Reports**: gear coverage per year closes the 2022–2026 gap on the gear
       page, comments appear where the text home decides, and `vo2max_runalyze`
       sits beside `vo2max_garmin`.
+    - **After the import**: item 37 mines the tags and comments this import
+      lands to refurbish historical classifications, illness ranges and season
+      labels.
 13. **Homelab cutover**: DB + importer + dashboard generator + static server,
    periodic backups, Tailscale/basic auth.
 14. **Platform independence** (long-term, dormant; ingestion unchanged). The
@@ -886,6 +889,51 @@ one takes the next free number, so cross-references stay valid.
       storing streams.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
+
+37. **Refurbish historical data from evidence already stored** (maintenance +
+    import + reports; after item 12). The log already contains facts we do not
+    use: tags carry workout targets, illness recovery and race days,
+    descriptions describe interval sessions, and big races anchor seasons. The
+    point is to fill empty fields and propose corrections, never to invent
+    facts.
+    - **Sequence**: start after the Runalyze import (item 12) lands, so the
+      tags and comments are complete; the audit itself is read-only and can run
+      earlier.
+    - **Audit first** (maintenance): a read-only report per field and year —
+      raw payload keys not stored, tag semantics, interval-like descriptions,
+      elevation/trail evidence, race evidence, and coverage gaps. It is the
+      gate for the phases below and is re-runnable as imports land.
+    - **Workout classification** (import + maintenance): parse explicit
+      interval patterns in `description` and the Runalyze tags (`sub
+      threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`, rep lengths)
+      into method/target proposals. High-confidence proposals fill an empty
+      classification with a `comment`/`tag` source; conflicting or weaker ones
+      extend the existing `workout_classification` review item, never a new
+      queue. Do not reconstruct rep rows from text until the audit shows the
+      comments are structured enough.
+    - **Trail candidates** (maintenance): combine session and lap elevation
+      (the existing ≥40 m/km rule), `sub_sport` (`trail`, `mountain`), the
+      `Trail` tag and route names; open `consistency` review items instead of
+      changing the sport automatically. Calibrate the threshold on the 31
+      measured candidates first.
+    - **Illness candidates** (maintenance): `krank`, `verkühlt`, `Infekt`,
+      `Magen-Darm`, `Fieber`, `Grippe`, `erkältet` are active evidence;
+      `wieder gesund` closes a range; `schlapp` is ignored. Compare the
+      observed days with `training_periods` and open `period_candidate` review
+      items for gaps or extensions; never write a period automatically.
+    - **Season labels** (maintenance + reports): label the three existing
+      seasons with their goal race first. For years with no `SEASON_START`,
+      propose a season from the clear A-race (`RACE_A`/priority, `race`/
+      `Raceday` tags, distance/name) as a `season_candidate`; do not derive a
+      build start silently.
+    - **Manual surface**: accepted candidates write manual values through the
+      activity edit CLI or `period add` and land in `edit_log` (item 1).
+      Review is the default; auto-fill only for high-confidence empty
+      classifications.
+    - **Separate**: Gmap route identity (931 rows, 528 IDs) is route coverage,
+      not classification; keep it as its own item if it is taken up.
+    - **Open**: a code-level tag lexicon vs a `tag_semantics` table/CLI; the
+      audit can list unmapped tags first.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
