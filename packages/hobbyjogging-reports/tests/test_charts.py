@@ -54,6 +54,27 @@ from hobbyjogging_report.zone_groups import ZoneGroupPoint, ZoneGroupSeries
 
 D = date(2026, 1, 1)
 
+
+def plotly_data(html):
+    """The data array from a rendered plotly figure."""
+    index = html.index("Plotly.newPlot(")
+    data, _ = json.JSONDecoder().raw_decode(
+        html[html.index("[", index):]
+    )
+    return data
+
+
+def hoverable_unnamed(data):
+    """Traces the unified hover would label "trace N"."""
+    return [
+        trace
+        for trace in data
+        if (trace.get("x") or [])
+        and not trace.get("name")
+        and trace.get("hoverinfo") not in ("skip", "none")
+    ]
+
+
 POINTS = [
     SubtPoint(
         D, "short", 220, avg_hr=160, max_hr=172,
@@ -142,6 +163,11 @@ class SubtChartTests(unittest.TestCase):
         low, high = layout["yaxis3"]["range"]
         self.assertGreaterEqual(low, 2.0)
         self.assertLess(high, 3.0)
+
+    def test_every_hoverable_trace_is_named(self):
+        html = plot_subt(POINTS, "", as_html=True)
+
+        self.assertEqual([], hoverable_unnamed(plotly_data(html)))
 
     def test_combined_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -380,6 +406,7 @@ class TimeChartTests(unittest.TestCase):
             if trace.get("type") == "bar"
             and trace.get("yaxis") == "y"
             and trace.get("x") == [week.isoformat()]
+            and trace.get("base")
         ]
 
         self.assertEqual(
@@ -548,6 +575,61 @@ class TimeChartTests(unittest.TestCase):
         self.assertTrue(
             all(len(trace["x"]) == 2 for trace in projected)
         )
+
+    def test_every_hoverable_trace_is_named(self):
+        week = date(2026, 1, 5)
+        weeks = [TimeZoneWeek(week, [3600, 1800, 900, 300], 300)]
+        planned = [TimeZoneWeek(week, [1800, 900, 600, 300])]
+        time_points = [
+            TimePoint(D, 3600, 3000, 3200, 3300),
+            TimePoint(
+                date(2026, 1, 12),
+                3600,
+                3100,
+                3300,
+                3400,
+                projected=True,
+            ),
+        ]
+        hard_points = [
+            TimePoint(D, 1200, 1000, 1100, 1150),
+            TimePoint(
+                date(2026, 1, 12),
+                1800,
+                1100,
+                1200,
+                1250,
+                projected=True,
+            ),
+        ]
+        zone_points = [
+            ZoneAveragePoint(D, [1200, 900, 300, 0]),
+            ZoneAveragePoint(
+                date(2026, 1, 20),
+                [1400, 800, 400, 100],
+                projected=True,
+            ),
+        ]
+
+        html = plot_time(
+            weeks,
+            "",
+            time_points=time_points,
+            hard_points=hard_points,
+            planned_zone_weeks=planned,
+            zone_points=zone_points,
+            zone_window_days=42,
+            windows=AverageWindows(),
+            as_html=True,
+        )
+
+        data = plotly_data(html)
+        names = [trace.get("name") for trace in data]
+
+        self.assertEqual([], hoverable_unnamed(data))
+        self.assertIn("Z4 planned", names)
+        self.assertIn("hard 7d avg (weekly)", names)
+        self.assertEqual(2, names.count("7d avg (weekly)"))
 
     def test_time_chart_flips_zones_and_adds_a_share_panel(self):
         weeks = [

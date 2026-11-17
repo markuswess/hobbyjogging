@@ -338,7 +338,7 @@ def _plot_average_lines(
                 ],
                 {**style, "dash": "dash"},
                 PROJECTED_OPACITY,
-                None,
+                label(attribute, getattr(windows, attribute)),
                 False,
             ))
 
@@ -767,7 +767,22 @@ def plot_time(
         legend=True,
     )
 
-    planned_legend = True
+    if planned_zone_weeks:
+        # A zero-height bar keeps the faded planned bars in the legend; an
+        # empty trace would not render one, and giving a segment the group
+        # name would make its hover read "planned zones" instead of its zone.
+        _add(
+            figure,
+            go.Bar(
+                x=[planned_zone_weeks[0].week],
+                y=[0.0],
+                name=planned_zone_label,
+                marker_color=_fade(ZONE_COLORS[0], 0.45),
+                hoverinfo="skip",
+            ),
+            row=1,
+            col=1,
+        )
 
     # Two blocks per week: hard (Z3+) and easy (Z1-2), each with the actual
     # time first and the plan for the rest of the week directly above it.
@@ -787,11 +802,10 @@ def plot_time(
                     add_segment(
                         values_for_week.keys(),
                         values_for_week,
-                        planned_zone_label if planned_legend else None,
+                        f"Z{index + 1} planned",
                         _fade(color, 0.45),
-                        legend=planned_legend,
+                        legend=False,
                     )
-                    planned_legend = False
                 else:
                     values_for_week = {
                         week.week: week.zones[index] / 3600
@@ -993,6 +1007,7 @@ def plot_time(
                             for point in bridge
                         ],
                         mode="lines",
+                        name=f"Z{index + 1}",
                         stackgroup="projected",
                         showlegend=False,
                         opacity=0.35,
@@ -1178,6 +1193,7 @@ def plot_subt(
                         line={"color": color, "width": 1.1},
                         opacity=0.35,
                         showlegend=False,
+                        hoverinfo="skip",
                     ),
                     row=1,
                     col=1,
@@ -1189,6 +1205,7 @@ def plot_subt(
                         x=dates,
                         y=_time_ewma(dates, values, window_days),
                         mode="lines",
+                        name=f"{category} pace avg",
                         line={"color": color, "width": 1.8},
                         opacity=0.55,
                         showlegend=False,
@@ -1234,6 +1251,7 @@ def plot_subt(
                     line={"color": color, "width": 1.1},
                     opacity=0.3,
                     showlegend=False,
+                    hoverinfo="skip",
                 ),
                 row=2,
                 col=1,
@@ -1248,6 +1266,7 @@ def plot_subt(
                         "size": 10,
                         "symbol": "line-ns",
                     },
+                    name=f"{category} max HR",
                     showlegend=False,
                 ),
                 row=2,
@@ -1260,6 +1279,7 @@ def plot_subt(
                     x=dates,
                     y=_time_ewma(dates, values, window_days),
                     mode="lines",
+                    name=f"{category} HR avg",
                     line={"color": color, "width": 1.8},
                     opacity=0.55,
                     showlegend=False,
@@ -1274,6 +1294,7 @@ def plot_subt(
                 y=values,
                 mode="markers",
                 marker={"color": color, "size": 7},
+                name=f"{category} HR",
                 showlegend=False,
             ),
             row=2,
@@ -1313,6 +1334,7 @@ def plot_subt(
                     line={"color": color, "width": 1.1},
                     opacity=0.35,
                     showlegend=False,
+                    hoverinfo="skip",
                 ),
                 row=3,
                 col=1,
@@ -1340,6 +1362,7 @@ def plot_subt(
                     for point in efficiency
                 ],
                 hoverinfo="text",
+                name=f"{category} efficiency",
                 showlegend=False,
             ),
             row=3,
@@ -1353,6 +1376,7 @@ def plot_subt(
                     window_days,
                 ),
                 mode="lines",
+                name=f"{category} efficiency avg",
                 line={"color": color, "width": 1.8},
                 opacity=0.55,
                 showlegend=False,

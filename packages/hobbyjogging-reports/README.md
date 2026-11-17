@@ -162,7 +162,10 @@ clipped and marked with a grey triangle; hover shows the real value. The
 not, so a single spike can briefly leave the top instead of stretching the
 whole chart. Every chart draws a thin vertical guide at the nearest day and
 a horizontal guide that follows the cursor, so a value can be read off either
-axis.
+axis. Every series the unified hover can show is named: planned segments by
+zone (`Z4 planned`), projections under the line they extend, and subT session
+markers by category. An unnamed trace would surface as `trace N`, which says
+nothing about the series, so range sticks and halos skip the hover instead.
 
 Generation builds a temporary directory and atomically swaps it into place.
 It refuses to replace a non-empty directory unless it is a previous

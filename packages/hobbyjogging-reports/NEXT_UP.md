@@ -287,7 +287,10 @@ this list keeps the recent decisions only.
   stacks hard done, hard planned, easy done, easy planned. Total time reads in
   hours while the hard averages use a right-hand minutes axis that mirrors the
   hour ticks (2 h = 120 min), so lines and bars share one scale. Planned load
-  sits on days without an actual load. The total, hard and zone averages
+  sits on days without an actual load. Every hovered series is named (planned
+  zones by zone, projections after their line, subT panels by category)
+  instead of Plotly's `trace N`, and the subT range sticks skip the hover. The
+  total, hard and zone averages
   project through the plan (dashed for the totals and hard lines, a
   translucent area for the zones), use the shared
   7-solid/42-dashed/182-dash-dot scheme, carry the same pale halo as the
