@@ -222,7 +222,9 @@ this list keeps the recent decisions only.
   with both added), the current streak ends today or yesterday, and
   review-excluded runs never count. On the real log: current 23 days, best 117
   days of 961 streaks. The Analysis tab now shows the current streak, the
-  run-day and streak totals, and the five longest across all history.
+  run-day and streak totals, and the five longest across all history; the
+  current row is always in the table and bold, with an ellipsis when it falls
+  below the top five.
 
 - **Long dashboard lists collapse.** `html.table()` takes a unique `collapse`
   key: past `TABLE_COLLAPSE_ROWS` (20) it renders a native checkbox and hides

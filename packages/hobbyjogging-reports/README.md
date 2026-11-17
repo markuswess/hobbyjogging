@@ -77,8 +77,9 @@ Pages:
   shared line scheme (7d solid,
   42d dashed, 182d dash-dot) and the same pale halo as the overview so they
   read over the bars. The tab ends with a running-streaks card: the current
-  streak, the run-day and streak totals, and the five longest across all
-  history.
+  streak (always shown in bold in the table, with an ellipsis when it is
+  below the top five), the run-day and streak totals, and the five longest
+  across all history.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year. The report's long per-category tables

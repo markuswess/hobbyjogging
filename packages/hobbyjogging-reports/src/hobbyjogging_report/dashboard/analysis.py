@@ -258,19 +258,27 @@ def build_analysis_section(
     )
 
 
-def _streak_line(streak) -> str:
-    return (
-        f"{streak.days} days, {streak.start} → {streak.end}, "
-        f"{streak.distance_m / 1000:.1f} km, "
-        f"{fmt_time(streak.duration_s)}"
-    )
+def _streak_row(streak, *, bold: bool = False) -> list[str]:
+    cells = [
+        esc(str(streak.start)),
+        esc(str(streak.end)),
+        str(streak.days),
+        f"{streak.distance_m / 1000:.1f} km",
+        esc(fmt_time(streak.duration_s)),
+    ]
+
+    if bold:
+        cells = [f"<strong>{cell}</strong>" for cell in cells]
+
+    return cells
 
 
 def _streaks_card(streaks) -> str:
     """Compact current + longest streaks for the Analysis tab."""
     parts = []
+    current = streaks.current
 
-    if streaks.current is None:
+    if current is None:
         last = (
             f" (last run {streaks.last_run})"
             if streaks.last_run
@@ -282,8 +290,8 @@ def _streaks_card(streaks) -> str:
             "today run" if streaks.today_run else "today not run yet"
         )
         parts.append(
-            f'<p><strong>Current:</strong> '
-            f'{esc(_streak_line(streaks.current))} ({state})</p>'
+            f'<p><strong>Current:</strong> {current.days} days '
+            f"({state})</p>"
         )
 
     parts.append(
@@ -291,16 +299,21 @@ def _streaks_card(streaks) -> str:
         f'{streaks.run_days} run days across all history.</p>'
     )
 
-    rows = [
-        [
-            esc(str(streak.start)),
-            esc(str(streak.end)),
-            str(streak.days),
-            f"{streak.distance_m / 1000:.1f} km",
-            esc(fmt_time(streak.duration_s)),
-        ]
-        for streak in streaks.longest
-    ]
+    rows = []
+    current_in_table = False
+
+    for streak in streaks.longest:
+        is_current = current is not None and (
+            streak.start,
+            streak.end,
+        ) == (current.start, current.end)
+        current_in_table = current_in_table or is_current
+        rows.append(_streak_row(streak, bold=is_current))
+
+    if current is not None and not current_in_table:
+        rows.append(["⋮", "", "", "", ""])
+        rows.append(_streak_row(current, bold=True))
+
     parts.append(
         table(
             ["Start", "End", "Days", "Distance", "Time"],
@@ -314,7 +327,7 @@ def _streaks_card(streaks) -> str:
         f'<p class="muted">A streak day needs one run of at least '
         f"{minutes} minutes; a rest day ends the streak and a ride never "
         "extends it. The longest list uses all history, not the analysis "
-        "window.</p>"
+        "window; bold marks the current streak.</p>"
     )
 
     return "".join(parts)
