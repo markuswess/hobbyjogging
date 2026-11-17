@@ -498,7 +498,8 @@ lists and the season/illness bands landed here.
     inside illness periods is the alternative — a ring, a muted marker or a
     hover note — but the encoding is open: the scatter already carries
     category symbols, steady outlines and efficiency lines, so the extra
-    layer must stay quiet. The time-axis charts are shaded (item 10).
+    layer must stay quiet. The time-axis charts are shaded by the landed
+    season/illness bands.
 
 15. **Gear by category.** The Gear tab and the `equipment` report mix shoes,
     bikes and other gear in one chart and table, so bike kilometres sit beside
