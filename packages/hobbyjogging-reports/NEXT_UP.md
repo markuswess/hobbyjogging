@@ -3,8 +3,8 @@
 Updated 2026-11-16.
 
 Current focus: the demo data; 2's max-HR half and 5's threshold trend are
-open, 15-19 are small dashboard passes, 12 is parked, and the rest need a
-core or root change or the lab gate.
+open, 15-17 are small dashboard passes, 12 is parked, and the rest need a core
+or root change or the lab gate.
 
 ## Done
 
@@ -257,6 +257,17 @@ this list keeps the recent decisions only.
   average keeps a line, and fastest/slowest rep pace and max HR never got one
   because rep length and count confound them.
 
+- **Overview no longer repeats the planned report.** The activities tab owns
+  the plan (rows and event pages), so the embedded `planned` Markdown card and
+  its `planned_html` plumbing are gone; the overview chart's planned bars, the
+  weekly planned averages and the `planned` CLI report stay. Tests assert the
+  card is absent and the tab still carries the plan.
+
+- **Reports list their periods newest first.** The Compare tab's year and
+  month comparison tables now start with the most recent period (chart series
+  stay chronological), and the subT report blocks sort newest first within
+  each category. Tests pin both orders.
+
 - **Fartlek is its own category, end to end.** The core token and display kind
   already landed and the category table shows `quality/fartlek` (7 sessions on
   the real log). `is_subt_activity()`/`is_lt1_activity()` now return False for
@@ -281,7 +292,7 @@ and social titles (7). Item 13 has its data (`event_activity_links`, schema
 v21), item 10 is handed to root item 36 for its illness ranges and resumes
 here after the maintenance fix, and 14's series needs the lab gate in root
 item 31. Item 12 stays parked on its page-coverage cost, 11 is recurring
-upkeep, and 15-19 are reports-only polish from a dashboard pass. The
+upkeep, and 15-17 are reports-only polish from a dashboard pass. The
 efficiency floor, the planned-event page, the streaks report and the
 collapsible lists landed here.
 
@@ -463,34 +474,17 @@ collapsible lists landed here.
       actual, no plan leaves the charts as they are, and the axis covers the
       future window.
 
-17. **Drop the planned-workouts report from Overview.** The activities tab
-    carries the plan now (rows and event pages), so the embedded `planned`
-    Markdown card on Overview is a duplicate. Remove the card and the
-    `planned_html` parameter/computation; keep the planned bars in the overview
-    chart and the `planned` CLI report.
-    - **Tests**: `index.html` no longer contains "Planned Workouts", the
-      activities tab still carries planned rows and event links, and the page
-      has no dead parameter.
-
-18. **NSA: newest-first and collapsible subT report.** The subT report lists
-    sessions oldest first and its per-category tables run on; on the NSA tab
-    that is a long scroll. Reverse the block order so the report and the tab
-    agree, and collapse each per-category table past the same 20-row threshold
-    as the activities table.
-    - **Where**: the reorder belongs in `subt_report_blocks`/`subt_report`
-      (CLI and tab both get it); Markdown cannot collapse, so the dashboard
-      renders the per-category tables through `html.table(collapse=...)` or
-      wraps the rendered section in `<details>`, keeping the summary table
-      open. CLI output stays plain.
-    - **Tests**: newest-first in the report and the tab, a long category table
-      gets the toggle with every row still in the HTML, a short one stays
-      plain, and the demo's subT report still renders.
-
-19. **Compare reports newest first.** The Compare tab's "Training Comparison by
-    Year" and "by Month" tables list the oldest period first; put the most
-    recent on top. The chart series stay chronological.
-    - **Tests**: the first data row is the newest year/month, and the chart
-      series order is unchanged.
+17. **NSA: collapse the subT report tables.** The per-category tables run on;
+    on the NSA tab that is a long scroll. The newest-first order landed with
+    the blocks; what remains is collapsing the long category tables past the
+    same 20-row threshold as the activities table.
+    - **Where**: the tab renders `subt_report` Markdown, which cannot collapse,
+      so render the per-category tables through `html.table(collapse=...)` or
+      wrap the rendered section in `<details>`, keeping the summary table open.
+      CLI output stays plain Markdown.
+    - **Tests**: a long category table gets the toggle with every row still in
+      the HTML, a short one stays plain, the summary stays open, and the demo's
+      subT report still renders.
 
 ## Tests and docs
 
@@ -524,7 +518,9 @@ Covered now:
   axis ignoring one extreme rep;
 - fartlek: the stored method classifies as `quality/fartlek` even with a
   "tempo" name, keeps the session out of the subT/LT1 sets, and the demo now
-  carries one.
+  carries one;
+- newest-first periods in the Compare tables and the subT blocks, and the
+  Overview page no longer carrying the planned report.
 
 New work should add:
 

@@ -347,6 +347,11 @@ class CompareReportTests(unittest.TestCase):
             "| 2026 | 0 | 1 | - | 30min | - | - | - | - |",
             report,
         )
+        # The newest period is the first data row.
+        self.assertLess(
+            report.index("| 2026 | 0 | 1"),
+            report.index("| 2025 | 1 | 0"),
+        )
 
     def test_months_report_uses_calendar_months(self):
         source = FakeSource(

@@ -107,7 +107,8 @@ def compare_report(
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
 
-    for period in periods:
+    # Newest period first; the chart series stay chronological.
+    for period in reversed(periods):
         lines.append(
             f"| {period.label} | {period.runs} | {period.cross_sessions} | "
             f"{_time_cell(period.run_time_s)} | "

@@ -305,7 +305,7 @@ def subt_report_blocks(
         blocks,
         key=lambda block: (
             order.get(block.category, len(order)),
-            block.date,
+            -block.date.toordinal(),
             block.activity_name,
             block.activity_id,
         ),

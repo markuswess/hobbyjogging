@@ -129,13 +129,13 @@ class SubtReportBlocksAndSummaryTests(unittest.TestCase):
             },
         )
 
-    def test_blocks_are_sorted_by_category_then_date(self):
+    def test_blocks_are_sorted_by_category_then_newest_date(self):
         self.assertEqual(
             ["short", "medium", "medium"],
             [block.category for block in self.blocks],
         )
         self.assertEqual(
-            [D1, D1, D2],
+            [D1, D2, D1],
             [block.date for block in self.blocks],
         )
 
