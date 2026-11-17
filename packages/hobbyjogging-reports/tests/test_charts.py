@@ -481,7 +481,7 @@ class TimeChartTests(unittest.TestCase):
         )
 
         index = html.index("Plotly.newPlot(")
-        data, _ = json.JSONDecoder().raw_decode(
+        data, end = json.JSONDecoder().raw_decode(
             html[html.index("[", index):]
         )
         hard = [
@@ -496,6 +496,23 @@ class TimeChartTests(unittest.TestCase):
         )
         # 1000 s/week of hard running is 116.7 minutes, not 1.94 hours.
         self.assertIn("116.66", html)
+
+        layout, _ = json.JSONDecoder().raw_decode(
+            html[html.find("{", index + end):]
+        )
+        hours = layout["yaxis"]["range"]
+        minutes = layout["yaxis3"]["range"]
+
+        # The minutes axis mirrors the hour axis rather than zooming to the
+        # hard series, so a line and a bar of the same duration sit at the
+        # same height.
+        self.assertEqual([0, hours[1] * 60], minutes)
+        self.assertEqual(120.0, layout["yaxis3"]["dtick"])
+        self.assertFalse(layout["yaxis3"]["showgrid"])
+        self.assertAlmostEqual(
+            hard[0]["y"][0] / minutes[1],
+            hard[0]["y"][0] / 60 / hours[1],
+        )
 
     def test_time_chart_flips_zones_and_adds_a_share_panel(self):
         weeks = [

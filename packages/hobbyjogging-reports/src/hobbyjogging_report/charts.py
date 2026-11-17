@@ -845,7 +845,32 @@ def plot_time(
             step=TIME_Y_STEP,
             floor=TIME_Y_MIN,
         ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) * time_scale / 3600
+                for point in hard_points or []
+                for attribute in ("base", "fitness")
+            ],
+            step=TIME_Y_STEP,
+            floor=TIME_Y_MIN,
+        ),
     )
+
+    if hard_points:
+        # The minutes axis mirrors the hour axis instead of zooming to the
+        # hard series: same range in minutes, ticks every 2 hours' worth, so
+        # the lines and bars keep sharing one vertical scale.
+        figure.update_layout({
+            f"yaxis{hard_axis[1:]}": {
+                "overlaying": "y",
+                "side": "right",
+                "anchor": "x",
+                "title": {"text": "hard minutes / week"},
+                "range": [0, ceiling * 60],
+                "showgrid": False,
+                "dtick": HARD_MINUTES_STEP,
+            },
+        })
 
     totals_by_week = dict(zip(week_dates, (
         actual_week_totals[w] for w in week_dates
@@ -905,27 +930,6 @@ def plot_time(
             # to the row's primary axis.
             yaxis=hard_axis,
         )
-
-        hard_ceiling = _axis_ceiling(
-            [
-                getattr(point, attribute) * time_scale / 60
-                for point in hard_points
-                for attribute in ("base", "fitness")
-            ],
-            step=HARD_MINUTES_STEP,
-            floor=HARD_MINUTES_STEP,
-        )
-        figure.update_layout({
-            f"yaxis{hard_axis[1:]}": {
-                "overlaying": "y",
-                "side": "right",
-                "anchor": "x",
-                "title": {"text": "hard minutes / week"},
-                "range": [0, hard_ceiling],
-                "showgrid": False,
-                "dtick": HARD_MINUTES_STEP,
-            },
-        })
 
     axis_weeks = sorted(
         set(week_dates if weeks else [])

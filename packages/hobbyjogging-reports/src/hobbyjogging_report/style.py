@@ -49,7 +49,8 @@ VOLUME_Y_STEP = 20.0
 VOLUME_Y_MIN = 20.0
 TIME_Y_STEP = 1.0
 TIME_Y_MIN = 2.0
-HARD_MINUTES_STEP = 30.0
+# Mirrors the time axis's 2-hour ticks, so 2 h and 120 min share a line.
+HARD_MINUTES_STEP = 120.0
 LOAD_Y_STEP = 25.0
 LOAD_Y_MIN = 25.0
 MINUTES_Y_STEP = 15.0

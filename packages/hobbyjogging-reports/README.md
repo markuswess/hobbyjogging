@@ -66,7 +66,8 @@ Pages:
   week), and planned load bars on days without an actual load. Each week
   stacks hard done, hard planned, easy done, easy planned from the bottom up.
   Running time reads in hours on the left; the hard-running averages sit on a
-  right-hand axis in minutes per week. The zone EWMA
+  right-hand axis in minutes per week that mirrors the hour ticks (2 h =
+  120 min), so the lines and bars keep one vertical scale. The zone EWMA
   stack and the total EWMAs project through the plan, with the projected zone
   area drawn translucent; the averages use the shared line scheme (7d solid,
   42d dashed, 182d dash-dot) and the same pale halo as the overview so they

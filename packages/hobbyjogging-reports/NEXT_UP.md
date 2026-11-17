@@ -285,7 +285,8 @@ this list keeps the recent decisions only.
   the hours and share panels, with the current week's plan stacked on its
   actual bar and the share panel normalized to the combined week; each week
   stacks hard done, hard planned, easy done, easy planned. Total time reads in
-  hours while the hard averages use a right-hand minutes axis. Planned load
+  hours while the hard averages use a right-hand minutes axis that mirrors the
+  hour ticks (2 h = 120 min), so lines and bars share one scale. Planned load
   sits on days without an actual load. The total EWMAs and the zone EWMA stack
   project through the plan (dashed for the totals, a translucent area for the
   zones), use the shared
