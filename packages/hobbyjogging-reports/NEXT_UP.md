@@ -223,8 +223,9 @@ this list keeps the recent decisions only.
   review-excluded runs never count. On the real log: current 23 days, best 117
   days of 961 streaks. The Analysis tab now shows the current streak, the
   run-day and streak totals, and the five longest across all history; the
-  current row is always in the table and bold, with an ellipsis when it falls
-  below the top five.
+  current row is always in the table and bold with `?` as its open end, after
+  an ellipsis when it falls below the top five. The CLI and the card share
+  `streak_table_rows`, so only the row limit differs (ten vs five).
 
 - **Long dashboard lists collapse.** `html.table()` takes a unique `collapse`
   key: past `TABLE_COLLAPSE_ROWS` (20) it renders a native checkbox and hides

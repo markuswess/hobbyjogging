@@ -77,9 +77,9 @@ Pages:
   shared line scheme (7d solid,
   42d dashed, 182d dash-dot) and the same pale halo as the overview so they
   read over the bars. The tab ends with a running-streaks card: the current
-  streak (always shown in bold in the table, with an ellipsis when it is
-  below the top five), the run-day and streak totals, and the five longest
-  across all history.
+  streak (always a bold table row with `?` as its open end, after an ellipsis
+  when it is below the top five), the run-day and streak totals, and the five
+  longest across all history.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year. The report's long per-category tables
@@ -280,9 +280,10 @@ stay compact (`1h02`).
   least 10 minutes; a rest day ends the streak and a ride never extends it,
   so cross-training cannot hold a running streak. All history from the first
   activity is used, review-excluded runs do not count, and a run later today
-  is not reported as a missed day. The same summary is a card on the Analysis
-  tab (current, totals, five longest), using all history rather than the
-  analysis window.
+  is not reported as a missed day. The current streak is always a table row,
+  bold with `?` for its open end; when it falls below `--limit` it follows an
+  ellipsis row. The Analysis card uses the same rows and selection logic with
+  five longest (the CLI defaults to ten) and the same totals.
 - **sickness** — Illness episodes in a range (default the last 365 days):
   episode count, illness days and their share of the range, the longest and
   current (or last) episode, and a newest-first table of each episode with

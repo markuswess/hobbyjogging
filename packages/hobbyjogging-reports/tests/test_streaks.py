@@ -168,13 +168,13 @@ class StreakReportTests(unittest.TestCase):
             limit=2,
         )
 
+        current = D + timedelta(days=20)
+
         self.assertIn("# Running streaks", report)
-        self.assertIn(
-            f"- Current: 1 day, {D + timedelta(days=20)}"
-            f" → {D + timedelta(days=20)}, 8.0 km, 40min (today run)",
-            report,
-        )
+        self.assertIn("- Current: 1 day (today run)", report)
+        self.assertIn("- 3 streaks, 6 run days across all history.", report)
         self.assertIn("at least 10 minutes", report)
+        self.assertIn("Bold marks the current streak.", report)
         self.assertIn("## Longest streaks", report)
         self.assertIn(
             "| Start | End | Days | Distance | Time |",
@@ -184,7 +184,41 @@ class StreakReportTests(unittest.TestCase):
             f"| {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
             report,
         )
+        # The current streak falls outside the two longest, so an ellipsis
+        # separates it from the list and its open end prints as a question
+        # mark in bold.
+        self.assertIn("| ⋮ | | | | |", report)
+        self.assertIn(
+            f"| **{current}** | **?** | **1** | **8.0 km** | **40min** |",
+            report,
+        )
         self.assertIn("Showing the 2 longest of 3 streaks.", report)
+
+    def test_current_streak_in_the_top_is_bold_without_an_ellipsis(self):
+        source = FakeSource(
+            activities=[
+                run(D),
+                run(D + timedelta(days=1)),
+                run(D + timedelta(days=2)),
+                run(D + timedelta(days=10)),
+                run(D + timedelta(days=11)),
+            ]
+        )
+        today = D + timedelta(days=11)
+
+        report = streaks_report(source, today=today, limit=2)
+
+        self.assertIn("- Current: 2 days (today run)", report)
+        self.assertIn(
+            f"| **{D + timedelta(days=10)}** | **?** | **2** | "
+            "**16.0 km** | **1h20** |",
+            report,
+        )
+        self.assertNotIn("⋮", report)
+        self.assertIn(
+            f"| {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
+            report,
+        )
 
     def test_report_without_runs_says_so(self):
         report = streaks_report(FakeSource(), today=D)

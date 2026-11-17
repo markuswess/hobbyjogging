@@ -583,9 +583,10 @@ class DashboardBuildTests(unittest.TestCase):
         self.assertIn(str(old_start), section.streaks_html)
         self.assertIn(">10</td>", section.streaks_html)
         self.assertIn("today run", section.streaks_html)
-        # The current streak is in the top rows, so it is bold and there is
-        # no ellipsis.
+        # The current streak is in the top rows, so it is bold with an open
+        # end and there is no ellipsis.
         self.assertIn("<strong>3</strong>", section.streaks_html)
+        self.assertIn("<strong>?</strong>", section.streaks_html)
         self.assertNotIn("⋮", section.streaks_html)
 
     def test_analysis_streaks_append_a_long_current_streak_below_the_top(self):
@@ -625,8 +626,9 @@ class DashboardBuildTests(unittest.TestCase):
 
         self.assertIn("⋮", html)
         self.assertIn("<strong>3</strong>", html)
+        self.assertIn("<strong>?</strong>", html)
         # The current row follows the ellipsis, after the five top streaks.
-        self.assertLess(html.index("⋮"), html.index("<strong>3</strong>"))
+        self.assertLess(html.index("⋮"), html.index("<strong>?</strong>"))
 
     def test_recovery_plots_span_the_two_year_window(self):
         wellness = [

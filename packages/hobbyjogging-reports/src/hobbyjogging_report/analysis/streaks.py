@@ -162,3 +162,35 @@ def streak_summary(
         run_days=len(run_days),
         streak_count=len(streaks),
     )
+
+
+@dataclass(frozen=True)
+class StreakTableRow:
+    """One table row: a streak, or an ellipsis separator (streak None)."""
+
+    streak: RunStreak | None
+    current: bool = False
+
+
+def streak_table_rows(summary: StreakSummary) -> list[StreakTableRow]:
+    """Longest streaks with the current one always in the table.
+
+    The current streak is marked even when it sits outside the cut; in that
+    case an ellipsis row separates it from the listed streaks.
+    """
+    rows = []
+    current_in_table = False
+
+    for streak in summary.longest:
+        is_current = summary.current is not None and (
+            (streak.start, streak.end)
+            == (summary.current.start, summary.current.end)
+        )
+        current_in_table = current_in_table or is_current
+        rows.append(StreakTableRow(streak, is_current))
+
+    if summary.current is not None and not current_in_table:
+        rows.append(StreakTableRow(None))
+        rows.append(StreakTableRow(summary.current, True))
+
+    return rows

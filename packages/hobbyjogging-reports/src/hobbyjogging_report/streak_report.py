@@ -11,6 +11,7 @@ from .analysis import (
     MIN_STREAK_RUN_S,
     RunStreak,
     streak_summary,
+    streak_table_rows,
 )
 from .command_support import activity_start
 from .format import fmt_time
@@ -23,13 +24,6 @@ def _distance(streak: RunStreak) -> str:
 
 def _days(streak: RunStreak) -> str:
     return "1 day" if streak.days == 1 else f"{streak.days} days"
-
-
-def _line(streak: RunStreak) -> str:
-    return (
-        f"{_days(streak)}, {streak.start} → {streak.end}, "
-        f"{_distance(streak)}, {fmt_time(streak.duration_s)}"
-    )
 
 
 def streaks_report(
@@ -60,13 +54,18 @@ def streaks_report(
         lines.append(f"\n- Current: none (last run {summary.last_run})")
     else:
         state = "today run" if summary.today_run else "today not run yet"
-        lines.append(f"\n- Current: {_line(summary.current)} ({state})")
+        lines.append(
+            f"\n- Current: {_days(summary.current)} ({state})"
+        )
 
     minutes = MIN_STREAK_RUN_S // 60
     lines.extend([
         "",
+        f"- {summary.streak_count} streaks, {summary.run_days} run days "
+        "across all history.",
         f"- A streak day needs one run of at least {minutes} minutes; a rest "
-        "day ends the streak and a ride never extends it.",
+        "day ends the streak and a ride never extends it. Bold marks the "
+        "current streak.",
         "",
         "## Longest streaks",
         "",
@@ -74,11 +73,24 @@ def streaks_report(
         "|---|---|---:|---:|---:|",
     ])
 
-    for streak in summary.longest:
-        lines.append(
-            f"| {streak.start} | {streak.end} | {streak.days} | "
-            f"{_distance(streak)} | {fmt_time(streak.duration_s)} |"
-        )
+    for row in streak_table_rows(summary):
+        if row.streak is None:
+            lines.append("| ⋮ | | | | |")
+            continue
+
+        streak = row.streak
+        cells = [
+            str(streak.start),
+            "?" if row.current else str(streak.end),
+            str(streak.days),
+            _distance(streak),
+            fmt_time(streak.duration_s),
+        ]
+
+        if row.current:
+            cells = [f"**{cell}**" for cell in cells]
+
+        lines.append("| " + " | ".join(cells) + " |")
 
     if len(summary.longest) < summary.streak_count:
         lines.extend([

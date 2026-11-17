@@ -19,6 +19,7 @@ from ..analysis import (
     resting_hr_baselines,
     rpe_metrics,
     streak_summary,
+    streak_table_rows,
     time_averages,
     week_bounds,
     weekly_planned_distance,
@@ -258,16 +259,16 @@ def build_analysis_section(
     )
 
 
-def _streak_row(streak, *, bold: bool = False) -> list[str]:
+def _streak_row(streak, *, current: bool = False) -> list[str]:
     cells = [
         esc(str(streak.start)),
-        esc(str(streak.end)),
+        "?" if current else esc(str(streak.end)),
         str(streak.days),
         f"{streak.distance_m / 1000:.1f} km",
         esc(fmt_time(streak.duration_s)),
     ]
 
-    if bold:
+    if current:
         cells = [f"<strong>{cell}</strong>" for cell in cells]
 
     return cells
@@ -299,20 +300,12 @@ def _streaks_card(streaks) -> str:
         f'{streaks.run_days} run days across all history.</p>'
     )
 
-    rows = []
-    current_in_table = False
-
-    for streak in streaks.longest:
-        is_current = current is not None and (
-            streak.start,
-            streak.end,
-        ) == (current.start, current.end)
-        current_in_table = current_in_table or is_current
-        rows.append(_streak_row(streak, bold=is_current))
-
-    if current is not None and not current_in_table:
-        rows.append(["⋮", "", "", "", ""])
-        rows.append(_streak_row(current, bold=True))
+    rows = [
+        ["⋮", "", "", "", ""]
+        if row.streak is None
+        else _streak_row(row.streak, current=row.current)
+        for row in streak_table_rows(streaks)
+    ]
 
     parts.append(
         table(
