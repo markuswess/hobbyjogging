@@ -13,8 +13,10 @@ on.
   `processed`/`not processed`, keeps the rows already processed, and marks the
   import run `partial`. Re-runs skip details whose stored `edited_at` is
   current and linked to the same activity, so the next window continues with
-  the remainder (`--refresh` forces a re-fetch). Validated on a DB copy: one
-  week, 9/9 matched, 5 tags on 3 activities, second run a no-op.
+  the remainder (`--refresh` forces a re-fetch). `--wait` automates the whole
+  history: it sleeps until each reset and resumes until the range is complete.
+  Validated on a DB copy: one week, 9/9 matched, 5 tags on 3 activities,
+  second run a no-op.
 - **Runalyze phase 1.** Read-only `runalyze.py` client (`token` header,
   rate-limit-aware, numbered pages, local `--since`/`--to` filtering) and
   `runalyze inventory --dry-run`, which probes the known endpoints and reports

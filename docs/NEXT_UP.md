@@ -407,8 +407,9 @@ one takes the next free number, so cross-references stay valid.
       before a 429 (all matched), and now reports the 261 unprocessed rows.
       Details are stored in `source_records`, so a re-run skips activities
       whose stored `edited_at` is current and linked to the same canonical row
-      and continues with the remainder; `--refresh` forces a re-fetch. The
-      budget is 240 requests per window (~1 hour), so a full history needs
+      and continues with the remainder; `--refresh` forces a re-fetch, and
+      `--wait` sleeps through the windows unattended until the range is done.
+      The budget is 240 requests per window (~1 hour), so a full history needs
       about 12 windows. The real DB is untouched. Phase 3 (gear) is next and
       uses the identity rule below; before it runs, test whether the
       collection's `fields` parameter can return `tags`/`equipment` and avoid

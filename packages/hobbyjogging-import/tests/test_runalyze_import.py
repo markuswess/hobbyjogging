@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_import.cli import build_parser
@@ -37,8 +38,9 @@ class FakeRunalyze:
         external_id = path.split("/", 1)[1]
         self.detail_calls.append(external_id)
         if external_id in self.rate_limited:
+            self.rate_limited.discard(external_id)
             raise RunalyzeRateLimitError(
-                retry_after_s=60,
+                retry_after_s=1,
                 limit=240,
             )
         payload = self.details.get(external_id)
@@ -378,6 +380,37 @@ class RunalyzeEnrichTests(unittest.TestCase):
         self.assertEqual(2, summary.detail_fetches)
         self.assertEqual(["201", "202"], self.client.detail_calls[-2:])
 
+    def test_wait_sleeps_and_resumes_until_complete(self):
+        client = FakeRunalyze(
+            _fixture("enrich_collection.json"),
+            self.details,
+            rate_limited={"201"},
+        )
+        enricher = RunalyzeEnricher(self.conn, client=client)
+
+        with patch(
+            "hobbyjogging_import.runalyze_import.time.sleep"
+        ) as sleep:
+            summary = enricher.enrich(wait=True)
+
+        sleep.assert_called_once_with(6.0)
+        self.assertEqual(0, summary.not_processed)
+        self.assertEqual(2, summary.matched)
+        self.assertEqual(2, summary.detail_fetches)
+        self.assertEqual("", summary.stopped_reason)
+        self.assertEqual(["201", "201", "202"], client.detail_calls)
+        self.assertEqual("Runalyze comment", self._row("a1")["description"])
+        self.assertEqual(
+            {("Easy", "runalyze", 0)},
+            self._tags("a2"),
+        )
+
+    def test_wait_rejects_dry_run_and_refresh(self):
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(wait=True, dry_run=True)
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(wait=True, refresh=True)
+
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)
 
@@ -404,6 +437,7 @@ class RunalyzeEnrichCliTests(unittest.TestCase):
                 "--limit",
                 "10",
                 "--refresh",
+                "--wait",
                 "--output",
                 "/tmp/unmatched.json",
             ]
@@ -413,6 +447,7 @@ class RunalyzeEnrichCliTests(unittest.TestCase):
         self.assertEqual("enrich", args.runalyze_action)
         self.assertTrue(args.dry_run)
         self.assertTrue(args.refresh)
+        self.assertTrue(args.wait)
         self.assertEqual(date(2024, 1, 1), args.start)
         self.assertEqual(date(2024, 12, 31), args.end)
         self.assertEqual(10, args.limit)

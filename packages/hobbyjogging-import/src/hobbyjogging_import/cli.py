@@ -292,6 +292,10 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
         and args.start > args.end
     ):
         parser.error("--since must not be after --to")
+    if args.wait and args.dry_run:
+        parser.error("--wait cannot be combined with --dry-run")
+    if args.wait and args.refresh:
+        parser.error("--wait cannot be combined with --refresh")
 
     try:
         connection = open_database(args.database)
@@ -311,6 +315,7 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
                 per_page=args.per_page,
                 dry_run=args.dry_run,
                 refresh=args.refresh,
+                wait=args.wait,
                 output=args.output,
             )
         except RuntimeError as exc:

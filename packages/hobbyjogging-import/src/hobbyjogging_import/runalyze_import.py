@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -32,6 +33,8 @@ SOURCE = "runalyze"
 DISTANCE_TOLERANCE_RATIO = 0.05
 DISTANCE_TOLERANCE_M = 100.0
 DISTANCE_KM_TO_M = 1000.0
+WAIT_BUFFER_S = 5.0
+DEFAULT_WAIT_S = 300.0
 
 
 @dataclass
@@ -55,6 +58,7 @@ class RunalyzeEnrichSummary:
     unmatched_rows: list[dict] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     stopped_reason: str = ""
+    stopped_retry_after_s: int | None = None
 
 
 @dataclass
@@ -88,7 +92,49 @@ class RunalyzeEnricher:
         per_page: int = 100,
         dry_run: bool = False,
         refresh: bool = False,
+        wait: bool = False,
         output: str | Path | None = None,
+    ) -> RunalyzeEnrichSummary:
+        """Enrich comments/tags, optionally across rate-limit windows.
+
+        ``wait`` sleeps until the reset after a 429 and resumes with the rows
+        that are still unprocessed; it needs the stored-detail skip, so it
+        cannot be combined with ``refresh`` or ``dry_run``.
+        """
+        if wait and dry_run:
+            raise ValueError("wait cannot be combined with dry_run")
+        if wait and refresh:
+            raise ValueError("wait cannot be combined with refresh")
+
+        if wait:
+            return self._enrich_until_complete(
+                start=start,
+                end=end,
+                limit=limit,
+                per_page=per_page,
+                output=output,
+            )
+
+        return self._enrich_once(
+            start=start,
+            end=end,
+            limit=limit,
+            per_page=per_page,
+            dry_run=dry_run,
+            refresh=refresh,
+            output=output,
+        )
+
+    def _enrich_once(
+        self,
+        *,
+        start: date | None,
+        end: date | None,
+        limit: int | None,
+        per_page: int,
+        dry_run: bool,
+        refresh: bool,
+        output: str | Path | None,
     ) -> RunalyzeEnrichSummary:
         summary = RunalyzeEnrichSummary(dry_run=dry_run)
 
@@ -167,6 +213,72 @@ class RunalyzeEnricher:
                 )
             raise
 
+    def _enrich_until_complete(
+        self,
+        *,
+        start: date | None,
+        end: date | None,
+        limit: int | None,
+        per_page: int,
+        output: str | Path | None,
+    ) -> RunalyzeEnrichSummary:
+        """Repeat the range across windows until everything is done."""
+        aggregate = RunalyzeEnrichSummary(dry_run=False)
+
+        while True:
+            try:
+                summary = self._enrich_once(
+                    start=start,
+                    end=end,
+                    limit=limit,
+                    per_page=per_page,
+                    dry_run=False,
+                    refresh=False,
+                    output=output,
+                )
+            except RunalyzeRateLimitError as exc:
+                delay = _wait_seconds(exc.retry_after_s)
+                print(
+                    "  rate limit before the range; "
+                    f"sleeping {delay:.0f}s",
+                    flush=True,
+                )
+                time.sleep(delay)
+                continue
+
+            aggregate.activities_seen = summary.activities_seen
+            aggregate.processed = summary.processed
+            aggregate.not_processed = summary.not_processed
+            aggregate.unmatched = summary.unmatched
+            aggregate.ambiguous = summary.ambiguous
+            aggregate.already_enriched = summary.already_enriched
+            aggregate.unmatched_rows = summary.unmatched_rows
+            aggregate.run_id = summary.run_id
+            aggregate.matched += summary.matched
+            aggregate.detail_fetches += summary.detail_fetches
+            aggregate.comments_filled += summary.comments_filled
+            aggregate.comments_kept += summary.comments_kept
+            aggregate.activities_tagged += summary.activities_tagged
+            aggregate.tags_written += summary.tags_written
+            aggregate.errors.extend(
+                error
+                for error in summary.errors
+                if not error.startswith("Runalyze rate limit")
+            )
+
+            if not summary.stopped_reason:
+                aggregate.stopped_reason = ""
+                aggregate.stopped_retry_after_s = None
+                return aggregate
+
+            delay = _wait_seconds(summary.stopped_retry_after_s)
+            print(
+                f"  rate limit: {summary.not_processed} not processed; "
+                f"sleeping {delay:.0f}s",
+                flush=True,
+            )
+            time.sleep(delay)
+
     # -- matching -----------------------------------------------------------
 
     def _match_all(
@@ -211,6 +323,7 @@ class RunalyzeEnricher:
                 detail = self.client.get(f"activity/{external_id}")
             except RunalyzeRateLimitError as exc:
                 summary.stopped_reason = str(exc)
+                summary.stopped_retry_after_s = exc.retry_after_s
                 summary.errors.append(str(exc))
                 break
 
@@ -582,6 +695,12 @@ def _number(value: object) -> float | None:
 def _edited_at(value: object) -> int | None:
     number = _number(value)
     return int(number) if number is not None else None
+
+
+def _wait_seconds(retry_after_s: int | None) -> float:
+    if retry_after_s is None:
+        return DEFAULT_WAIT_S + WAIT_BUFFER_S
+    return max(1.0, float(retry_after_s)) + WAIT_BUFFER_S
 
 
 def _payload_json(payload: object) -> str:

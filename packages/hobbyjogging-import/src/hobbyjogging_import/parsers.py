@@ -246,6 +246,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="re-fetch details even when the stored copy is current",
     )
+    runalyze_enrich.add_argument(
+        "--wait",
+        action="store_true",
+        help=(
+            "sleep across rate-limit windows and resume until the range "
+            "is complete"
+        ),
+    )
 
     garmin = subparsers.add_parser(
         "garmin",
