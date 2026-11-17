@@ -71,6 +71,7 @@ def run_volume_chart(
         ),
         windows=windows,
         ylabel="km / week",
+        periods=source.training_periods(),
     )
 
     print(path)
@@ -248,6 +249,7 @@ def run_recovery_chart(
         planned_dates=planned_workout_dates(events, end, planned_end),
         window_days=window_days,
         baseline_points=baseline_points,
+        periods=source.training_periods(),
     )
 
     print(path)
@@ -344,6 +346,7 @@ def run_load_chart(
             windows=windows,
             warmup_days=warmup_days,
         ),
+        periods=source.training_periods(),
     )
     print(path)
 

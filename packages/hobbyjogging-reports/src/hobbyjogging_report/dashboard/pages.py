@@ -321,6 +321,7 @@ def recovery_page(
     start: date,
     end: date,
     baseline_points: list[RecoveryPoint] | None = None,
+    periods=None,
 ) -> str:
     if points:
         chart_html = chart(
@@ -329,6 +330,7 @@ def recovery_page(
                 output="",
                 as_html=True,
                 baseline_points=baseline_points,
+                periods=periods,
             )
         )
     else:

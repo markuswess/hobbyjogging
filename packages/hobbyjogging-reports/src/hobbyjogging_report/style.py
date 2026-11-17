@@ -33,6 +33,11 @@ RPE_LINE_COLORS = {
     182: "#00441b",
 }
 
+# Training-period bands, drawn behind the data.
+SEASON_BAND_COLOR = "rgba(46, 139, 87, 0.07)"
+ILLNESS_BAND_COLOR = "rgba(220, 53, 69, 0.08)"
+PERIOD_LABEL_COLOR = "#6b7280"
+
 # Planned / projected overlays
 PLANNED_FILL_ALPHA = 0.45
 PLANNED_HATCH = "//"

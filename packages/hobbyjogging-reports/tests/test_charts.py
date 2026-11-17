@@ -36,7 +36,7 @@ from hobbyjogging_report.analysis import (
     riegel_time,
 )
 from hobbyjogging_core.model import Activity, Equipment
-from hobbyjogging_core.model import ActivityWeather
+from hobbyjogging_core.model import ActivityWeather, TrainingPeriod
 from hobbyjogging_report.model import (
     DistancePoint,
     LoadPoint,
@@ -98,6 +98,163 @@ POINTS = [
         fastest_pace_s_per_km=235, slowest_pace_s_per_km=260,
     ),
 ]
+
+
+class PeriodBandTests(unittest.TestCase):
+
+    def test_volume_shades_only_seasons_behind_the_bars(self):
+        data = [
+            (date(2026, 1, 5), 30.0),
+            (date(2026, 1, 12), 40.0),
+        ]
+        periods = [
+            TrainingPeriod(
+                id="s",
+                kind="season",
+                label="Base",
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 2, 1),
+            ),
+            TrainingPeriod(
+                id="i",
+                kind="illness",
+                label="Sick",
+                start_date=date(2026, 1, 6),
+                end_date=date(2026, 1, 8),
+            ),
+        ]
+
+        html = plot_volume(data, "", periods=periods, as_html=True)
+        traces = plotly_data(html)
+        bands = [trace for trace in traces if trace.get("hoveron") == "fills"]
+
+        self.assertEqual(1, len(bands))
+        band = bands[0]
+        # Clamped to the visible weeks, while the hover keeps the real span.
+        self.assertEqual(
+            [
+                "2026-01-05",
+                "2026-01-05",
+                "2026-01-20",
+                "2026-01-20",
+            ],
+            band["x"],
+        )
+        self.assertEqual("rgba(46, 139, 87, 0.07)", band["fillcolor"])
+        self.assertIn("Base: 2026-01-01", band["text"])
+        self.assertLess(
+            traces.index(band),
+            next(
+                index
+                for index, trace in enumerate(traces)
+                if trace.get("name") == "weekly km"
+            ),
+        )
+        self.assertIn('"text":"Base"', html)
+
+    def test_one_day_period_is_a_thin_band_and_others_are_filtered(self):
+        data = [(date(2026, 1, 5), 30.0)]
+        periods = [
+            TrainingPeriod(
+                id="one",
+                kind="season",
+                label="One day",
+                start_date=date(2026, 1, 6),
+                end_date=date(2026, 1, 6),
+            ),
+            TrainingPeriod(
+                id="old",
+                kind="season",
+                label="Old",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 2, 1),
+            ),
+        ]
+
+        html = plot_volume(data, "", periods=periods, as_html=True)
+        bands = [
+            trace
+            for trace in plotly_data(html)
+            if trace.get("hoveron") == "fills"
+        ]
+
+        self.assertEqual(1, len(bands))
+        first = date.fromisoformat(bands[0]["x"][0])
+        right = date.fromisoformat(bands[0]["x"][2])
+        self.assertEqual(1, (right - first).days)
+        self.assertNotIn("Old", html)
+
+    def test_load_shades_seasons_with_their_label(self):
+        points = [
+            LoadPoint(D + timedelta(days=index), 40.0, 35.0, 38.0, 40.0)
+            for index in range(7)
+        ]
+        periods = [
+            TrainingPeriod(
+                id="s",
+                kind="season",
+                label="Marathon build",
+                start_date=D,
+                end_date=D + timedelta(days=6),
+            )
+        ]
+
+        html = plot_load(points, "", periods=periods, as_html=True)
+        bands = [
+            trace
+            for trace in plotly_data(html)
+            if trace.get("hoveron") == "fills"
+        ]
+
+        self.assertEqual(1, len(bands))
+        self.assertIn("Marathon build:", bands[0]["text"])
+        self.assertIn('"text":"Marathon build"', html)
+
+    def test_recovery_shades_illness_on_every_panel(self):
+        points = [
+            RecoveryPoint(
+                D + timedelta(days=index),
+                hrv=50.0 + index,
+                resting_hr=50.0,
+                sleep_s=7.5 * 3600,
+                hrv_avg=50.0 + index,
+                resting_hr_avg=50.0,
+                sleep_avg=7.5 * 3600,
+            )
+            for index in range(5)
+        ]
+        periods = [
+            TrainingPeriod(
+                id="i",
+                kind="illness",
+                label="Injury",
+                start_date=D + timedelta(days=1),
+                end_date=D + timedelta(days=2),
+            )
+        ]
+
+        html = plot_recovery(points, "", periods=periods, as_html=True)
+        bands = [
+            trace
+            for trace in plotly_data(html)
+            if trace.get("hoveron") == "fills"
+        ]
+
+        self.assertEqual(3, len(bands))
+        self.assertTrue(
+            all("Injury: " in band["text"] for band in bands)
+        )
+        # Illness bands carry no quiet label, only the hover.
+        self.assertNotIn('"text":"Injury"', html)
+
+    def test_charts_are_unchanged_without_periods(self):
+        html = plot_volume(
+            [(date(2026, 1, 5), 30.0)],
+            "",
+            as_html=True,
+        )
+
+        self.assertNotIn('"hoveron":"fills"', html)
 
 
 class SubtChartTests(unittest.TestCase):

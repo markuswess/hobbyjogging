@@ -15,6 +15,7 @@ from hobbyjogging_core.model import (
     Interval,
     Lap,
     ReviewItem,
+    TrainingPeriod,
     WellnessDay,
 )
 
@@ -72,6 +73,9 @@ class DatabaseSource:
             status=status,
             category=category,
         )
+
+    def training_periods(self) -> list[TrainingPeriod]:
+        return self.repository.training_periods()
 
     def earliest_activity_date(self) -> date | None:
         """Return the first non-excluded activity date, if any."""

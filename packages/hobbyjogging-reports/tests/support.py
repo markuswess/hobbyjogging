@@ -57,6 +57,7 @@ class FakeSource:
         laps=None,
         equipment=None,
         weather=None,
+        periods=None,
     ):
         self._activities = list(activities or [])
         self._equipment = list(equipment or [])
@@ -67,6 +68,7 @@ class FakeSource:
         self._links = dict(links or {})
         self._weather = dict(weather or {})
         self._review_items = list(review_items or [])
+        self._periods = list(periods or [])
 
     @staticmethod
     def _in_range(items, start, end):
@@ -102,6 +104,9 @@ class FakeSource:
 
     def equipment(self):
         return list(self._equipment)
+
+    def training_periods(self):
+        return list(self._periods)
 
     def activity_links(self, activity_id):
         return self._links.get(activity_id)

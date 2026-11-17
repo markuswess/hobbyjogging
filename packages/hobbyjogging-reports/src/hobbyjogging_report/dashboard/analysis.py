@@ -81,6 +81,7 @@ def build_analysis_section(
     events = (
         source.events(end, plan_end) if future_days > 0 else []
     )
+    periods = source.training_periods()
     planned_distance = weekly_planned_distance(
         events,
         plan_start,
@@ -113,6 +114,7 @@ def build_analysis_section(
             "",
             distance_points=distance_points,
             planned_distance=planned_distance,
+            periods=periods,
             as_html=True,
         )
         if any(activity.distance_m for activity in runs)
@@ -196,6 +198,7 @@ def build_analysis_section(
                 warmup_days=warmup_days,
             ),
             planned_load=planned_load,
+            periods=periods,
             as_html=True,
         )
         if any(point.load > 0 for point in load_points)

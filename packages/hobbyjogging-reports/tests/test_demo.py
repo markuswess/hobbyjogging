@@ -119,6 +119,7 @@ class DemoGeneratorTests(unittest.TestCase):
             self.assertGreater(summary.wellness_days, 500)
             self.assertGreaterEqual(summary.events, 20)
             self.assertEqual(4, summary.equipment)
+            self.assertEqual(5, summary.periods)
 
             connection = open_database(summary.path)
             try:
@@ -127,6 +128,7 @@ class DemoGeneratorTests(unittest.TestCase):
                     ("wellness_days", summary.wellness_days),
                     ("events", summary.events),
                     ("equipment", summary.equipment),
+                    ("training_periods", summary.periods),
                 ):
                     count = connection.execute(
                         f"SELECT COUNT(*) FROM {table}"
@@ -134,6 +136,31 @@ class DemoGeneratorTests(unittest.TestCase):
                     self.assertEqual(expected, count, table)
             finally:
                 connection.close()
+
+    def test_demo_has_three_seasons_and_two_illness_ranges(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                rows = connection.execute(
+                    "SELECT kind, label, start_date, end_date "
+                    "FROM training_periods ORDER BY start_date"
+                ).fetchall()
+            finally:
+                connection.close()
+
+            seasons = [row for row in rows if row["kind"] == "season"]
+            illness = [row for row in rows if row["kind"] == "illness"]
+
+            self.assertEqual(3, len(seasons))
+            self.assertIsNone(seasons[-1]["end_date"])
+            self.assertEqual(2, len(illness))
+            self.assertTrue(
+                all(row["start_date"] != row["end_date"] for row in illness)
+            )
 
     def test_every_run_has_the_analysis_fields_and_complete_zones(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -644,6 +671,11 @@ class DemoGeneratorTests(unittest.TestCase):
 
             analysis = (site / "analysis.html").read_text()
             self.assertIn("weather on ", analysis)
+            self.assertIn('"text":"Norwegian block"', analysis)
+            self.assertIn('"hoveron":"fills"', analysis)
+
+            recovery = (site / "recovery.html").read_text()
+            self.assertIn("Chest cold:", recovery)
 
             details = [
                 page.read_text()

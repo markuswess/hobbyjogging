@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
-from hobbyjogging_core.model import WellnessDay
+from hobbyjogging_core.model import TrainingPeriod, WellnessDay
 from hobbyjogging_report.mdpretty import render_markdown
 from hobbyjogging_report.daily import daily
 from hobbyjogging_report.period_report import period_report
@@ -110,6 +110,76 @@ class EfficiencyReportTests(unittest.TestCase):
         self.assertIn(
             "| non-quality/easy | 1 | 50min | 32 | 2.22 | 100% | 100% |",
             report,
+        )
+
+
+class SeasonReportTests(unittest.TestCase):
+
+    def test_period_report_lists_seasons_and_illness_days(self):
+        periods = [
+            TrainingPeriod(
+                id="base",
+                kind="season",
+                label="Base",
+                start_date=date(2026, 9, 1),
+                end_date=date(2026, 10, 15),
+            ),
+            TrainingPeriod(
+                id="ongoing",
+                kind="season",
+                label="Ongoing",
+                start_date=date(2026, 9, 20),
+            ),
+            TrainingPeriod(
+                id="sick",
+                kind="illness",
+                label="Sick",
+                start_date=date(2026, 9, 28),
+                end_date=date(2026, 10, 2),
+            ),
+            TrainingPeriod(
+                id="one-day",
+                kind="illness",
+                label="One day",
+                start_date=date(2026, 10, 5),
+                end_date=date(2026, 10, 5),
+            ),
+            TrainingPeriod(
+                id="old",
+                kind="season",
+                label="Old",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 2, 1),
+            ),
+        ]
+        source = FakeSource(
+            [activity(name="Easy")],
+            periods=periods,
+        )
+
+        report = period_report(
+            D1,
+            date(2026, 10, 3),
+            "Test Report",
+            source,
+        )
+
+        self.assertIn("## Seasons", report)
+        self.assertIn(
+            "| Base | season | 2026-09-01 → 2026-10-15 | 3 |",
+            report,
+        )
+        self.assertIn(
+            "| Ongoing | season | 2026-09-20 → ongoing | 3 |",
+            report,
+        )
+        self.assertIn("Illness days in this range: 2", report)
+        self.assertIn("- Sick: 2026-09-28 → 2026-10-02", report)
+        self.assertNotIn("Old", report)
+        self.assertNotIn("One day", report)
+        self.assertLess(
+            report.index("## Seasons"),
+            report.index("## Recovery"),
         )
 
 

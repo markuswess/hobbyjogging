@@ -211,6 +211,58 @@ def period_report(
                     format_fenced_block(q.description, "  ")
                 )
 
+    periods = [
+        period
+        for period in source.training_periods()
+        if period.start_date is not None
+    ]
+    seasons = [
+        period
+        for period in periods
+        if period.kind == "season"
+        and period.start_date <= end
+        and (period.end_date or end) >= start
+    ]
+    illness = [
+        period
+        for period in periods
+        if period.kind == "illness"
+        and period.start_date <= end
+        and (period.end_date or end) >= start
+    ]
+    illness_days = set()
+
+    for period in illness:
+        first, last = _period_overlap(period, start, end)
+
+        for offset in range((last - first).days + 1):
+            illness_days.add(first + timedelta(days=offset))
+
+    if seasons:
+        lines.append("\n## Seasons")
+        lines.append("")
+        lines.append("| Season | Kind | Dates | Days in range |")
+        lines.append("| --- | --- | --- | --- |")
+
+        for period in seasons:
+            first, last = _period_overlap(period, start, end)
+            lines.append(
+                f"| {_period_cell(period.label or 'Season')} | "
+                f"{period.kind} | {_period_dates(period)} | "
+                f"{(last - first).days + 1} |"
+            )
+
+    if illness_days:
+        lines.append(
+            f"\nIllness days in this range: {len(illness_days)}"
+        )
+
+        for period in illness:
+            lines.append(
+                f"- {_period_cell(period.label or 'Illness')}: "
+                f"{_period_dates(period)}"
+            )
+
     lines.append("\n## Recovery")
 
     lines.append(
@@ -226,6 +278,23 @@ def period_report(
     )
 
     return "\n".join(lines)
+
+
+def _period_dates(period) -> str:
+    """One period's dates, with an open end shown as ongoing."""
+    if period.end_date is None:
+        return f"{period.start_date} → ongoing"
+
+    return f"{period.start_date} → {period.end_date}"
+
+
+def _period_overlap(period, start: date, end: date) -> tuple[date, date]:
+    """The part of a period inside the report range, inclusive."""
+    return max(period.start_date, start), min(period.end_date or end, end)
+
+
+def _period_cell(text: str) -> str:
+    return text.replace("|", "\\|")
 
 
 def summary(

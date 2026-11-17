@@ -9,6 +9,8 @@ from datetime import date, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from hobbyjogging_core.model import TrainingPeriod
+
 warnings.filterwarnings(
     "ignore",
     message=r"(?s).*Kaleido versions less than 1\.0\.0.*",
@@ -67,8 +69,11 @@ from .style import (
     PROJECTED_OPACITY,
     RECOVERY_BAND_COLORS,
     RECOVERY_BAND_MARKERS,
+    PERIOD_LABEL_COLOR,
+    ILLNESS_BAND_COLOR,
     RPE_AXIS_MIN,
     RPE_LINE_COLORS,
+    SEASON_BAND_COLOR,
     SPIKE_COLOR,
     SUBT_HR_RANGE,
     SUBT_PACE_RANGE,
@@ -485,6 +490,74 @@ def _clipped_markers(
     )
 
 
+def _period_bands(
+    figure,
+    periods: list[TrainingPeriod] | None,
+    *,
+    kind: str,
+    color: str,
+    start: date,
+    end: date,
+    bottom: float,
+    top: float,
+    labels: bool = False,
+    row: int | None = None,
+    col: int | None = None,
+) -> None:
+    """Shade training periods of one kind behind a date-axis chart."""
+    for period in periods or []:
+        if period.kind != kind or period.start_date is None:
+            continue
+
+        first = max(period.start_date, start)
+        last = min(period.end_date or end, end)
+
+        if last < first:
+            continue
+
+        label = period.label.strip() or period.kind.title()
+        span = (
+            f"{period.start_date} \u2192 {period.end_date}"
+            if period.end_date
+            else f"{period.start_date} \u2192 ongoing"
+        )
+        hover = f"{label}: {span}"
+        trace = go.Scatter(
+            x=[
+                first,
+                first,
+                last + timedelta(days=1),
+                last + timedelta(days=1),
+            ],
+            y=[bottom, top, top, bottom],
+            fill="toself",
+            mode="lines",
+            line={"width": 0},
+            fillcolor=color,
+            hoveron="fills",
+            hoverinfo="text",
+            name=hover,
+            text=hover,
+            showlegend=False,
+        )
+        _add(figure, trace, row=row, col=col)
+
+        if labels:
+            annotation = {
+                "x": first,
+                "y": top,
+                "text": label,
+                "showarrow": False,
+                "xanchor": "left",
+                "yanchor": "top",
+                "font": {"size": 10, "color": PERIOD_LABEL_COLOR},
+            }
+            if row is None:
+                figure.add_annotation(**annotation)
+            else:
+                figure.add_annotation(**annotation, row=row, col=col)
+
+
 def plot_volume(
     data: list[tuple[date, float]],
     output: str,
@@ -495,13 +568,52 @@ def plot_volume(
     distance_scale: float = 7.0,
     ylabel: str = "km / week",
     title: str = "Weekly running volume",
+    periods: list[TrainingPeriod] | None = None,
     as_html: bool = False,
 ) -> str:
     """Weekly running volume bars with distance-average lines."""
     _require_data(data, distance_points)
     windows = windows or AverageWindows()
-    figure = go.Figure()
     weeks = [week for week, _ in data]
+    actual_by_week = dict(data)
+    planned_by_week = dict(planned_distance or [])
+    planned_marks = [
+        (week, value + actual_by_week.get(week, 0.0))
+        for week, value in planned_by_week.items()
+    ]
+    axis_weeks = sorted(set(weeks) | set(planned_by_week))
+    ceiling = max(
+        _axis_ceiling(
+            [value for _, value in data]
+            + [value for _, value in planned_marks],
+            step=VOLUME_Y_STEP,
+            floor=VOLUME_Y_MIN,
+        ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) * distance_scale
+                for point in distance_points or []
+                for attribute in ("base", "fitness")
+            ],
+            step=VOLUME_Y_STEP,
+            floor=VOLUME_Y_MIN,
+        ),
+    )
+
+    figure = go.Figure()
+
+    if axis_weeks:
+        _period_bands(
+            figure,
+            periods,
+            kind="season",
+            color=SEASON_BAND_COLOR,
+            start=axis_weeks[0],
+            end=axis_weeks[-1] + timedelta(days=7),
+            bottom=0,
+            top=ceiling,
+            labels=True,
+        )
 
     if data:
         figure.add_bar(
@@ -511,13 +623,6 @@ def plot_volume(
             width=WEEK_MS,
             marker_color=VOLUME_BAR_COLOR,
         )
-
-    actual_by_week = dict(data)
-    planned_by_week = dict(planned_distance or [])
-    planned_marks = [
-        (week, value + actual_by_week.get(week, 0.0))
-        for week, value in planned_by_week.items()
-    ]
 
     if planned_distance:
         figure.add_bar(
@@ -551,24 +656,6 @@ def plot_volume(
             label=lambda attribute, days: f"{days}d avg (weekly)",
         )
 
-    ceiling = max(
-        _axis_ceiling(
-            [value for _, value in data]
-            + [value for _, value in planned_marks],
-            step=VOLUME_Y_STEP,
-            floor=VOLUME_Y_MIN,
-        ),
-        _axis_ceiling(
-            [
-                getattr(point, attribute) * distance_scale
-                for point in distance_points or []
-                for attribute in ("base", "fitness")
-            ],
-            step=VOLUME_Y_STEP,
-            floor=VOLUME_Y_MIN,
-        ),
-    )
-
     _clipped_markers(
         figure,
         list(data) + planned_marks,
@@ -576,10 +663,6 @@ def plot_volume(
         "km",
     )
     figure.update_yaxes(range=[0, ceiling], dtick=20)
-
-    axis_weeks = sorted(
-        set(weeks) | {week for week, _ in planned_distance or []}
-    )
 
     if axis_weeks:
         figure.update_xaxes(
@@ -1453,6 +1536,7 @@ def plot_load(
     rpe_points: list[RpePoint] | None = None,
     load_scale: float = 7.0,
     title: str = "Weekly training load and session RPE",
+    periods: list[TrainingPeriod] | None = None,
     as_html: bool = False,
 ) -> str:
     """Weekly load bars with weekly EWMA lines and session RPE on a right axis.
@@ -1489,7 +1573,46 @@ def plot_load(
 
         planned = sorted(planned_by_week.items())
 
+    planned_marks = [
+        (week, value + actual_by_week.get(week, 0.0))
+        for week, value in planned
+    ]
+    ceiling = max(
+        _axis_ceiling(
+            [value for _, value in weekly_load]
+            + [value for _, value in planned_marks],
+            step=LOAD_WEEK_Y_STEP,
+            floor=LOAD_WEEK_Y_MIN,
+        ),
+        _axis_ceiling(
+            [
+                getattr(point, attribute) * load_scale
+                for point in points
+                for attribute in ("base", "fitness")
+            ],
+            step=LOAD_WEEK_Y_STEP,
+            floor=LOAD_WEEK_Y_MIN,
+        ),
+    )
+    axis_weeks = sorted(
+        {week for week, _ in weekly_load}
+        | {week for week, _ in planned}
+    )
+
     figure = go.Figure()
+
+    if axis_weeks:
+        _period_bands(
+            figure,
+            periods,
+            kind="season",
+            color=SEASON_BAND_COLOR,
+            start=axis_weeks[0],
+            end=axis_weeks[-1] + timedelta(days=7),
+            bottom=0,
+            top=ceiling,
+            labels=True,
+        )
 
     if weekly_load:
         figure.add_bar(
@@ -1558,29 +1681,6 @@ def plot_load(
                 )
             )
 
-    planned_marks = [
-        (week, value + actual_by_week.get(week, 0.0))
-        for week, value in planned
-    ]
-
-    ceiling = max(
-        _axis_ceiling(
-            [value for _, value in weekly_load]
-            + [value for _, value in planned_marks],
-            step=LOAD_WEEK_Y_STEP,
-            floor=LOAD_WEEK_Y_MIN,
-        ),
-        _axis_ceiling(
-            [
-                getattr(point, attribute) * load_scale
-                for point in points
-                for attribute in ("base", "fitness")
-            ],
-            step=LOAD_WEEK_Y_STEP,
-            floor=LOAD_WEEK_Y_MIN,
-        ),
-    )
-
     _clipped_markers(
         figure,
         list(weekly_load) + planned_marks,
@@ -1588,11 +1688,6 @@ def plot_load(
         "load",
     )
     figure.update_yaxes(range=[0, ceiling], dtick=LOAD_WEEK_Y_STEP)
-
-    axis_weeks = sorted(
-        {week for week, _ in weekly_load}
-        | {week for week, _ in planned}
-    )
 
     if axis_weeks:
         figure.update_xaxes(
@@ -2684,6 +2779,7 @@ def plot_recovery(
     title: str = "Recovery trends",
     as_html: bool = False,
     baseline_points: list[RecoveryPoint] | None = None,
+    periods: list[TrainingPeriod] | None = None,
 ) -> str:
     """HRV, resting HR, and sleep with averages and readiness bands.
 
@@ -2730,6 +2826,19 @@ def plot_recovery(
         bounds = _recovery_axis_bounds(
             [value for _, value in raw] + [value for _, value in average]
             or [0.0]
+        )
+
+        _period_bands(
+            figure,
+            periods,
+            kind="illness",
+            color=ILLNESS_BAND_COLOR,
+            start=range_start,
+            end=range_end,
+            bottom=bounds[0],
+            top=bounds[1],
+            row=row,
+            col=1,
         )
 
         if raw:

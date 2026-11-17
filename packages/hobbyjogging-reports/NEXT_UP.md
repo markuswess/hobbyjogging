@@ -1,9 +1,9 @@
 # Next up: reports package
 
-Updated 2026-11-16.
+Updated 2026-11-17.
 
-Current focus: the demo data; 2's max-HR half and 5's threshold trend are
-open, 12 is parked, and the rest need a core or root change or the lab gate.
+Current focus: 5's threshold trend; 2's max-HR half needs core, 11 is parked,
+13 is behind the lab gate, and 14 is an open idea.
 
 ## Done
 
@@ -319,6 +319,16 @@ this list keeps the recent decisions only.
   fallback can turn it into intervals. The demo story now carries one fartlek
   session (week 20), and a demo test checks the method row.
 
+- **Season and illness bands.** The volume and load charts shade stored
+  seasons behind the data, with a quiet label at each band start and the
+  period and dates in the hover; recovery shades illness periods on every
+  panel, and a one-day period is a thin band. Bands clamp to the visible
+  range and leave a chart unchanged without periods. Period reports print a
+  `Seasons` table and the illness days inside the range. The demo writes
+  three seasons and two illness ranges (the story's injury and a recent
+  cold). The pace/HR scatter stays unshaded because its x-axis is pace; item
+  14 holds the idea.
+
 ## Bugs
 
 _None._
@@ -326,16 +336,17 @@ _None._
 ## Next
 
 Schema v12-v16 moved the data under several items, so the picture changed:
-5's threshold trend is reports-only, and 2's weather half landed. What
-still needs core first: max HR and elevation on `Activity` (repository
-query and model drop them; items 2 and 6), the per-activity zone config ids
-(item 5's zone normalization), devices (1), routes (3), wellness extras (4)
-and social titles (7). Item 13 has its data (`event_activity_links`, schema
-v21), item 10's illness ranges are stored now and it resumes here, and 14's
-series needs the lab gate in root item 31. Item 12 stays parked on its
-page-coverage cost, 11 is recurring upkeep. The dashboard polish pass is
-finished. The efficiency floor, the planned-event page, the streaks report
-and the collapsible lists landed here.
+5's threshold trend is reports-only, 2's weather half landed and the
+season/illness bands landed. What still needs core first: max HR and
+elevation on `Activity`
+(repository query and model drop them; items 2 and 6), the per-activity zone
+config ids (item 5's zone normalization), devices (1), routes (3), wellness
+extras (4) and social titles (7). Item 12 has its data
+(`event_activity_links`, schema v21); 13's series needs the lab gate in root
+item 31. Item 11 stays parked on its page-coverage cost, 10 is recurring
+upkeep, and 14 is an open idea. The dashboard polish pass is finished. The
+efficiency floor, the planned-event page, the streaks report, the collapsible
+lists and the season/illness bands landed here.
 
 1. **Device timeline.** Depends on the root device registry. Add a device
    timeline (which watch/computer recorded when, with activity counts), mark
@@ -389,38 +400,14 @@ and the collapsible lists landed here.
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-10. **Season and illness bands.** `training_periods` is stored (schema v18: 3
-    seasons, 25 illness ranges, 4 notes), and the recompute keeps the source's
-    inclusive `end_date_local` (the Feb–Mar 2026 thyroid episode is 2026-02-08
-    → 2026-03-09). The illness-range fix has landed, so this item resumes here;
-    the shading still handles a one-day period as a thin line.
-    - **Chart**: one shared helper shades seasons on the volume and load charts
-      with a quiet label at each visible band start, and illness periods on
-      recovery and the analysis pace/HR chart (which carries the efficiency
-      lines), all behind the data; a one-day period draws as a thin line. Hover
-      names the period and its dates.
-    - **Not on Compare**: that chart overlays years on a reference-year axis, so
-      real season dates cannot be placed there. Leave it out; volume, load and
-      the report table carry the context.
-    - **Report**: a `Seasons` table in the period report (label, kind,
-      start–end or ongoing, days) and the illness days inside the range.
-    - **Policy**: shade only, never exclude illness from aggregates; the
-      efficiency card makes the baseline shift the signal, not noise to remove.
-    - **Demo**: write three seasons and a couple of illness ranges (one
-      multi-day, e.g. the story's injury) through `upsert_training_period`, so
-      bands and the table are exercised.
-    - **Tests**: visible-range filtering, ranged versus one-day rendering,
-      labels, the seasons table, no periods leaving a chart unchanged, and demo
-      coverage.
-
-11. **Periodic demo review.** Recurring upkeep, not a feature: at each
+10. **Periodic demo review.** Recurring upkeep, not a feature: at each
     release tag and schema bump, re-read the reports against the demo
     athlete's story — does every tab still show the era it describes, do new
     fields have demo data, and do the race times, workout paces and VO2max
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
-12. **Click a point to open its activity.** The charts are the place an outlier
+11. **Click a point to open its activity.** The charts are the place an outlier
     is noticed, but the activity page is only reachable from the activities
     table, so inspecting a strange pace/HR point means searching for the date
     by hand. Make single-activity points clickable.
@@ -458,7 +445,7 @@ and the collapsible lists landed here.
       scatter and subT panels link to it); races and PB steps open the
       existing `race/<id>.html` instead, which adds no pages.
 
-13. **Calendar view** (idea). A month grid where each day carries that day's
+12. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -480,7 +467,7 @@ and the collapsible lists landed here.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-14. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
+13. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
     every long run is still invisible to the trend, because the steady
     aggregate stops at 75 min (root item 31).
     - **All-runs series**: only after the lab passes it — a second labelled line
@@ -489,6 +476,13 @@ and the collapsible lists landed here.
     - **Card**: the efficiency card gains the second series.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
+
+14. **Illness on the pace/HR scatter** (idea). That chart plots pace against
+    heart rate, so a dated band cannot be shaded behind it. Marking the runs
+    inside illness periods is the alternative — a ring, a muted marker or a
+    hover note — but the encoding is open: the scatter already carries
+    category symbols, steady outlines and efficiency lines, so the extra
+    layer must stay quiet. The time-axis charts are shaded (item 10).
 
 ## Tests and docs
 
@@ -526,7 +520,10 @@ Covered now:
 - newest-first periods in the Compare tables and the subT blocks, the
   Overview page no longer carrying the planned report, the per-year
   efficiency lines (values, pale-run contrast, and the no-steady-run case),
-  the analysis charts' planned traces, and the collapsible Markdown tables.
+  the analysis charts' planned traces, and the collapsible Markdown tables;
+- training-period bands: visible-range clamping, one-day width, seasons on
+  volume/load, illness on every recovery panel, no periods leaving a chart
+  unchanged, the Seasons table and illness days, and the demo's periods.
 
 New work should add:
 

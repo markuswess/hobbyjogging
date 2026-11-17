@@ -395,6 +395,7 @@ def build_dashboard(
             include_review=include_review,
             points=recovery,
             baseline_points=baseline_points,
+            periods=source.training_periods(),
             report_html=recovery_html,
             start=recovery_start,
             end=today,

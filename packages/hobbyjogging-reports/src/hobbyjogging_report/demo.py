@@ -70,6 +70,7 @@ class DemoSummary:
     wellness_days: int
     events: int
     equipment: int
+    periods: int
 
 
 def generate_demo_database(
@@ -129,6 +130,7 @@ def generate_demo_database(
         wellness_days=result["wellness_days"],
         events=result["events"],
         equipment=result["equipment"],
+        periods=result["periods"],
     )
 
 
@@ -144,6 +146,7 @@ def _write_demo(
     activities = _write_activities(writer, rng, start, today)
     _write_wellness(writer, activities, start, today, rng)
     events = _write_events(writer, activities, today)
+    periods = _write_periods(writer, start, today)
 
     if with_review_items:
         _write_review_items(writer, activities)
@@ -153,7 +156,71 @@ def _write_demo(
         "wellness_days": (today - start).days + 1,
         "events": events,
         "equipment": equipment,
+        "periods": periods,
     }
+
+
+_DEMO_SEASONS = (
+    (0, 30 * 7 - 1, "Base and classics"),
+    (30 * 7, 60 * 7 - 1, "Marathon build"),
+    (60 * 7, None, "Norwegian block"),
+)
+
+
+def _write_periods(writer, start: date, today: date) -> int:
+    """Write the story's seasons and illness ranges as manual periods."""
+    written = 0
+
+    for index, (first, last, label) in enumerate(_DEMO_SEASONS):
+        start_date = start + timedelta(days=first)
+
+        if start_date > today:
+            continue
+
+        end_date = (
+            start + timedelta(days=last) if last is not None else None
+        )
+
+        if end_date is not None and end_date > today:
+            end_date = None
+
+        writer.upsert_training_period(
+            f"demo:season:{index}",
+            kind="season",
+            label=label,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat() if end_date else None,
+        )
+        written += 1
+
+    injury_start = start + timedelta(days=_INJURY_DAYS.start)
+    injury_end = start + timedelta(days=_INJURY_DAYS.stop - 1)
+
+    if injury_start <= today:
+        writer.upsert_training_period(
+            "demo:illness:injury",
+            kind="illness",
+            label="Injury",
+            start_date=injury_start.isoformat(),
+            end_date=min(injury_end, today).isoformat(),
+        )
+        written += 1
+
+    # A recent cold keeps an illness band inside the recovery window.
+    cold_start = today - timedelta(days=120)
+    cold_end = cold_start + timedelta(days=4)
+
+    if cold_start >= start:
+        writer.upsert_training_period(
+            "demo:illness:cold",
+            kind="illness",
+            label="Chest cold",
+            start_date=cold_start.isoformat(),
+            end_date=cold_end.isoformat(),
+        )
+        written += 1
+
+    return written
 
 
 def _months_before(day: date, months: int) -> date:

@@ -66,7 +66,9 @@ Pages:
   week), and weekly planned load stacked on the current week's actual bar.
   Each week
   stacks hard done, hard planned, easy done, easy planned from the bottom up.
-  Running time reads in hours on the left; the hard-running averages sit on a
+  Season bands shade the volume and load charts behind the bars, with a quiet
+  label at each band start and the dates in the hover. Running time reads in
+  hours on the left; the hard-running averages sit on a
   right-hand axis in minutes per week that mirrors the hour ticks (2 h =
   120 min), so the lines and bars keep one vertical scale. The total, hard
   and zone averages project through the plan (hard time from the planned
@@ -114,8 +116,8 @@ Pages:
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
   HR, and sleep as interactive plotly panels over the last 182 days
-  (`--recovery-days`) with 7-day averages, readiness bands, and a
-  data-completeness note.
+  (`--recovery-days`) with 7-day averages, readiness bands, illness periods
+  shaded behind each panel, and a data-completeness note.
 - `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML
   with a table of contents. The overview, daily, planned, recovery, NSA, and
   compare reports are embedded on their own pages, so there is no separate
@@ -244,7 +246,9 @@ stay compact (`1h02`).
 - **all** — Daily + weekly + monthly + yearly in one report.
 - **report** — A summary report for an arbitrary inclusive date range
   (`--days`, `--from`, `--to`), with the same weighted steady efficiency
-  total and category column.
+  total and category column. Period reports also print a `Seasons` table
+  (label, kind, dates or ongoing, days inside the range) and the illness
+  days inside the range.
 - **subt-report** — All subT and LT1 sessions in a range, grouped by
   short/medium/long/LT1. Shows work-block and summary tables.
 - **races** — Race results, personal bests per distance bucket (5k, 10k,
