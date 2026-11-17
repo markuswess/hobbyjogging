@@ -486,6 +486,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Shoes", gear)
             self.assertIn("15", gear)
             self.assertIn("Retirement candidates", gear)
+            self.assertIn("Devices", gear)
+            self.assertIn("No recording devices", gear)
             self.assertIn("Plotly.newPlot", gear)
             self.assertIn("plotly.min.js", gear)
 

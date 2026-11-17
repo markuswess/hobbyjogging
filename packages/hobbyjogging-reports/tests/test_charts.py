@@ -17,6 +17,7 @@ from hobbyjogging_report.charts import (
     plot_races,
     plot_compare_pace_hr,
     plot_compare_vo2max,
+    plot_devices,
     plot_load,
     plot_pace_hr,
     plot_overview,
@@ -28,6 +29,7 @@ from hobbyjogging_report.charts import (
     plot_volume,
 )
 from hobbyjogging_report.analysis import (
+    DeviceStat,
     EquipmentStat,
     RacePacePoint,
     ThresholdPoint,
@@ -38,7 +40,7 @@ from hobbyjogging_report.analysis import (
     riegel_reference,
     riegel_time,
 )
-from hobbyjogging_core.model import Activity, Equipment
+from hobbyjogging_core.model import Activity, Device, Equipment
 from hobbyjogging_core.model import ActivityWeather, TrainingPeriod
 from hobbyjogging_report.model import (
     DistancePoint,
@@ -1813,6 +1815,33 @@ class ThresholdChartTests(unittest.TestCase):
         self.assertIn("3:42", html)
 
 
+class DeviceChartTests(unittest.TestCase):
+
+    def test_device_timeline_marks_periods_and_counts(self):
+        stats = [
+            DeviceStat(
+                device=Device(id="w", name="Watch"),
+                activities=12,
+                first_used=D,
+                last_used=date(2026, 1, 1),
+            ),
+            DeviceStat(
+                device=Device(id="b", name="Bike"),
+                activities=3,
+                first_used=date(2026, 1, 1),
+            ),
+        ]
+
+        html = plot_devices(stats, "", as_html=True)
+        data = plotly_data(html)
+        traces = [trace for trace in data if trace.get("type") == "scatter"]
+
+        self.assertEqual(2, len(traces))
+        self.assertEqual(["Watch", "Bike"], [trace["y"][0] for trace in traces])
+        self.assertIn("12 activities", html)
+        self.assertIn("2026-01-01", html)
+
+
 class CompareVo2maxChartTests(unittest.TestCase):
 
     def test_raw_values_are_grouped_by_year_without_averaging(self):
@@ -2453,6 +2482,27 @@ class RecoveryChartTests(unittest.TestCase):
 
 
 class Vo2maxChartTests(unittest.TestCase):
+
+    def test_device_changes_are_marked_on_the_chart(self):
+        points = [
+            Vo2maxPoint(D, 48.0, 48.0, 48.0),
+            Vo2maxPoint(date(2026, 1, 1), 50.0, 49.0, 49.0),
+        ]
+
+        html = plot_vo2max(
+            points,
+            "",
+            as_html=True,
+            device_changes=[
+                (D, "Forerunner 645"),
+                (date(2027, 1, 1), "Outside"),
+            ],
+        )
+
+        self.assertIn("Forerunner 645", html)
+        self.assertNotIn("Outside", html)
+        self.assertIn('"type":"line"', html)
+
 
     def test_vo2max_chart_writes_file(self):
         points = [

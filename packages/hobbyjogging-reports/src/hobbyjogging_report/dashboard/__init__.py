@@ -481,6 +481,9 @@ def build_dashboard(
     )
 
     day_context: dict[date, tuple[list[Event], WellnessDay | None]] = {}
+    device_by_id = {
+        device.id: device for device in source.devices()
+    }
 
     for activity in detail_activities.values():
         try:
@@ -512,6 +515,7 @@ def build_dashboard(
                 resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
                 weather=source.activity_weather(activity.id),
+                device=device_by_id.get(activity.device_id),
                 planned_hrefs={
                     event.id: f"../event/{event_filename(event.id)}"
                     for event in day_events

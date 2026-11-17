@@ -8,6 +8,7 @@ from hobbyjogging_core.datasource import DataSource
 
 from .analysis import (
     DEFAULT_SHOE_TARGET_M,
+    device_usage,
     equipment_coverage,
     equipment_usage,
     group_equipment,
@@ -77,6 +78,7 @@ def equipment_report(
         return "\n".join(lines)
 
     groups = group_equipment(stats)
+    devices = device_usage(source.devices(), activities)
     active = sum(1 for stat in stats if not stat.retired)
     counts = ", ".join(
         f"{len(items)} "
@@ -109,6 +111,23 @@ def equipment_report(
                 f"{_last_used(stat)} | {_target(stat)} | {_wear(stat)} | "
                 f"{'retired' if stat.retired else 'active'} | "
                 f"{table_text(stat.equipment.notes) or '-'} |"
+            )
+
+    if devices:
+        lines.extend([
+            "",
+            "## Devices",
+            "",
+            "| Device | Product | Activities | First used | Last used | Status |",
+            "|---|---|---:|---|---|---|",
+        ])
+
+        for stat in devices:
+            lines.append(
+                f"| {table_text(stat.label)} | {table_text(stat.product)} | "
+                f"{stat.activities} | {stat.first_used or '-'} | "
+                f"{stat.last_used or '-'} | "
+                f"{'retired' if stat.retired else 'active'} |"
             )
 
     lines.extend([

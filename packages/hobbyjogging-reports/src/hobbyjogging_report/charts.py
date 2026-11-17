@@ -19,6 +19,7 @@ warnings.filterwarnings(
 
 from .analysis import (
     EFFICIENCY_UNIT,
+    DeviceStat,
     EquipmentStat,
     group_equipment,
     PbProgression,
@@ -1801,8 +1802,13 @@ def plot_vo2max(
     output: str,
     title: str = "Garmin running VO2max",
     as_html: bool = False,
+    device_changes: list[tuple[date, str]] | None = None,
 ) -> str:
-    """Daily Garmin VO2max dots with 7- and 42-day EWMA lines."""
+    """Daily Garmin VO2max dots with 7- and 42-day EWMA lines.
+
+    ``device_changes`` marks the dates where a recording device started, so a
+    step can be attributed to the watch.
+    """
     _require_data(points)
     measured = [point for point in points if point.value is not None]
     figure = go.Figure()
@@ -1833,6 +1839,31 @@ def plot_vo2max(
             name="42-day avg",
         )
     )
+    first_day = min(point.date for point in points)
+    last_day = max(point.date for point in points)
+
+    for day, label in device_changes or []:
+        if not (first_day <= day <= last_day):
+            continue
+
+        figure.add_vline(
+            x=day,
+            line_width=1,
+            line_dash="dot",
+            line_color="#7f7f7f",
+        )
+        # Plotly's vline annotation cannot average a date axis here.
+        figure.add_annotation(
+            x=day,
+            yref="paper",
+            y=1.0,
+            text=label,
+            showarrow=False,
+            xanchor="left",
+            yanchor="bottom",
+            font={"size": 10, "color": "#6b7280"},
+        )
+
     _base_layout(
         figure,
         title=title,
@@ -2806,6 +2837,66 @@ def plot_thresholds(
         as_html=as_html,
         width=1650,
         height=1200,
+    )
+
+
+def plot_devices(
+    stats: list[DeviceStat],
+    output: str,
+    title: str = "Device timeline",
+    as_html: bool = False,
+) -> str:
+    """Horizontal timelines for the recording devices and their activity counts."""
+    _require_data(stats)
+    figure = go.Figure()
+
+    for stat in stats:
+        start = stat.start or stat.first_used
+        end = stat.end or stat.last_used
+
+        if start is None:
+            continue
+        if end is None or end < start:
+            end = start
+
+        period = (
+            f"{start} → {end}" if start != end else str(start)
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=[start, end],
+                y=[stat.label, stat.label],
+                mode="lines+markers",
+                line={"width": 12, "color": "#1f77b4"},
+                marker={"size": 6},
+                showlegend=False,
+                text=[period, period],
+                customdata=[
+                    f"{stat.activities} activities, "
+                    f"{stat.product}"
+                ] * 2,
+                hovertemplate=(
+                    "%{y}<br>%{text}<br>%{customdata}<extra></extra>"
+                ),
+            )
+        )
+
+    figure.update_xaxes(title_text="date")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=max(350, 70 * len(stats) + 180),
+        margin={"l": 60, "r": 30, "t": 70, "b": 100},
+        hovermode="closest",
+    )
+    _crosshair(figure)
+
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=900,
     )
 
 

@@ -100,10 +100,11 @@ Pages:
   legend. The efficiency chart drops years with
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
-- `activity/<id>.html` — the session report body (metrics, weather when it is
-  recorded, workout methods and targets, zone times, description, the raw
-  segment table, and subT/LT1 work reps), exactly as `reports.sh session`
-  renders it. Its planned block links to the day's event page.
+- `activity/<id>.html` — the session report body (metrics, weather and
+  recording device when recorded, workout methods and targets, zone times,
+  description, the raw segment table, and subT/LT1 work reps), exactly as
+  `reports.sh session` renders it. Its planned block links to the day's event
+  page.
 - `event/<id>.html` — one planned session: date, sport, planned time, distance
   and load, methods and targets, the planned zone distribution, and the
   description. When an activity matches the event by date and sport, the page
@@ -119,8 +120,9 @@ Pages:
   details.
 - `gear.html` (Gear) — gear mileage bars grouped and coloured by category
   (shoes, bikes, other) with target markers and faded retired bars, one table
-  section per category, per-year coverage with and without gear, and
-  retirement candidates grouped the same way.
+  section per category, per-year coverage with and without gear, a device
+  timeline with activity counts, and retirement candidates grouped the same
+  way.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
   HR, and sleep as interactive plotly panels over the last two years
@@ -302,7 +304,8 @@ stay compact (`1h02`).
 - **equipment** — Gear mileage and use from `equipment` →
   `activity_equipment` → activities: sessions, km, km/month, last used,
   target/wear and retirement candidates, split into shoes, bikes and other
-  sections. The chart groups and colours the same categories; the summary
+  sections, plus a recording-device table with active periods and activity
+  counts. The chart groups and colours the same categories; the summary
   keeps the overall and per-category counts. Shoes without
   `target_distance_m` use an 800 km default.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
@@ -371,7 +374,9 @@ stay compact (`1h02`).
   rounded away) so one extreme rep cannot flatten the panel; the hover keeps
   the full values.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
-  42-day exponentially weighted averages; last 365 days by default.
+  42-day exponentially weighted averages; last 365 days by default. Device
+  changes are marked with their start date, so a step is attributable to the
+  watch.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)

@@ -2,9 +2,9 @@
 
 Updated 2026-11-17.
 
-Current focus: routes, devices and wellness extras are now reports-ready;
-max HR and elevation still need core exposure, 11 is parked, 13 is behind the
-lab gate, and 14 is an open idea.
+Current focus: routes and wellness extras are now reports-ready; max HR and
+elevation still need core exposure, 10 is parked, 12 is behind the lab gate,
+and 13 is an open idea.
 
 ## Done
 
@@ -346,6 +346,13 @@ this list keeps the recent decisions only.
   counts plus the category counts, and the demo gained a bike and an other
   item.
 
+- **Device timeline.** The Gear tab and equipment report list every
+  recording device with its active period and activity count, plus a
+  timeline chart. `DatabaseSource.devices()` is exposed, the session report
+  adds a `- Device:` line, and the `vo2max` chart marks the first activity of
+  each device so a step is attributable. The demo writes three devices and
+  assigns every activity (rides to the Edge).
+
 - **Threshold trend.** The Compare tab gains a threshold chart from the run
   `athlete_thresholds` snapshots: LTHR and max HR as step lines, threshold
   pace on a reversed min/km axis (one line per snapshot period, carried to
@@ -369,49 +376,42 @@ _None._
 ## Next
 
 Schema v12-v21 moved the data under several items, so the picture changed:
-the threshold trend and the season/illness bands landed, and devices (schema
-v17), routes (v20) and the wellness extras (v19) are now exposed on
-`Activity`/`WellnessDay`, so those three are reports-only. What still needs
-core first: max HR and elevation on `Activity` (the repository query and
-model drop them; items 2 and 6), the per-activity zone config ids (item 5)
-and social titles (7). Item 12 has its data (`event_activity_links`, schema
-v21); 13's series needs the lab gate in root item 31. Item 11 stays parked on
-its page-coverage cost, 10 is recurring upkeep, and 14 is an open idea. The
+the threshold trend, the season/illness bands and the device timeline landed,
+and routes (v20) and the wellness extras (v19) are now exposed on
+`Activity`/`WellnessDay`, so those two are reports-only. What still needs core
+first: max HR and elevation on `Activity` (the repository query and model drop
+them; items 1 and 5), the per-activity zone config ids (item 4) and social
+titles (6). Item 11 has its data (`event_activity_links`, schema v21); 12's
+series needs the lab gate in root item 31. Item 10 stays parked on its
+page-coverage cost, 9 is recurring upkeep, and 13 is an open idea. The
 dashboard polish pass is finished. The efficiency floor, the planned-event
 page, the streaks report, the collapsible lists, the season/illness bands and
 the threshold trend landed here.
 
-1. **Device timeline.** Devices are stored (schema v17: 6 devices) and
-   `Activity.device_id` is exposed; only `DatabaseSource.devices()` needs
-   delegating. Add a device timeline (which watch/computer recorded when,
-   with activity counts), mark device changes on the VO2max chart so a step
-   is attributable to the watch, and add a `- Device:` line to the session
-   report.
-
-2. **Max HR in the reports.** Weather landed: the session report, both
+1. **Max HR in the reports.** Weather landed: the session report, both
    pace/HR scatters and the health coverage table use it. Max HR is stored
    (schema v12) but the repository's activity query and the `Activity` model
    drop it, so that exposure comes first; then the session line, the HR-zone
    checks, and the Max HR column beside weather in the coverage table.
 
-3. **Route grouping.** Group activities by route so pace, HR and efficiency
+2. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. The
    links are already on `Activity.routes` (`routes` + `activity_routes`,
    schema v20; 36 routes, 384 links); expose `DatabaseSource.routes()` for the
    full list, then build the grouping.
 
-4. **Wellness extras.** The columns are exposed on `WellnessDay` (schema v19:
+3. **Wellness extras.** The columns are exposed on `WellnessDay` (schema v19:
    weight, sleep score and quality, SpO2, steps, floors, CTL/ATL; readiness
    and stress are empty in the payloads), so this is reports-only: a
    readiness view and a weight trend.
 
-5. **Era-correct zone times.** Normalizing zone times through each
+4. **Era-correct zone times.** Normalizing zone times through each
    activity's own config needs that config id on the model first: the
    database column exists, but the repository query and `Activity` drop it.
    The threshold trend (LTHR/max-HR/threshold-pace chart, subT comparison and
    official race paces) has landed.
 
-6. **Elevation in the reports.** The columns landed (schema v12) but the
+5. **Elevation in the reports.** The columns landed (schema v12) but the
    repository's activity query and the `Activity` model drop
    `elevation_gain_m`/`elevation_loss_m`, so that exposure comes first. Then:
    climb per km in the session report and the activities list, a coarse
@@ -419,31 +419,31 @@ the threshold trend landed here.
    stream, so this is lap-level), trail suggestions from the ≥40 m/km
    evidence, and route difficulty on the dashboard.
 
-7. **Strava in the session report.** A `Strava: …` line with the title, the
+6. **Strava in the session report.** A `Strava: …` line with the title, the
    description as an annotation, and a link to the activity. Depends on the
    root Strava item and on the notes/description decision in root item 1.
 
-8. **Metrics tab.** Render the analysis catalogue from root item 24 as a
+7. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
    races, wellness, tools), one anchor per entry, formulas as plain text or
    code so the site stays self-contained. If the catalogue is generated, the
    tab renders the same source the Markdown does.
 
-9. **Coaching tab.** Render the latest coaching note and an index of past
+8. **Coaching tab.** Render the latest coaching note and an index of past
    ones, through the same Markdown-to-HTML path as Docs, with front matter
    turned into a header (date, period, focus) and the decision sections
    linked. Must be empty — not leaking — in the public demo: exclude the
    `coaching/` directory when a demo label is set, or ship a synthetic
    example note. See root item 25.
 
-10. **Periodic demo review.** Recurring upkeep, not a feature: at each
+9. **Periodic demo review.** Recurring upkeep, not a feature: at each
     release tag and schema bump, re-read the reports against the demo
     athlete's story — does every tab still show the era it describes, do new
     fields have demo data, and do the race times, workout paces and VO2max
     still agree? Keep the seed fixed so the output stays diffable. See root
     item 26.
 
-11. **Click a point to open its activity.** The charts are the place an outlier
+10. **Click a point to open its activity.** The charts are the place an outlier
     is noticed, but the activity page is only reachable from the activities
     table, so inspecting a strange pace/HR point means searching for the date
     by hand. Make single-activity points clickable.
@@ -481,7 +481,7 @@ the threshold trend landed here.
       scatter and subT panels link to it); races and PB steps open the
       existing `race/<id>.html` instead, which adds no pages.
 
-12. **Calendar view** (idea). A month grid where each day carries that day's
+11. **Calendar view** (idea). A month grid where each day carries that day's
     sessions — completed, planned, missed — plus races, illness and season
     shading, and optionally wellness markers. The activities tab and the
     overview are chronological but not spatial; a calendar is how the shape of
@@ -503,7 +503,7 @@ the threshold trend landed here.
       (they crowd it); whether it complements or replaces the activities tab;
       and how it degrades on a phone.
 
-13. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
+12. **Efficiency scope: an all-runs series.** The floor landed at 40 min, but
     every long run is still invisible to the trend, because the steady
     aggregate stops at 75 min (root item 31).
     - **All-runs series**: only after the lab passes it — a second labelled line
@@ -513,7 +513,7 @@ the threshold trend landed here.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
 
-14. **Illness on the pace/HR scatter** (idea). That chart plots pace against
+13. **Illness on the pace/HR scatter** (idea). That chart plots pace against
     heart rate, so a dated band cannot be shaded behind it. Marking the runs
     inside illness periods is the alternative — a ring, a muted marker or a
     hover note — but the encoding is open: the scatter already carries
@@ -568,7 +568,9 @@ Covered now:
   and other items;
 - thresholds: the run snapshot series, the pace-at lookup, the chart traces
   and official race markers, the subT `Δ threshold` column, and the demo's
-  snapshots and official results.
+  snapshots and official results;
+- devices: usage counts and periods, change dates, the session `- Device:`
+  line, the VO2max markers, the timeline chart and the demo's devices.
 
 New work should add:
 

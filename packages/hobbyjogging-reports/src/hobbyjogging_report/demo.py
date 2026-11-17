@@ -143,6 +143,7 @@ def _write_demo(
     with_review_items: bool,
 ) -> dict[str, int]:
     equipment = _write_equipment(writer, start, today)
+    _write_devices(writer, start, today)
     activities = _write_activities(writer, rng, start, today)
     _write_wellness(writer, activities, start, today, rng)
     events = _write_events(writer, activities, today)
@@ -167,6 +168,43 @@ _DEMO_SEASONS = (
     (30 * 7, 60 * 7 - 1, "Marathon build"),
     (60 * 7, None, "Norwegian block"),
 )
+
+
+def _write_devices(writer, start: date, today: date) -> None:
+    """Write a small Garmin device history for the story."""
+    mid = start + timedelta(days=int(max((today - start).days, 1) * 0.45))
+
+    for device_id, name, product, acquired, retired in (
+        (
+            "demo-fr645",
+            "Forerunner 645",
+            "Forerunner 645",
+            start - timedelta(days=100),
+            mid,
+        ),
+        (
+            "demo-enduro",
+            "Enduro",
+            "Enduro",
+            mid,
+            None,
+        ),
+        (
+            "demo-edge",
+            "Edge 540",
+            "Edge 540",
+            start - timedelta(days=100),
+            None,
+        ),
+    ):
+        writer.upsert_device(
+            device_id,
+            manufacturer="Garmin",
+            product=product,
+            name=name,
+            acquired_on=acquired,
+            retired_on=retired,
+        )
 
 
 def _write_thresholds(writer, start: date, today: date) -> None:
@@ -477,6 +515,15 @@ def _write_activities(
     monday = _monday(start)
     start_monday = monday
     shoe_periods = _shoe_periods(start, today)
+    device_mid = start + timedelta(
+        days=int(max((today - start).days, 1) * 0.45)
+    )
+
+    def device_for(day: date, sport: str) -> str:
+        if sport == "ride":
+            return "demo-edge"
+        return "demo-fr645" if day < device_mid else "demo-enduro"
+
     race_days = {
         start_monday + timedelta(weeks=week, days=6): (name, distance_m)
         for week, name, distance_m in _RACES
@@ -547,6 +594,10 @@ def _write_activities(
                 shoe_periods=shoe_periods,
                 slot=slot,
             )
+            activity["values"]["device_id"] = device_for(
+                day,
+                activity["sport"],
+            )
             _write_activity(writer, activity)
             generated.append(activity)
 
@@ -573,6 +624,7 @@ def _write_activities(
             shoe_periods=shoe_periods,
             vo2max_value=_vo2max_value(day, start),
         )
+        activity["values"]["device_id"] = device_for(day, "run")
         _write_activity(writer, activity)
         generated.append(activity)
 

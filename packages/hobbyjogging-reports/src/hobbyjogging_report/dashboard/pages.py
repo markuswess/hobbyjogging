@@ -687,6 +687,7 @@ def gear_page(
         + card("Mileage", section.chart_html)
         + card("Gear", section.table_html)
         + card("Coverage", section.coverage_html)
+        + card("Devices", section.devices_html)
         + card("Retirement candidates", section.candidates_html)
     )
 

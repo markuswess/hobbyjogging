@@ -11,6 +11,7 @@ from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
     AthleteThreshold,
+    Device,
     Equipment,
     Event,
     Interval,
@@ -81,6 +82,9 @@ class DatabaseSource:
 
     def athlete_thresholds(self) -> list[AthleteThreshold]:
         return self.repository.athlete_thresholds()
+
+    def devices(self) -> list[Device]:
+        return self.repository.devices()
 
     def race_results(self) -> list[RaceResult]:
         return self.repository.race_results()

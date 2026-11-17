@@ -9,12 +9,13 @@ from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
     DEFAULT_SHOE_TARGET_M,
+    device_usage,
     equipment_coverage,
     equipment_usage,
     group_equipment,
     retirement_candidates,
 )
-from ..charts import plot_equipment
+from ..charts import plot_devices, plot_equipment
 from ..command_support import activity_start
 from ..html import esc, table
 from ..review import exclude_review
@@ -31,6 +32,7 @@ class GearSection:
     chart_html: str
     table_html: str
     coverage_html: str
+    devices_html: str
     candidates_html: str
 
 
@@ -43,6 +45,36 @@ def _target_cell(stat) -> str:
         return "-"
     value = f"{stat.target_distance_m / 1000:,.0f} km"
     return f"{value}*" if stat.target_is_default else value
+
+
+def _devices_html(device_stats) -> str:
+    if not device_stats:
+        return '<p class="muted">No recording devices.</p>'
+
+    rows = [
+        [
+            esc(stat.label),
+            esc(stat.product),
+            str(stat.activities),
+            esc(str(stat.first_used or "-")),
+            esc(str(stat.last_used or "-")),
+            "retired" if stat.retired else "active",
+        ]
+        for stat in device_stats
+    ]
+
+    return plot_devices(
+        device_stats,
+        "",
+        as_html=True,
+    ) + table(
+        [
+            "Device", "Product", "Activities", "First used",
+            "Last used", "Status",
+        ],
+        rows,
+        numeric=(2,),
+    )
 
 
 def build_gear_section(
@@ -60,6 +92,8 @@ def build_gear_section(
     stats = equipment_usage(equipment, activities)
     coverage = equipment_coverage(activities)
     candidates = retirement_candidates(stats, today)
+    devices = source.devices()
+    device_stats = device_usage(devices, activities)
 
     if not stats:
         return GearSection(
@@ -67,6 +101,7 @@ def build_gear_section(
             chart_html=NO_CHART,
             table_html=NO_GEAR,
             coverage_html="",
+            devices_html=_devices_html(device_stats),
             candidates_html="",
         )
 
@@ -134,6 +169,8 @@ def build_gear_section(
         numeric=(1, 2),
     )
 
+    devices_html = _devices_html(device_stats)
+
     candidates_html = ""
 
     if candidates:
@@ -171,5 +208,6 @@ def build_gear_section(
         ),
         table_html=table_html,
         coverage_html=coverage_html,
+        devices_html=devices_html,
         candidates_html=candidates_html,
     )

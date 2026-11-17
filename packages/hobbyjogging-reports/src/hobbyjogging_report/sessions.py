@@ -141,6 +141,9 @@ def session_report(
     day_wellness = source.wellness(day, day) if day else []
     wellness_day = day_wellness[0] if day_wellness else None
     open_review = source.review_items(status="open") if activities else []
+    devices = {
+        device.id: device for device in source.devices()
+    }
 
     for activity in activities:
         try:
@@ -160,6 +163,7 @@ def session_report(
                 resting_hr_estimated=baseline.estimated(activity.date),
                 planned_events=day_events,
                 weather=source.activity_weather(activity.id),
+                device=devices.get(activity.device_id),
                 wellness=wellness_day,
                 review_items=[
                     item

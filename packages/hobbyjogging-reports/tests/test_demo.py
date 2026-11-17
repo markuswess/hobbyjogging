@@ -137,6 +137,27 @@ class DemoGeneratorTests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_demo_has_devices_on_the_activities(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = generate_demo_database(
+                Path(tmp) / "demo.db",
+                today=TODAY,
+            )
+            connection = open_database(summary.path)
+            try:
+                devices = connection.execute(
+                    "SELECT COUNT(*) FROM devices"
+                ).fetchone()[0]
+                assigned = connection.execute(
+                    "SELECT COUNT(*) FROM activities "
+                    "WHERE device_id IS NOT NULL AND device_id != ''"
+                ).fetchone()[0]
+            finally:
+                connection.close()
+
+            self.assertEqual(3, devices)
+            self.assertGreater(assigned, 1000)
+
     def test_demo_has_thresholds_and_official_race_results(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = generate_demo_database(
@@ -654,7 +675,15 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Equivalent times",
                     "PB pace",
                 ),
-                "gear.html": ("Gear", "Shoes", "Bikes", "Other", "Coverage"),
+                "gear.html": (
+                    "Gear",
+                    "Shoes",
+                    "Bikes",
+                    "Other",
+                    "Coverage",
+                    "Devices",
+                    "Enduro",
+                ),
                 "docs.html": ("Reports guide", "hobbyjogging-reports"),
                 "lab.html": (
                     "Lab session ground rules",
@@ -714,6 +743,7 @@ class DemoGeneratorTests(unittest.TestCase):
                 for page in (site / "activity").glob("*.html")
             ]
             self.assertTrue(any("Weather:" in text for text in details))
+            self.assertTrue(any("Device:" in text for text in details))
 
             # The public demo must not publish the lab notebook, the experiment
             # scripts, or the metric registry: they carry this athlete's own

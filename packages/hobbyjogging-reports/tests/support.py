@@ -60,6 +60,7 @@ class FakeSource:
         periods=None,
         thresholds=None,
         race_results=None,
+        devices=None,
     ):
         self._activities = list(activities or [])
         self._equipment = list(equipment or [])
@@ -73,6 +74,7 @@ class FakeSource:
         self._periods = list(periods or [])
         self._thresholds = list(thresholds or [])
         self._race_results = list(race_results or [])
+        self._devices = list(devices or [])
 
     @staticmethod
     def _in_range(items, start, end):
@@ -114,6 +116,9 @@ class FakeSource:
 
     def athlete_thresholds(self):
         return list(self._thresholds)
+
+    def devices(self):
+        return list(self._devices)
 
     def race_results(self):
         return list(self._race_results)

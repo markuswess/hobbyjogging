@@ -8,6 +8,7 @@ from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import (
     Activity,
     ActivityWeather,
+    Device,
     Event,
     Interval,
     Lap,
@@ -782,6 +783,7 @@ def format_session_activity(
     planned_events: list[Event] | None = None,
     planned_hrefs: dict[str, str] | None = None,
     weather: ActivityWeather | None = None,
+    device: Device | None = None,
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
@@ -805,6 +807,16 @@ def format_session_activity(
 
     if conditions:
         lines.append(f"- Weather: {conditions}")
+
+    if device is not None:
+        parts = [
+            part for part in (device.name, device.product) if part
+        ]
+
+        if len(parts) == 2 and parts[0] == parts[1]:
+            parts = parts[:1]
+
+        lines.append(f"- Device: {' · '.join(parts) or device.id}")
 
     if links is not None:
         if links.intervals:

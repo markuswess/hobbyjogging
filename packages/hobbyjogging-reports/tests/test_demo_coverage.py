@@ -61,7 +61,12 @@ class DemoCoverageTests(unittest.TestCase):
                     self.assertIn(marker, races)
 
                 equipment = equipment_report(source, today=TODAY)
-                for marker in ("# Gear", "## Shoes", "## Coverage"):
+                for marker in (
+                    "# Gear",
+                    "## Shoes",
+                    "## Devices",
+                    "## Coverage",
+                ):
                     self.assertIn(marker, equipment)
 
                 streaks = streaks_report(source, today=TODAY)

@@ -16,6 +16,11 @@ from .baseline import (
     robust_baseline,
     robust_baselines,
 )
+from .devices import (
+    DeviceStat,
+    device_changes,
+    device_usage,
+)
 from .equipment import (
     EQUIPMENT_CATEGORY_LABELS,
     EQUIPMENT_CATEGORY_ORDER,
@@ -179,6 +184,7 @@ __all__ = [
     "BASELINE_WINDOW_DAYS",
     "DEFAULT_ZONE_COUNT",
     "DEFAULT_SHOE_TARGET_M",
+    "DeviceStat",
     "EQUIPMENT_CATEGORY_LABELS",
     "EQUIPMENT_CATEGORY_ORDER",
     "DEFAULT_STREAK_LIMIT",
@@ -247,6 +253,8 @@ __all__ = [
     "distance_averages",
     "event_zone_seconds",
     "equipment_coverage",
+    "device_changes",
+    "device_usage",
     "equipment_usage",
     "group_equipment",
     "equivalent_times",

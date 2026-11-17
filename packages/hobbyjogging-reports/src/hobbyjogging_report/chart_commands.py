@@ -367,7 +367,13 @@ def run_vo2max_chart(
     include_review: bool = False,
 ) -> None:
     """Render Garmin running VO2max with 7- and 42-day EWMA lines."""
-    from .analysis import RUN_TYPES, VO2MAX_WARMUP_DAYS, vo2max_points
+    from .analysis import (
+        RUN_TYPES,
+        VO2MAX_WARMUP_DAYS,
+        device_changes,
+        device_usage,
+        vo2max_points,
+    )
     from .charts import plot_vo2max
 
     display_activities, activities = warmup_reviewed(
@@ -391,8 +397,13 @@ def run_vo2max_chart(
     )
 
     points = vo2max_points(activities, start, end)
+    changes = device_changes(device_usage(source.devices(), activities))
 
-    path = plot_vo2max(points, output=output)
+    path = plot_vo2max(
+        points,
+        output=output,
+        device_changes=changes,
+    )
     print(path)
 
 
