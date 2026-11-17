@@ -676,6 +676,7 @@ class DemoGeneratorTests(unittest.TestCase):
 
             recovery = (site / "recovery.html").read_text()
             self.assertIn("Chest cold:", recovery)
+            self.assertIn("Sickness report", recovery)
 
             details = [
                 page.read_text()

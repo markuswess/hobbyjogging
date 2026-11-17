@@ -297,6 +297,8 @@ class DashboardBuildTests(unittest.TestCase):
             )
             self.assertIn("Recovery Report — Moving Averages", recovery)
             self.assertIn("7/42/182-day averages ending 2026-11-09", recovery)
+            self.assertIn("Sickness report", recovery)
+            self.assertIn("No illness periods in this range", recovery)
             self.assertIn("7-day avg", recovery)
             self.assertIn("HRV", recovery)
             self.assertIn("58 ms", recovery)

@@ -29,6 +29,7 @@ from ..model import AverageWindows
 from ..overview import overview_report
 from ..race_report import race_report
 from ..recovery_report import WINDOWS as RECOVERY_WINDOWS, recovery_report
+from ..sickness_report import DEFAULT_SICKNESS_DAYS, sickness_report
 from ..review import exclude_review
 from .charts import plotly_js
 from .analysis import build_analysis_section
@@ -217,6 +218,14 @@ def build_dashboard(
         recovery_report(source, today=today),
         demote=1,
     )
+    sickness_html = markdown_to_html(
+        sickness_report(
+            source,
+            start=today - timedelta(days=DEFAULT_SICKNESS_DAYS),
+            end=today,
+        ),
+        demote=1,
+    )
     mark("recovery", phase)
 
     phase = perf_counter()
@@ -397,6 +406,7 @@ def build_dashboard(
             baseline_points=baseline_points,
             periods=source.training_periods(),
             report_html=recovery_html,
+            sickness_html=sickness_html,
             start=recovery_start,
             end=today,
         ),

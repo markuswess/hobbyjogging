@@ -322,6 +322,7 @@ def recovery_page(
     end: date,
     baseline_points: list[RecoveryPoint] | None = None,
     periods=None,
+    sickness_html: str = "",
 ) -> str:
     if points:
         chart_html = chart(
@@ -344,6 +345,7 @@ def recovery_page(
     body = (
         card(None, f'<div class="report">{report_html}</div>')
         + card("Recovery trends", chart_html)
+        + card(None, f'<div class="report">{sickness_html}</div>')
         + card(
             "Data completeness",
             f'<p class="muted">{esc(completeness)}</p>'
