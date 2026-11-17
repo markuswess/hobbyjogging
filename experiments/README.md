@@ -71,7 +71,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Efficiency frontier (best-run envelope) | Does the best-case pace/HR envelope track fitness more consistently than the average efficiency? | rejected | — | 2026-11-13 |
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
-| Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | candidate | — | 2026-11-16 |
+| Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | parked | `threshold_pace.py` | 2026-11-17 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (needs Runalyze race results and links) | blocked | — | 2026-11-17 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (needs more races spanning the distances; Runalyze results pending) | blocked | — | 2026-11-17 |
@@ -116,6 +116,13 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   not only a mix artifact, but the index is not clean enough to promote.
   Revisit with tempo/threshold efforts that cover the reference HR, or with
   streams. Evidence: `experiments/aerobic_threshold.py`.
+- **Threshold pace trend (athlete_thresholds)** — tested: the setting moved
+  3:38 → 3:26 min/km (2019–2026), 10 of 13 changes occurred within ±14 days of
+  a race or hard session, and quarterly efficiency correlates +0.67 with
+  threshold speed. But measured threshold-target work reps are 15–22 s/km
+  slower (HR ~164 vs LTHR 174), only four setting intervals have ≥3 measured
+  efforts, and the pre-registered criteria call it mixed. Revisit with official
+  race results or efforts at LTHR. Evidence: `experiments/threshold_pace.py`.
 
 ### Retired notes
 
