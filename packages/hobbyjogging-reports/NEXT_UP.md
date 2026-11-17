@@ -3,7 +3,7 @@
 Updated 2026-11-17.
 
 Current focus: 5's threshold trend; 2's max-HR half needs core, 11 is parked,
-13 is behind the lab gate, and 14 is an open idea.
+13 is behind the lab gate, and 14/15 are open ideas.
 
 ## Done
 
@@ -489,6 +489,14 @@ lists and the season/illness bands landed here.
     hover note — but the encoding is open: the scatter already carries
     category symbols, steady outlines and efficiency lines, so the extra
     layer must stay quiet. The time-axis charts are shaded (item 10).
+
+15. **Gear by category.** The Gear tab and the `equipment` report mix shoes,
+    bikes and other gear in one chart and table, so bike kilometres sit beside
+    shoe kilometres with different service lives. Split them by
+    `Equipment.type` (shoe, bike, other): grouped bars or one section per
+    category, per-category targets and retirement candidates, and keep the
+    summary counts. Decide whether the tab gets separate sections or one chart
+    with category colours.
 
 ## Tests and docs
 
