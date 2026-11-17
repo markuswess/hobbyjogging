@@ -31,6 +31,12 @@ this list keeps the recent decisions only.
   upcoming races, while bucket and limit leave them alone. Limit caps the
   result rows only, so PBs still use every matching race. Tests cover
   defaults, combined filters, truncation, and empty results.
+- **EWMA lines draw shortest first.** The overview plot now goes window-major
+  (every 7-day line, then 42, then 182) and the shared average-line helper
+  draws fatigue → fitness → base, so the smoothest line ends up on top and a
+  rough line no longer hides it. Legends follow the same order; tests pin it
+  for the overview and the load chart.
+
 - **Stable compare colors, strongest for the newest years.** All compare
   charts map a year through `compare_color(year)`, anchored on a fixed year
   (2026 today) and running backwards: the newest years get the saturated

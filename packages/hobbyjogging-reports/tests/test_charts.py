@@ -463,6 +463,23 @@ class OverviewReadabilityTests(unittest.TestCase):
         self.assertIn('"name":"hard"', html)
         self.assertIn('"name":"hard 7d"', html)
         self.assertIn('"tickfont":{"size":10}', html)
+        # Window-major, shortest first: every 7-day line, then 42, then 182.
+        self.assertLess(
+            html.index('"name":"hard 7d"'),
+            html.index('"name":"total 7d"'),
+        )
+        self.assertLess(
+            html.index('"name":"total 7d"'),
+            html.index('"name":"hard 42d"'),
+        )
+        self.assertLess(
+            html.index('"name":"hard 42d"'),
+            html.index('"name":"total 42d"'),
+        )
+        self.assertLess(
+            html.index('"name":"total 42d"'),
+            html.index('"name":"hard 182d"'),
+        )
 
         index = html.find("Plotly.newPlot(")
         data, _ = json.JSONDecoder().raw_decode(
@@ -1525,6 +1542,23 @@ class LoadChartTests(unittest.TestCase):
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
+
+    def test_load_chart_draws_shortest_window_first(self):
+        points = [
+            LoadPoint(D + timedelta(days=index), 50.0, 40.0, 45.0, 48.0)
+            for index in range(6)
+        ]
+
+        html = plot_load(points, "", as_html=True)
+
+        self.assertLess(
+            html.index('"name":"Fatigue (7d)"'),
+            html.index('"name":"Fitness (42d)"'),
+        )
+        self.assertLess(
+            html.index('"name":"Fitness (42d)"'),
+            html.index('"name":"Base (182d)"'),
+        )
 
     def test_load_chart_rejects_empty_data(self):
         with tempfile.TemporaryDirectory() as tmp:

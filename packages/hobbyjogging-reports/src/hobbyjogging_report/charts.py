@@ -287,7 +287,8 @@ def _plot_average_lines(
     colors = colors or AVERAGE_COLORS
     dash = dash or {}
 
-    for attribute in ("base", "fitness", "fatigue"):
+    # Shortest window first, so the smoothest line ends up on top.
+    for attribute in ("fatigue", "fitness", "base"):
         style = {
             "color": colors[attribute],
             "width": 2,
@@ -2712,11 +2713,13 @@ def plot_overview(
 
     series = []
 
-    for family, colors in (
-        ("hard", HARD_LINE_COLORS),
-        ("total", TOTAL_LINE_COLORS),
-    ):
-        for window in (7, 42, 182):
+    # Window-major, shortest first: every 7-day line, then 42, then 182, so
+    # the smoothest lines end up on top.
+    for window in (7, 42, 182):
+        for family, colors in (
+            ("hard", HARD_LINE_COLORS),
+            ("total", TOTAL_LINE_COLORS),
+        ):
             attribute = f"{family}_{window}"
             style = {
                 "color": colors[window],
