@@ -178,7 +178,9 @@ clipped and marked with a grey triangle; hover shows the real value. The
 not, so a single spike can briefly leave the top instead of stretching the
 whole chart. Every chart draws a thin vertical guide at the nearest day and
 a horizontal guide that follows the cursor, so a value can be read off either
-axis. Every series the unified hover can show is named: planned segments by
+axis; in a stacked chart (time, recovery, subT) one vertical line follows the
+hover across every panel, not just the one under the pointer. Every series
+the unified hover can show is named: planned segments by
 zone (`Z4 planned`), projections under the line they extend, and subT session
 markers by category. An unnamed trace would surface as `trace N`, which says
 nothing about the series, so range sticks and halos skip the hover instead.

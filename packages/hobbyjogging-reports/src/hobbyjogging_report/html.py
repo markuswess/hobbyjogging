@@ -389,6 +389,80 @@ NAV = (
 
 REPO_URL = "https://github.com/markuswess/hobbyjogging"
 
+# Stacked figures have one x axis per panel, so a Plotly spike stops at the
+# panel edge. Follow the hover with a paper-height line instead, and switch
+# the per-axis x spikes off so the guide crosses every panel.
+CROSSHAIR_JS = """
+(function () {
+  "use strict";
+
+  function attach(plot) {
+    if (plot.__stackCrosshair || !plot.layout || !plot.layout.xaxis2) {
+      return;
+    }
+
+    plot.__stackCrosshair = true;
+    var base = "shapes[" + ((plot.layout.shapes || []).length) + "]";
+    var add = {};
+    add[base] = {
+      type: "line",
+      xref: "x",
+      yref: "paper",
+      x0: "2000-01-01",
+      x1: "2000-01-01",
+      y0: 0,
+      y1: 1,
+      layer: "above",
+      line: { color: "#7f7f7f", width: 0, dash: "dot" }
+    };
+    Plotly.relayout(plot, add);
+
+    var spikes = {};
+    Object.keys(plot.layout).forEach(function (key) {
+      if (/^xaxis[0-9]*$/.test(key)) {
+        spikes[key + ".showspikes"] = false;
+      }
+    });
+    Plotly.relayout(plot, spikes);
+
+    plot.on("plotly_hover", function (event) {
+      var points = (event && event.points) || [];
+      var move = {};
+
+      for (var i = 0; i < points.length; i += 1) {
+        if (points[i].x !== undefined && points[i].x !== null) {
+          move[base + ".x0"] = points[i].x;
+          move[base + ".x1"] = points[i].x;
+          move[base + ".line.width"] = 1;
+          Plotly.relayout(plot, move);
+          return;
+        }
+      }
+    });
+
+    plot.on("plotly_unhover", function () {
+      var hide = {};
+      hide[base + ".line.width"] = 0;
+      Plotly.relayout(plot, hide);
+    });
+  }
+
+  function init() {
+    var plots = document.querySelectorAll(".js-plotly-plot");
+
+    for (var i = 0; i < plots.length; i += 1) {
+      attach(plots[i]);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+"""
+
 
 def page(
     *,
@@ -417,6 +491,9 @@ def page(
     plotly_script = (
         f'<script src="{root}plotly.min.js"></script>' if plotly else ""
     )
+    crosshair_script = (
+        f"<script>{CROSSHAIR_JS}</script>" if plotly else ""
+    )
     demo_banner = (
         f'<div class="demo-banner">{esc(demo_label)}</div>'
         if demo_label
@@ -442,6 +519,7 @@ def page(
 {health_html}
 <h1>{esc(title)}</h1>
 {body}
+{crosshair_script}
 <footer>Generated {esc(generated_at)}</footer>
 </main>
 </body>

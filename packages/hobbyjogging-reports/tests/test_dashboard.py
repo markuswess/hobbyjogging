@@ -282,6 +282,7 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertNotIn("Quality sessions", index)
             self.assertIn("Plotly.newPlot", index)
             self.assertIn("plotly.min.js", index)
+            self.assertIn("plotly_hover", index)
             self.assertIn('class="repo"', index)
             self.assertIn(
                 'href="https://github.com/markuswess/hobbyjogging"',
