@@ -636,6 +636,42 @@ class DashboardBuildTests(unittest.TestCase):
         # The current row follows the ellipsis, after the five top streaks.
         self.assertLess(html.index("⋮"), html.index("<strong>?</strong>"))
 
+    def test_health_tab_covers_all_history(self):
+        old = TODAY - timedelta(days=100)
+        activities = [
+            activity(
+                id="old",
+                date=old,
+                duration_s=1800,
+            ),
+            activity(
+                id="new",
+                date=TODAY,
+                duration_s=1800,
+                distance_m=5000,
+                avg_hr=140,
+                training_load=40,
+                pace_zone_times=[600, 600, 300, 300],
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                FakeSource(activities=activities),
+                target,
+                today=TODAY,
+            )
+
+            health = (target / "health.html").read_text()
+
+        self.assertIn(f"Data Health · {old} → {TODAY}", health)
+        self.assertIn('<div class="stat-value">2</div>', health)
+        # The old activity has no load/zones/HR/distance, hence all-history
+        # missing counts rather than a 14-day zero.
+        self.assertIn("Activities without load", health)
+
     def test_recovery_plots_span_the_two_year_window(self):
         wellness = [
             WellnessDay(

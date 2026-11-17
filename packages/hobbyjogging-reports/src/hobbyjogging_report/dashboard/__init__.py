@@ -328,8 +328,10 @@ def build_dashboard(
         {activity.id: activity for activity in listed_activities}
     )
     detail_ids = set(detail_activities)
+    coverage_start = activity_start(source, today)
+    coverage_raw = source.activities(coverage_start, today)
     coverage_activities, _ = exclude_review(
-        source.activities(activity_start(source, today), today),
+        coverage_raw,
         include_review=include_review,
     )
     coverage = yearly_coverage(
@@ -339,6 +341,15 @@ def build_dashboard(
             for activity in coverage_activities
             if source.activity_weather(activity.id) is not None
         },
+    )
+    # The health tab reports data completeness over all history; the banner
+    # on the other pages keeps the short dashboard window.
+    health_all = collect_health(
+        coverage_raw,
+        coverage_activities,
+        start=coverage_start,
+        end=today,
+        include_review=include_review,
     )
 
     generated_at = datetime.now().astimezone().strftime(
@@ -448,7 +459,7 @@ def build_dashboard(
         ),
         "health.html": health_page(
             generated_at=generated_at,
-            health=health,
+            health=health_all,
             demo_label=demo_label,
             include_review=include_review,
             detail_ids=detail_ids,

@@ -135,7 +135,9 @@ Pages:
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, linked activity, reported date), the activities hidden by review,
   missing-data counts, and a per-year data-coverage table (activities and how
-  many carry stored weather; max HR joins it once the model exposes it).
+  many carry stored weather; max HR joins it once the model exposes it). The
+  tab's counts cover **all history**, while the banner on every other page
+  uses the short dashboard window.
 
 The `--reports` dashboard option is accepted as a compatibility no-op;
 those Markdown reports are already embedded on their relevant pages. The Docs
