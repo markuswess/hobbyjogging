@@ -32,10 +32,10 @@ completion criteria, not a second task list.
 | **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
 | **3. Beyond the database** | web editing interface, homelab migration, platform independence, LLM coaching, detailed per-second streams, vague ideas | deliberately dormant until phases 1–2 are complete |
 
-Phase 1 is current: Runalyze is in progress, Strava is the remaining source,
-and the reports/dashboard are in daily use. Phase 2 starts once phase 1 is
-complete; the data-depth and refurbishment items are already queued. Phase 3
-is deliberately dormant.
+Phase 1 is current: Runalyze and the Strava CSV import are landed, the
+reports/dashboard are in daily use, and the optional Strava API is the only
+source left. Phase 2 starts once phase 1 is complete; the data-depth and
+refurbishment items are already queued. Phase 3 is deliberately dormant.
 
 ## Where the data comes from
 
@@ -46,10 +46,28 @@ The canonical database consolidates data that used to live in several places:
 - **A spreadsheet** — the legacy log (2009–2021): activities, shoes, tags.
 - **Runalyze** — tags, comments, equipment, and its VO2max estimate.
 - **Intervals.icu** — intervals, names, zones, and the planned calendar.
-- **Strava** — titles and sparse social comments; not used for training data.
+- **Strava** — CSV bulk export: titles, social descriptions and gear; not used
+  for training data. The API is optional and deferred.
 
 Each source keeps its raw payload in `source_records`, so canonical values can
 always be re-derived or audited.
+
+### Import rules
+
+`hobbyjogging_core.import_rules` owns the shared rules: field ownership,
+conflict tolerances, manual-edit permissions and one `SourceProfile` per
+source. The default is owner-based; a field may declare a ranked authority
+where one source is a better measurement. There is no global source order.
+
+`hobbyjogging_import.matching` owns the shared ladder: existing link →
+temporal overlap (the profile may allow a contained FIT segment) → distance
+agreement → same-day exact twin → `ambiguous_match` review → create only when
+the profile allows it. A source that only knows local wall time (Strava CSV)
+matches against the canonical window reconstructed from
+`started_at_utc + tz_offset_min`.
+
+A new source is a profile plus a fetch/normalize adapter. It should not add a
+branch to the writer, the matcher or the quality rules.
 
 ## Principles
 
@@ -136,7 +154,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 11).
+  (`SCHEMA_VERSION`, currently 22).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
@@ -229,7 +247,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 21.
+SQLite, forward-only migrations. Schema version 22.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -633,17 +651,18 @@ dashboard: the view models make it cheap to add later.
 ## Status (November 2026)
 
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
-- Sources: FIT archive, Intervals.icu, and the Garmin Personal API fetch are
-  implemented; schema v10 adds set-based workout methods/targets and the
+- Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
+  and the Strava CSV import are implemented; schema v22 adds per-source social
+  text, and earlier versions add set-based workout methods/targets and the
   maintenance bookkeeping tables.
 - Schema evolution is two-track: immutable SQL migrations plus registered
   backfills/recomputes in `hobbyjogging-maintenance`.
 - Reports: Markdown reports, charts, the activities table, the year/month
   comparison, and the static dashboard; report code is split per report.
-- The review queue is currently empty; reports still hide activities with
-  open items by default (`--include-review` shows them).
-- Phase 1 remaining: the Runalyze and Strava imports plus the reports/dashboard;
-  phases 2–3 are defined above.
+- The review queue holds the open Runalyze ambiguous-match rows; reports still
+  hide activities with open items by default (`--include-review` shows them).
+- Phase 1 remaining: the optional Strava API and the reports/dashboard
+  follow-ups; phases 2–3 are defined above.
 
 ## Deployment
 

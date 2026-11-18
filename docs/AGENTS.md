@@ -123,12 +123,23 @@ Cross-package changes must leave all four suites green.
 - Manual values outrank every import source and survive reimports.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
   `elapsed_s` is elapsed time. `duration_s` is owner-tracked; `moving_s` and
-  `elapsed_s` are Intervals-authoritative and never produce a review item.
-- There is no automatic per-source priority, except the fixed `moving_s` /
-  `elapsed_s` authority above and `device_id`, where FIT wins because it
-  carries the serial. The first owner keeps every other field; meaningful
-  cross-source disagreement becomes a `field_conflict` review item. For
-  average HR, a disagreement is only meaningful beyond 5 bpm.
+  `elapsed_s` have a ranked authority (Intervals, then FIT) and never produce
+  a review item.
+- There is no automatic per-source priority. Field rules live in
+  `hobbyjogging_core.import_rules`; the writer applies them. The default is
+  owner-based: the first source keeps a field, a later source fills only an
+  empty value, and a meaningful cross-source disagreement becomes a
+  `field_conflict` review item (average HR: beyond 5 bpm). A field may declare
+  a ranked authority where one source is a better measurement:
+  `moving_s`/`elapsed_s` → Intervals, then FIT; `device_id` and
+  `vo2max_garmin` → FIT. Manual values always win.
+- Social text is per source in `activity_social`, never in
+  `activities.name`/`description`: a source refreshes its own row, a manual
+  row survives imports, and the Strava CSV path is social + gear only — it
+  never creates an activity or writes training data.
+- Add a source as a `SourceProfile` plus an adapter, not as a new branch in
+  matching or quality. The profile declares what it can create, how it
+  matches and whether absence means deletion.
 - A blank text field counts as unfilled: a later source may fill an empty
   `name`/`description`, while an empty incoming value never clears text.
 - A trusted source may force ownership only on an explicit human action

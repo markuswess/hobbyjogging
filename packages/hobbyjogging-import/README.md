@@ -454,26 +454,62 @@ Runalyze races: 37 race results
   unmatched: 0
 ```
 
+## Strava
+
+The bulk export is a ZIP or an extracted directory. It needs no API app,
+OAuth token or Strava subscription.
+
+```bash
+uv run --env-file .env hobbyjogging-import strava ~/Downloads/export_123456.zip --dry-run
+uv run --env-file .env hobbyjogging-import strava ~/Downloads/export_123456.zip
+```
+
+Options: `--from` / `--to`, `--distance-unit {km,m}` (default `km`),
+`--dry-run`, `--database`.
+
+The import reads `activities.csv`, `bikes.csv` and `shoes.csv`; the
+`activities/` files are ignored because the FIT archive already covers them.
+`Activity Date` is local wall time, so matching reconstructs the canonical
+local window from `started_at_utc + tz_offset_min`, then falls back to the
+exact-twin rule. A row that matches nothing is reported and writes nothing;
+the CSV path never creates an activity.
+
+Social text goes to `activity_social(source='strava')` only, never to
+`activities.name` or `activities.description`. Gear is matched by exact
+normalized name; an existing equipment row is only linked, never rewritten,
+and an unknown name creates `strava:gear:<slug>` with the CSV brand/model.
+A re-run refreshes the same rows instead of duplicating them.
+
+The API is deferred: creating a Strava app now requires a Strava
+subscription, and single-player reads are limited to 100 per 15 minutes and
+1,000 per day.
+
 ## Source precedence
 
-There is one fixed source rule: `moving_s` and `elapsed_s` are always
-Intervals-authoritative. An Intervals value replaces another source's value
-silently, and a non-Intervals value never overrides it or creates a review
-item. Manual edits still win.
+Field rules live in `hobbyjogging_core.import_rules`; the writer applies
+them. The default is owner-based: the source that wrote a field keeps it, a
+later source refreshes only its own fields, and a field nobody has written yet
+is simply filled (a blank `name`/`description` counts as unwritten, but an
+empty incoming value never clears text). When two sources report a measurably
+different value for the same field, nothing is overwritten: the disagreement
+is recorded as a `field_conflict` review item and the human decides. Values
+that agree within tolerance (about 1%, with small absolute floors) are not
+conflicts; average HR uses a wider 5 bpm floor. Manual edits always outrank
+every source and survive reimports.
 
-For every other field there is no automatic per-source priority. The source
-that wrote it keeps ownership; a later source may refresh its own fields, and
-a field nobody has written yet is simply filled (a blank `name`/`description`
-counts as unwritten, but an empty incoming value never clears text). When two
-sources report a measurably different value for the same field, nothing is
-overwritten: the disagreement is recorded as a `field_conflict` review item
-and the human decides (see below). Values that agree within tolerance (about
-1%, with small absolute floors) are not conflicts; average HR uses a wider
-5 bpm floor, since a watch's session average and a stream average
-legitimately drift by a few bpm. Manual edits always outrank every source
-and survive reimports.
+A field may declare a ranked authority where one source is a better
+measurement:
 
-Conflict-tracked fields are `duration_s`, `distance_m`, `avg_hr`,
+- `moving_s` and `elapsed_s`: Intervals, then FIT (the second athlete has no
+  Intervals);
+- `device_id` and `vo2max_garmin`: FIT, which carries the serial and the
+  Garmin estimate.
+
+The authoritative value replaces another source's value silently and never
+opens a review item; manual values still win.
+
+Conflict-tracked fields are `duration_s`, `elapsed_s`, `moving_s`,
+`distance_m`, `elevation_gain_m`, `elevation_loss_m`, `max_hr`, `avg_hr`,
 `started_at_utc`, `local_date`, `tz_offset_min`, `sport`, and
 `training_load`. Subjective fields (`name`, `description`, `feel`, `rpe`, ...)
 keep their current owner silently — two devices naming the same run
@@ -485,8 +521,8 @@ differently is not worth a review item.
   Intervals `icu_recording_time` (falling back to `moving_time` for old
   payloads). A duration difference that fits inside either source's pause gap
   (`elapsed - duration`) is treated as agreement, not a conflict.
-- `elapsed_s` is total elapsed time and `moving_s` is moving time; both are
-  Intervals-authoritative on any cross-source disagreement.
+- `elapsed_s` is total elapsed time and `moving_s` is moving time; both have a
+  ranked authority (Intervals, then FIT) and never open a conflict item.
 - Distance is forced to zero for sports where it is not recorded or not
   meaningful: `treadmill_run`, `virtual_run`, `soccer`, `racket`, `training`,
   `other`, and `workout`. A manual distance still wins. Raw FIT/Intervals
@@ -499,11 +535,10 @@ example `cycling/gravel_cycling` and `GravelRide` both become `gravel_ride`).
 Placeholder sports (`generic`, `other`, `unknown`) never conflict with a
 specific sport; a specific value fills the placeholder.
 
-Beyond the fixed Intervals authority for moving and elapsed time, the only
-exception to owner-based precedence is an explicit human decision: triage
-`(t)` re-imports a single Intervals activity with `force=True`, letting
-Intervals take ownership of every non-manual field it provides. Normal imports
-never force.
+Beyond the ranked authority, the only exception to owner-based precedence is
+an explicit human decision: triage `(t)` re-imports a single Intervals
+activity with `force=True`, letting Intervals take ownership of every
+non-manual field it provides. Normal imports never force.
 
 ## Intervals.icu
 

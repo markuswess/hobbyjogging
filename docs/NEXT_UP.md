@@ -597,43 +597,32 @@ editing, analysis and lab work; phase 3 is the dormant future.
    `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
    than duplicated here.
 16. **Social titles, descriptions and links** (core + import + reports; phase
-    1, the remaining source import). Strava is the first social layer, but not
-    the only possible one: the title is a pun, the description sometimes a
-    note, while the Intervals
-    title is the workout name. Both are worth keeping, and they must not
-    compete — `name` is deliberately not a conflict field, so a social import
-    writing it would be ignored (Intervals names are never blank) or open
-    thousands of review items.
-    - **Schema**: `activity_social(activity_id, source, title, description,
-      external_id, url, source_record_id, is_manual, updated_at)`, keyed by
-      `(activity_id, source)` — a table like `activity_equipment` and the
-      planned device/weather/route tables, not columns on `activities`:
-      source-specific metadata, not a canonical metric. The table is
-      deliberately not named after Strava, so another user can map a different
-      social import into it; `source` is data, not schema. `url` is stored
-      rather than derived, because only Strava has a predictable activity URL.
-    - **Writes only `activity_social`**: the pun title and its description
-      never touch `activities.name`, `activities.description` or `classify()`.
-      The training notes stay canonical (item 1); this is social text.
-    - **Classifier isolation**: the Strava title never enters `classify()` — a
-      pun ("Race you to the bakery") must not match the `race`/`tempo`/`lt1`
-      keywords. Keeping it out of `activities.name` makes that structural.
-    - **Import, CSV first**: the Strava bulk export (`activities.csv`) matched
-      on start time (±2 min) and distance (±2%), unmatched rows left alone,
-      checksum-idempotent. Titles and descriptions only: Strava
-      distance/time/HR would add a third source competing for ownership with no
-      benefit.
-    - **API, deferred**: OAuth with a client secret and refresh token, 100
-      requests per 15 min and 1,000/day — only if the CSV proves the titles are
-      wanted continuously.
-    - **Reports**: a `Strava: …` line under the workout name in the session
-      report, the description as an annotation, and the link to the activity —
-      the same pattern as the triage `(ci)`/`(cg)` links. Not in the activities
-      table, where a second line costs row height.
-    - **Tests**: CSV parsing, the ±2 min / 2% match, an unmatched row writing
-      nothing, a pun never affecting the classification, the URL derived from
-      the id, and a reimport not duplicating the row.
-
+    1). Strava is the first social layer, but not the only possible one.
+    - **Landed (Nov 2026)**: `activity_social` (schema v22), keyed by
+      `(activity_id, source)`, with title, description, external id, url,
+      source record and manual flag. A source refreshes only its own row; a
+      manual row survives imports. The session report renders a `Strava: …`
+      line under the external links.
+    - **CSV first, no subscription**: `hobbyjogging-import strava <zip|dir>`
+      reads `activities.csv`, `bikes.csv` and `shoes.csv`. It matches by local
+      wall time (reconstructing the canonical window from
+      `started_at_utc + tz_offset_min`), falls back to the exact-twin rule and
+      never creates an activity. Distance is km by default
+      (`--distance-unit m` for meters).
+    - **Social only**: the title and description go to `activity_social`, never
+      to `activities.name`/`description`; the classifier never sees a pun.
+      Unmatched rows are reported and write nothing.
+    - **Gear**: exact normalized name links to existing equipment; an unknown
+      name creates `strava:gear:<slug>` with the CSV brand/model; a matched
+      row is never rewritten. The CSV has no gear distance or retirement date,
+      so derive distance from the linked activities.
+    - **Remaining**: run it on the real export and inspect the match rate;
+      decide whether a Strava-only second athlete may create a minimal
+      activity from the manifest (currently no); optionally add the API for
+      continuous sync and comments.
+    - **API, deferred**: OAuth refresh token; app creation requires a Strava
+      subscription in 2026; single-player reads are 100/15 min and 1,000/day.
+      `suffer_score` is not `training_load`.
 17. **Raw vs derived: document the tiers and add a check** (low priority). The
    tiers already exist structurally — raw `source_records`, canonical
    `activities`/`events` columns, derived set/zone tables, read-time metrics —
@@ -1122,36 +1111,44 @@ editing, analysis and lab work; phase 3 is the dormant future.
     `experiments/cross_training_load.py`. Mirror the card in the metrics
     catalogue if item 24 carries load.
 
-40. **Import-rules registry and settings view** (core + import + maintenance +
-    reports; phase 2). The rules are not in one place: field ownership,
-    conflict fields and tolerances live in `core/db/writer.py`; quality rules,
-    pace windows and review categories in `import/quality.py`; conflict causes
-    and bulk-resolvable autotriage in `import/causes.py`; temporal matching in
-    `import/matching.py`; Runalyze tolerances in its importers; classification
-    vocabulary and priority in `core/workouts.py`/`core/classify.py`; the
-    maintenance order in `sync.sh`; and the docs restate some of them.
-    - **Registry first**: one read-only registry (code data, not a new table
-      yet) with id, domain, value/threshold, source, description and kind
-      (rule, default, advisory autotriage). Read it where practical, or assert
-      the constants match, so the view cannot drift.
-    - **Settings report**: `reports.sh settings` renders the registry as
-      Markdown: ownership and authority, conflict fields/tolerances, matching,
-      quality rules, review categories and hiding, bulk-resolve causes,
-      classification priority, maintenance order and source configuration.
-    - **Dashboard tab last**: a read-only Settings tab in the same style as the
-      other tabs, once the report proves useful.
+40. **Import framework, rules registry and settings view** (core + import +
+    maintenance + reports; phase 2). The registry is the first step; the
+    settings report and tab are the visible result.
+    - **Done (Nov 2026)**: `hobbyjogging_core.import_rules` owns field
+      ownership, conflict tolerances, manual fields and ranked authority;
+      `SourceProfile` records what each source can create, match and write.
+      `import/matching.py` owns the shared ladder (temporal → distance →
+      exact twin → review → create only when allowed), including the
+      local-wall-time path. The writer reads the registry instead of its own
+      constants.
+    - **Still scattered**: quality rules and pace windows in
+      `import/quality.py`; conflict causes and bulk-resolvable autotriage in
+      `import/causes.py`; classification vocabulary/priority in
+      `core/workouts.py`/`core/classify.py`; the maintenance order in
+      `sync.sh`; analysis bands in `reports/analysis/*`; and prose restatements
+      in the docs.
+    - **Registry next**: extend the same read-only registry with id, domain,
+      value/threshold, source, description and kind (rule, default, advisory
+      autotriage). Read it where practical, or assert the constants match, so
+      the view cannot drift.
+    - **Settings report**: `reports.sh settings` renders ownership and
+      authority, conflict fields/tolerances, matching, quality rules, review
+      categories and hiding, bulk-resolve causes, classification priority,
+      maintenance order and source configuration.
+    - **Dashboard tab last**: a read-only Settings tab once the report proves
+      useful.
     - **Autotriage**: show what happens automatically (review-item creation,
       agreed-conflict resolution, prune, classification queue, race links,
       period recompute) versus what needs a human, and which causes are
       advisory/bulk-resolvable.
     - **Read-only first**: editing rules from the UI is later; the code and
-      CLI stay the source of truth. Analysis metric thresholds stay with the metric
-      catalogue (item 24) and `docs/METRICS.md`.
+      CLI stay the source of truth. Analysis metric thresholds stay with the
+      metric catalogue (item 24) and `docs/METRICS.md`.
     - **Sequence**: after or alongside the second-athlete test (item 23),
       because a second athlete needs to see which defaults are personal.
 
-Triage is empty (0 open items), all four suites are green, and the demo
-deploys from GitHub Actions.
+The review queue holds the Runalyze ambiguous-match items, all four suites
+are green, and the demo deploys from GitHub Actions.
 
 ## Notes
 

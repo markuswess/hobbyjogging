@@ -5,6 +5,18 @@ on.
 
 ## Done
 
+- **Strava CSV social + gear.** `hobbyjogging-import strava <zip|dir>` reads
+  `activities.csv`, `bikes.csv` and `shoes.csv` without an API app or
+  subscription. It matches by local wall time (the canonical window is
+  reconstructed from `started_at_utc + tz_offset_min`), falls back to the
+  exact-twin rule, and never creates an activity. Social text goes to
+  `activity_social(source='strava')` only; gear links by exact normalized name
+  or creates `strava:gear:<slug>` without rewriting an existing row. Tested
+  end to end on a copy of the real DB: one matched activity, one social row,
+  one gear row, one activity-gear link, and a no-op re-run for the social row.
+  Remaining: run it on the real export; decide whether a Strava-only second
+  athlete may create a minimal activity (currently no).
+
 - **Runalyze match review.** A row the temporal matcher rejects is checked
   once more for a perfect twin (same day, duration within 2 s, distance within
   10 m, exactly one candidate) — start-time drift without guessing. A twin

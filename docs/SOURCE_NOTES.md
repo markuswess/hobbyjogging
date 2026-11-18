@@ -178,6 +178,38 @@ needs about 12 windows.
 - The OpenAPI document at `/api/docs.jsonopenapi` needs
   `Accept: application/vnd.openapi+json`; a plain JSON accept gets a 406.
 
+## Strava
+
+The bulk export (ZIP or extracted directory) is the supported path. It needs
+no API app, OAuth token or Strava subscription.
+
+- `activities.csv` is the manifest: activity id, local date/time, name, type,
+  description, elapsed and moving time, distance, gear, filename, privacy and
+  commute flags. Headers vary by export version and account language, so the
+  reader uses aliases; fields containing commas are quoted by Strava.
+- `bikes.csv` and `shoes.csv` carry gear name, brand and model, but no gear
+  id, distance or retirement date. `activities.csv` names the gear.
+- `activities/` holds the original FIT/TCX/GPX files. It is ignored: the FIT
+  archive already covers the recordings, and importing both would duplicate
+  them.
+- `Activity Date` is local wall time and has no UTC offset. The matcher
+  reconstructs the canonical local window from `started_at_utc +
+  tz_offset_min`; a row with no offset falls back to the exact-twin rule
+  (same local date, duration and distance).
+- `Distance` is kilometers by default; `--distance-unit m` handles an export
+  that writes meters.
+- Social text goes to `activity_social(source='strava')`; it never touches
+  `activities.name` or `activities.description`, so the classifier cannot see
+  a pun. Unmatched rows are reported and write nothing; the CSV path never
+  creates an activity.
+- Gear is matched by exact normalized name. A matched equipment row is only
+  linked, never rewritten; an unknown name creates
+  `strava:gear:<slug>` with the CSV brand/model.
+- The API is deferred. Creating a Strava app now requires a Strava
+  subscription; single-player read limits are 100 requests per 15 minutes and
+  1,000 per day. The summary list plus per-activity detail is the shape, and
+  `suffer_score` must not be mapped to `training_load`.
+
 ## Code references
 
 - `packages/hobbyjogging-import/src/hobbyjogging_import/fit.py` — FIT parsing
@@ -186,6 +218,10 @@ needs about 12 windows.
   Intervals activity/event mapping.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/runalyze.py` —
   read-only Runalyze client and inventory.
+- `packages/hobbyjogging-import/src/hobbyjogging_import/strava.py` — Strava
+  bulk-export reader.
+- `packages/hobbyjogging-import/src/hobbyjogging_import/strava_import.py` —
+  Strava social/gear import.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/routes.py` — sheet
   route identity.
 - `packages/hobbyjogging-import/src/hobbyjogging_import/quality.py` —
