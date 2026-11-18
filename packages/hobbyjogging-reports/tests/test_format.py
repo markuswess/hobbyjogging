@@ -18,6 +18,7 @@ from hobbyjogging_report.format import (
 )
 from hobbyjogging_report.summary import recovery_summary, summarize_training
 from hobbyjogging_core.model import (
+    ActivitySocial,
     ActivityWeather,
     Event,
     EventZoneTime,
@@ -56,6 +57,40 @@ class Vo2maxLabelTests(unittest.TestCase):
         )
 
         self.assertIn("- VO2max: 55.0 (Garmin, swim)", lines)
+
+
+class SocialLineTests(unittest.TestCase):
+    """Social text is rendered beside the workout, never as its name."""
+
+    def test_title_description_and_link(self):
+        lines = format_session_activity(
+            activity(),
+            [],
+            social=[
+                ActivitySocial(
+                    activity_id="a1",
+                    source="strava",
+                    title="Bakery run",
+                    description="Race you to the bakery",
+                    url="https://www.strava.com/activities/123",
+                )
+            ],
+        )
+
+        self.assertIn(
+            "- Strava: Bakery run — Race you to the bakery "
+            "([123](https://www.strava.com/activities/123))",
+            lines,
+        )
+
+    def test_empty_social_row_is_skipped(self):
+        lines = format_session_activity(
+            activity(),
+            [],
+            social=[ActivitySocial(activity_id="a1", source="strava")],
+        )
+
+        self.assertFalse(any(line.startswith("- Strava:") for line in lines))
 
 
 class EventReportTests(unittest.TestCase):

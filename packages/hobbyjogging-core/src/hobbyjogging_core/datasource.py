@@ -10,6 +10,7 @@ from typing import Protocol
 
 from .model import (
     Activity,
+    ActivitySocial,
     ActivityWeather,
     AthleteThreshold,
     Device,
@@ -45,6 +46,10 @@ class DataSource(Protocol):
         ...
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
+        ...
+
+    def activity_social(self, activity_id: str) -> list[ActivitySocial]:
+        """Return social text rows for one activity, manual first."""
         ...
 
     def athlete_thresholds(self) -> list[AthleteThreshold]:

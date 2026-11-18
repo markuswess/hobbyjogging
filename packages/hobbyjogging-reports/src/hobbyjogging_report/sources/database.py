@@ -9,6 +9,7 @@ from hobbyjogging_core.db import open_database
 from hobbyjogging_core.db.repository import TrainingRepository
 from hobbyjogging_core.model import (
     Activity,
+    ActivitySocial,
     ActivityWeather,
     AthleteThreshold,
     Device,
@@ -112,6 +113,9 @@ class DatabaseSource:
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         return self.repository.activity_weather(activity_id)
+
+    def activity_social(self, activity_id: str) -> list[ActivitySocial]:
+        return self.repository.activity_social(activity_id)
 
     def equipment(self) -> list[Equipment]:
         return self.repository.equipment()

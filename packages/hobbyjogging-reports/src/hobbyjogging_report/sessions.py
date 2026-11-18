@@ -171,6 +171,7 @@ def session_report(
                     if item.activity_id == activity.id
                 ],
                 laps=source.activity_laps(activity.id),
+                social=source.activity_social(activity.id),
             )
         )
 

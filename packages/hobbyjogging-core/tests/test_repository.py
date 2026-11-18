@@ -496,5 +496,33 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual(800000, shoe.target_distance_m)
 
 
+    def test_activity_social_returns_manual_first(self):
+        self.conn.executemany(
+            """
+            INSERT INTO activity_social (
+                activity_id, source, title, description, external_id,
+                url, is_manual
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    "a1", "strava", "Bakery run", "Race you",
+                    "123", "https://www.strava.com/activities/123", 0,
+                ),
+                (
+                    "a1", "manual", "My title", "", None, None, 1,
+                ),
+            ],
+        )
+
+        rows = self.repository.activity_social("a1")
+
+        self.assertEqual(["manual", "strava"], [row.source for row in rows])
+        self.assertTrue(rows[0].is_manual)
+        self.assertEqual("Bakery run", rows[1].title)
+        self.assertEqual("https://www.strava.com/activities/123", rows[1].url)
+        self.assertEqual([], self.repository.activity_social("a2"))
+
+
 if __name__ == "__main__":
     unittest.main()

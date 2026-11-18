@@ -7,6 +7,7 @@ from datetime import date
 
 from hobbyjogging_core.model import (
     Activity,
+    ActivitySocial,
     ActivityWeather,
     AthleteThreshold,
     Device,
@@ -367,6 +368,30 @@ class TrainingRepository:
             ),
             source=row["source"] or "",
         )
+
+    def activity_social(self, activity_id: str) -> list[ActivitySocial]:
+        rows = self.connection.execute(
+            """
+            SELECT source, title, description, external_id, url, is_manual
+            FROM activity_social
+            WHERE activity_id = ?
+            ORDER BY is_manual DESC, source
+            """,
+            (activity_id,),
+        ).fetchall()
+
+        return [
+            ActivitySocial(
+                activity_id=activity_id,
+                source=row["source"],
+                title=row["title"] or "",
+                description=row["description"] or "",
+                external_id=row["external_id"] or "",
+                url=row["url"] or "",
+                is_manual=bool(row["is_manual"]),
+            )
+            for row in rows
+        ]
 
     def activity_laps(self, activity_id: str) -> list[Lap]:
         rows = self.connection.execute(

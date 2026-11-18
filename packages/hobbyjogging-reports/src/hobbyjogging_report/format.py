@@ -7,6 +7,7 @@ reports work with any ``DataSource`` implementation.
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import (
     Activity,
+    ActivitySocial,
     ActivityWeather,
     Device,
     Event,
@@ -807,6 +808,7 @@ def format_session_activity(
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
+    social: list[ActivitySocial] | None = None,
 ):
     """Render one activity as a detailed, standalone session report."""
     title = sport_label(activity)
@@ -843,6 +845,17 @@ def format_session_activity(
             lines.append(f"- Intervals: {_link(links.intervals)}")
         if links.garmin:
             lines.append(f"- Garmin Connect: {_link(links.garmin)}")
+
+    for entry in social or []:
+        text = " — ".join(
+            part for part in (entry.title, entry.description) if part
+        )
+        if not text and not entry.url:
+            continue
+        line = f"- {entry.source.replace('_', ' ').title()}: {text}"
+        if entry.url:
+            line += f" ({_link(entry.url)})"
+        lines.append(line)
 
     if category:
         lines.append(f"- Category: {category}")

@@ -14,6 +14,7 @@ EXPECTED_TABLES = {
     "activity_intervals",
     "activity_laps",
     "activity_sources",
+    "activity_social",
     "activity_tags",
     "activity_workout_methods",
     "activity_workout_targets",
@@ -95,6 +96,27 @@ class SchemaMigrationTests(unittest.TestCase):
                 "created_at",
             },
             tag_columns,
+        )
+
+        social_columns = {
+            row["name"]
+            for row in self.conn.execute(
+                "PRAGMA table_info(activity_social)"
+            )
+        }
+        self.assertEqual(
+            {
+                "activity_id",
+                "source",
+                "title",
+                "description",
+                "external_id",
+                "url",
+                "source_record_id",
+                "is_manual",
+                "updated_at",
+            },
+            social_columns,
         )
 
     def test_migrates_v1_activity_rows_to_elapsed_time(self):

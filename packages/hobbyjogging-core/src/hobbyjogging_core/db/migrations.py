@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -441,6 +441,30 @@ ON event_activity_links(activity_id);
 """
 
 
+MIGRATION_22_SQL = """
+-- Social text that belongs to a source, not to the canonical training
+-- fields: a Strava title is a pun, a description is a social note, and
+-- neither may compete with the workout name or the training notes.
+-- Keyed by source so a manual row and a source row can coexist; a source
+-- reimport refreshes only its own row.
+CREATE TABLE activity_social (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    external_id TEXT,
+    url TEXT,
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    is_manual INTEGER NOT NULL DEFAULT 0 CHECK (is_manual IN (0, 1)),
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, source)
+);
+
+CREATE INDEX idx_activity_social_source
+ON activity_social(source, external_id);
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -463,6 +487,7 @@ MIGRATIONS: dict[int, str] = {
     19: MIGRATION_19_SQL,
     20: MIGRATION_20_SQL,
     21: MIGRATION_21_SQL,
+    22: MIGRATION_22_SQL,
 }
 
 

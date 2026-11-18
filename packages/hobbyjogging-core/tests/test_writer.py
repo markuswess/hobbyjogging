@@ -1964,5 +1964,96 @@ class FitScanManifestTests(unittest.TestCase):
             )
 
 
+class ActivitySocialTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.writer.upsert_activity(
+            "a1",
+            {"local_date": "2026-10-01", "sport": "run"},
+            source="intervals",
+            source_record_id=None,
+        )
+
+    def test_upsert_creates_and_refreshes_one_source_row(self):
+        created = self.writer.upsert_activity_social(
+            "a1",
+            source="strava",
+            title="Bakery run",
+            description="Race you to the bakery",
+            external_id="123",
+            url="https://www.strava.com/activities/123",
+        )
+        self.assertTrue(created)
+
+        refreshed = self.writer.upsert_activity_social(
+            "a1",
+            source="strava",
+            title="Bakery run 2",
+            description="",
+            external_id="123",
+            url="https://www.strava.com/activities/123",
+        )
+        self.assertFalse(refreshed)
+
+        rows = self.conn.execute(
+            "SELECT source, title, description FROM activity_social "
+            "WHERE activity_id = 'a1'"
+        ).fetchall()
+        self.assertEqual(1, len(rows))
+        self.assertEqual("strava", rows[0]["source"])
+        self.assertEqual("Bakery run 2", rows[0]["title"])
+        self.assertEqual("", rows[0]["description"])
+
+    def test_sources_have_independent_rows(self):
+        self.writer.upsert_activity_social(
+            "a1", source="strava", title="Strava title"
+        )
+        self.writer.upsert_activity_social(
+            "a1", source="runalyze", title="Runalyze title"
+        )
+
+        rows = self.conn.execute(
+            "SELECT source, title FROM activity_social "
+            "WHERE activity_id = 'a1' ORDER BY source"
+        ).fetchall()
+        self.assertEqual(
+            [("runalyze", "Runalyze title"), ("strava", "Strava title")],
+            [(row["source"], row["title"]) for row in rows],
+        )
+
+    def test_a_manual_row_is_never_overwritten_by_an_import(self):
+        self.writer.upsert_activity_social(
+            "a1",
+            source="manual",
+            title="My title",
+            is_manual=True,
+        )
+
+        changed = self.writer.upsert_activity_social(
+            "a1",
+            source="manual",
+            title="Import title",
+        )
+        self.assertFalse(changed)
+        row = self.conn.execute(
+            "SELECT title FROM activity_social "
+            "WHERE activity_id = 'a1' AND source = 'manual'"
+        ).fetchone()
+        self.assertEqual("My title", row["title"])
+
+    def test_unknown_activity_is_rejected(self):
+        with self.assertRaises(ValueError):
+            self.writer.upsert_activity_social("nope", source="strava")
+
+    def test_excluded_activity_is_rejected(self):
+        self.writer.exclude_activity("a1")
+        with self.assertRaises(ValueError):
+            self.writer.upsert_activity_social("a1", source="strava")
+
+
 if __name__ == "__main__":
     unittest.main()

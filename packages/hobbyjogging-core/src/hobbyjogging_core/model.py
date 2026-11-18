@@ -59,6 +59,19 @@ class ActivityEquipment:
 
 
 @dataclass
+class ActivitySocial:
+    """Social text attached to an activity by one source."""
+
+    activity_id: str
+    source: str
+    title: str = ""
+    description: str = ""
+    external_id: str = ""
+    url: str = ""
+    is_manual: bool = False
+
+
+@dataclass
 class Activity:
     id: str
     date: date

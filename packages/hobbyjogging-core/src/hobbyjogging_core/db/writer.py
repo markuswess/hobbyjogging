@@ -2412,6 +2412,75 @@ class TrainingWriter:
         )
         return True
 
+    def upsert_activity_social(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        title: str = "",
+        description: str = "",
+        external_id: str | None = None,
+        url: str | None = None,
+        is_manual: bool = False,
+    ) -> bool:
+        """Write one source's social text for an activity.
+
+        Each source owns its row: a reimport refreshes that row, and a
+        manual row is never touched by an importer. An empty incoming value
+        is written because a source may clear its own title; it never clears
+        another source's row. Returns ``True`` when the row was created.
+        """
+        if not str(source).strip():
+            raise ValueError("source must not be empty")
+
+        activity = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+        if activity is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if activity["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
+        existing = self.connection.execute(
+            """
+            SELECT is_manual FROM activity_social
+            WHERE activity_id = ? AND source = ?
+            """,
+            (activity_id, source),
+        ).fetchone()
+        if existing is not None and existing["is_manual"] and not is_manual:
+            return False
+
+        self.connection.execute(
+            """
+            INSERT INTO activity_social (
+                activity_id, source, title, description, external_id, url,
+                source_record_id, is_manual
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(activity_id, source) DO UPDATE SET
+                title = excluded.title,
+                description = excluded.description,
+                external_id = excluded.external_id,
+                url = excluded.url,
+                source_record_id = excluded.source_record_id,
+                is_manual = excluded.is_manual,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                activity_id,
+                source,
+                title or "",
+                description or "",
+                external_id,
+                url,
+                source_record_id,
+                1 if is_manual else 0,
+            ),
+        )
+        return existing is None
+
     def record_fit_scan_file(
         self,
         *,
