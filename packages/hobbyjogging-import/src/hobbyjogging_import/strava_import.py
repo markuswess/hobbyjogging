@@ -6,7 +6,7 @@ import hashlib
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timezone
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
@@ -40,6 +40,7 @@ class StravaSummary:
     gear_linked: int = 0
     gear_ambiguous: int = 0
     activities_linked_to_gear: int = 0
+    date_zone: str = "local"
 
 
 class StravaCsvImporter:
@@ -55,11 +56,21 @@ class StravaCsvImporter:
         *,
         dry_run: bool = False,
         distance_unit: str = "km",
+        date_zone: str = "auto",
         start: date | None = None,
         end: date | None = None,
     ) -> StravaSummary:
+        if date_zone not in ("auto", "local", "utc"):
+            raise ValueError("date_zone must be 'auto', 'local' or 'utc'")
+
         export = read_export(path, distance_unit=distance_unit)
         summary = StravaSummary(dry_run=dry_run)
+        summary.date_zone = self._resolve_date_zone(
+            export.activities,
+            date_zone,
+            start,
+            end,
+        )
 
         if not dry_run:
             summary.run_id = self.writer.start_import_run(
@@ -67,6 +78,7 @@ class StravaCsvImporter:
                 {
                     "path": str(path),
                     "distance_unit": distance_unit,
+                    "date_zone": summary.date_zone,
                     "start": start.isoformat() if start else None,
                     "end": end.isoformat() if end else None,
                 },
@@ -197,17 +209,7 @@ class StravaCsvImporter:
             summary.no_date += 1
             return
 
-        decision = decide_match(
-            self.connection,
-            source=SOURCE,
-            started_at_local=activity.started_at_local,
-            elapsed_s=activity.elapsed_s,
-            duration_s=activity.elapsed_s,
-            distance_m=activity.distance_m,
-            local_date=activity.local_date,
-            policy=MatchPolicy(),
-            allow_create=False,
-        )
+        decision = self._decide(activity, summary.date_zone)
 
         if decision.activity_id is None:
             if decision.reason == "ambiguous_match":
@@ -245,6 +247,66 @@ class StravaCsvImporter:
             summary.activities_linked_to_gear += int(linked)
         else:
             summary.activities_linked_to_gear += 1
+
+    def _decide(self, activity: StravaActivity, zone: str):
+        """Resolve one row under the export's date interpretation."""
+        if zone == "utc":
+            started_at_utc = (
+                activity.started_at_local.replace(tzinfo=timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+            return decide_match(
+                self.connection,
+                source=SOURCE,
+                started_at_utc=started_at_utc,
+                elapsed_s=activity.elapsed_s,
+                duration_s=activity.elapsed_s,
+                distance_m=activity.distance_m,
+                local_date=activity.local_date,
+                policy=MatchPolicy(),
+                allow_create=False,
+            )
+
+        return decide_match(
+            self.connection,
+            source=SOURCE,
+            started_at_local=activity.started_at_local,
+            elapsed_s=activity.elapsed_s,
+            duration_s=activity.elapsed_s,
+            distance_m=activity.distance_m,
+            local_date=activity.local_date,
+            policy=MatchPolicy(),
+            allow_create=False,
+        )
+
+    def _resolve_date_zone(
+        self,
+        activities: list[StravaActivity],
+        requested: str,
+        start: date | None,
+        end: date | None,
+    ) -> str:
+        """Pick the export's date interpretation by which one matches more.
+
+        Strava writes the account's timezone; this account is UTC, another is
+        local wall time, and the CSV carries no offset. A tie keeps the
+        documented local default.
+        """
+        if requested in ("local", "utc"):
+            return requested
+
+        counts = {"local": 0, "utc": 0}
+        for activity in activities:
+            if activity.started_at_local is None:
+                continue
+            if not _in_range(activity, start, end):
+                continue
+            for zone in ("local", "utc"):
+                if self._decide(activity, zone).activity_id is not None:
+                    counts[zone] += 1
+
+        return "utc" if counts["utc"] > counts["local"] else "local"
 
     def _social_source_record(
         self,
@@ -298,6 +360,7 @@ def format_strava_summary(summary: StravaSummary, path: str) -> str:
         f"{summary.unmatched} unmatched, "
         f"{summary.ambiguous} ambiguous, "
         f"{summary.no_date} without a date",
+        f"  dates: {summary.date_zone}",
         f"  gear: {summary.gear_seen} seen, "
         f"{summary.gear_created} created, "
         f"{summary.gear_linked} linked, "

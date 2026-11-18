@@ -268,6 +268,7 @@ def run_strava(args, parser: argparse.ArgumentParser) -> int:
                 path,
                 dry_run=args.dry_run,
                 distance_unit=args.distance_unit,
+                date_zone=args.date_zone,
                 start=args.start,
                 end=args.end,
             )

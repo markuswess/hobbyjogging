@@ -199,6 +199,15 @@ def build_parser() -> argparse.ArgumentParser:
         default="km",
         help="unit of the Distance column (default: km)",
     )
+    strava.add_argument(
+        "--date-zone",
+        choices=("auto", "local", "utc"),
+        default="auto",
+        help=(
+            "interpret Activity Date as local wall time or UTC; auto picks "
+            "the one that matches more activities (default: auto)"
+        ),
+    )
     strava.add_argument("--dry-run", action="store_true")
     strava.add_argument("--database", type=Path)
 

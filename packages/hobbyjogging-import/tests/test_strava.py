@@ -65,6 +65,50 @@ class StravaExportTests(unittest.TestCase):
         self.assertEqual("Nike", gear.brand)
         self.assertEqual("Pegasus 40", gear.model)
 
+    def test_wide_export_uses_the_metres_distance_column(self):
+        # The 2026 export repeats Distance: the first copy is the display unit
+        # (km here), the second is metres. Gear lives in Activity Gear.
+        header = (
+            "Activity ID,Activity Date,Activity Name,Activity Type,"
+            "Activity Description,Elapsed Time,Distance,Activity Gear,Gear,"
+            "Elapsed Time,Moving Time,Distance\n"
+        )
+        row = (
+            '123,"Oct 01, 2026, 8:05:00 AM",Bakery run,Run,"Race you",'
+            "3600,10.0,Pegasus,,3600.0,3500.0,10000.0\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "activities.csv").write_text(
+                header + row,
+                encoding="utf-8",
+            )
+
+            export = read_export(root)
+
+        activity = export.activities[0]
+        self.assertEqual(10000, activity.distance_m)
+        self.assertEqual(3600, activity.elapsed_s)
+        self.assertEqual("Pegasus", activity.gear)
+
+    def test_wide_export_reads_a_swim_distance_in_metres(self):
+        # Swims show metres in both copies; the second is still the metres one.
+        header = (
+            "Activity ID,Activity Date,Activity Name,Activity Type,"
+            "Elapsed Time,Distance,Moving Time,Distance\n"
+        )
+        row = '123,"Sep 12, 2023, 7:00:00 AM",Swim,Swim,992,318,992.0,317.8\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "activities.csv").write_text(
+                header + row,
+                encoding="utf-8",
+            )
+
+            export = read_export(root)
+
+        self.assertEqual(317.8, export.activities[0].distance_m)
+
     def test_reads_german_gear_headers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -255,6 +299,32 @@ class StravaImportTests(unittest.TestCase):
             "WHERE activity_id = 'a1' AND source = 'strava'"
         ).fetchone()
         self.assertEqual("strava:gear:cloudsurfer", link["equipment_id"])
+
+    def test_auto_detects_a_utc_export(self):
+        row = _activity_row(date="Oct 01, 2026, 6:05:00 AM")
+        summary = StravaCsvImporter(self.conn).import_export(self._export(row))
+
+        self.assertEqual("utc", summary.date_zone)
+        self.assertEqual(1, summary.social_written)
+        self.assertEqual(1, len(self._social()))
+
+    def test_forced_local_zone_does_not_match_a_utc_row(self):
+        row = _activity_row(date="Oct 01, 2026, 6:05:00 AM")
+        summary = StravaCsvImporter(self.conn).import_export(
+            self._export(row),
+            date_zone="local",
+        )
+
+        self.assertEqual("local", summary.date_zone)
+        self.assertEqual(0, summary.social_written)
+        self.assertEqual(1, summary.unmatched)
+
+    def test_rejects_an_unknown_date_zone(self):
+        with self.assertRaises(ValueError):
+            StravaCsvImporter(self.conn).import_export(
+                self._export(),
+                date_zone="nope",
+            )
 
     def test_date_range_filter(self):
         summary = StravaCsvImporter(self.conn).import_export(

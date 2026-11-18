@@ -33,8 +33,7 @@ _ACTIVITY_DESCRIPTION = (
 )
 _ELAPSED = ("Elapsed Time", "Verstrichene Zeit")
 _MOVING = ("Moving Time", "Bewegungszeit")
-_DISTANCE = ("Distance", "Distanz")
-_GEAR = ("Gear", "Activity Gear", "Ausrüstung")
+_GEAR = ("Activity Gear", "Gear", "Ausrüstung")
 _FILENAME = ("Filename", "Dateiname")
 _PRIVATE = ("Private", "Privat")
 _COMMUTE = ("Commute", "Pendeln")
@@ -136,19 +135,28 @@ def read_export(path: str | Path, *, distance_unit: str = "km") -> StravaExport:
 
 
 def _parse_activities(text: str, *, distance_unit: str) -> list[StravaActivity]:
-    reader = csv.DictReader(io.StringIO(text))
-    if reader.fieldnames is None:
-        return []
+    header, values_list = _csv(text)
+    first = _first_index(header)
+    distance_columns = [
+        index
+        for index, name in enumerate(header)
+        if _header(name) == _header("Distance")
+    ]
 
     rows = []
-    for raw in reader:
+    for values in values_list:
+        raw = _row_map(values, first)
         external_id = _pick(raw, _ACTIVITY_ID).strip()
         if not external_id:
             continue
 
         elapsed = _float(_pick(raw, _ELAPSED)) or 0.0
         moving = _float(_pick(raw, _MOVING)) or elapsed
-        distance = _distance_m(_pick(raw, _DISTANCE), distance_unit)
+        distance = _distance_m_from_columns(
+            values,
+            distance_columns,
+            distance_unit,
+        )
 
         rows.append(
             StravaActivity(
@@ -170,16 +178,12 @@ def _parse_activities(text: str, *, distance_unit: str) -> list[StravaActivity]:
 
 
 def _parse_gear(rows: str, kind: str) -> list[StravaGear]:
-    reader = csv.DictReader(io.StringIO(rows))
-    if reader.fieldnames is None:
-        return []
-
     name_headers = _BIKE_NAME if kind == "bike" else _SHOE_NAME
     brand_headers = _BIKE_BRAND if kind == "bike" else _SHOE_BRAND
     model_headers = _BIKE_MODEL if kind == "bike" else _SHOE_MODEL
 
     gear = []
-    for raw in reader:
+    for raw in _rows(rows):
         name = _pick(raw, name_headers).strip()
         if not name:
             continue
@@ -216,6 +220,60 @@ def gear_ref_key(value: str) -> str:
     """Normalize a gear reference from activities.csv."""
     value = value.strip()
     return gear_key(value) if value else ""
+
+
+def _csv(text: str) -> tuple[list[str], list[list[str]]]:
+    reader = csv.reader(io.StringIO(text))
+    try:
+        header = next(reader)
+    except StopIteration:
+        return [], []
+    return header, list(reader)
+
+
+def _first_index(header: list[str]) -> dict[str, int]:
+    """Header name -> first column, so duplicate columns do not overwrite."""
+    first: dict[str, int] = {}
+    for index, name in enumerate(header):
+        first.setdefault(name, index)
+    return first
+
+
+def _row_map(values: list[str], first: dict[str, int]) -> dict[str, str]:
+    return {
+        name: values[index] if index < len(values) else ""
+        for name, index in first.items()
+    }
+
+
+def _rows(text: str) -> list[dict[str, str]]:
+    """Parse a CSV with first-occurrence header semantics (for gear files)."""
+    header, values_list = _csv(text)
+    first = _first_index(header)
+    return [_row_map(values, first) for values in values_list]
+
+
+def _distance_m_from_columns(
+    values: list[str],
+    columns: list[int],
+    unit: str,
+) -> float | None:
+    """Read the distance, preferring the wide export's metres column.
+
+    The 2026 export repeats ``Distance``: the first copy is the display unit
+    (km for runs and rides, metres for swims and rowing) and the second is
+    always metres. A single-column export uses ``--distance-unit``.
+    """
+    if len(columns) > 1:
+        index = columns[1]
+        metres = _float(values[index]) if index < len(values) else None
+        if metres is not None:
+            return metres
+
+    if not columns:
+        return None
+    index = columns[0]
+    return _distance_m(values[index] if index < len(values) else "", unit)
 
 
 def _pick(row: dict[str, str], aliases: tuple[str, ...]) -> str:
