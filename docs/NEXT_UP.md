@@ -464,10 +464,12 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `event_id` stays empty.
     - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
       stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
-      all 2019–2022 (Runalyze has none from 2023 on), mean −2.1 against
-      Garmin where both exist. `vo2max_garmin` is untouched. The alternative
-      estimates (`vo2max_by_time`, `vo2max_with_elevation`) are documented but
-      not stored.
+      all 2019–2022 (mean −2.1 against Garmin where both exist). The 2023+
+      payloads were snapshots frozen before the
+      endpoint began serving FIT metrics (see the import list's refresh
+      sweep), so that gap is repairable. `vo2max_garmin` is untouched. The
+      alternative estimates (`vo2max_by_time`, `vo2max_with_elevation`) are
+      documented but not stored.
     - **Gear identity (decided)**: gear records become
       `source_records(record_type='gear', external_id='runalyze:<id>')` plus
       `equipment` rows, linked through `activity_equipment` with
@@ -542,6 +544,17 @@ editing, analysis and lab work; phase 3 is the dormant future.
       DB: 0 links, 19 items (3 suggesting the device row), 19 details stored,
       no activity created, and a no-op re-run. Those 19 items are the open
       queue now, so the Runalyze import itself has nothing left.
+      **Race-method gap (Nov 2026, owner: maintenance)**: the race results are
+      complete — 37 rows in the API, 37 stored, field-for-field equal — but 18
+      of those activities carry no `race` method or target (2021 ×1, 2022 ×1,
+      2023 ×7, 2024 ×3, 2025 ×6). The reports select races with `is_race()`,
+      which reads only the method/target sets, so those races vanish from the
+      race report, the PB table and the dashboard. `race_links_current`
+      derives the method only from Intervals planned race events, and there
+      are none for those years. Fix: treat a non-excluded `race_results` row
+      as evidence, add `race` under `race_link` and drop it when the result
+      disappears; manual methods keep winning. That is a maintenance
+      recompute plus tests, not import work.
     - **Not scheduled**: Runalyze weather (0 rows; the payload carries
       humidity, wind, pressure, UV, clouds and condition), routes (0; the
       nested `recurring_route` is still unused), health entries (0 illness
