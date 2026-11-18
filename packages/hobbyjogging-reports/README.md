@@ -311,6 +311,10 @@ stay compact (`1h02`).
   counts. The chart groups and colours the same categories; the summary
   keeps the overall and per-category counts. Shoes without
   `target_distance_m` use an 800 km default.
+- **health** — The Data Health tab's numbers as Markdown: activity count,
+  open review items, hidden/flagged activities, missing load/zones/HR/
+  distance, the review queue and per-year weather coverage. Covers all
+  history, like the tab.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout
@@ -376,6 +380,14 @@ stay compact (`1h02`).
   140–180 bpm, and efficiency follows the bulk (the top and bottom 5 % are
   rounded away) so one extreme rep cannot flatten the panel; the hover keeps
   the full values.
+- **equipment / devices** — the Gear tab's two charts for all history:
+  mileage grouped by gear category, and the recording-device timeline.
+- **threshold** — the run LTHR/max-HR/threshold-pace steps with official
+  race paces for all history.
+- **races / pb** — the Performance tab's log-log race chart with the Riegel
+  fit, and the PB progression chart in pace.
+- **compare-vo2max / compare-pace-hr** — the Compare tab's raw VO2max by year
+  and the year-coloured pace/HR scatter.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and
   42-day exponentially weighted averages; last 365 days by default. Device
   changes are marked with their start date, so a step is attributable to the
@@ -524,7 +536,8 @@ so a PNG and a dashboard panel always show the same thing.
     ./charts.sh vo2max --days 365
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
-as the direct CLI.
+as the direct CLI. The all-history cards (`equipment`, `devices`, `threshold`,
+`races`, `pb`, `compare-vo2max`, `compare-pace-hr`) take only an output path.
 
 ### Load chart
 

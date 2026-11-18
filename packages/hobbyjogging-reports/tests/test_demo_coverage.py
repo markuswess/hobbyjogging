@@ -9,6 +9,7 @@ from hobbyjogging_report.analysis import race_results
 from hobbyjogging_report.dashboard.reports import REPORT_NAMES, build_report
 from hobbyjogging_report.demo import generate_demo_database
 from hobbyjogging_report.equipment_report import equipment_report
+from hobbyjogging_report.health_report import health_report
 from hobbyjogging_report.race_report import race_report, races_report
 from hobbyjogging_report.sessions import session_report
 from hobbyjogging_report.sickness_report import sickness_report
@@ -59,6 +60,14 @@ class DemoCoverageTests(unittest.TestCase):
                     "Riegel estimate",
                 ):
                     self.assertIn(marker, races)
+
+                health = health_report(source, today=TODAY)
+                for marker in (
+                    "# Data Health",
+                    "## Missing data",
+                    "## Data coverage",
+                ):
+                    self.assertIn(marker, health)
 
                 equipment = equipment_report(source, today=TODAY)
                 for marker in (

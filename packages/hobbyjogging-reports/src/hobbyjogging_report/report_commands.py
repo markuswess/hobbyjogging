@@ -7,6 +7,7 @@ from .command_support import reviewed_range
 from .compare import compare_report
 from .daily import daily
 from .equipment_report import equipment_report
+from .health_report import health_report
 from .dashboard import build_dashboard
 from .debug import debug
 from .overview import overview_report
@@ -199,6 +200,10 @@ def run_streaks_command(parsed, source, include_review):
         limit=parsed,
         include_review=include_review,
     )
+
+
+def run_health_command(parsed, source, include_review):
+    return health_report(source, include_review=include_review)
 
 
 def run_sickness_command(parsed, source, include_review):

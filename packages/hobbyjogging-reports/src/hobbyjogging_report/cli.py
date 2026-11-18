@@ -121,6 +121,19 @@ def parse_classify_args(
     return resolve_range(days, args.start, args.end, today=today)
 
 
+def parse_output_arg(
+    argv: list[str],
+    *,
+    default_output: str,
+) -> str:
+    """Parse the optional output path for an all-history chart."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    args = parser.parse_args(argv)
+    return args.output_option or args.output or default_output
+
+
 def parse_report_args(
     argv: list[str],
     default_days: int = 30,

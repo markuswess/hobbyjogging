@@ -4,7 +4,7 @@ Updated 2026-11-17.
 
 Current focus: routes and wellness extras are now reports-ready; max HR and
 elevation still need core exposure, 10 is parked, 12 is behind the lab gate,
-and 13 is an open idea.
+13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
 
@@ -346,6 +346,14 @@ this list keeps the recent decisions only.
   counts plus the category counts, and the demo gained a bike and an other
   item.
 
+- **CLI parity for the dashboard-only cards.** Added `charts.sh equipment`,
+  `devices`, `threshold`, `races`, `pb`, `compare-vo2max` and
+  `compare-pace-hr`, each rendering the same figure as its dashboard card for
+  all history. Added `reports.sh health` for the Data Health tab's counts,
+  missing-data table, review queue and yearly coverage. The command registry,
+  charts.sh help and tests are updated; event pages remain the last
+  dashboard-only detail.
+
 - **Device timeline.** The Gear tab and equipment report list every
   recording device with its active period and activity count, plus a
   timeline chart. `DatabaseSource.devices()` is exposed, the session report
@@ -383,7 +391,8 @@ first: max HR and elevation on `Activity` (the repository query and model drop
 them; items 1 and 5), the per-activity zone config ids (item 4) and social
 titles (6). Item 11 has its data (`event_activity_links`, schema v21); 12's
 series needs the lab gate in root item 31. Item 10 stays parked on its
-page-coverage cost, 9 is recurring upkeep, and 13 is an open idea. The
+page-coverage cost, 9 is recurring upkeep, 13 is the event-page parity
+follow-up, and 14 is an open idea. The
 dashboard polish pass is finished. The efficiency floor, the planned-event
 page, the streaks report, the collapsible lists, the season/illness bands and
 the threshold trend landed here.
@@ -513,7 +522,13 @@ the threshold trend landed here.
     - **Tests**: the all-runs line includes a long run and a short easy run;
       the steady line does not; both labels render.
 
-13. **Illness on the pace/HR scatter** (idea). That chart plots pace against
+13. **Event pages from the CLI.** The dashboard's `event/<id>.html` shows a
+    planned session's zones, methods and plan-vs-actual table, while the
+    `planned` report has only a compact table. Add `reports.sh event
+    <id|date>` using the same `format_event` path so the last dashboard-only
+    detail has a console form.
+
+14. **Illness on the pace/HR scatter** (idea). That chart plots pace against
     heart rate, so a dated band cannot be shaded behind it. Marking the runs
     inside illness periods is the alternative — a ring, a muted marker or a
     hover note — but the encoding is open: the scatter already carries

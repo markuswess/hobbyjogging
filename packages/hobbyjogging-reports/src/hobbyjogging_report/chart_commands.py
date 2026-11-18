@@ -476,6 +476,181 @@ def run_overview_chart(
     print(path)
 
 
+def run_equipment_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the gear mileage chart for all history."""
+    from .analysis import equipment_usage
+    from .charts import plot_equipment
+
+    today = date.today()
+    activities = reviewed_range(
+        source,
+        activity_start(source, today),
+        today,
+        include_review,
+    )
+    stats = equipment_usage(source.equipment(), activities)
+    print(plot_equipment(stats, output))
+
+
+def run_devices_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the recording-device timeline for all history."""
+    from .analysis import device_usage
+    from .charts import plot_devices
+
+    today = date.today()
+    activities = reviewed_range(
+        source,
+        activity_start(source, today),
+        today,
+        include_review,
+    )
+    stats = device_usage(source.devices(), activities)
+    print(plot_devices(stats, output))
+
+
+def run_threshold_chart(output: str, source: DataSource) -> None:
+    """Render the run threshold snapshots and official race paces."""
+    from .analysis import race_pace_points, running_thresholds
+    from .charts import plot_thresholds
+
+    today = date.today()
+    thresholds = running_thresholds(source.athlete_thresholds())
+    races = race_pace_points(source.race_results())
+    print(plot_thresholds(thresholds, races, output, today=today))
+
+
+def _reviewed_results(source: DataSource, include_review: bool):
+    from .analysis import race_results
+
+    today = date.today()
+    activities = reviewed_range(
+        source,
+        activity_start(source, today),
+        today,
+        include_review,
+    )
+    return race_results(activities)
+
+
+def run_races_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the log-log race chart for all history."""
+    from .analysis import fit_riegel
+    from .charts import plot_races
+
+    results = _reviewed_results(source, include_review)
+    print(plot_races(results, fit_riegel(results), output))
+
+
+def run_pb_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the PB progression chart for all history."""
+    from .analysis import pb_progressions
+    from .charts import plot_pb_progressions
+
+    results = _reviewed_results(source, include_review)
+    print(plot_pb_progressions(pb_progressions(results), output))
+
+
+def run_compare_vo2max_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the year-by-year raw VO2max chart for all history."""
+    from .analysis import vo2max_measurements
+    from .charts import plot_compare_vo2max
+
+    today = date.today()
+    start = activity_start(source, today)
+    activities = reviewed_range(source, start, today, include_review)
+    print(plot_compare_vo2max(vo2max_measurements(activities, start, today), output))
+
+
+def run_compare_pace_hr_chart(
+    output: str,
+    source: DataSource,
+    *,
+    include_review: bool = False,
+) -> None:
+    """Render the year-coloured pace/HR scatter for all history."""
+    from .analysis import RUN_TYPES, pace_hr_points
+    from .charts import plot_compare_pace_hr
+    from .command_support import resting_hr_lookup
+
+    today = date.today()
+    start = activity_start(source, today)
+    activities = reviewed_range(source, start, today, include_review)
+    baseline = resting_hr_lookup(source, start, today)
+    points = pace_hr_points(
+        activities,
+        start,
+        today,
+        resting_hr_baseline=baseline,
+        intervals_by_id={
+            activity.id: source.activity_intervals(activity.id)
+            for activity in activities
+            if activity.type in RUN_TYPES
+        },
+        weather_lookup=source.activity_weather,
+    )
+    print(plot_compare_pace_hr(points, output))
+
+
+def run_equipment_chart_command(parsed, source, include_review):
+    run_equipment_chart(parsed, source, include_review=include_review)
+    return None
+
+
+def run_devices_chart_command(parsed, source, include_review):
+    run_devices_chart(parsed, source, include_review=include_review)
+    return None
+
+
+def run_threshold_chart_command(parsed, source, include_review):
+    run_threshold_chart(parsed, source)
+    return None
+
+
+def run_races_chart_command(parsed, source, include_review):
+    run_races_chart(parsed, source, include_review=include_review)
+    return None
+
+
+def run_pb_chart_command(parsed, source, include_review):
+    run_pb_chart(parsed, source, include_review=include_review)
+    return None
+
+
+def run_compare_vo2max_chart_command(parsed, source, include_review):
+    run_compare_vo2max_chart(parsed, source, include_review=include_review)
+    return None
+
+
+def run_compare_pace_hr_chart_command(parsed, source, include_review):
+    run_compare_pace_hr_chart(parsed, source, include_review=include_review)
+    return None
+
+
 def run_volume_command(parsed, source, include_review):
     output, start, end, planned_end, windows = parsed
     run_volume_chart(

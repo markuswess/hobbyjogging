@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery|pace-hr|compare] [args...]
+  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -32,6 +32,13 @@ Examples:
   ./charts.sh recovery --days 90
   ./charts.sh pace-hr --days 365
   ./charts.sh compare --metric load --window 7
+  ./charts.sh equipment
+  ./charts.sh devices
+  ./charts.sh threshold
+  ./charts.sh races
+  ./charts.sh pb
+  ./charts.sh compare-vo2max
+  ./charts.sh compare-pace-hr
   ./charts.sh subt --source intervals
 
 Charts accept the same --days / --from / --to / --output options as the
@@ -74,7 +81,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|overview|subt|vo2max|load|time|recovery|pace-hr|compare)
+    volume|overview|subt|vo2max|load|time|recovery|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr)
         ;;
     *)
         usage >&2
@@ -83,11 +90,18 @@ case "$mode" in
 esac
 
 chart_mode="$mode"
-if [[ "$mode" == "overview" ]]; then
-    chart_mode="overview-chart"
-elif [[ "$mode" == "compare" ]]; then
-    chart_mode="compare-chart"
-fi
+case "$mode" in
+    overview) chart_mode="overview-chart" ;;
+    compare) chart_mode="compare-chart" ;;
+    equipment) chart_mode="equipment-chart" ;;
+    devices) chart_mode="devices-chart" ;;
+    threshold) chart_mode="threshold-chart" ;;
+    races) chart_mode="races-chart" ;;
+    pb) chart_mode="pb-chart" ;;
+    compare-vo2max) chart_mode="compare-vo2max-chart" ;;
+    compare-pace-hr) chart_mode="compare-pace-hr-chart" ;;
+    *) chart_mode="$mode" ;;
+esac
 
 if (( explicit_mode == 0 )); then
     args=("$chart_mode" "${args[@]}")
