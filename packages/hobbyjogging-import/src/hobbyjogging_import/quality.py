@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from hobbyjogging_core import TrainingWriter
-from hobbyjogging_core.db.writer import (
+from hobbyjogging_core.import_rules import (
     NUMERIC_TOLERANCES,
     START_TOLERANCE_S,
 )

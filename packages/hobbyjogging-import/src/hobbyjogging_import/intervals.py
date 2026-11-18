@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
 from hobbyjogging_core import EventZoneTime, TrainingWriter
-from hobbyjogging_core.db.writer import CONFLICT_FIELDS
+from hobbyjogging_core.import_rules import CONFLICT_FIELDS
 from hobbyjogging_core.model import Interval
 from hobbyjogging_core.sports import canonical_sport
 

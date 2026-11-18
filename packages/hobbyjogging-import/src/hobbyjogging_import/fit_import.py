@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
-from hobbyjogging_core.db.writer import CONFLICT_FIELDS
+from hobbyjogging_core.import_rules import CONFLICT_FIELDS
 from hobbyjogging_core.model import Lap
 
 from .fit import (

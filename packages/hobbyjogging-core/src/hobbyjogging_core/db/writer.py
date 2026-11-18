@@ -14,6 +14,15 @@ from hobbyjogging_core.workouts import (
     canonical_method,
     canonical_target,
 )
+from hobbyjogging_core.import_rules import (
+    DATETIME_FIELDS,
+    DEFAULT_NUMERIC_TOLERANCE,
+    FIELD_RULES,
+    MANUAL_FIELDS,
+    NUMERIC_TOLERANCES,
+    START_TOLERANCE_S,
+    authority_rank,
+)
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
 
 ACTIVITY_COLUMNS = {
@@ -41,88 +50,9 @@ ACTIVITY_COLUMNS = {
     "device_id",
 }
 
-MANUAL_FIELDS = (
-    "duration_s",
-    "elapsed_s",
-    "moving_s",
-    "distance_m",
-    "elevation_gain_m",
-    "elevation_loss_m",
-    "max_hr",
-    "avg_hr",
-    "started_at_utc",
-    "local_date",
-    "tz_offset_min",
-    "sport",
-    "training_load",
-    "vo2max_garmin",
-    "vo2max_runalyze",
-    "device_id",
-)
-
-# Fields whose cross-source disagreement is surfaced for review. Subjective
-# fields (name, description, feel, rpe, ...) keep their current owner
-# silently: two sources naming one ride differently is normal, not a
-# decision the human wants to make thousands of times.
-CONFLICT_FIELDS = frozenset(
-    {
-        "duration_s",
-        "elapsed_s",
-        "moving_s",
-        "distance_m",
-        "elevation_gain_m",
-        "elevation_loss_m",
-        "max_hr",
-        "avg_hr",
-        "started_at_utc",
-        "local_date",
-        "tz_offset_min",
-        "sport",
-        "training_load",
-    }
-)
-
-# Cross-source agreement tolerances: (relative, absolute) per field. Values
-# inside the tolerance are treated as the same measurement; outside it they
-# become a field_conflict review item.
-NUMERIC_TOLERANCES = {
-    # FIT `total_timer_time` and Intervals `icu_recording_time` describe the
-    # same recording but handle pauses and the final partial second
-    # differently: observed differences run up to ~5% (median ~1.7%). The
-    # cause classifier calls anything up to 5% a small difference, so the
-    # conflict rule uses the same bound instead of queueing every drift.
-    "duration_s": (0.05, 2.0),
-    "elapsed_s": (0.01, 2.0),
-    "moving_s": (0.01, 2.0),
-    "distance_m": (0.01, 10.0),
-    # A device session average and a stream average legitimately drift by a
-    # few bpm (smart recording, stopped time, rounding), so only a wider gap
-    # is worth a human decision.
-    "avg_hr": (0.01, 5.0),
-    # Elevation sums are estimates: the sources differ by a few percent on
-    # the same run, so only a wide gap is worth a decision.
-    "elevation_gain_m": (0.10, 20.0),
-    "elevation_loss_m": (0.10, 20.0),
-    # A max-HR gap beyond 2 bpm means a different sensor or a different
-    # effort, not rounding.
-    "max_hr": (0.01, 2.0),
-}
-DEFAULT_NUMERIC_TOLERANCE = (0.01, 0.5)
-START_TOLERANCE_S = 15.0
-DATETIME_FIELDS = frozenset({"started_at_utc"})
-
-# Fixed source authority for fields where a cross-source disagreement is not
-# worth a review item. The authoritative source replaces another source's
-# value; other sources keep the authoritative value without opening a
-# conflict. Manual values still win, and same-source reimports still refresh
-# their own fields. `duration_s` deliberately remains owner-tracked.
-FIELD_AUTHORITY = {
-    "moving_s": "intervals",
-    "elapsed_s": "intervals",
-    # FIT carries the device serial, so it wins over Intervals' device name;
-    # a manual assignment still wins.
-    "device_id": "fit",
-}
+# Field ownership, conflict tolerances and manual-edit permissions live in
+# hobbyjogging_core.import_rules. The writer applies them; it does not own a
+# second copy.
 
 
 @dataclass(frozen=True)
@@ -542,22 +472,22 @@ class TrainingWriter:
         if value is None:
             return "agree", current_source  # incoming source has no value
 
-        authority = FIELD_AUTHORITY.get(field_name)
-        if authority is not None:
-            if source == authority:
+        rule = FIELD_RULES.get(field_name)
+
+        if rule is not None and rule.authority:
+            incoming_rank = authority_rank(rule, source)
+            current_rank = authority_rank(rule, current_source)
+            # A ranked source replaces an unranked owner only at the top
+            # rank. That preserves the old single-authority behaviour while
+            # allowing a fallback list for an athlete without the primary.
+            if incoming_rank is not None and (
+                (current_rank is None and incoming_rank == 0)
+                or (current_rank is not None and incoming_rank < current_rank)
+            ):
                 return "write", current_source
             return "agree", current_source
 
-        if field_name == "vo2max_garmin":
-            # FIT owns the Garmin estimate. Runalyze may only fill an empty
-            # slot with its own estimate (handled by the NULL check above);
-            # a later FIT import replaces that fallback.
-            if source == "runalyze":
-                return "agree", current_source
-            if source == "fit":
-                return "write", current_source
-
-        if field_name == "sport":
+        if rule is not None and rule.placeholder:
             # "generic"/"other" is a placeholder, not a competing claim: a
             # specific sport fills it, and never conflicts with it.
             if not is_known_sport(value) and is_known_sport(current_value):
@@ -566,7 +496,8 @@ class TrainingWriter:
                 return "write", current_source
 
         if (
-            field_name == "duration_s"
+            rule is not None
+            and rule.pause_accounting
             and current is not None
             and values is not None
         ):
@@ -581,7 +512,7 @@ class TrainingWriter:
             ):
                 return "agree", current_source
 
-        if field_name not in CONFLICT_FIELDS:
+        if rule is None or not rule.conflict:
             return "agree", current_source
 
         if self._values_conflict(current_value, value, field_name):
