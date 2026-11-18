@@ -456,9 +456,10 @@ editing, analysis and lab work; phase 3 is the dormant future.
       payload's `external_id`) and never guessing a match; a manual
       `race-result` row is kept. Validated on a copy: 37 results (2019–2026),
       33 with a placement, 21 officially measured, priorities A–D plus
-      `unknown`, and a no-op re-run. `official_ascent`/`official_descent` have
-      no column; `race_event_id` is Runalyze's own identity, so `event_id`
-      stays empty.
+      `unknown`, and a no-op re-run. Applied to the real DB: 37
+      `race_results` rows (2019–2026). `official_ascent`/`official_descent`
+      have no column; `race_event_id` is Runalyze's own identity, so
+      `event_id` stays empty.
     - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
       stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
       all 2019–2022 (Runalyze has none from 2023 on), mean −2.1 against
