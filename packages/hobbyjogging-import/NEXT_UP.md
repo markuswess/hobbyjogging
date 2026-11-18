@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Sync timing and a real FIT fixture.** `sync` records wall-clock seconds
+  per phase (`garmin`, `intervals`, `fit`, `review`, `total`) and prints one
+  `timing:` line; `sync.sh` adds `classify` and `dashboard` to it. CI parses
+  `tests/fixtures/sample-run.fit` instead of skipping every real-file test.
 - **VO2max is per sport.** Message 140 field 7 carries the estimate for the
   activity's own sport, so `vo2max_garmin` is correct as written and needs no
   parser change. The session report qualifies non-run values, the charts are
@@ -300,17 +304,6 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
-- **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
-  fetch, Intervals import, FIT scan, review scan, classification, dashboard),
-  so a slowdown shows up in the log instead of in a session that feels slow.
-  See root item 27.
-- **Committed FIT fixture.** `test_fit` reads `data/fit/*.fit`, which is
-  gitignored, so on CI every real-file test skips (they now guard with
-  `skipUnless`) and the parser is only covered by synthetic messages. Commit
-  one sample under `tests/fixtures/` and point the tests at it, so CI parses a
-  real file. A FIT carries timestamps, HR and possibly GPS, so this is a
-  privacy call even in a private repo; the alternative is a synthetic encoder
-  for the test only.
 - **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
