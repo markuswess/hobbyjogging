@@ -298,7 +298,9 @@ on.
   Creating them as the design says would add about 16 duplicates, so a
   decision comes first: a distance rule, duplicate detection for the paired
   days, and whether Runalyze may create an activity at all. Evidence:
-  `~/projects/laufen_private/data/runalyze-unmatched.json`.
+  `~/projects/laufen_private/data/runalyze-unmatched.json`; the saved file
+  still lists the now-matched 142 s cooldown until the next enrich run
+  regenerates it, so the effective count is 19.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) is on the
 reports list, and the unmatched rows are the only import leftover.
