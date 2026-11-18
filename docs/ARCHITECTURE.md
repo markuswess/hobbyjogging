@@ -29,7 +29,7 @@ completion criteria, not a second task list.
 | phase | scope | complete when |
 |---|---|---|
 | **1. Complete the pipeline** | canonical DB, review, every source imported (FIT archive, Intervals.icu, Garmin Personal API, Runalyze, Strava), reports, dashboard and race pages | all imports are in and the reports/dashboard answer the daily questions |
-| **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing, stronger analysis and lab work | the canonical record is as complete as the sources allow and the lab has proved the metrics worth keeping |
+| **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
 | **3. Beyond the database** | web editing interface, homelab migration, platform independence, LLM coaching, detailed per-second streams, vague ideas | deliberately dormant until phases 1–2 are complete |
 
 Phase 1 is current: Runalyze is in progress, Strava is the remaining source,

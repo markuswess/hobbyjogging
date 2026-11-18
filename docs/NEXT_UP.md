@@ -614,8 +614,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Checklist instead of tests**: suites green, changelog written, DB
       backed up before the migration, tag pushed.
 
-23. **Portability for a second user** (core + import + reports + CI). The model
-    is already portable — canonical activity, owner-based fields, no
+23. **Portability for a second user** (core + import + reports + CI; phase 2).
+    The model is already portable — canonical activity, owner-based fields, no
     per-source priority, the migration machinery, the importers, reports over
     `DataSource`, the synthetic demo. What is personal is the defaults.
     - **Blocking**: no `init`/`doctor` (a new user must infer that the first
@@ -638,11 +638,36 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Missing one-file fixes**: no `LICENSE`, no `.env.example`; the README
       starts at `data/fit` without saying how files get there (Garmin GDPR
       export, or Intervals-only).
+    - **Second-athlete test case (after phase 1)**: a second athlete with
+      Garmin, Runalyze and Strava — no Intervals, no sheet — runs the full
+      pipeline into their own database. This is the acceptance test for
+      portability, not a multi-tenant schema: **one athlete per DB**, and the
+      second athlete's data stays private. It will expose what is still shaped
+      by this athlete's sources; fix the generic code, do not fork it.
+    - **Per-athlete profile**: one database, FIT directory, credentials and
+      timezone per athlete; `sync.sh` must skip unconfigured sources and never
+      assume Intervals. The second athlete's setup is the first real profile.
+    - **Intervals-shaped assumptions**: `moving_s`/`elapsed_s` are
+      Intervals-authoritative, planned events are Intervals-authoritative, and
+      the thresholds/zones/wellness import is Intervals-only. The second
+      athlete has none of those. Decide the fallback owner for moving/elapsed
+      (Garmin FIT or Runalyze), how the reports behave without thresholds,
+      zones or events, and which Runalyze/Garmin endpoint supplies wellness.
+      Race results and training periods must not depend on Intervals either.
+    - **Strava role**: the second athlete's Strava is the social layer unless
+      it is the only source for an activity. Decide whether a Strava-only
+      activity is created or reported as missing; the current philosophy says
+      social text only, not training data.
+    - **Gear without a sheet**: the co-occurrence rule has no sheet shoes for
+      the second athlete; the exact-name/new-row path must carry the whole
+      gear import, and the report must show the new rows.
     - **Out of scope, state it**: multi-athlete (one athlete per DB), imperial
       units, a hosted service, arbitrary platforms.
     - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, a
       pull-request test workflow, the README first-run path; then the
-      data-driven ceilings and the sheet-code move; then the Python floor.
+      second-athlete test case once the Runalyze and Strava imports land, as
+      the driver for the remaining assumptions; then the data-driven ceilings
+      and the sheet-code move; then the Python floor.
 
 24. **Catalogue every metric and analysis tool** (docs + reports; idea). The
     registry only documents what came through the lab gate, so most of what the
