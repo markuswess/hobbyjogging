@@ -35,12 +35,18 @@ from hobbyjogging_report.analysis import (
     ThresholdPoint,
     equivalent_times,
     fit_riegel,
+    official_by_activity,
     pb_progressions,
     race_results,
     riegel_reference,
     riegel_time,
 )
-from hobbyjogging_core.model import Activity, Device, Equipment
+from hobbyjogging_core.model import (
+    Activity,
+    Device,
+    Equipment,
+    RaceResult as OfficialRaceResult,
+)
 from hobbyjogging_core.model import ActivityWeather, TrainingPeriod
 from hobbyjogging_report.model import (
     DistancePoint,
@@ -1598,6 +1604,50 @@ class PbProgressionChartTests(unittest.TestCase):
 
 
 class RaceChartTests(unittest.TestCase):
+
+    def _official_results(self):
+        activities = [
+            Activity(
+                id="a",
+                date=D,
+                type="run",
+                name="Morning Run",
+                distance_m=5000,
+                duration_s=1500,
+                workout_methods=["race"],
+            )
+        ]
+        return race_results(
+            activities,
+            official_by_activity([
+                OfficialRaceResult(
+                    activity_id="a",
+                    name="City 5k",
+                    official_distance_m=5000.0,
+                    official_time_s=1500.0,
+                )
+            ]),
+        )
+
+    def test_race_chart_hover_shows_the_official_title(self):
+        results = self._official_results()
+
+        html = plot_races(results, fit_riegel(results), "", as_html=True)
+
+        self.assertIn("Morning Run", html)
+        self.assertIn("City 5k", html)
+
+    def test_pb_chart_hover_shows_the_official_title(self):
+        results = self._official_results()
+
+        html = plot_pb_progressions(
+            pb_progressions(results),
+            "",
+            as_html=True,
+        )
+
+        self.assertIn("Morning Run", html)
+        self.assertIn("City 5k", html)
 
     def test_race_chart_shows_points_and_riegel_fit(self):
         activities = [

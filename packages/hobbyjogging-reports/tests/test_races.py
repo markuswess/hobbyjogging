@@ -42,6 +42,7 @@ def _race(**overrides):
 
 def _official(activity_id, **overrides):
     values = {
+        "name": "Official 5k",
         "official_distance_m": 5000.0,
         "official_time_s": 1200.0,
         "officially_measured": True,
@@ -604,6 +605,7 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("# Races", report)
         self.assertIn("## Results", report)
         self.assertIn("Spring 5k", report)
+        self.assertIn("| Spring 5k | - |", report)
         self.assertIn("20:00", report)
         self.assertIn("## Personal bests", report)
         self.assertIn("Riegel estimate", report)
@@ -666,10 +668,11 @@ class RaceReportTests(unittest.TestCase):
 
         report = races_report(source, today=D)
 
+        self.assertIn("| Spring 5k | Official 5k |", report)
         self.assertIn("| 12th/340 | 3rd/54 |", report)
         self.assertIn("| 5.00 km | 20:00 |", report)
         self.assertIn("Official distance and time replace", report)
-        self.assertIn("| 5k |", report)
+        self.assertIn("| 5k | 2026-10-01 | Spring 5k | Official 5k |", report)
 
     def test_dashboard_performance_shows_official_pair_and_placements(self):
         from hobbyjogging_report.dashboard.performance import (
@@ -701,10 +704,13 @@ class RaceReportTests(unittest.TestCase):
 
         section = build_performance_section(source, today=D)
 
+        self.assertIn("Spring 5k", section.results_html)
+        self.assertIn("Official 5k", section.results_html)
         self.assertIn("12th/340", section.results_html)
         self.assertIn("3rd/54", section.results_html)
         self.assertIn("5.00 km", section.results_html)
         self.assertIn("20:00", section.pbs_html)
+        self.assertIn("Official 5k", section.pbs_html)
         self.assertIn("Official distance and time replace", section.results_html)
 
     def test_race_report_header_uses_official_result(self):
@@ -733,6 +739,7 @@ class RaceReportTests(unittest.TestCase):
 
         report = race_report("a", source, today=D)
 
+        self.assertIn("- Race: Official 5k", report)
         self.assertIn(
             "- Time: 20:00 (official; measured 16:40)",
             report,

@@ -244,8 +244,13 @@ def _write_race_results(writer, activities: list[dict]) -> None:
         (8, None, 4, 87),
         (21, 512, None, None),
     )
+    official_names = ("Lakeside 5k", "Old Town 10k", "Year-End 10k")
 
-    for activity, placement in zip(races[-3:], placements):
+    for activity, placement, official_name in zip(
+        races[-3:],
+        placements,
+        official_names,
+    ):
         values = activity["values"]
         (
             place_total,
@@ -256,7 +261,7 @@ def _write_race_results(writer, activities: list[dict]) -> None:
         writer.upsert_race_result(
             activity["id"],
             source="demo",
-            name=activity["name"],
+            name=official_name,
             official_distance_m=round(values["distance_m"], 1),
             official_time_s=round(values["duration_s"]),
             officially_measured=True,

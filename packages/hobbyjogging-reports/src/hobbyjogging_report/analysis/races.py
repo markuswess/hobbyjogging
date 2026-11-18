@@ -113,6 +113,11 @@ class RaceResult:
         return official_pair(self.official)
 
     @property
+    def official_name(self) -> str:
+        """The race's own title, when the official result carries one."""
+        return (self.official.name if self.official else "") or ""
+
+    @property
     def place_overall(self) -> int | None:
         return self.official.place_total if self.official else None
 

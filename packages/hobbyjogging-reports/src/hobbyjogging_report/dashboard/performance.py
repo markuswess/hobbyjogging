@@ -110,6 +110,7 @@ def build_performance_section(
     results_html = table(
         [
             "Date",
+            "Session",
             "Race",
             "Bucket",
             "Distance",
@@ -126,6 +127,7 @@ def build_performance_section(
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.name or '-')}</a>",
+                esc(result.official_name or "-"),
                 esc(result.bucket),
                 _distance(result.distance_m),
                 _time(result.time_s),
@@ -145,7 +147,7 @@ def build_performance_section(
             ]
             for result in results
         ],
-        numeric=(3, 4, 5, 6, 7, 8, 9),
+        numeric=(4, 5, 6, 7, 8, 9, 10),
         empty="No race results.",
         collapse="races",
     )
@@ -157,7 +159,15 @@ def build_performance_section(
         )
 
     pbs_html = table(
-        ["Bucket", "Date", "Race", "Distance", "Time", "Pace"],
+        [
+            "Bucket",
+            "Date",
+            "Session",
+            "Race",
+            "Distance",
+            "Time",
+            "Pace",
+        ],
         [
             [
                 esc(bucket_label(result.bucket)),
@@ -165,13 +175,14 @@ def build_performance_section(
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.name or '-')}</a>",
+                esc(result.official_name or "-"),
                 _distance(result.distance_m),
                 _time(result.time_s),
                 _pace(result.pace_s_per_km),
             ]
             for result in pbs
         ],
-        numeric=(3, 4, 5),
+        numeric=(4, 5, 6),
         empty="No personal bests yet.",
         collapse="pbs",
     )

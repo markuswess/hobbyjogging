@@ -15,10 +15,13 @@ on the import payload.
   incomplete. Bucket, PB qualification and time, the PB progressions, the
   Riegel fit and the equivalent times all use the same effective values, so
   they agree with the threshold chart that already preferred them. The
-  Performance tab and the `races` report add Place and AG columns
+  Performance tab and the `races` report split the activity title
+  (`Session`) from the race's own title (`Race`) and add Place and AG columns
   (`3rd/340`, participants only when known); the race-day report shows the
-  official pair (measured in parentheses when they differ) and the placement
-  lines. The demo's last three races carry placements.
+  official title, pair (measured in parentheses when they differ) and
+  placement lines, and the races/PB chart hovers add the official title when
+  it differs. The demo's last three races carry distinct official titles and
+  placements.
 
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
   overview (7/42/182-day hard/total EWMAs, running volume by intensity group,

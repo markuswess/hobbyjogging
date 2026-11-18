@@ -2308,6 +2308,17 @@ PB_COLORS = {
 }
 
 
+def _race_title(result: RaceResult) -> str:
+    """The session title plus the official race title when it differs."""
+    title = result.activity.name or result.bucket
+    official = result.official_name
+
+    if official and official != result.activity.name:
+        return f"{title}<br>{official}"
+
+    return title
+
+
 def plot_pb_progressions(
     progressions: list[PbProgression],
     output: str,
@@ -2365,7 +2376,7 @@ def plot_pb_progressions(
                     ],
                 },
                 text=[
-                    f"{step.activity.date} {step.activity.name or bucket}"
+                    f"{step.activity.date} {_race_title(step)}"
                     f"<br>{step.distance_m / 1000:.2f} km, "
                     f"{fmt_clock(step.time_s)}"
                     f" · {format_pace(pace)}/km"
@@ -2391,7 +2402,7 @@ def plot_pb_progressions(
                     ],
                 },
                 hovertext=[
-                    f"{step.activity.date} {step.activity.name or bucket}"
+                    f"{step.activity.date} {_race_title(step)}"
                     f"<br>{format_pace(pace)}/km, above the axis"
                     for step, pace, bucket in above
                 ],
@@ -2420,7 +2431,7 @@ def plot_pb_progressions(
                 text=[
                     (
                         f"{step.activity.date} "
-                        f"{step.activity.name or progression.bucket}"
+                        f"{_race_title(step)}"
                         f"<br>{step.distance_m / 1000:.2f} km, "
                         f"{fmt_clock(step.time_s)}"
                         f" · {format_pace(pace)}/km"
@@ -2481,7 +2492,7 @@ def plot_races(
     _require_data(results)
     points = [
         result for result in results
-        if result.activity.distance_m and result.activity.duration_s
+        if result.distance_m and result.time_s
     ]
     figure = go.Figure()
 
@@ -2506,7 +2517,7 @@ def plot_races(
                 },
                 text=[
                     f"{point.activity.date} "
-                    f"{point.activity.name or point.bucket}"
+                    f"{_race_title(point)}"
                     f"<br>{point.distance_m / 1000:.2f} km, "
                     f"{fmt_clock(point.time_s)}"
                     for point in points
@@ -2549,7 +2560,7 @@ def plot_races(
                         "line": {"color": "#111111", "width": 2},
                     },
                     text=[
-                        f"{race.date} {race.name or reference.bucket}"
+                        f"{race.date} {_race_title(reference)}"
                         f"<br>{reference.distance_m / 1000:.2f} km, "
                         f"{fmt_clock(reference.time_s)}"
                     ],

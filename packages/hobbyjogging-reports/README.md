@@ -111,15 +111,16 @@ Pages:
   adds an approximate plan-vs-actual table and links to that activity; exact
   links wait on `event_activity_links`. Untyped notes have no page.
 - `performance.html` (Performance) — upcoming races, race results with
-  overall and age-group placement, personal bests, a per-bucket PB progression
-  chart in pace (5k/10k/HM/M only, with the races that missed the line as
-  hollow dots in the bucket's colour and slow ones above the axis marked), a
-  log-log race chart whose dashed Riegel line passes through the reference
-  race, and an equivalent-times table for 5k, 7k, 10k, 15k, HM, 30k and the
-  marathon with the predicted and PB pace for each. The official race result
-  supplies the distance and time when it has both; the measured activity is
-  the fallback. Results and PBs link to per-race pages with splits and
-  execution details.
+  separate Session and Race columns (the activity title and the official
+  race title) plus overall and age-group placement, personal bests, a
+  per-bucket PB progression chart in pace (5k/10k/HM/M only, with the races
+  that missed the line as hollow dots in the bucket's colour and slow ones
+  above the axis marked), a log-log race chart whose dashed Riegel line
+  passes through the reference race, and an equivalent-times table for 5k,
+  7k, 10k, 15k, HM, 30k and the marathon with the predicted and PB pace for
+  each. The official race result supplies the distance and time when it has
+  both; the measured activity is the fallback. Results and PBs link to
+  per-race pages with splits and execution details.
 - `gear.html` (Gear) — gear mileage bars grouped and coloured by category
   (shoes, bikes, other) with target markers and faded retired bars, one table
   section per category, per-year coverage with and without gear, a device
@@ -208,15 +209,14 @@ marathon, a 10-day injury and a careful return, a first marathon, six
 boom-and-bust weeks, then a threshold-focused Norwegian singles block with
 double-threshold days. Thirteen races, intervals, a fartlek, zone times,
 wellness, planned workouts, two future races and four shoes; the last three
-races carry official results with overall and age-group placements. One
-fitness curve
-(5k pace plus an endurance factor per distance) drives every race time,
-training pace and the Garmin VO2max value, so they stay in line while still
-moving: easy and long runs stay in zones 1–2, workouts carry the hard zones,
-the Garmin VO2max estimate only updates on a quality or long run (held on a
-0.1 grid in between, and absent on rides), and the 16-week future plan mirrors
-the last four complete weeks. It never reads the canonical database or any
-personal data.
+races carry official results with distinct race titles, overall and age-group
+placements. One fitness curve (5k pace plus an endurance factor per distance)
+drives every race time, training pace and the Garmin VO2max value, so they
+stay in line while still moving: easy and long runs stay in zones 1–2,
+workouts carry the hard zones, the Garmin VO2max estimate only updates on a
+quality or long run (held on a 0.1 grid in between, and absent on rides), and
+the 16-week future plan mirrors the last four complete weeks. It never reads
+the canonical database or any personal data.
 
     python -m hobbyjogging_report demo-db --out build/demo.db
 
@@ -275,30 +275,31 @@ stay compact (`1h02`).
   short/medium/long/LT1. Shows work-block and summary tables; when run
   threshold snapshots exist, each block adds its work pace minus the
   threshold setting in effect (`Δ threshold`, positive = slower).
-- **races** — Race results with overall and age-group placement
-  (`3rd/340`; the field size only when known), personal bests per distance
-  bucket (5k, 10k, HM, M, trail, other with short-course tolerance),
-  upcoming races, a Riegel exponent fit over every race, and
-  equivalent-time predictions at 5k, 7k, 10k, 15k, HM, 30k and the marathon,
-  each with the predicted pace and the PB pace. The official race result
-  supplies the distance and time when it has both, so the bucket, PB, fit
-  and tables all rank the same values; the measured activity is the
-  fallback. The predictions scale from the reference race (the newest road
-  10k, else the newest road race), which the Performance tab's chart line
-  passes through as well. Standard-distance PBs require an effective
-  distance within 2% of the standard, so a short measured course cannot win
-  the 5k PB unless its official distance is 5k; Trail and Other are labelled
-  raw, keep the fastest raw time, and get no PB progression line. Filter
-  with `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or
+- **races** — Race results with separate Session and Race columns (the
+  activity title and `race_results.name`; `-` when there is no official
+  result), overall and age-group placement (`3rd/340`; the field size only
+  when known), personal bests per distance bucket (5k, 10k, HM, M, trail,
+  other with short-course tolerance), upcoming races, a Riegel exponent fit
+  over every race, and equivalent-time predictions at 5k, 7k, 10k, 15k, HM,
+  30k and the marathon, each with the predicted pace and the PB pace. The
+  official race result supplies the distance and time when it has both, so
+  the bucket, PB, fit and tables all rank the same values; the measured
+  activity is the fallback. The predictions scale from the reference race
+  (the newest road 10k, else the newest road race), which the Performance
+  tab's chart line passes through as well. Standard-distance PBs require an
+  effective distance within 2% of the standard, so a short measured course
+  cannot win the 5k PB unless its official distance is 5k; Trail and Other
+  are labelled raw, keep the fastest raw time, and get no PB progression
+  line. Filter with `--bucket 5k|10k|HM|M|Trail|Other`, `--year YYYY` (or
   `--from`/`--to`), and `--limit N` for the latest results, e.g.
   `./reports.sh races --bucket 10k --year 2026 --limit 10`. Filters scope
   the results and PB tables; a date filter also scopes upcoming races,
   while `--bucket` and `--limit` leave them unfiltered.
-- **race <activity-id>** — One race-day report: the official distance, time
-  and placement when the race result has them (measured values in
-  parentheses when they differ), then splits, first/second-half pace,
-  planned-vs-actual zones and duration/distance when a race event exists on
-  the same date.
+- **race <activity-id>** — One race-day report: the official race title,
+  distance, time and placement when the race result has them (measured
+  values in parentheses when they differ), then splits, first/second-half
+  pace, planned-vs-actual zones and duration/distance when a race event
+  exists on the same date.
 - **streaks** — The current running streak (days, span, km, time, and
   whether today is already run) and the longest streaks with the same
   fields, cut by `--limit N` (default 10). A streak day needs one run of at
@@ -396,7 +397,8 @@ stay compact (`1h02`).
   race paces for all history.
 - **races / pb** — the Performance tab's log-log race chart with the Riegel
   fit, and the PB progression chart in pace. Both use the official
-  distance/time when the race result supplies both.
+  distance/time when the race result supplies both, and their hover shows
+  the official race title when it differs from the activity title.
 - **compare-vo2max / compare-pace-hr** — the Compare tab's raw VO2max by year
   and the year-coloured pace/HR scatter.
 - **vo2max** — Garmin running VO2max values as daily dots with 7- and

@@ -58,6 +58,7 @@ class DemoCoverageTests(unittest.TestCase):
                     "## Results",
                     "## Personal bests",
                     "Riegel estimate",
+                    "Lakeside 5k",
                     "12th/340",
                     "3rd/54",
                     "Official distance and time replace",
@@ -127,6 +128,7 @@ class DemoCoverageTests(unittest.TestCase):
                 self.assertIn("# Race", race)
                 self.assertIn("- Time:", race)
                 self.assertIn("(official", race)
+                self.assertIn("- Race: Year-End 10k", race)
                 self.assertIn("- Place:", race)
             finally:
                 source.close()

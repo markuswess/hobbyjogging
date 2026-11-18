@@ -141,21 +141,28 @@ def races_report(
             "",
             "## Results",
             "",
-            "| Date | Race | Bucket | Distance | Time | Pace | Place | AG | "
-            "HR | Load |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| Date | Session | Race | Bucket | Distance | Time | Pace | "
+            "Place | AG | HR | Load |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ])
         for result in shown:
             activity = result.activity
+            overall = format_place(
+                result.place_overall,
+                result.participants_overall,
+            )
+            ageclass = format_place(
+                result.place_ageclass,
+                result.participants_ageclass,
+            )
             lines.append(
                 f"| {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
+                f"{table_text(result.official_name) or '-'} | "
                 f"{result.bucket} | {_distance(result.distance_m)} | "
                 f"{fmt_clock(result.time_s)} | "
                 f"{_pace(result.pace_s_per_km)} | "
-                f"{format_place(result.place_overall, result.participants_overall)} "
-                f"| {format_place(result.place_ageclass, result.participants_ageclass)} "
-                "| "
+                f"{overall} | {ageclass} | "
                 f"{'-' if activity.avg_hr is None else f'{activity.avg_hr:.0f}'} | "
                 f"{_load(activity.training_load)} |"
             )
@@ -179,14 +186,15 @@ def races_report(
             "",
             "## Personal bests",
             "",
-            "| Bucket | Date | Race | Distance | Time | Pace |",
-            "|---|---|---|---:|---:|---:|",
+            "| Bucket | Date | Session | Race | Distance | Time | Pace |",
+            "|---|---|---|---|---:|---:|---:|",
         ])
         for result in groups:
             lines.append(
                 f"| {bucket_label(result.bucket)} | "
                 f"{result.activity.date} | "
                 f"{table_text(result.activity.name) or '-'} | "
+                f"{table_text(result.official_name) or '-'} | "
                 f"{_distance(result.distance_m)} | "
                 f"{fmt_clock(result.time_s)} | "
                 f"{_pace(result.pace_s_per_km)} |"
@@ -359,6 +367,9 @@ def race_report(
     )
 
     lines = [f"# Race {activity.date}"]
+
+    if official is not None and official.name and official.name != activity.name:
+        lines.append(f"- Race: {official.name}")
 
     if official_pair(official):
         time_s = official.official_time_s or activity.duration_s
