@@ -9,6 +9,10 @@ on.
   activity's own sport, so `vo2max_garmin` is correct as written and needs no
   parser change. The session report qualifies non-run values, the charts are
   running-only, and `docs/SOURCE_NOTES.md` records the semantics.
+- **Thresholds and zones come from maintenance, not the importer.**
+  `athlete_thresholds_current` derives the dated snapshots from the Intervals
+  payloads and `activity_zone_configs_current` writes the zone configs; the
+  importer does not duplicate that logic.
 - **Runalyze payload repair and VO2max fill.** The `--refresh-before` sweep
   re-read all 2,843 activity payloads (a 2023 row went from 64 to 87 keys with
   `hr_avg`/`vo2max`), closing the `hr_avg` gap from 1,752 linked rows to 5;
@@ -273,10 +277,10 @@ on.
   Rules fire only when the evidence exists; ungated, the counts explode with
   history artefacts (162 / 45 / 69). A changed suggestion supersedes the old
   item.
-- **Pace/HR outlier scan.** Add a dataset-wide quality rule that fits the
-  steady-run pace/HR relationship (robust, per year or a rolling window) and
-  records a `quality` review item when a run's average HR is far from the
-  expected value for its pace. Start with steady easy/recovery runs only;
+- **Pace/HR outlier scan** (root item 37). Add a dataset-wide quality rule
+  that fits the steady-run pace/HR relationship (robust, per year or a rolling
+  window) and records a `quality` review item when a run's average HR is far
+  from the expected value for its pace. Start with steady easy/recovery runs only;
   exclude trail/race/interval sessions and heat/elevation explanations, or
   carry them in the item context. A first pass at 3.5 MAD / 12 bpm flagged 37
   gross points, many legitimate, so calibrate on the steady subset before
@@ -290,11 +294,6 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
-- **Athlete thresholds and zone configs.** Write `athlete_thresholds`
-  snapshots and `zone_configs` rows (reusing identical boundaries) and set the
-  activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,
-  `threshold_pace`, `icu_hr_zones` and `pace_zones`. Treat zero and
-  implausible threshold paces as absent.
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),
   so a slowdown shows up in the log instead of in a session that feels slow.
