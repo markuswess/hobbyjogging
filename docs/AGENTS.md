@@ -161,8 +161,10 @@ Cross-package changes must leave all four suites green.
   name when there is no single number), and Runalyze's `recurring_route` id is
   a different identity — the two never merge automatically.
 - A linked race event gives its activity the `race` method under `race_link`;
-  a manual link or a manual method set wins, and an ambiguous match becomes an
-  `ambiguous_race` review item rather than a guess.
+  a non-excluded official `race_results` row is evidence too, and the method is
+  dropped when neither remains. A manual link or a manual method set wins, and
+  an ambiguous match becomes an `ambiguous_race` review item rather than a
+  guess.
 - A gear record that matches an existing equipment item only adds a source
   link; it never overwrites that item's name, brand, model or dates. A name
   tie is broken by the acquisition date (Runalyze's `date_start` against

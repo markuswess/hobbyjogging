@@ -6,10 +6,13 @@ This file records what the package is still waiting on.
 
 - **`race_links_current`.** Matches each race event to an activity on the same
   date and sport within 5% distance, writes `event_activity_links` and derives
-  the `race` method under `race_link`. A manual link or manual method set wins;
-  two candidates open an `ambiguous_race` review item. Applied: 2 links
-  (Linz Marathon 2026, Baden Stadtlauf 2025), 2 methods added; runs in
-  `sync.sh`.
+  the `race` method under `race_link`. A non-excluded official `race_results`
+  row is evidence too, so the years before the Intervals calendar are covered;
+  the method is dropped when neither an event link nor a result remains. A
+  manual link or manual method set wins; two candidates open an
+  `ambiguous_race` review item. Applied: 2 event links (Linz Marathon 2026,
+  Baden Stadtlauf 2025) and 18 result-backed methods, so all 37 official
+  results now carry `race`; runs in `sync.sh`.
 - **`activity_routes_v1`.** Resolves the sheet's `Strecke`/`Streckennummer`
   into routes (number first, then the name's number when unambiguous) and
   links the matched activity. Applied: 36 routes and 384 links; name-only

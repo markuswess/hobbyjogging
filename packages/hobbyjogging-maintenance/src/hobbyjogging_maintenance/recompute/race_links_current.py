@@ -1,10 +1,15 @@
-"""Link planned race events to the activities that ran them.
+"""Derive the race method from planned events and official results.
 
 The classifier only reads the activity name, so a past planned race whose
 activity is named after the town (``Linz Marathon`` vs ``Linz Running``) stays
 a long run or an interval session. This recompute matches each race event to
 an activity on the same date and sport with a distance within 5%, then makes
 the activity carry the ``race`` method under its own non-manual source.
+
+An official ``race_results`` row is evidence on its own: the activity ran a
+race even when no Intervals planned event exists (the years before the
+calendar). Either source adds ``race`` under ``race_link``; it is dropped when
+neither remains.
 
 Manual links and manual workout sets always win: an event with a manual link
 is left alone, and an activity with manual methods never gets the derived
@@ -29,6 +34,7 @@ MIN_TOLERANCE_M = 100.0
 
 _COUNT_ORDER = (
     "events",
+    "results",
     "linked",
     "unchanged",
     "ambiguous",
@@ -60,7 +66,7 @@ class Candidate:
 @task(
     "race_links_current",
     kind="recompute",
-    description="Link planned races to activities and derive the race method.",
+    description="Derive the race method from planned events and official results.",
 )
 def race_links_current(context: TaskContext) -> None:
     events = _race_events(context)
@@ -319,6 +325,13 @@ def _reconcile_methods(
         for link in current.get(event.id, []):
             linked.setdefault(link["activity_id"], event.source_record_id)
 
+    # An official result is evidence too: the activity ran a race even when no
+    # Intervals planned event exists (the gap that hid 18 races from reports).
+    results = _race_results(context)
+    for activity_id, source_record_id in results.items():
+        linked.setdefault(activity_id, source_record_id)
+        context.count("results")
+
     for activity_id, source_record_id in linked.items():
         methods = _methods(context.connection, activity_id)
         if any(row["is_manual"] for row in methods):
@@ -345,6 +358,45 @@ def _reconcile_methods(
             context.count("methods_removed")
 
     context.order_counts(_COUNT_ORDER)
+
+
+def _race_results(context: TaskContext) -> dict[str, int | None]:
+    """Activities with a non-excluded official result, keyed by activity."""
+    where = ["r.excluded_at IS NULL", "a.excluded_at IS NULL"]
+    params: list[object] = []
+
+    if context.scope.start is not None:
+        where.append("a.local_date >= ?")
+        params.append(context.scope.start.isoformat())
+    if context.scope.end is not None:
+        where.append("a.local_date <= ?")
+        params.append(context.scope.end.isoformat())
+    if context.scope.entity_id is not None:
+        where.append(
+            """
+            r.activity_id IN (
+                SELECT activity_id FROM event_activity_links
+                WHERE event_id = ?
+            )
+            """
+        )
+        params.append(context.scope.entity_id)
+
+    sql = f"""
+        SELECT r.activity_id, r.source_record_id
+        FROM race_results r
+        JOIN activities a ON a.id = r.activity_id
+        WHERE {' AND '.join(where)}
+        ORDER BY r.activity_id, r.id
+    """
+    if context.scope.limit is not None:
+        sql += " LIMIT ?"
+        params.append(context.scope.limit)
+
+    result: dict[str, int | None] = {}
+    for row in context.connection.execute(sql, params):
+        result.setdefault(row["activity_id"], row["source_record_id"])
+    return result
 
 
 def _methods(

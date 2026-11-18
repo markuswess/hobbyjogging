@@ -297,8 +297,10 @@ SQLite, forward-only migrations. Schema version 22.
 - `event_activity_links` (v21) — a planned race and the activity that ran it.
   `race_links_current` matches date + sport + distance within 5%; an
   ambiguous match opens an `ambiguous_race` review item instead of guessing.
-  A linked race makes the activity carry the `race` method under `race_link`;
-  a manual link or a manual method set wins.
+  A linked race, or a non-excluded official `race_results` row, makes the
+  activity carry the `race` method under `race_link`; a manual link or a
+  manual method set wins, and the method is dropped when neither evidence
+  remains.
 - `training_periods` (v18) — dated spans: seasons, plans, illness, travel,
   recovery. Intervals supplies the season starts (`SEASON_START`) and the
   sickness/travel notes (`SICK`/`NOTE`); a season ends the day before the next

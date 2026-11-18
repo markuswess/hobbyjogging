@@ -87,6 +87,25 @@ class RaceLinksTests(unittest.TestCase):
     def _run(self, **kwargs):
         return run_task(self.conn, get_task(TASK), **kwargs)
 
+    def _result(self, activity_id, *, source="runalyze"):
+        record_id = self.writer.upsert_source_record(
+            source=source,
+            record_type="race_result",
+            external_id=f"r-{activity_id}",
+            checksum=f"rc-{activity_id}",
+            import_run_id=self.run_id,
+        )
+        self.writer.upsert_race_result(
+            activity_id,
+            source=source,
+            source_record_id=record_id,
+            name="Official race",
+            official_distance_m=10000.0,
+            official_time_s=3000.0,
+        )
+        self.conn.commit()
+        return record_id
+
     def _links(self):
         return [
             (row["event_id"], row["activity_id"], row["is_manual"])
@@ -208,6 +227,65 @@ class RaceLinksTests(unittest.TestCase):
 
         self.assertEqual([], self._links())
         self.assertEqual([], self._methods("a1"))
+
+    def test_an_official_result_adds_the_race_method(self):
+        self._activity("a1")
+        self._result("a1")
+
+        result = self._run()
+
+        self.assertEqual(1, result.counts["results"])
+        self.assertEqual(1, result.counts["methods_added"])
+        self.assertEqual([("race", "race_link")], self._methods("a1"))
+
+    def test_a_manual_method_beats_an_official_result(self):
+        self._activity("a1")
+        self._result("a1")
+        self.writer.replace_activity_workout_methods(
+            "a1", ["long_run"], source="manual", is_manual=True
+        )
+
+        self._run()
+
+        self.assertEqual([("long_run", "manual")], self._methods("a1"))
+
+    def test_an_excluded_result_does_not_add_the_method(self):
+        self._activity("a1")
+        self._result("a1")
+        self.conn.execute(
+            "UPDATE race_results SET excluded_at = '2026-01-01' "
+            "WHERE activity_id = 'a1'"
+        )
+        self.conn.commit()
+
+        self._run()
+
+        self.assertEqual([], self._methods("a1"))
+
+    def test_a_removed_result_drops_the_derived_method(self):
+        self._activity("a1")
+        self._result("a1")
+        self._run()
+
+        self.conn.execute(
+            "UPDATE race_results SET excluded_at = '2026-01-01' "
+            "WHERE activity_id = 'a1'"
+        )
+        self.conn.commit()
+
+        result = self._run(force=True)
+
+        self.assertEqual(1, result.counts["methods_removed"])
+        self.assertEqual([], self._methods("a1"))
+
+    def test_an_event_and_a_result_share_one_method(self):
+        self._event()
+        self._activity("a1")
+        self._result("a1")
+
+        self._run()
+
+        self.assertEqual([("race", "race_link")], self._methods("a1"))
 
     def test_a_dry_run_writes_nothing(self):
         self._event()

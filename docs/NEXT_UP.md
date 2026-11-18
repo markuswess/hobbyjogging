@@ -560,17 +560,14 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `hr_avg` gap from 1,752 linked rows to 5; `runalyze vo2max` then filled
       `vo2max_runalyze` from 843 to 2,225 values (2019-01-22 → 2026-11-16).
       Reports item 15 is unblocked.
-      **Race-method gap (Nov 2026, owner: maintenance)**: the race results are
-      complete — 37 rows in the API, 37 stored, field-for-field equal — but 18
-      of those activities carry no `race` method or target (2021 ×1, 2022 ×1,
-      2023 ×7, 2024 ×3, 2025 ×6). The reports select races with `is_race()`,
-      which reads only the method/target sets, so those races vanish from the
-      race report, the PB table and the dashboard. `race_links_current`
-      derives the method only from Intervals planned race events, and there
-      are none for those years. Fix: treat a non-excluded `race_results` row
-      as evidence, add `race` under `race_link` and drop it when the result
-      disappears; manual methods keep winning. That is a maintenance
-      recompute plus tests, not import work.
+      **Race-method gap (done Nov 2026)**: 18 of the 37 official results
+      carried no `race` method (2021 ×1, 2022 ×1, 2023 ×7, 2024 ×3, 2025 ×6),
+      so they vanished from the race report, the PB table and the dashboard;
+      `race_links_current` only used Intervals planned events, and there are
+      none for those years. Fixed: a non-excluded `race_results` row is now
+      evidence, `race` is added under `race_link` and dropped when the result
+      disappears; manual methods still win. Applied 18 methods, so all 37
+      results carry `race` and the races are back in the reports.
     - **Not scheduled**: Runalyze weather (0 rows; the payload carries
       humidity, wind, pressure, UV, clouds and condition), routes (0; the
       nested `recurring_route` is still unused), health entries (0 illness
