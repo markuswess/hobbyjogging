@@ -24,15 +24,12 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
-from hobbyjogging_core.sports import NO_DISTANCE_SPORTS
 
-from .matching import ActivityMatcher, MatchCandidate
+from .matching import MatchPolicy, decide_match
 from .quality import AMBIGUOUS_MATCH, review_fingerprint
 from .runalyze import RunalyzeApi, RunalyzeClient, RunalyzeRateLimitError
 
 SOURCE = "runalyze"
-DISTANCE_TOLERANCE_RATIO = 0.05
-DISTANCE_TOLERANCE_M = 100.0
 DISTANCE_KM_TO_M = 1000.0
 WAIT_BUFFER_S = 5.0
 DEFAULT_WAIT_S = 300.0
@@ -131,7 +128,6 @@ class RunalyzeEnricher:
         self.connection = connection
         self.client = client or RunalyzeClient()
         self.writer = TrainingWriter(connection)
-        self.matcher = ActivityMatcher(connection)
 
     def enrich(
         self,
@@ -566,29 +562,19 @@ class RunalyzeEnricher:
         if duration <= 0 and elapsed <= 0:
             return None, "no_duration", None
 
-        matches = self.matcher.find(
-            started_at_utc=started_at,
+        decision = decide_match(
+            self.connection,
             source=SOURCE,
+            started_at_utc=started_at,
             elapsed_s=elapsed,
             duration_s=duration,
+            distance_m=_distance_m(activity),
+            local_date=_local_date(activity),
+            policy=MatchPolicy(exact_twin=False),
         )
-        if not matches:
-            return None, "no_temporal_match", None
-
-        distance_m = _distance_m(activity)
-        viable = [
-            match
-            for match in matches
-            if self._distance_ok(distance_m, match)
-        ]
-
-        if not viable:
-            return None, "distance_mismatch", None
-        if len(viable) > 1:
-            return None, "ambiguous_match", None
-
-        match = viable[0]
-        return match.activity_id, "", match.confidence
+        if decision.activity_id is not None:
+            return decision.activity_id, "", decision.confidence
+        return None, decision.reason, None
 
     # -- the review path ----------------------------------------------------
 
@@ -712,36 +698,6 @@ class RunalyzeEnricher:
                 )
 
         return stored
-
-    def _distance_ok(
-        self,
-        runalyze_distance_m: float | None,
-        match: MatchCandidate,
-    ) -> bool:
-        if runalyze_distance_m is None:
-            return True
-
-        row = self.connection.execute(
-            "SELECT sport, distance_m FROM activities WHERE id = ?",
-            (match.activity_id,),
-        ).fetchone()
-        if row is None:
-            return False
-        if row["sport"] in NO_DISTANCE_SPORTS:
-            return True
-
-        stored_distance_m = row["distance_m"] or 0.0
-        if stored_distance_m <= 0:
-            return True
-
-        tolerance = max(
-            DISTANCE_TOLERANCE_M,
-            DISTANCE_TOLERANCE_RATIO
-            * max(runalyze_distance_m, stored_distance_m),
-        )
-        return (
-            abs(runalyze_distance_m - stored_distance_m) <= tolerance
-        )
 
     # -- writing ------------------------------------------------------------
 

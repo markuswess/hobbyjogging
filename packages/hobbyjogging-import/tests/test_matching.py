@@ -6,6 +6,8 @@ from hobbyjogging_import.matching import (
     ActivityMatcher,
     ActivityWindow,
     AmbiguousMatchError,
+    MatchPolicy,
+    decide_match,
     find_matches,
     match_window,
     parse_utc,
@@ -262,6 +264,154 @@ class ActivityMatcherTests(unittest.TestCase):
                 duration_s=0,
             ),
         )
+
+
+class MatchDecisionTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self._seed()
+
+    def _seed(self):
+        self.conn.executemany(
+            """
+            INSERT INTO activities (
+                id, local_date, started_at_utc, sport,
+                elapsed_s, duration_s, distance_m
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    "a1", "2026-10-01", "2026-10-01T06:00:00Z", "run",
+                    3600, 3500, 10000,
+                ),
+                (
+                    "a2", "2026-10-01", "2026-10-01T08:00:00Z", "ride",
+                    1800, 1700, 30000,
+                ),
+                (
+                    "a3", "2026-10-01", "2026-10-01T12:00:00Z", "run",
+                    1800, 1800, 5000,
+                ),
+            ],
+        )
+
+    def _decide(self, **overrides):
+        values = {
+            "source": "runalyze",
+            "started_at_utc": "2026-10-01T06:10:00Z",
+            "elapsed_s": 3600,
+            "duration_s": 3500,
+            "distance_m": 10000,
+            "local_date": "2026-10-01",
+        }
+        values.update(overrides)
+        return decide_match(self.conn, **values)
+
+    def test_temporal_match(self):
+        decision = self._decide()
+
+        self.assertEqual("a1", decision.activity_id)
+        self.assertEqual("matched", decision.reason)
+        self.assertEqual("temporal_overlap", decision.match_method)
+        self.assertTrue(decision.linked)
+
+    def test_distance_mismatch_keeps_candidates(self):
+        decision = self._decide(distance_m=20000)
+
+        self.assertIsNone(decision.activity_id)
+        self.assertEqual("distance_mismatch", decision.reason)
+        self.assertEqual(["a1"], [c.activity_id for c in decision.candidates])
+
+    def test_missing_distance_accepts_the_window(self):
+        decision = self._decide(distance_m=None)
+
+        self.assertEqual("a1", decision.activity_id)
+
+    def test_exact_twin_when_the_window_is_rejected(self):
+        decision = self._decide(
+            started_at_utc="2026-10-01T14:00:00Z",
+            elapsed_s=1800,
+            duration_s=1800,
+            distance_m=5000,
+        )
+
+        self.assertEqual("a3", decision.activity_id)
+        self.assertEqual("exact_twin", decision.reason)
+        self.assertEqual("exact_twin", decision.match_method)
+
+    def test_exact_twin_can_be_disabled(self):
+        decision = self._decide(
+            started_at_utc="2026-10-01T14:00:00Z",
+            elapsed_s=1800,
+            duration_s=1800,
+            distance_m=5000,
+            policy=MatchPolicy(exact_twin=False),
+        )
+
+        self.assertIsNone(decision.activity_id)
+        self.assertEqual("no_temporal_match", decision.reason)
+
+    def test_several_exact_twins_are_ambiguous(self):
+        self.conn.execute(
+            """
+            INSERT INTO activities (
+                id, local_date, started_at_utc, sport,
+                elapsed_s, duration_s, distance_m
+            ) VALUES ('a4', '2026-10-01', '2026-10-01T18:00:00Z',
+                      'run', 1800, 1800, 5000)
+            """
+        )
+        decision = self._decide(
+            started_at_utc="2026-10-01T14:00:00Z",
+            elapsed_s=1800,
+            duration_s=1800,
+            distance_m=5000,
+        )
+
+        self.assertIsNone(decision.activity_id)
+        self.assertEqual("ambiguous_match", decision.reason)
+        self.assertTrue(decision.needs_review)
+        self.assertEqual(2, len(decision.candidates))
+
+    def test_create_is_explicit(self):
+        decision = self._decide(
+            started_at_utc="2026-10-05T06:00:00Z",
+            local_date="2026-10-05",
+            distance_m=8000,
+            allow_create=True,
+        )
+        self.assertEqual("create", decision.reason)
+
+        without = self._decide(
+            started_at_utc="2026-10-05T06:00:00Z",
+            local_date="2026-10-05",
+            distance_m=8000,
+        )
+        self.assertEqual("no_temporal_match", without.reason)
+
+    def test_missing_start_or_duration(self):
+        self.assertEqual(
+            "no_start",
+            self._decide(started_at_utc="").reason,
+        )
+        self.assertEqual(
+            "no_duration",
+            self._decide(elapsed_s=0, duration_s=0).reason,
+        )
+
+    def test_fit_segment_uses_the_profile(self):
+        decision = self._decide(
+            source="fit",
+            started_at_utc="2026-10-01T06:20:00Z",
+            elapsed_s=600,
+            distance_m=None,
+        )
+
+        self.assertEqual("a1", decision.activity_id)
+        self.assertEqual("contained_fit", decision.match_method)
 
 
 if __name__ == "__main__":

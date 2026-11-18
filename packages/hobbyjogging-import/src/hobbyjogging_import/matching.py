@@ -14,6 +14,9 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
+from hobbyjogging_core.import_rules import source_profile
+from hobbyjogging_core.sports import NO_DISTANCE_SPORTS
+
 MIN_OVERLAP_S = 120.0
 MIN_SHORTER_RATIO = 0.60
 MIN_FIT_CONTAINED_RATIO = 0.90
@@ -54,6 +57,47 @@ class MatchCandidate:
     overlap_s: float
     shorter_ratio: float
     fit_contained_ratio: float | None = None
+
+
+@dataclass(frozen=True)
+class MatchPolicy:
+    """How loosely one source accepts a same-session match.
+
+    The temporal window is shared; the distance and exact-twin tolerances are
+    policy because cloud sources differ in how they round a track. The
+    defaults are the Runalyze values that survived the 19-row review.
+    """
+
+    distance_ratio: float = 0.05
+    distance_m: float = 100.0
+    exact_duration_s: float = 2.0
+    exact_distance_m: float = 10.0
+    exact_twin: bool = True
+
+
+@dataclass(frozen=True)
+class MatchDecision:
+    """The outcome of resolving one imported row against the canonical DB.
+
+    ``activity_id`` is set only for a link. ``reason`` is stable enough to
+    store in a review item: ``matched``, ``exact_twin``, ``ambiguous_match``,
+    ``distance_mismatch``, ``no_temporal_match``, ``no_start``, ``no_duration``
+    or ``create``.
+    """
+
+    activity_id: str | None
+    reason: str
+    match_method: str = ""
+    confidence: float | None = None
+    candidates: tuple[MatchCandidate, ...] = ()
+
+    @property
+    def linked(self) -> bool:
+        return self.activity_id is not None
+
+    @property
+    def needs_review(self) -> bool:
+        return self.activity_id is None and self.reason == "ambiguous_match"
 
 
 class AmbiguousMatchError(RuntimeError):
@@ -221,7 +265,7 @@ class ActivityMatcher:
         return find_matches(
             candidate,
             windows,
-            candidate_is_fit=source == "fit",
+            candidate_is_fit=_match_mode(source) == "contained_fit",
         )
 
     def _windows(
@@ -266,6 +310,181 @@ class ActivityMatcher:
             )
 
         return windows
+
+
+def decide_match(
+    connection: sqlite3.Connection,
+    *,
+    source: str,
+    started_at_utc: str | None,
+    elapsed_s: float = 0,
+    duration_s: float = 0,
+    distance_m: float | None = None,
+    local_date: str | None = None,
+    policy: MatchPolicy = MatchPolicy(),
+    exclude_activity_id: str | None = None,
+    allow_create: bool = False,
+) -> MatchDecision:
+    """Resolve one imported row to an activity, a review set or a create.
+
+    The ladder is deliberate and shared by every source:
+
+    1. temporal overlap (with the source's contained-segment rule);
+    2. distance agreement, when both sides carry a distance;
+    3. a same-day exact twin, when the window was rejected but duration and
+       distance match to a hair;
+    4. an ambiguous review item, never a guess;
+    5. creation only when the source profile and the caller allow it.
+
+    Runalyze passes ``exact_twin=False`` because its review path owns the
+    sheet-duplicate refinement; the temporal and distance steps are the same.
+    """
+    if not started_at_utc:
+        return MatchDecision(None, "no_start")
+
+    if elapsed_s <= 0 and duration_s <= 0:
+        return MatchDecision(None, "no_duration")
+
+    matches = ActivityMatcher(connection).find(
+        started_at_utc=started_at_utc,
+        source=source,
+        elapsed_s=elapsed_s,
+        duration_s=duration_s,
+        exclude_activity_id=exclude_activity_id,
+    )
+    viable = [
+        match
+        for match in matches
+        if _distance_agrees(connection, distance_m, match, policy)
+    ]
+
+    if len(viable) == 1:
+        match = viable[0]
+        return MatchDecision(
+            match.activity_id,
+            "matched",
+            match.match_method,
+            match.confidence,
+        )
+
+    if len(viable) > 1:
+        return MatchDecision(
+            None,
+            "ambiguous_match",
+            candidates=tuple(viable),
+        )
+
+    if policy.exact_twin and distance_m is not None:
+        twins = _exact_twins(
+            connection,
+            local_date=local_date or _local_date(started_at_utc),
+            duration_s=duration_s or elapsed_s,
+            distance_m=distance_m,
+            policy=policy,
+        )
+        if len(twins) == 1:
+            return MatchDecision(
+                twins[0].activity_id,
+                "exact_twin",
+                "exact_twin",
+                1.0,
+            )
+        if len(twins) > 1:
+            return MatchDecision(
+                None,
+                "ambiguous_match",
+                candidates=tuple(twins),
+            )
+
+    if allow_create:
+        return MatchDecision(None, "create")
+
+    reason = "distance_mismatch" if matches else "no_temporal_match"
+    return MatchDecision(None, reason, candidates=tuple(matches))
+
+
+def _match_mode(source: str) -> str:
+    try:
+        return source_profile(source).match
+    except KeyError:
+        return "contained_fit" if source == "fit" else "temporal"
+
+
+def _distance_agrees(
+    connection: sqlite3.Connection,
+    distance_m: float | None,
+    match: MatchCandidate,
+    policy: MatchPolicy,
+) -> bool:
+    if distance_m is None:
+        return True
+
+    row = connection.execute(
+        "SELECT sport, distance_m FROM activities WHERE id = ?",
+        (match.activity_id,),
+    ).fetchone()
+    if row is None:
+        return False
+    if row["sport"] in NO_DISTANCE_SPORTS:
+        return True
+
+    stored = float(row["distance_m"] or 0.0)
+    if stored <= 0:
+        return True
+
+    tolerance = max(
+        policy.distance_m,
+        policy.distance_ratio * max(float(distance_m), stored),
+    )
+    return abs(float(distance_m) - stored) <= tolerance
+
+
+def _exact_twins(
+    connection: sqlite3.Connection,
+    *,
+    local_date: str | None,
+    duration_s: float,
+    distance_m: float,
+    policy: MatchPolicy,
+) -> list[MatchCandidate]:
+    """Same-day rows whose duration and distance match to a hair."""
+    if not local_date or duration_s <= 0:
+        return []
+
+    rows = connection.execute(
+        """
+        SELECT id, duration_s, distance_m
+        FROM activities
+        WHERE local_date = ? AND excluded_at IS NULL
+        """,
+        (local_date,),
+    ).fetchall()
+
+    twins: list[MatchCandidate] = []
+    for row in rows:
+        stored_duration = float(row["duration_s"] or 0.0)
+        stored_distance = row["distance_m"]
+        if stored_duration <= 0 or stored_distance is None:
+            continue
+        if abs(stored_duration - duration_s) > policy.exact_duration_s:
+            continue
+        if abs(float(stored_distance) - distance_m) > policy.exact_distance_m:
+            continue
+        twins.append(
+            MatchCandidate(
+                activity_id=row["id"],
+                match_method="exact_twin",
+                confidence=1.0,
+                overlap_s=0.0,
+                shorter_ratio=1.0,
+            )
+        )
+    return twins
+
+
+def _local_date(started_at_utc: str) -> str | None:
+    moment = parse_utc(started_at_utc)
+    return moment.date().isoformat() if moment is not None else None
 
 
 def parse_utc(value: object) -> datetime | None:
