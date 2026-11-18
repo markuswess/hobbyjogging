@@ -385,6 +385,63 @@ class RunalyzeGearTests(unittest.TestCase):
             {candidate["equipment_id"] for candidate in candidates},
         )
 
+    def test_acquired_date_breaks_a_same_name_tie(self):
+        # Same name, different colour: Runalyze's date_start is the
+        # acquisition date, which the sheet records as acquired_on.
+        self.writer.upsert_equipment(
+            "sheet:equipment:5",
+            type="shoe",
+            name="Lunge C-Dur",
+            acquired_on="2016-03-25",
+            notes="Farbe rot",
+        )
+        self.writer.upsert_equipment(
+            "sheet:equipment:6",
+            type="shoe",
+            name="Lunge C-Dur",
+            acquired_on="2018-04-09",
+            notes="Farbe schwarz",
+        )
+        self._activity("a1")
+        self._runalyze(
+            "a1",
+            [self._gear(9, "Lunge C-Dur (rot)", date_start="2016-03-25")],
+        )
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.linked_existing)
+        self.assertEqual(0, summary.ambiguous)
+        self.assertEqual(
+            "sheet:equipment:5",
+            self._gear_source_link(9)["equipment_id"],
+        )
+
+    def test_acquired_date_that_matches_no_row_stays_ambiguous(self):
+        self.writer.upsert_equipment(
+            "sheet:equipment:5",
+            type="shoe",
+            name="Lunge C-Dur",
+            acquired_on="2016-04-01",
+        )
+        self.writer.upsert_equipment(
+            "sheet:equipment:6",
+            type="shoe",
+            name="Lunge C-Dur",
+            acquired_on="2018-04-09",
+        )
+        self._activity("a1")
+        self._runalyze(
+            "a1",
+            [self._gear(9, "Lunge C-Dur (rot)", date_start="2016-03-25")],
+        )
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.ambiguous)
+        self.assertEqual(0, summary.linked_existing)
+        self.assertIsNone(self._gear_source_link(9))
+
     def test_payloads_from_two_gear_records_stay_separate(self):
         self._activity("a1")
         self._runalyze(

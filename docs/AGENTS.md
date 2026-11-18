@@ -142,8 +142,10 @@ Cross-package changes must leave all four suites green.
   a manual link or a manual method set wins, and an ambiguous match becomes an
   `ambiguous_race` review item rather than a guess.
 - A gear record that matches an existing equipment item only adds a source
-  link; it never overwrites that item's name, brand, model or dates. An
-  ambiguous match opens a non-hiding `ambiguous_equipment` review item.
+  link; it never overwrites that item's name, brand, model or dates. A name
+  tie is broken by the acquisition date (Runalyze's `date_start` against
+  `acquired_on`) when exactly one row matches; otherwise an ambiguous match
+  opens a non-hiding `ambiguous_equipment` review item.
 - Sports normalize through `hobbyjogging_core.sports`; never hard-code aliases.
 - Workout methods/targets are set-based (`activity_workout_*`,
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;

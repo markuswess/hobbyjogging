@@ -445,11 +445,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
       duplicate is reconciled onto the matched row. On a copy: 26 gear
       records, 6 clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline
       20`, `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` →
-      sheet `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur
-      (rot)` vs the two sheet `Lunge C-Dur` rows), 491 new links. Applied to
-      the real DB: 32 equipment rows (22 of them Runalyze-owned), 26 gear
-      source records, one open `ambiguous_equipment` item. `Lunge C-Dur
-      (schwarz)` stays a separate row until that same choice is made.
+      sheet `Lunge Neo Run`), 491 new links. Applied to the real DB: 32
+      equipment rows (22 of them Runalyze-owned), 26 gear source records and
+      one open `ambiguous_equipment` item. That item is now closed: a name tie
+      is broken by the acquisition date (`date_start` = `acquired_on`), so
+      `Lunge C-Dur (rot)` links to `sheet:equipment:5` and `(schwarz)` is
+      reconciled onto `sheet:equipment:6` — 31 equipment rows, no open review
+      items.
     - **Phase 4 result (Nov 2026)**: `runalyze races` imports
       `/api/v1/raceresult` into `race_results` under `source='runalyze'`,
       resolving each row through its Runalyze activity id (the stored
@@ -483,8 +485,9 @@ editing, analysis and lab work; phase 3 is the dormant future.
          `date_start`/`date_end` → `acquired_on`/`retired_on`; brand and model
          stay empty because the payload has none.
       A split co-occurrence or a name matching several rows opens a
-      non-hiding `ambiguous_equipment` review item with the candidates; never
-      guess (the two "Lunge C-Dur" pairs differ only by colour and date).
+      non-hiding `ambiguous_equipment` review item with the candidates; the
+      colour-stripped fallback and the acquisition date narrow the candidates
+      first, and what is left is never guessed.
       2022+ gear has no sheet counterpart and simply creates new rows. For each
       matched activity, the first shoe/bike item is primary and the rest
       secondary; a manual link wins.

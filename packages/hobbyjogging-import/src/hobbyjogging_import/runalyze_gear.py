@@ -269,11 +269,14 @@ class RunalyzeGearImporter:
 
     def _contexts(self) -> dict[str, object]:
         equipment = {}
+        acquired: dict[str, str] = {}
         name_map: dict[str, list[str]] = defaultdict(list)
         for row in self.connection.execute(
-            "SELECT id, name, brand, model FROM equipment"
+            "SELECT id, name, brand, model, acquired_on FROM equipment"
         ):
             equipment[row["id"]] = row["name"]
+            if row["acquired_on"]:
+                acquired[row["id"]] = str(row["acquired_on"])
             combined = f"{row['brand'] or ''} {row['model'] or ''}"
             for value in (row["name"], combined):
                 for key in _name_keys(value):
@@ -317,6 +320,7 @@ class RunalyzeGearImporter:
             "sheet_links": sheet_links,
             "linked_pairs": linked_pairs,
             "gear_owned": gear_owned,
+            "acquired": acquired,
         }
 
     # -- resolution ---------------------------------------------------------
@@ -379,6 +383,7 @@ class RunalyzeGearImporter:
                 context["sheet_links"],
                 context["name_map"],
                 context["gear_owned"],
+                context["acquired"],
             )
             if resolution[0] == "ambiguous":
                 self._record_ambiguous(
@@ -516,6 +521,7 @@ class RunalyzeGearImporter:
             context["sheet_links"],
             context["name_map"],
             context["gear_owned"],
+            context["acquired"],
         )
         if resolution[0] != "existing" or resolution[1] == current:
             return None
@@ -725,6 +731,7 @@ def _resolve(
     sheet_links: dict[str, set[str]],
     name_map: dict[str, list[str]],
     gear_owned: set[str] = frozenset(),
+    acquired: dict[str, str] | None = None,
 ) -> tuple[str, object]:
     """Return (existing|new|ambiguous, equipment id or candidate list)."""
     with_links = [
@@ -758,6 +765,12 @@ def _resolve(
         gear_owned,
     )
     if candidates:
+        if len(candidates) > 1:
+            candidates = _by_acquired_on(
+                candidates,
+                gear.acquired_on,
+                acquired,
+            )
         if len(candidates) == 1:
             return "existing", candidates[0][0]
         return "ambiguous", [
@@ -787,6 +800,28 @@ def _name_candidates(
         (equipment_id, f"{reason}_parenthetical")
         for equipment_id in loose
     ]
+
+
+def _by_acquired_on(
+    candidates: list[tuple[str, str]],
+    acquired_on: str | None,
+    acquired: dict[str, str] | None,
+) -> list[tuple[str, str]]:
+    """Narrow same-name rows to the one acquired on the gear's start date.
+
+    Sheet rows can share a name and differ only in colour; Runalyze's
+    ``date_start`` is the acquisition date, so an exact date match is
+    decisive. No match, or still several, leaves the question open.
+    """
+    if not acquired or not acquired_on:
+        return candidates
+    wanted = str(acquired_on)[:10]
+    dated = [
+        candidate
+        for candidate in candidates
+        if acquired.get(candidate[0], "")[:10] == wanted
+    ]
+    return dated or candidates
 
 
 def _primary_by_activity(

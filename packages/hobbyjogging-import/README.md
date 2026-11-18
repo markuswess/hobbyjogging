@@ -339,7 +339,10 @@ Each Runalyze gear record resolves in this order:
 2. **Name**: exact normalized match against existing `equipment.name` or
    `brand + model`, then the same comparison with a trailing colour/size
    parenthetical removed (`Lunge Fis (dunkelblau)` → `Lunge Fis`). The sheet
-   names carry no colour, so this is the bridge for the pre-2023 shoes.
+   names carry no colour, so this is the bridge for the pre-2023 shoes. If
+   several rows share that name, the one whose `acquired_on` equals the
+   gear's `date_start` wins; no date match (or still several) stays
+   ambiguous.
 3. **New row** `runalyze:equipment:<id>`: type from the category (78697 shoe,
    78699 bike, else other), dates and notes from the payload, brand/model empty.
 

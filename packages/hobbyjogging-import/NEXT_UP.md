@@ -30,8 +30,11 @@ on.
   on a DB copy with the full history: 2,823 payloads, 26 gear records, 6
   clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline 20`,
   `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` → sheet
-  `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur (rot)` vs the
-  two sheet `Lunge C-Dur` rows), 491 new activity links, and a no-op re-run.
+  `Lunge Neo Run`), 491 new activity links, and a no-op re-run. A name tie is
+  now broken by the acquisition date (Runalyze `date_start` = the row's
+  `acquired_on`), which closed the last open item: `Lunge C-Dur (rot)` →
+  `sheet:equipment:5` and `(schwarz)` reconciled onto `sheet:equipment:6`
+  (31 equipment rows, no open review items).
   Applied to the real DB: 32 equipment rows, 3,299 activity links, one open
   `ambiguous_equipment` item.
 - **Runalyze phase 3.** Offline `runalyze gear` reads the stored activity
