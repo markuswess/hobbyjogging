@@ -196,6 +196,17 @@ on.
 
 ## Next
 
+- **Runalyze effective VO2max payload gap.** Every Enduro activity (2022→)
+  has `hr_avg`, `hr_max`, `trimp` and `vo2max` null in its stored detail,
+  while `efficiency_index` is populated; the Forerunner 645 payloads carry
+  them. The web shows the effective estimate to the present, so the detail
+  endpoint — not the date — is the cutoff. (`fit_vo2max_estimate` is expected
+  to stop now that Garmin no longer syncs it; the gap that matters is
+  `hr_avg`/`vo2max`.) Check the collection payload with
+  `runalyze inventory --since 2026-10-01 --limit 5`, which prints per-field
+  non-null counts; if it carries `hr_avg`, merge it before `runalyze vo2max`.
+  If only the web computes the estimate, record the limitation. Reports item
+  15 (second VO2max owner) is deferred on this.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with
@@ -310,8 +321,9 @@ on.
   description from the sheet row, then exclude the sheet row — not an import
   write.
 
-Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) is on the
-reports list, and the unmatched rows are the only import leftover.
+Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
+pair done and the VO2max series deferred on the payload gap above, and the
+unmatched rows are the only import leftover.
 
 ## Notes / risks
 

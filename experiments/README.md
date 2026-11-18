@@ -88,7 +88,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | promoted | `cross_training_load.py` | 2026-11-17 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
-| HR/economy-based VO2max | Can HR and running economy derive VO2max to compare with Garmin? (recent years only: weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-16 |
+| HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-18 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the full Runalyze weather fields are pending) | candidate | — | 2026-11-17 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs a pointwise grade profile; activity gain/loss is not enough) | blocked | — | 2026-11-16 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
