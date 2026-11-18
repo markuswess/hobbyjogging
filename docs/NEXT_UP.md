@@ -525,6 +525,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
       Runalyze may create an activity. The short-activity floor is fixed (a
       142 s cooldown now links). Evidence:
       `~/projects/laufen_private/data/runalyze-unmatched.json`.
+    - **Not scheduled**: Runalyze weather (0 rows; the payload carries
+      humidity, wind, pressure, UV, clouds and condition), routes (0; the
+      nested `recurring_route` is still unused), health entries (0 illness
+      periods and 0 wellness rows from Runalyze), and the gear category map
+      (the 78697/78699 IDs are hard-coded; a second athlete has different
+      IDs). Decide whether these join the milestone or the second-athlete
+      test.
     - **After the import**: item 37 mines the tags and comments this import
       lands to refurbish historical classifications, illness ranges and season
       labels.
