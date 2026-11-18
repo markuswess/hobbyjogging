@@ -532,10 +532,16 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and suggesting the device one, because enriching the duplicate would put
       tags on the row that should be retired. That leaves the three remaining
       twins (`2019-05-08`, `2019-06-03`, `2019-11-29`) in review, so a
-      regenerated run expects **0 links and 19 items**; the stale 20-row file
-      reads 1 + 19 because the 142 s cooldown is already linked and its twin
-      is named. Evidence:
+      regenerated run expects **0 links and 19 items**; the saved file now
+      holds exactly that (19 rows, 3 with a suggestion). Evidence:
       `~/projects/laufen_private/data/runalyze-unmatched.json`.
+      **Implemented (Nov 2026)**: the exact-twin rule, the sheet-duplicate
+      preference, stored (unlinked) details and `ambiguous_match` items with
+      their same-day candidates. Triaging a candidate applies the stored note
+      and tags without re-running the matcher. Run over the 19 rows on the real
+      DB: 0 links, 19 items (3 suggesting the device row), 19 details stored,
+      no activity created, and a no-op re-run. Those 19 items are the open
+      queue now, so the Runalyze import itself has nothing left.
     - **Not scheduled**: Runalyze weather (0 rows; the payload carries
       humidity, wind, pressure, UV, clouds and condition), routes (0; the
       nested `recurring_route` is still unused), health entries (0 illness

@@ -43,6 +43,8 @@ from .links import (
 )
 from .quality import CONFLICT, WORKOUT_CLASSIFICATION, refresh_activity_quality
 from .review_cli import _format_summary_line
+from .runalyze_import import SOURCE as RUNALYZE_SOURCE
+from .runalyze_import import apply_stored_enrichment
 from .sheet import DEFAULT_TIMEZONE, as_date, as_seconds, local_start
 from .values import (
     format_distance_m,
@@ -1327,13 +1329,31 @@ class TriageRunner:
             self.print(f"  error: {exc}")
             return
 
+        applied = None
+        if (
+            item["record_source"] == RUNALYZE_SOURCE
+            and item["record_type"] == "activity"
+            and item["source_record_id"] is not None
+        ):
+            applied = apply_stored_enrichment(
+                self.writer.connection,
+                item["source_record_id"],
+            )
+
         self.writer.connection.commit()
         self.pending_note = ""
         self._count("linked")
         self.print(f"  linked record → {activity_id}")
-        self.print(
-            "  re-run the importer for this record to apply its field values"
-        )
+
+        if applied is None:
+            self.print(
+                "  re-run the importer for this record to apply its fields"
+            )
+            return
+
+        filled, kept, tags = applied
+        comment = "filled" if filled else "kept" if kept else "none"
+        self.print(f"  applied: {tags} tags, description {comment}")
 
     def _candidates(self, item) -> list[tuple[str, dict]]:
         try:

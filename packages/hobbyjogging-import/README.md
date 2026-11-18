@@ -274,10 +274,21 @@ better source for. Both live in the activity **detail** payload:
 uv run --env-file .env hobbyjogging-import runalyze enrich --dry-run
 ```
 
-Matching is temporal plus distance (Runalyze exposes no Garmin id); a distance
-mismatch or an ambiguous temporal match is skipped, never guessed. Runalyze
-never writes `name`, timing, or distance. Unmatched rows are not created here;
-`--output PATH` writes them (with a reason) for the later activity phase.
+Matching is temporal plus distance (Runalyze exposes no Garmin id). A row the
+temporal matcher rejects is checked once more for a **perfect twin**: same day,
+duration within 2 s and distance within 10 m, exactly one candidate. That
+covers start-time drift without guessing; everything else is never linked.
+The exception is a twin that is a **sheet-only duplicate** of a device row —
+enriching the duplicate would put tags on a row that should be retired, so that
+day goes to review and suggests the device row.
+
+An unresolved row is not discarded: its detail is stored (unlinked) and an
+`ambiguous_match` review item lists the same-day candidates. Triage links one
+with `(1-N)`, and the stored note and tags are applied on the spot — the
+matcher is not re-run, because it would reject the distance again. Runalyze
+never writes `name`, timing, or distance, and never creates an activity.
+`--output PATH` still writes the unresolved rows with their reason and
+suggestion.
 
 ```text
 Runalyze enrich dry run: 9 activities
@@ -287,6 +298,7 @@ Runalyze enrich dry run: 9 activities
   already enriched: 0
   unmatched: 0
   ambiguous: 0
+  review items: 0 (0 already)
   comments filled: 0
   comments kept (not blank): 0
   activities tagged: 3 (5 tags)

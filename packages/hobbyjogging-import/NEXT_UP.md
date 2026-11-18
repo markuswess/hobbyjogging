@@ -5,6 +5,16 @@ on.
 
 ## Done
 
+- **Runalyze match review.** A row the temporal matcher rejects is checked
+  once more for a perfect twin (same day, duration within 2 s, distance within
+  10 m, exactly one candidate) — start-time drift without guessing. A twin
+  that is a sheet-only duplicate of a device row is the duplicate, not the
+  target, so that day becomes a review item that suggests the device row.
+  Unresolved rows keep their detail (unlinked) and open one
+  `ambiguous_match` item with the same-day candidates; triage `(1-N)` links a
+  candidate and applies the stored note and tags on the spot. Applied to the
+  real DB over the 19 leftover rows: 0 links, 19 items (3 suggesting a device
+  row), 19 details stored, no activity created, no-op re-run.
 - **Runalyze phase 4.** `runalyze races` imports `/api/v1/raceresult` into
   `race_results` under `source='runalyze'`, resolving each row through its
   Runalyze activity id (the stored payload's `external_id`) and never guessing
@@ -300,19 +310,6 @@ on.
 
 - **Historical refurbishment** (root item 37). The comment/tag workout
   proposals and triage actions start after the Runalyze import settles.
-- **Runalyze unmatched rows** (root item 12). **Decision**: auto-match only
-  the perfect twins — same day, duration within 2 s, distance within 10 m,
-  exactly one candidate. **Preference**: a perfect twin that is a sheet-only
-  duplicate of a device (FIT/Intervals) row does not auto-link; it becomes a
-  review item that suggests the device row. Every other unmatched row gets an
-  `ambiguous_match` item with its same-day candidates, and Runalyze never
-  creates an activity. Implement candidate ranking, store the detail for
-  unmatched rows, apply its note/tags when a review resolves, regenerate the
-  JSON (expect 0 links + 19 items), and test: exact match; exact twin that is
-  a sheet duplicate → review; several exact → review; distance mismatch →
-  review; no temporal match → review; no creation; idempotency. Evidence:
-  `~/projects/laufen_private/data/runalyze-unmatched.json` — stale, it still
-  lists the 142 s cooldown as one of 20 rows, so the effective set is 19.
 - **Sheet duplicates (38).** 1,272 activities are sheet-only, and 38 of them
   mirror a device (FIT/Intervals) row on the same day with the duration within
   5 %, so those sessions count twice in the reports. The sheet row often holds
