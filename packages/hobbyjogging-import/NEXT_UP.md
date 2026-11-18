@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **VO2max is per sport.** Message 140 field 7 carries the estimate for the
+  activity's own sport, so `vo2max_garmin` is correct as written and needs no
+  parser change. The session report qualifies non-run values, the charts are
+  running-only, and `docs/SOURCE_NOTES.md` records the semantics.
 - **Runalyze payload repair and VO2max fill.** The `--refresh-before` sweep
   re-read all 2,843 activity payloads (a 2023 row went from 64 to 87 keys with
   `hr_avg`/`vo2max`), closing the `hr_avg` gap from 1,752 linked rows to 5;
@@ -236,7 +240,9 @@ on.
   must also close the open `field_conflict` for a touched field and the
   `workout_classification` item when the sets change; move `_VALUE_PROMPTS`
   into `values.py` so both use one prompt table. See root item 1; the logic
-  stays in this package until a front end justifies an app package.
+  stays in this package until a front end justifies an app package. Needs root
+  item 17 (the manual input layer) so edits land in `activity_manual_fields`
+  instead of only the materialized row.
 - **Consistency audit** (`review scan --rules consistency`). A dataset-wide
   scan for contradictions between the stored classification and the evidence,
   producing `consistency` review items (info, non-hiding) with a suggestion in
@@ -289,13 +295,6 @@ on.
   activity FKs, from `athlete_max_hr`, `lthr`, `LTHRdetected`,
   `threshold_pace`, `icu_hr_zones` and `pace_zones`. Treat zero and
   implausible threshold paces as absent.
-- **VO2max is already per sport — no parser change.** Message 140 field 7
-  carries the estimate for the activity's own sport (a ride's value differs
-  from the adjacent runs), so `vo2max_garmin` is correct as written and there
-  is nothing to detect or clear. The remaining work is in the consumers: the
-  session report qualifies the value on non-runs; the charts are running-only
-  and `docs/SOURCE_NOTES.md` records the per-sport semantics.
-
 - **Sync timing summary.** `sync.sh` prints how long each phase took (Garmin
   fetch, Intervals import, FIT scan, review scan, classification, dashboard),
   so a slowdown shows up in the log instead of in a session that feels slow.
