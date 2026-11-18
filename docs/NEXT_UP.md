@@ -510,6 +510,18 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Reports**: gear coverage per year closes the 2022–2026 gap on the gear
       page, comments appear where the text home decides, and `vo2max_runalyze`
       sits beside `vo2max_garmin`.
+    - **Remaining (Nov 2026)**: phases 1–5 are landed and applied, so the only
+      missing phase is 6 (reports), now item 15 of the reports list. One
+      import leftover needs a root decision: the 20 rows the enricher could
+      not place. 5 have a same-day canonical activity with the same duration
+      and distance (a perfect twin the matcher missed), 12 share the duration
+      but disagree on distance by 8–15 %, and 3 have no duration twin (one is
+      a 41.7 km ride with no plausible candidate, so genuinely missing).
+      Creating them as written would add ~19 duplicates, so the matching rule
+      comes first: a short-activity overlap rule (a 141 s activity never
+      reaches the 120 s floor) and a candidate choice that weighs every
+      same-day match. Evidence:
+      `~/projects/laufen_private/data/runalyze-unmatched.json`.
     - **After the import**: item 37 mines the tags and comments this import
       lands to refurbish historical classifications, illness ranges and season
       labels.
@@ -1069,6 +1081,34 @@ editing, analysis and lab work; phase 3 is the dormant future.
     Code landed in the reports package (`66dd91b`); evidence
     `experiments/cross_training_load.py`. Mirror the card in the metrics
     catalogue if item 24 carries load.
+
+40. **Import-rules registry and settings view** (core + import + maintenance +
+    reports; phase 2). The rules are not in one place: field ownership,
+    conflict fields and tolerances live in `core/db/writer.py`; quality rules,
+    pace windows and review categories in `import/quality.py`; conflict causes
+    and bulk-resolvable autotriage in `import/causes.py`; temporal matching in
+    `import/matching.py`; Runalyze tolerances in its importers; classification
+    vocabulary and priority in `core/workouts.py`/`core/classify.py`; the
+    maintenance order in `sync.sh`; and the docs restate some of them.
+    - **Registry first**: one read-only registry (code data, not a new table
+      yet) with id, domain, value/threshold, source, description and kind
+      (rule, default, advisory autotriage). Read it where practical, or assert
+      the constants match, so the view cannot drift.
+    - **Settings report**: `reports.sh settings` renders the registry as
+      Markdown: ownership and authority, conflict fields/tolerances, matching,
+      quality rules, review categories and hiding, bulk-resolve causes,
+      classification priority, maintenance order and source configuration.
+    - **Dashboard tab last**: a read-only Settings tab in the same style as the
+      other tabs, once the report proves useful.
+    - **Autotriage**: show what happens automatically (review-item creation,
+      agreed-conflict resolution, prune, classification queue, race links,
+      period recompute) versus what needs a human, and which causes are
+      advisory/bulk-resolvable.
+    - **Read-only first**: editing rules from the UI is later; the code and
+      CLI stay the source of truth. Analysis metric thresholds stay with the metric
+      catalogue (item 24) and `docs/METRICS.md`.
+    - **Sequence**: after or alongside the second-athlete test (item 23),
+      because a second athlete needs to see which defaults are personal.
 
 Triage is empty (0 open items), all four suites are green, and the demo
 deploys from GitHub Actions.
