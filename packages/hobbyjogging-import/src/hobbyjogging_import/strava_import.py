@@ -97,7 +97,9 @@ class StravaCsvImporter:
                 "success",
                 records_seen=summary.activities_seen,
                 records_imported=summary.social_written,
-                records_skipped=summary.unmatched + summary.ambiguous,
+                records_skipped=(
+                    summary.unmatched + summary.ambiguous + summary.no_date
+                ),
             )
         return summary
 

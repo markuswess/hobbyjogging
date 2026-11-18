@@ -254,7 +254,8 @@ Updated 2026-11-17.
   against the real database (4,143 activities, 2,805 with a Garmin VO2max;
   650 events with 2,812 planned zone rows). The historical spreadsheet import
   added the 2009–2021 log (1,292 activities, 10 equipment items, 1,842 shoe
-  links). The review queue is empty.
+  links). The review queue was empty at that point; the Runalyze
+  ambiguous-match items came later.
 
 ## Bugs
 
