@@ -169,6 +169,11 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(2, summary.review_new)
         self.assertEqual(0, summary.review_open)
         self.assertEqual([], summary.failures)
+        self.assertEqual(
+            {"garmin", "intervals", "fit", "review", "total"},
+            set(summary.durations),
+        )
+        self.assertIn("timing:", format_sync_summary(summary))
 
     def test_disabled_sources_are_skipped(self):
         summary = self._run(
@@ -184,6 +189,8 @@ class SyncTests(unittest.TestCase):
         self.assertIn("intervals: skipped", text)
         self.assertIn("fit:       skipped", text)
         self.assertIn("review:    skipped", text)
+        self.assertEqual({}, summary.durations)
+        self.assertNotIn("timing:", text)
 
     def test_full_disables_skip_known(self):
         self._run(full=True)
@@ -271,6 +278,7 @@ class SyncTests(unittest.TestCase):
         )
         self.assertIn("review:    2 new items, 11 open", text)
         self.assertIn("Failures: garmin: one download failed", text)
+        self.assertNotIn("timing:", text)
 
 
 class SyncCliTests(unittest.TestCase):

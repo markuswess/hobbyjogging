@@ -47,11 +47,21 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     exit 0
 fi
 
+now_ms() {
+    date +%s%3N
+}
+
+format_ms() {
+    printf '%d.%03ds' $(( $1 / 1000 )) $(( $1 % 1000 ))
+}
+
 args=("$@")
 sync_args=()
 database=""
 generate_dashboard=1
 generate_classification=1
+classify_ms=0
+dashboard_ms=0
 index=0
 
 while (( index < ${#args[@]} )); do
@@ -90,6 +100,7 @@ uv run --env-file .env hobbyjogging-import sync "${sync_args[@]}"
 # that were just imported, then refresh the disagreement queue. Both are
 # idempotent recomputes; backfills stay deliberate.
 if (( generate_classification )); then
+    classify_started=$(now_ms)
     maintenance_args=()
     if [[ -n "$database" ]]; then
         maintenance_args+=(--database "$database")
@@ -107,13 +118,28 @@ if (( generate_classification )); then
         run training_periods_current "${maintenance_args[@]}"
     uv run --env-file .env python -m hobbyjogging_maintenance \
         run race_links_current "${maintenance_args[@]}"
+    classify_ms=$(( $(now_ms) - classify_started ))
 fi
 
 if (( generate_dashboard )); then
+    dashboard_started=$(now_ms)
     if [[ -n "$database" ]]; then
         HOBBYJOGGING_DB="$database" \
             uv run --env-file .env python -m hobbyjogging_report dashboard
     else
         uv run --env-file .env python -m hobbyjogging_report dashboard
     fi
+    dashboard_ms=$(( $(now_ms) - dashboard_started ))
+fi
+
+timing=()
+if (( generate_classification )); then
+    timing+=("classify $(format_ms "$classify_ms")")
+fi
+if (( generate_dashboard )); then
+    timing+=("dashboard $(format_ms "$dashboard_ms")")
+fi
+if (( ${#timing[@]} > 0 )); then
+    joined=$(printf '%s, ' "${timing[@]}")
+    printf '  timing:    %s\n' "${joined%, }"
 fi

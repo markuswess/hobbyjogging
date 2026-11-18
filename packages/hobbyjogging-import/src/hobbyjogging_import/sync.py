@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -38,6 +39,8 @@ class SyncSummary:
     review_new: int = 0
     review_open: int = 0
     failures: list[tuple[str, str]] = field(default_factory=list)
+    # Wall-clock seconds per phase, including a "total" entry.
+    durations: dict[str, float] = field(default_factory=dict)
 
 
 def run_sync(
@@ -69,6 +72,7 @@ def run_sync(
     )
 
     if include_garmin:
+        started = time.monotonic()
         try:
             garmin = GarminFetcher(connection).fetch(start, end)
             summary.garmin_fetched = garmin.downloaded
@@ -82,8 +86,11 @@ def run_sync(
                 summary.failures.append(("garmin", error))
         except Exception as exc:
             summary.failures.append(("garmin", _error(exc)))
+        finally:
+            summary.durations["garmin"] = time.monotonic() - started
 
     if include_intervals:
+        started = time.monotonic()
         try:
             intervals = IntervalsImporter(connection).import_range(
                 start,
@@ -97,8 +104,11 @@ def run_sync(
             summary.intervals_revived = intervals.events_revived
         except Exception as exc:
             summary.failures.append(("intervals", _error(exc)))
+        finally:
+            summary.durations["intervals"] = time.monotonic() - started
 
     if include_fit:
+        started = time.monotonic()
         try:
             fit = FitImporter(connection).import_paths(
                 [fit_dir or default_fit_dir()],
@@ -111,13 +121,18 @@ def run_sync(
             summary.fit_created = fit.activities_created
         except Exception as exc:
             summary.failures.append(("fit", _error(exc)))
+        finally:
+            summary.durations["fit"] = time.monotonic() - started
 
     if include_scan:
+        started = time.monotonic()
         try:
             scan = scan_quality(TrainingWriter(connection))
             summary.review_new = scan.recorded
         except Exception as exc:
             summary.failures.append(("review", _error(exc)))
+        finally:
+            summary.durations["review"] = time.monotonic() - started
 
         try:
             row = connection.execute(
@@ -126,6 +141,9 @@ def run_sync(
             summary.review_open = row[0] if row else 0
         except Exception:
             pass
+
+    if summary.durations:
+        summary.durations["total"] = sum(summary.durations.values())
 
     return summary
 
@@ -173,6 +191,17 @@ def format_sync_summary(summary: SyncSummary) -> str:
         )
     else:
         lines.append("  review:    skipped")
+
+    if summary.durations:
+        parts = [
+            f"{name} {summary.durations[name]:.1f}s"
+            for name in ("garmin", "intervals", "fit", "review")
+            if name in summary.durations
+        ]
+        if "total" in summary.durations:
+            parts.append(f"total {summary.durations['total']:.1f}s")
+        if parts:
+            lines.append(f"  timing:    {', '.join(parts)}")
 
     for source, error in summary.failures:
         lines.append(f"Failures: {source}: {error}")
