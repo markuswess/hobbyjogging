@@ -431,6 +431,21 @@ class RunalyzeEnrichTests(unittest.TestCase):
         self.assertEqual(0, summary.detail_fetches)
         self.assertEqual(0, summary.matched)
 
+    def test_ids_repair_skips_the_collection(self):
+        summary = self.enricher.enrich(ids=["201"])
+
+        self.assertEqual(0, self.client.activity_calls)
+        self.assertEqual(["201"], self.client.detail_calls)
+        self.assertEqual(1, summary.detail_fetches)
+        self.assertEqual(1, summary.processed)
+        self.assertEqual(1, summary.matched)
+        self.assertEqual("Runalyze comment", self._row("a1")["description"])
+        self.assertEqual(2, len(self._tags("a1")))
+
+    def test_ids_cannot_be_combined_with_wait(self):
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(ids=["201"], wait=True)
+
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)
 

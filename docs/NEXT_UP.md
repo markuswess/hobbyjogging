@@ -399,8 +399,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and per year, writing nothing; (2) **done, import package** — comments
       and tags into `activities.description` (blank-fill) and `activity_tags`;
       (3) **done, import package** — gear identity and activity links;
-      (4) race results; (5) **done, import package** — `vo2max_runalyze` as the
-      second owner; (6) the reports.
+      (4) **done, import package** — race results; (5) **done, import
+      package** — `vo2max_runalyze` as the second owner; (6) the reports.
     - **Phase 1 result (Nov 2026)**: the import package ships the read-only
       client and the inventory. Live run: 2,841 activities (2019–2026), 82
       collection fields, 85–88 non-null detail fields (153 in the schema),
@@ -450,6 +450,15 @@ editing, analysis and lab work; phase 3 is the dormant future.
       the real DB: 32 equipment rows (22 of them Runalyze-owned), 26 gear
       source records, one open `ambiguous_equipment` item. `Lunge C-Dur
       (schwarz)` stays a separate row until that same choice is made.
+    - **Phase 4 result (Nov 2026)**: `runalyze races` imports
+      `/api/v1/raceresult` into `race_results` under `source='runalyze'`,
+      resolving each row through its Runalyze activity id (the stored
+      payload's `external_id`) and never guessing a match; a manual
+      `race-result` row is kept. Validated on a copy: 37 results (2019–2026),
+      33 with a placement, 21 officially measured, priorities A–D plus
+      `unknown`, and a no-op re-run. `official_ascent`/`official_descent` have
+      no column; `race_event_id` is Runalyze's own identity, so `event_id`
+      stays empty.
     - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
       stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
       all 2019–2022 (Runalyze has none from 2023 on), mean −2.1 against

@@ -16,6 +16,13 @@ def date_arg(value: str) -> date:
         raise argparse.ArgumentTypeError("expected YYYY-MM-DD") from exc
 
 
+def _id_list(value: str) -> list[str]:
+    ids = [item.strip() for item in value.split(",") if item.strip()]
+    if not ids:
+        raise argparse.ArgumentTypeError("expected at least one id")
+    return ids
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hobbyjogging-import",
@@ -254,6 +261,14 @@ def build_parser() -> argparse.ArgumentParser:
             "is complete"
         ),
     )
+    runalyze_enrich.add_argument(
+        "--ids",
+        type=_id_list,
+        help=(
+            "repair only these Runalyze activity ids (comma-separated), "
+            "without reading the collection"
+        ),
+    )
 
     runalyze_gear = runalyze_sub.add_parser(
         "gear",
@@ -291,6 +306,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     runalyze_vo2max.add_argument("--database", type=Path)
     runalyze_vo2max.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing",
+    )
+
+    runalyze_races = runalyze_sub.add_parser(
+        "races",
+        help="import official race results from Runalyze",
+    )
+    runalyze_races.add_argument(
+        "--limit",
+        type=int,
+        help="import at most this many race results",
+    )
+    runalyze_races.add_argument(
+        "--base-url",
+        help="override the API base URL (default: RUNALYZE_API_BASE_URL)",
+    )
+    runalyze_races.add_argument("--database", type=Path)
+    runalyze_races.add_argument(
+        "--output",
+        type=Path,
+        help="write the race results with no linked activity as JSON",
+    )
+    runalyze_races.add_argument(
         "--dry-run",
         action="store_true",
         help="report what would change without writing",

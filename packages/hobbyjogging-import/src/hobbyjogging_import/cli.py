@@ -30,6 +30,7 @@ from .runalyze_gear import (
     format_gear_summary,
 )
 from .runalyze_import import RunalyzeEnricher, format_enrich_summary
+from .runalyze_races import RunalyzeRaceImporter, format_race_summary
 from .runalyze_vo2max import (
     RunalyzeVo2maxImporter,
     format_vo2max_summary,
@@ -255,6 +256,8 @@ def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
         return _run_runalyze_gear(args, parser)
     if args.runalyze_action == "vo2max":
         return _run_runalyze_vo2max(args, parser)
+    if args.runalyze_action == "races":
+        return _run_runalyze_races(args, parser)
 
     parser.error(f"unknown runalyze command: {args.runalyze_action}")
 
@@ -329,6 +332,7 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
                 refresh=args.refresh,
                 wait=args.wait,
                 output=args.output,
+                ids=args.ids,
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc)) from exc
@@ -397,6 +401,36 @@ def _run_runalyze_vo2max(args, parser: argparse.ArgumentParser) -> int:
         connection.close()
 
     print(format_vo2max_summary(summary))
+    print(f"Database: {args.database or default_database_path()}")
+    return 0
+
+
+def _run_runalyze_races(args, parser: argparse.ArgumentParser) -> int:
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            client = RunalyzeClient(base_url=args.base_url)
+            summary = RunalyzeRaceImporter(
+                connection,
+                client,
+            ).import_races(
+                limit=args.limit,
+                dry_run=args.dry_run,
+                output=args.output,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(format_race_summary(summary))
     print(f"Database: {args.database or default_database_path()}")
     return 0
 

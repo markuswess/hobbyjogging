@@ -2,6 +2,9 @@
   "id": 201,
   "date_time": "2024-03-01T08:00:00+01:00",
   "title": "Morning Run",
+  "duration": 3600,
+  "elapsed_time": 3700,
+  "distance": 10.0,
   "note": "Runalyze comment",
   "tags": [
     {"id": 1, "tag": "Race"},

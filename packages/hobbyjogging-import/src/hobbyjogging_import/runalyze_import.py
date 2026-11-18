@@ -94,6 +94,7 @@ class RunalyzeEnricher:
         refresh: bool = False,
         wait: bool = False,
         output: str | Path | None = None,
+        ids: list[str] | None = None,
     ) -> RunalyzeEnrichSummary:
         """Enrich comments/tags, optionally across rate-limit windows.
 
@@ -105,6 +106,11 @@ class RunalyzeEnricher:
             raise ValueError("wait cannot be combined with dry_run")
         if wait and refresh:
             raise ValueError("wait cannot be combined with refresh")
+        if ids and wait:
+            raise ValueError("ids cannot be combined with wait")
+
+        if ids:
+            return self.enrich_ids(ids, dry_run=dry_run, output=output)
 
         if wait:
             return self._enrich_until_complete(
@@ -125,6 +131,64 @@ class RunalyzeEnricher:
             output=output,
         )
 
+    def enrich_ids(
+        self,
+        ids: list[str],
+        *,
+        dry_run: bool = False,
+        output: str | Path | None = None,
+    ) -> RunalyzeEnrichSummary:
+        """Enrich a named set of activities without reading the collection.
+
+        This is the repair path for details whose fetch failed (HTTP 5xx): the
+        detail payload carries the date, duration and distance the matcher
+        needs, so one request per id is enough.
+        """
+        activities: list[dict] = []
+        details: dict[str, dict] = {}
+        errors: list[str] = []
+
+        for external_id in ids:
+            key = str(external_id)
+            try:
+                response = self.client.get(f"activity/{key}")
+            except RunalyzeRateLimitError as exc:
+                errors.append(str(exc))
+                break
+            if not response.ok or not isinstance(response.payload, dict):
+                errors.append(
+                    f"{key}: detail request failed "
+                    f"(HTTP {response.status})"
+                )
+                continue
+
+            payload = response.payload
+            details[key] = payload
+            activities.append(
+                {
+                    "id": payload.get("id", key),
+                    "date_time": payload.get("date_time"),
+                    "duration": payload.get("duration"),
+                    "elapsed_time": payload.get("elapsed_time"),
+                    "distance": payload.get("distance"),
+                }
+            )
+
+        summary = self._enrich_once(
+            start=None,
+            end=None,
+            limit=None,
+            per_page=100,
+            dry_run=dry_run,
+            refresh=False,
+            output=output,
+            activities=activities,
+            details=details,
+        )
+        summary.detail_fetches += len(details)
+        summary.errors[:0] = errors
+        return summary
+
     def _enrich_once(
         self,
         *,
@@ -136,6 +200,7 @@ class RunalyzeEnricher:
         refresh: bool,
         output: str | Path | None,
         activities: list[dict] | None = None,
+        details: dict[str, dict] | None = None,
     ) -> RunalyzeEnrichSummary:
         summary = RunalyzeEnrichSummary(dry_run=dry_run)
 
@@ -168,6 +233,7 @@ class RunalyzeEnricher:
                 summary,
                 stored=stored,
                 refresh=refresh,
+                details=details,
             )
             summary.not_processed = max(
                 0,
@@ -303,6 +369,7 @@ class RunalyzeEnricher:
         *,
         stored: dict[str, tuple[dict, str | None]],
         refresh: bool,
+        details: dict[str, dict] | None = None,
     ) -> dict[str, _Matched]:
         matched: dict[str, _Matched] = {}
 
@@ -333,24 +400,25 @@ class RunalyzeEnricher:
                 summary.already_enriched += 1
                 continue
 
-            try:
-                detail = self.client.get(f"activity/{external_id}")
-            except RunalyzeRateLimitError as exc:
-                summary.stopped_reason = str(exc)
-                summary.stopped_retry_after_s = exc.retry_after_s
-                summary.errors.append(str(exc))
-                break
+            payload = details.get(external_id) if details else None
+            if payload is None:
+                try:
+                    detail = self.client.get(f"activity/{external_id}")
+                except RunalyzeRateLimitError as exc:
+                    summary.stopped_reason = str(exc)
+                    summary.stopped_retry_after_s = exc.retry_after_s
+                    summary.errors.append(str(exc))
+                    break
 
-            summary.detail_fetches += 1
+                summary.detail_fetches += 1
+                if not detail.ok or not isinstance(detail.payload, dict):
+                    summary.errors.append(
+                        f"{external_id}: detail request failed "
+                        f"(HTTP {detail.status})"
+                    )
+                    continue
+                payload = detail.payload
 
-            if not detail.ok or not isinstance(detail.payload, dict):
-                summary.errors.append(
-                    f"{external_id}: detail request failed "
-                    f"(HTTP {detail.status})"
-                )
-                continue
-
-            payload = detail.payload
             note = str(payload.get("note") or "").strip()
             tags = _tag_names(payload.get("tags"))
 

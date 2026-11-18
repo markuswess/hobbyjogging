@@ -5,6 +5,17 @@ on.
 
 ## Done
 
+- **Runalyze phase 4.** `runalyze races` imports `/api/v1/raceresult` into
+  `race_results` under `source='runalyze'`, resolving each row through its
+  Runalyze activity id (the stored payload's `external_id`) and never guessing
+  a match. Distance, official time, placement, participant counts, priority
+  and status map straight across; a manual `race-result` row is kept. Validated
+  on a DB copy: 37 results (33 with a placement, 21 officially measured) and a
+  no-op re-run. `official_ascent`/`official_descent` and `race_event_id` are
+  not imported (no column / no matching identity).
+- **Runalyze `enrich --ids`.** The repair path for a detail whose fetch failed:
+  it reads the named activities directly and matches from the detail's own
+  date/duration/distance instead of the collection.
 - **Runalyze phase 5.** Offline `runalyze vo2max` fills `vo2max_runalyze` from
   the stored payloads' effective `vo2max`, leaving `vo2max_garmin` untouched
   and skipping unlinked activities. 843 values, all 2019–2022, and a second

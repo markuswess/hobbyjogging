@@ -294,7 +294,11 @@ Runalyze enrich dry run: 9 activities
 ```
 
 Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
-`--refresh`, `--wait`, `--output PATH`, and `--database PATH`. Enrichment is
+`--refresh`, `--wait`, `--output PATH`, `--ids 1,2,3`, and `--database PATH`.
+`--ids` is the repair path for a detail whose fetch failed (HTTP 5xx): it reads
+those activities directly instead of the collection, using the detail's own
+date, duration and distance for the match — three requests instead of a full
+window. Enrichment is
 idempotent and resumable: each detail is stored in `source_records`, and a
 re-run skips any activity whose stored detail is already linked to the same
 canonical row. After a mid-run 429, the next run continues with the remainder.
@@ -385,6 +389,33 @@ Runalyze VO2max: 2823 payloads, 843 with a value
   written: 843
   unchanged: 0
   skipped excluded: 0
+```
+
+### Race results (phase 4)
+
+Official race metadata comes from `/api/v1/raceresult`, one row per activity
+Runalyze marks as a race:
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze races --dry-run
+```
+
+The row carries Runalyze's activity id, which is the stored payload's
+`external_id`, so a result is written only where the activity is already
+linked — never guessed from a date. Distance is converted from km, placement
+and participant counts are copied as-is, `officially_measured` becomes a
+boolean, and `priority_level`/`status` are kept verbatim. A manual
+`race-result` row is never overwritten, and `--output PATH` lists the results
+with no linked activity. `official_ascent`/`official_descent` have no column
+and `race_event_id` is Runalyze's own identity, so `event_id` stays empty
+(events are Intervals-authoritative).
+
+```text
+Runalyze races: 37 race results
+  written: 37
+  unchanged: 0
+  kept manual: 0
+  unmatched: 0
 ```
 
 ## Source precedence
