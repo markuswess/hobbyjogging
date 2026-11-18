@@ -26,3 +26,5 @@ data/
 *.sqlite
 *.sqlite3
 *.fit
+# Committed parser fixture (privacy-reviewed; see the import test)
+!packages/hobbyjogging-import/tests/fixtures/*.fit

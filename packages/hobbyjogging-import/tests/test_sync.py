@@ -20,12 +20,7 @@ from hobbyjogging_import.sync import (
     run_sync,
 )
 
-SAMPLE_FIT = (
-    Path(__file__).resolve().parents[3]
-    / "data"
-    / "fit"
-    / "30285-220489711.fit"
-)
+SAMPLE_FIT = Path(__file__).resolve().parent / "fixtures" / "sample-run.fit"
 
 CALLS = []
 
@@ -375,10 +370,6 @@ class SyncCliTests(unittest.TestCase):
 
 class SyncIdempotenceTests(unittest.TestCase):
 
-    @unittest.skipUnless(
-        SAMPLE_FIT.exists(),
-        "sample FIT file is not available",
-    )
     def test_second_sync_skips_known_fit_paths(self):
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)

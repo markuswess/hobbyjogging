@@ -21,18 +21,9 @@ from hobbyjogging_import.fit import (
 )
 
 UTC = timezone.utc
-SAMPLE_FIT = (
-    Path(__file__).resolve().parents[3]
-    / "data"
-    / "fit"
-    / "30285-220489711.fit"
-)
-SAMPLE_VO2MAX_FIT = (
-    Path(__file__).resolve().parents[3]
-    / "data"
-    / "fit"
-    / "30285-18667256.fit"
-)
+# A committed real Garmin file (2020-09-09, 11 laps, VO2max 62.98). It carries
+# GPS and HR, so it is a deliberate, privacy-reviewed fixture, not local data.
+SAMPLE_FIT = Path(__file__).resolve().parent / "fixtures" / "sample-run.fit"
 
 
 def _sample_messages():
@@ -415,22 +406,14 @@ class FitCliTests(unittest.TestCase):
 
 class FitSampleTests(unittest.TestCase):
 
-    @unittest.skipUnless(
-        SAMPLE_FIT.exists(),
-        "sample FIT file is not available",
-    )
     def test_reads_real_sample_file_id(self):
         file_id = read_fit_file_id(SAMPLE_FIT)
 
         self.assertEqual("activity", file_id["type"])
         self.assertEqual("garmin", file_id["manufacturer"])
 
-    @unittest.skipUnless(
-        SAMPLE_VO2MAX_FIT.exists(),
-        "sample FIT file with VO2max is not available",
-    )
     def test_parses_real_vo2max_without_rounding(self):
-        summary = parse_fit_file(SAMPLE_VO2MAX_FIT)
+        summary = parse_fit_file(SAMPLE_FIT)
 
         self.assertEqual(1, len(summary.sessions))
         self.assertAlmostEqual(
@@ -442,10 +425,6 @@ class FitSampleTests(unittest.TestCase):
             format_fit_file(summary),
         )
 
-    @unittest.skipUnless(
-        SAMPLE_FIT.exists(),
-        "sample FIT file is not available",
-    )
     def test_parses_real_sample(self):
         summary = parse_fit_file(SAMPLE_FIT)
 
@@ -455,11 +434,11 @@ class FitSampleTests(unittest.TestCase):
         session = summary.sessions[0]
 
         self.assertEqual("run", session.canonical_sport)
-        self.assertEqual("2026-11-01T09:35:08Z", session.start_time_utc)
-        self.assertEqual("2026-11-01T10:35:08+01:00", session.local_start)
+        self.assertEqual("2020-09-09T07:39:48Z", session.start_time_utc)
+        self.assertEqual("2020-09-09T09:39:48+02:00", session.local_start)
         self.assertEqual(11, len(session.laps))
-        self.assertEqual(151, session.avg_hr)
-        self.assertEqual(10166.61, session.distance_m)
+        self.assertEqual(125, session.avg_hr)
+        self.assertEqual(10624.38, session.distance_m)
 
 
 if __name__ == "__main__":
