@@ -83,6 +83,22 @@ class SocialLineTests(unittest.TestCase):
             lines,
         )
 
+    def test_multiline_description_stays_on_one_line(self):
+        lines = format_session_activity(
+            activity(),
+            [],
+            social=[
+                ActivitySocial(
+                    activity_id="a1",
+                    source="strava",
+                    title="Bakery run",
+                    description="first line\r\nsecond line",
+                )
+            ],
+        )
+
+        self.assertIn("- Strava: Bakery run — first line second line", lines)
+
     def test_empty_social_row_is_skipped(self):
         lines = format_session_activity(
             activity(),

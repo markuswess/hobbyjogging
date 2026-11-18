@@ -847,8 +847,11 @@ def format_session_activity(
             lines.append(f"- Garmin Connect: {_link(links.garmin)}")
 
     for entry in social or []:
+        # A Strava description can span lines; keep the one-line social format.
         text = " — ".join(
-            part for part in (entry.title, entry.description) if part
+            " ".join(part.split())
+            for part in (entry.title, entry.description)
+            if part
         )
         if not text and not entry.url:
             continue
