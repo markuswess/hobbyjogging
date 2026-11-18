@@ -259,8 +259,14 @@ def build_analysis_section(
     )
 
 
-def _streak_row(streak, *, current: bool = False) -> list[str]:
+def _streak_row(
+    streak,
+    *,
+    current: bool = False,
+    rank: int | None = None,
+) -> list[str]:
     cells = [
+        str(rank) if rank is not None else "",
         esc(str(streak.start)),
         "?" if current else esc(str(streak.end)),
         str(streak.days),
@@ -269,7 +275,7 @@ def _streak_row(streak, *, current: bool = False) -> list[str]:
     ]
 
     if current:
-        cells = [f"<strong>{cell}</strong>" for cell in cells]
+        cells = [f"<strong>{cell}</strong>" if cell else "" for cell in cells]
 
     return cells
 
@@ -301,17 +307,21 @@ def _streaks_card(streaks) -> str:
     )
 
     rows = [
-        ["⋮", "", "", "", ""]
+        ["⋮", "", "", "", "", ""]
         if row.streak is None
-        else _streak_row(row.streak, current=row.current)
+        else _streak_row(
+            row.streak,
+            current=row.current,
+            rank=row.rank,
+        )
         for row in streak_table_rows(streaks)
     ]
 
     parts.append(
         table(
-            ["Start", "End", "Days", "Distance", "Time"],
+            ["#", "Start", "End", "Days", "Distance", "Time"],
             rows,
-            numeric=(2, 3, 4),
+            numeric=(0, 3, 4, 5),
             empty="No streaks yet.",
         )
     )

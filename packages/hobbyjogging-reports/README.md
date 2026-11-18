@@ -79,7 +79,7 @@ Pages:
   read over the bars. The tab ends with a running-streaks card: the current
   streak (always a bold table row with `?` as its open end, after an ellipsis
   when it is below the top five), the run-day and streak totals, and the five
-  longest across all history.
+  longest, numbered from the best, across all history.
 - `nsa.html` (NSA) — the subT EWMA report (7/42/182-day pace, heart-rate,
   and efficiency EWMAs per category), the subT/LT1 chart, and the
   `subT Report` over the last year. The report's long per-category tables
@@ -301,15 +301,17 @@ stay compact (`1h02`).
   pace, planned-vs-actual zones and duration/distance when a race event
   exists on the same date.
 - **streaks** — The current running streak (days, span, km, time, and
-  whether today is already run) and the longest streaks with the same
-  fields, cut by `--limit N` (default 10). A streak day needs one run of at
-  least 10 minutes; a rest day ends the streak and a ride never extends it,
-  so cross-training cannot hold a running streak. All history from the first
-  activity is used, review-excluded runs do not count, and a run later today
-  is not reported as a missed day. The current streak is always a table row,
-  bold with `?` for its open end; when it falls below `--limit` it follows an
-  ellipsis row. The Analysis card uses the same rows and selection logic with
-  five longest (the CLI defaults to ten) and the same totals.
+  whether today is already run) and the numbered longest streaks (1 is the
+  best) with the same fields, cut by `--limit N` (default 10). A streak day
+  needs one run of at least 10 minutes; a rest day ends the streak and a ride
+  never extends it, so cross-training cannot hold a running streak. All
+  history from the first activity is used, review-excluded runs do not count,
+  and a run later today is not reported as a missed day. The current streak
+  is always a table row, bold with `?` for its open end; when it falls below
+  `--limit` it follows an ellipsis row and keeps its true rank, so the gap in
+  the numbering is visible. The Analysis card uses the same rows and
+  selection logic with five longest (the CLI defaults to ten) and the same
+  totals.
 - **sickness** — Illness episodes in a range (default the last 365 days):
   episode count, illness days and their share of the range, the longest and
   current (or last) episode, and a newest-first table of each episode with

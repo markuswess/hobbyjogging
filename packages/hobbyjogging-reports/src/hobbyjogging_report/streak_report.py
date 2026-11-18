@@ -69,17 +69,18 @@ def streaks_report(
         "",
         "## Longest streaks",
         "",
-        "| Start | End | Days | Distance | Time |",
-        "|---|---|---:|---:|---:|",
+        "| # | Start | End | Days | Distance | Time |",
+        "|---:|---|---|---:|---:|---:|",
     ])
 
     for row in streak_table_rows(summary):
         if row.streak is None:
-            lines.append("| ⋮ | | | | |")
+            lines.append("| ⋮ | | | | | |")
             continue
 
         streak = row.streak
         cells = [
+            str(row.rank) if row.rank is not None else "",
             str(streak.start),
             "?" if row.current else str(streak.end),
             str(streak.days),
@@ -88,7 +89,7 @@ def streaks_report(
         ]
 
         if row.current:
-            cells = [f"**{cell}**" for cell in cells]
+            cells = [f"**{cell}**" if cell else "" for cell in cells]
 
         lines.append("| " + " | ".join(cells) + " |")
 

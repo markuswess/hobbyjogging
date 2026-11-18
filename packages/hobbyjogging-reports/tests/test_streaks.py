@@ -177,19 +177,20 @@ class StreakReportTests(unittest.TestCase):
         self.assertIn("Bold marks the current streak.", report)
         self.assertIn("## Longest streaks", report)
         self.assertIn(
-            "| Start | End | Days | Distance | Time |",
+            "| # | Start | End | Days | Distance | Time |",
             report,
         )
         self.assertIn(
-            f"| {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
+            f"| 1 | {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
             report,
         )
         # The current streak falls outside the two longest, so an ellipsis
-        # separates it from the list and its open end prints as a question
-        # mark in bold.
-        self.assertIn("| ⋮ | | | | |", report)
+        # separates it from the list, its open end prints as a question
+        # mark in bold, and it carries no rank.
+        self.assertIn("| ⋮ | | | | | |", report)
         self.assertIn(
-            f"| **{current}** | **?** | **1** | **8.0 km** | **40min** |",
+            f"| **3** | **{current}** | **?** | **1** | **8.0 km** | "
+            "**40min** |",
             report,
         )
         self.assertIn("Showing the 2 longest of 3 streaks.", report)
@@ -210,13 +211,13 @@ class StreakReportTests(unittest.TestCase):
 
         self.assertIn("- Current: 2 days (today run)", report)
         self.assertIn(
-            f"| **{D + timedelta(days=10)}** | **?** | **2** | "
+            f"| **2** | **{D + timedelta(days=10)}** | **?** | **2** | "
             "**16.0 km** | **1h20** |",
             report,
         )
         self.assertNotIn("⋮", report)
         self.assertIn(
-            f"| {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
+            f"| 1 | {D} | {D + timedelta(days=2)} | 3 | 24.0 km | 2h00 |",
             report,
         )
 

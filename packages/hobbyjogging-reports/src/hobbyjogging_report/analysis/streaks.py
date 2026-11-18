@@ -41,6 +41,7 @@ class StreakSummary:
     last_run: date | None
     run_days: int
     streak_count: int
+    current_rank: int | None = None
 
 
 def is_streak_run(
@@ -145,14 +146,20 @@ def streak_summary(
     if streaks and streaks[-1].end in ongoing:
         current = streaks[-1]
 
-    longest = sorted(
+    ranked = sorted(
         streaks,
         key=lambda streak: (streak.days, streak.distance_m, streak.start),
         reverse=True,
     )
+    current_rank = None
 
-    if limit is not None:
-        longest = longest[:limit]
+    if current is not None:
+        for rank, streak in enumerate(ranked, start=1):
+            if (streak.start, streak.end) == (current.start, current.end):
+                current_rank = rank
+                break
+
+    longest = ranked if limit is None else ranked[:limit]
 
     return StreakSummary(
         current=current,
@@ -161,36 +168,49 @@ def streak_summary(
         last_run=last_run,
         run_days=len(run_days),
         streak_count=len(streaks),
+        current_rank=current_rank,
     )
 
 
 @dataclass(frozen=True)
 class StreakTableRow:
-    """One table row: a streak, or an ellipsis separator (streak None)."""
+    """One table row: a streak, or an ellipsis separator (streak None).
+
+    ``rank`` is the position in the longest list (1 is the best). The
+    ellipsis and a current streak appended below the cut have no rank.
+    """
 
     streak: RunStreak | None
     current: bool = False
+    rank: int | None = None
 
 
 def streak_table_rows(summary: StreakSummary) -> list[StreakTableRow]:
     """Longest streaks with the current one always in the table.
 
-    The current streak is marked even when it sits outside the cut; in that
-    case an ellipsis row separates it from the listed streaks.
+    The longest list is numbered from 1. The current streak is marked even
+    when it sits outside the cut; in that case an ellipsis row separates it
+    from the listed streaks and the appended row carries no rank.
     """
     rows = []
     current_in_table = False
 
-    for streak in summary.longest:
+    for rank, streak in enumerate(summary.longest, start=1):
         is_current = summary.current is not None and (
             (streak.start, streak.end)
             == (summary.current.start, summary.current.end)
         )
         current_in_table = current_in_table or is_current
-        rows.append(StreakTableRow(streak, is_current))
+        rows.append(StreakTableRow(streak, is_current, rank))
 
     if summary.current is not None and not current_in_table:
         rows.append(StreakTableRow(None))
-        rows.append(StreakTableRow(summary.current, True))
+        rows.append(
+            StreakTableRow(
+                summary.current,
+                True,
+                summary.current_rank,
+            )
+        )
 
     return rows

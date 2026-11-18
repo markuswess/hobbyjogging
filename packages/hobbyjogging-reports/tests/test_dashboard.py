@@ -593,6 +593,8 @@ class DashboardBuildTests(unittest.TestCase):
         # A ten-day streak before the analysis window is still the longest.
         self.assertIn(str(old_start), section.streaks_html)
         self.assertIn(">10</td>", section.streaks_html)
+        self.assertIn(">#</th>", section.streaks_html)
+        self.assertIn(">1</td>", section.streaks_html)
         self.assertIn("today run", section.streaks_html)
         # The current streak is in the top rows, so it is bold with an open
         # end and there is no ellipsis.
@@ -636,6 +638,9 @@ class DashboardBuildTests(unittest.TestCase):
         html = section.streaks_html
 
         self.assertIn("⋮", html)
+        self.assertIn(">#</th>", html)
+        self.assertIn(">5</td>", html)
+        self.assertIn("<strong>7</strong>", html)
         self.assertIn("<strong>3</strong>", html)
         self.assertIn("<strong>?</strong>", html)
         # The current row follows the ellipsis, after the five top streaks.
