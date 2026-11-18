@@ -735,10 +735,10 @@ editing, analysis and lab work; phase 3 is the dormant future.
       (`VOLUME_Y_MAX`, `TIME_Y_MAX`, `LOAD_Y_MAX` — a 130 km/week axis for a
       40 km/week athlete), `COMPARE_VISIBLE_YEARS = 5`, the 2009 colour anchor,
       `RACE_DAYS = 180`. Make the ceilings a "nice max" from the data.
-    - **The sheet shapes the core**: `SHEET_TYPE_CODES` (German `Trainigstyp`
-      codes for one personal ODS) lives in `hobbyjogging_core.workouts`; it
-      belongs in the import package so the canonical vocabulary is not shaped
-      by one spreadsheet.
+    - **The sheet shapes the core (done Nov 2026)**: `SHEET_TYPE_CODES` and
+      `classification_for_sheet_code` moved from `hobbyjogging_core.workouts`
+      to `hobbyjogging_import.sheet_codes`, so the canonical vocabulary is not
+      shaped by one spreadsheet; maintenance imports the mapping from there.
     - **Thresholds as defaults, not laws**: RPE > 3, 90-min long run, 40-min
       recovery, subT 4/7-min buckets, 5-bpm HR conflict, 10 %/20 m elevation.
       Document them as defaults and keep them in one module.
@@ -781,8 +781,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, a
       pull-request test workflow, the README first-run path; then the
       second-athlete test case once the Runalyze and Strava imports land, as
-      the driver for the remaining assumptions; then the data-driven ceilings
-      and the sheet-code move; then the Python floor.
+      the driver for the remaining assumptions; then the data-driven ceilings;
+      then the Python floor.
 
 24. **Catalogue every metric and analysis tool** (docs + reports; idea). The
     registry only documents what came through the lab gate, so most of what the

@@ -13,6 +13,10 @@ on.
   `athlete_thresholds_current` derives the dated snapshots from the Intervals
   payloads and `activity_zone_configs_current` writes the zone configs; the
   importer does not duplicate that logic.
+- **Sheet vocabulary moved here.** `SHEET_TYPE_CODES` and
+  `classification_for_sheet_code` now live in `hobbyjogging_import.sheet_codes`
+  instead of `hobbyjogging_core.workouts`, so the canonical vocabulary is not
+  shaped by one spreadsheet; maintenance imports the mapping from here.
 - **Runalyze payload repair and VO2max fill.** The `--refresh-before` sweep
   re-read all 2,843 activity payloads (a 2023 row went from 64 to 87 keys with
   `hr_avg`/`vo2max`), closing the `hr_avg` gap from 1,752 linked rows to 5;
@@ -309,10 +313,6 @@ on.
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
   directory and the credentials, printing what is missing. See root item 23.
-- **Move `SHEET_TYPE_CODES` here.** The German `Trainigstyp` mapping for one
-  personal ODS lives in `hobbyjogging_core.workouts`; move it into this
-  package so the canonical vocabulary is not shaped by one spreadsheet.
-  Maintenance already depends on import, so its backfills keep working.
 - **Declared payload mapping and the create policy** (root items 17 and 40).
   Each adapter gets a `FIELD_MAP` (canonical field → payload key) plus a
   contract test; `verify_canonical`/`recompute_canonical` read it. The

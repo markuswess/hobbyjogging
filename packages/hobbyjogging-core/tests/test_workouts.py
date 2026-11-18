@@ -8,7 +8,6 @@ from hobbyjogging_core.workouts import (
     canonical_method,
     canonical_target,
     classification_for_category,
-    classification_for_sheet_code,
     is_quality,
     method_label,
     target_label,
@@ -108,40 +107,6 @@ class WorkoutVocabularyTests(unittest.TestCase):
         self.assertEqual(
             (set(), set()),
             classification_for_category("cross-training"),
-        )
-
-    def test_sheet_codes(self):
-        self.assertEqual(
-            ({"intervals"}, {"vo2max"}, {"hills"}),
-            classification_for_sheet_code("bi"),
-        )
-        self.assertEqual(
-            ({"fartlek"}, {"vo2max"}, set()),
-            classification_for_sheet_code("fs"),
-        )
-        self.assertEqual(
-            (set(), set(), {"strength"}),
-            classification_for_sheet_code("k"),
-        )
-        self.assertEqual(
-            ({"continuous"}, set(), set()),
-            classification_for_sheet_code("idl"),
-        )
-        self.assertEqual(
-            ({"continuous"}, {"threshold"}, set()),
-            classification_for_sheet_code("tdl"),
-        )
-        self.assertEqual(
-            (set(), set(), {"bad data"}),
-            classification_for_sheet_code("u"),
-        )
-        self.assertEqual(
-            ({"race"}, {"other"}, set()),
-            classification_for_sheet_code("lt"),
-        )
-        self.assertEqual(
-            (set(), set(), set()),
-            classification_for_sheet_code(""),
         )
 
     def test_every_token_has_a_label(self):

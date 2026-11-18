@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from hobbyjogging_core.workouts import SHEET_TYPE_CODES
+from hobbyjogging_import.sheet_codes import SHEET_TYPE_CODES
 
 from ..context import TaskContext
 from ..registry import task

@@ -17,12 +17,12 @@ from hobbyjogging_core.model import Activity
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
     classification_for_category,
-    classification_for_sheet_code,
 )
 from hobbyjogging_import.quality import (
     WORKOUT_CLASSIFICATION,
     review_fingerprint,
 )
+from hobbyjogging_import.sheet_codes import classification_for_sheet_code
 
 from .context import TaskContext
 
