@@ -514,15 +514,16 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and `vo2max_runalyze` sits beside `vo2max_garmin` — reports item 15.
     - **Remaining (Nov 2026)**: phases 1–5 are landed and applied, so the only
       missing phase is 6 (reports), now item 15 of the reports list. One
-      import leftover needs a root decision: the 20 rows the enricher could
-      not place. 5 have a same-day canonical activity with the same duration
-      and distance (a perfect twin the matcher missed), 12 share the duration
-      but disagree on distance by 8–15 %, and 3 have no duration twin (one is
-      a 41.7 km ride with no plausible candidate, so genuinely missing).
-      Creating them as written would add ~19 duplicates, so the matching rule
-      comes first: a short-activity overlap rule (a 141 s activity never
-      reaches the 120 s floor) and a candidate choice that weighs every
-      same-day match. Evidence:
+      import leftover needs a root decision: the 19 rows the enricher could
+      not place. 4 have a same-day canonical activity with the same duration
+      and distance, but that day holds two canonical rows for one session (one
+      nameless), so the matcher chose the other; 12 share the duration but
+      disagree on distance by 8–15 %; 3 have no duration twin (one is a
+      41.7 km ride with no plausible candidate, so genuinely missing).
+      Creating them would add about 16 duplicates, so the rule comes first: a
+      distance rule, duplicate detection for the paired days, and whether
+      Runalyze may create an activity. The short-activity floor is fixed (a
+      142 s cooldown now links). Evidence:
       `~/projects/laufen_private/data/runalyze-unmatched.json`.
     - **After the import**: item 37 mines the tags and comments this import
       lands to refurbish historical classifications, illness ranges and season

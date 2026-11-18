@@ -17,6 +17,12 @@ on.
 - **Runalyze `enrich --ids`.** The repair path for a detail whose fetch failed:
   it reads the named activities directly and matches from the detail's own
   date/duration/distance instead of the collection.
+- **Short activities match.** The matcher's flat 120 s overlap floor made any
+  session under two minutes unmatchable: a 142 s cooldown reported
+  `no_temporal_match` against a 141 s activity. Below 200 s the floor now
+  scales with the shorter window and the 60 % ratio decides, and contained
+  FIT segments inherit the same rule. The 2026-04-12 Linz cooldown links now
+  and carries its two Runalyze tags (`Auslaufen`, `Raceday`).
 - **Runalyze phase 5.** Offline `runalyze vo2max` fills `vo2max_runalyze` from
   the stored payloads' effective `vo2max`, leaving `vo2max_garmin` untouched
   and skipping unlinked activities. 843 values, all 2019–2022, and a second
@@ -283,15 +289,15 @@ on.
 
 - **Historical refurbishment** (root item 37). The comment/tag workout
   proposals and triage actions start after the Runalyze import settles.
-- **Runalyze unmatched rows** (root item 12). 20 rows the enricher could not
-  place. 5 have a same-day canonical activity with the same duration *and*
-  distance (the matcher missed a perfect twin), 12 share the duration but
-  disagree on distance by 8–15 %, and 3 have no duration twin at all (one is
-  a 41.7 km ride with no plausible candidate, so it is genuinely missing).
-  Creating them as the design says would add roughly 19 duplicates, so a
-  matching decision comes first: a short-activity rule (a 141 s activity
-  never reaches the 120 s overlap floor) and a candidate choice that weighs
-  every same-day match instead of the one that overlaps. Evidence:
+- **Runalyze unmatched rows** (root item 12). 19 rows the enricher could not
+  place. 4 have a same-day canonical activity with the same duration *and*
+  distance, but the day carries two canonical rows for one session (one of
+  them nameless), so the matcher picked the other one; 12 share the duration
+  but disagree on distance by 8–15 %; and 3 have no duration twin at all (one
+  is a 41.7 km ride with no plausible candidate, so it is genuinely missing).
+  Creating them as the design says would add about 16 duplicates, so a
+  decision comes first: a distance rule, duplicate detection for the paired
+  days, and whether Runalyze may create an activity at all. Evidence:
   `~/projects/laufen_private/data/runalyze-unmatched.json`.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) is on the

@@ -2,9 +2,10 @@
 
 Matching is based on overlapping time windows rather than exact start times.
 A normal match needs at least two minutes of overlap covering 60% of the
-shorter activity. A FIT file may also be a contained segment: when the
-canonical activity is larger, at least 90% of the FIT window must fall inside
-it.
+shorter activity. Below two minutes the floor scales with that activity, so a
+short session can still match. A FIT file may also be a contained segment:
+when the canonical activity is larger, at least 90% of the FIT window must
+fall inside it.
 """
 
 from __future__ import annotations
@@ -17,6 +18,17 @@ MIN_OVERLAP_S = 120.0
 MIN_SHORTER_RATIO = 0.60
 MIN_FIT_CONTAINED_RATIO = 0.90
 LARGER_WINDOW_S = 60.0
+
+
+def _required_overlap_s(shorter_duration: float) -> float:
+    """Minimum overlap, capped so a short activity can still match.
+
+    A flat 120 s floor excludes every activity shorter than two minutes
+    outright: it can never overlap by more than its own length. Below
+    200 s the required overlap scales with the shorter window, and
+    ``MIN_SHORTER_RATIO`` carries the decision instead.
+    """
+    return min(MIN_OVERLAP_S, shorter_duration * MIN_SHORTER_RATIO)
 
 
 @dataclass(frozen=True)
@@ -70,6 +82,7 @@ def match_window(
         return None
 
     shorter_ratio = overlap_s / min(candidate_duration, existing_duration)
+    shorter_duration = min(candidate_duration, existing_duration)
     fit_contained_ratio = (
         overlap_s / candidate_duration if candidate_is_fit else None
     )
@@ -81,7 +94,7 @@ def match_window(
         if (
             fit_contained_ratio is None
             or fit_contained_ratio < MIN_FIT_CONTAINED_RATIO
-            or overlap_s < MIN_OVERLAP_S
+            or overlap_s < _required_overlap_s(shorter_duration)
         ):
             return None
 
@@ -94,7 +107,10 @@ def match_window(
             fit_contained_ratio=round(fit_contained_ratio, 4),
         )
 
-    if overlap_s < MIN_OVERLAP_S or shorter_ratio < MIN_SHORTER_RATIO:
+    if (
+        overlap_s < _required_overlap_s(shorter_duration)
+        or shorter_ratio < MIN_SHORTER_RATIO
+    ):
         return None
 
     return MatchCandidate(

@@ -43,11 +43,36 @@ class MatchWindowTests(unittest.TestCase):
         self.assertEqual(1200, match.overlap_s)
         self.assertIsNone(match.fit_contained_ratio)
 
-    def test_overlap_below_two_minutes_is_rejected(self):
+    def test_short_activity_matches_a_larger_activity(self):
+        # A 141 s activity cannot overlap by 120 s unless the starts land
+        # within 21 s, which is why the floor now scales below two minutes.
         existing = _window("existing", START, 60)
         candidate = _window("candidate", START + timedelta(minutes=10), 1)
 
+        match = match_window(candidate, existing)
+
+        self.assertIsNotNone(match)
+        self.assertEqual("existing", match.activity_id)
+        self.assertEqual(60, match.overlap_s)
+
+    def test_short_activity_still_needs_sixty_percent_of_its_window(self):
+        existing = _window("existing", START, 60)
+        candidate = _window(
+            "candidate",
+            START + timedelta(minutes=59, seconds=30),
+            100 / 60,
+        )
+
         self.assertIsNone(match_window(candidate, existing))
+
+    def test_short_fit_segment_can_be_contained(self):
+        existing = _window("existing", START, 60)
+        candidate = _window("fit", START + timedelta(minutes=30), 1)
+
+        match = match_window(candidate, existing, candidate_is_fit=True)
+
+        self.assertIsNotNone(match)
+        self.assertEqual("contained_fit", match.match_method)
 
     def test_overlap_below_sixty_percent_of_shorter_is_rejected(self):
         existing = _window("existing", START, 60)
