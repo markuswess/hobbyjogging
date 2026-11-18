@@ -26,15 +26,17 @@ on.
 
 - **Strava CSV social + gear.** `hobbyjogging-import strava <zip|dir>` reads
   `activities.csv`, `bikes.csv` and `shoes.csv` without an API app or
-  subscription. It matches by local wall time (the canonical window is
-  reconstructed from `started_at_utc + tz_offset_min`), falls back to the
-  exact-twin rule, and writes nothing for an unmatched row. Social text goes
-  to `activity_social(source='strava')`; the canonical text target is a
-  per-source setting (root item 40), default social. Gear links by exact
-  normalized name or creates `strava:gear:<slug>` without rewriting an
-  existing row. Tested end to end on a copy of the real DB: one matched
-  activity, one social row, one gear row, one activity-gear link, and a no-op
-  re-run for the social row. Remaining: run it on the real export. The create
+  subscription. The 2026 export is wide: `Distance` and `Elapsed Time` appear
+  twice and the second `Distance` is always metres; gear lives in
+  `Activity Gear`. The reader parses by column index, prefers the metres
+  column, and `--date-zone auto` picks whether `Activity Date` is local or UTC
+  (this account is UTC). Social text goes to `activity_social(source='strava')`;
+  the canonical text target is a per-source setting (root item 40), default
+  social. Gear links by exact normalized name or creates
+  `strava:gear:<slug>` without rewriting an existing row. Applied to the real
+  export: 2,554 of 2,590 social rows, 35 unmatched (mostly other sports or
+  genuine distance disagreements), 1 ambiguous; 5 bikes, 3 new equipment rows,
+  2 linked, 64 activity links. A re-run is a no-op for social rows. The create
   decision is settled (root item 40): every source may create, and this
   athlete configures Strava as `ignore`.
 

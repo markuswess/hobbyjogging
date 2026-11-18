@@ -467,14 +467,28 @@ uv run --env-file .env hobbyjogging-import strava ~/Downloads/export_123456.zip
 ```
 
 Options: `--from` / `--to`, `--distance-unit {km,m}` (default `km`),
-`--dry-run`, `--database`.
+`--date-zone {auto,local,utc}` (default `auto`), `--dry-run`, `--database`.
 
 The import reads `activities.csv`, `bikes.csv` and `shoes.csv`; the
 `activities/` files are ignored because the FIT archive already covers them.
-`Activity Date` is local wall time, so matching reconstructs the canonical
-local window from `started_at_utc + tz_offset_min`, then falls back to the
-exact-twin rule. A row that matches nothing is reported and writes nothing
-today; creation becomes a per-source policy (root item 40).
+The 2026 export is wide: `Distance` and `Elapsed Time` appear twice, and the
+second `Distance` is always metres (the first is km for runs and rides, metres
+for swims); gear lives in `Activity Gear`, not `Gear`. The parser reads by
+column index and prefers the metres column, so `--distance-unit` only applies
+to a single-column export.
+
+`Activity Date` carries the account's timezone, not necessarily the activity's
+local time; this account is UTC. `--date-zone auto` matches each export under
+both readings and uses the one that matches more activities (the choice is
+printed and recorded in the run); `local` and `utc` force one. Matching then
+uses the canonical window or the exact-twin rule. A row that matches nothing
+is reported and writes nothing today; creation becomes a per-source policy
+(root item 40).
+
+On the real 2026 export: 2,554 of 2,590 activities matched, 35 unmatched
+(mostly other sports — alpine ski, swim, hike — or genuine distance
+disagreements) and 1 ambiguous. Gear: 5 bikes, 0 shoes, 3 new equipment rows,
+2 linked to sheet rows, 64 activity links.
 
 Social text goes to `activity_social(source='strava')`; the default target is
 social only, and a per-source setting may promote it to `name`/`description`

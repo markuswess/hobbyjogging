@@ -620,13 +620,12 @@ editing, analysis and lab work; phase 3 is the dormant future.
       manual row survives imports. The session report renders a `Strava: …`
       line under the external links. Schema v22 is applied to the real DB.
     - **CSV first, no subscription**: `hobbyjogging-import strava <zip|dir>`
-      reads `activities.csv`, `bikes.csv` and `shoes.csv`. It matches by local
-      wall time (reconstructing the canonical window from
-      `started_at_utc + tz_offset_min`) and falls back to the exact-twin rule.
-      Distance is km by default (`--distance-unit m` for meters). It writes
-      nothing for an unmatched row today; the per-source create policy (item
-      40) makes that choice configurable, and this athlete's config keeps
-      Strava at `ignore` (social + gear only).
+      reads `activities.csv`, `bikes.csv` and `shoes.csv`. It matches by the
+      export's date zone (`--date-zone auto|local|utc`) and falls back to the
+      exact-twin rule. Distance is km by default (`--distance-unit m` for
+      single-column exports). It writes nothing for an unmatched row today;
+      the per-source create policy (item 40) makes that choice configurable,
+      and this athlete's config keeps Strava at `ignore` (social + gear only).
     - **Text target**: title and description are written to `activity_social`
       first, always. A per-source target (item 40) may also promote them to
       `activities.name`/`description`; the default is social, because a
@@ -637,11 +636,16 @@ editing, analysis and lab work; phase 3 is the dormant future.
       name creates `strava:gear:<slug>` with the CSV brand/model; a matched
       row is never rewritten. The CSV has no gear distance or retirement date,
       so derive distance from the linked activities.
-    - **Remaining**: run it on the real export and inspect the match rate. The
-      Strava-only creation question is settled — every source that yields
+    - **Real export (Nov 2026)**: the 2026 archive is wide (`Distance` and
+      `Elapsed Time` repeated, the second `Distance` in metres) and its
+      `Activity Date` is the account timezone (UTC here). Applied: 2,554 of
+      2,590 social rows, 35 unmatched (mostly other sports or genuine distance
+      disagreements), 1 ambiguous; 5 bikes, 3 new equipment rows, 2 linked,
+      64 activity links. A re-run is a no-op for social rows.
+    - **Remaining**: optionally add the API for continuous sync and comments.
+      The Strava-only creation question is settled — every source that yields
       activity rows may create, the per-source policy decides (item 40), and
-      this athlete's config keeps Strava at `ignore`. Optionally add the API
-      for continuous sync and comments.
+      this athlete's config keeps Strava at `ignore`.
     - **API, deferred**: OAuth refresh token; app creation requires a Strava
       subscription in 2026; single-player reads are 100/15 min and 1,000/day.
       `suffer_score` is not `training_load`.
@@ -1242,9 +1246,10 @@ editing, analysis and lab work; phase 3 is the dormant future.
       the acceptance test.
 
 The Runalyze payload sweep and the `vo2max` fill are done
-(`vo2max_runalyze` 843 → 2,225), so reports item 15 is unblocked. The review
-queue holds the 19 ambiguous-match items, all four suites are green, and the
-demo deploys from GitHub Actions.
+(`vo2max_runalyze` 843 → 2,225), so reports item 15 is unblocked. The Strava
+CSV import is applied (2,554 social rows, 64 gear links, 35 unmatched). The
+review queue holds the 19 ambiguous-match items, all four suites are green, and
+the demo deploys from GitHub Actions.
 
 ## Notes
 

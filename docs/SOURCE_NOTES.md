@@ -183,21 +183,28 @@ needs about 12 windows.
 The bulk export (ZIP or extracted directory) is the supported path. It needs
 no API app, OAuth token or Strava subscription.
 
-- `activities.csv` is the manifest: activity id, local date/time, name, type,
+- `activities.csv` is the manifest: activity id, date/time, name, type,
   description, elapsed and moving time, distance, gear, filename, privacy and
   commute flags. Headers vary by export version and account language, so the
   reader uses aliases; fields containing commas are quoted by Strava.
+- The 2026 export is **wide**: `Distance` and `Elapsed Time` appear twice, and
+  the second `Distance` is always metres (the first is km for runs and rides,
+  metres for swims and rowing). Gear lives in `Activity Gear`, while `Gear`
+  stays empty. The reader parses by column index and prefers the metres
+  column; `--distance-unit` only applies to a single-column export.
 - `bikes.csv` and `shoes.csv` carry gear name, brand and model, but no gear
   id, distance or retirement date. `activities.csv` names the gear.
 - `activities/` holds the original FIT/TCX/GPX files. It is ignored: the FIT
   archive already covers the recordings, and importing both would duplicate
   them.
-- `Activity Date` is local wall time and has no UTC offset. The matcher
-  reconstructs the canonical local window from `started_at_utc +
-  tz_offset_min`; a row with no offset falls back to the exact-twin rule
-  (same local date, duration and distance).
-- `Distance` is kilometers by default; `--distance-unit m` handles an export
-  that writes meters.
+- `Activity Date` carries the **account's** timezone, not necessarily the
+  activity's local time; this account is UTC. `--date-zone auto` (default)
+  matches the export under both readings and keeps the one that matches more
+  activities; `local` and `utc` force one. The choice is printed and recorded
+  in the import run.
+- On the real 2026 export, 2,554 of 2,590 activities matched; the 35 unmatched
+  are mostly other sports (alpine ski, swim, hike) or genuine distance
+  disagreements, and write nothing.
 - Social text goes to `activity_social(source='strava')` by default. A
   per-source target (root item 40) may promote it to `activities.name`/
   `description`; a promoted title reaches `classify()`, which matches `race`,

@@ -197,7 +197,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--distance-unit",
         choices=("km", "m"),
         default="km",
-        help="unit of the Distance column (default: km)",
+        help=(
+            "unit of a single Distance column; the wide export's second "
+            "column is always metres (default: km)"
+        ),
     )
     strava.add_argument(
         "--date-zone",
