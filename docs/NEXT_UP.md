@@ -555,11 +555,11 @@ editing, analysis and lab work; phase 3 is the dormant future.
       DB: 0 links, 19 items (3 suggesting the device row), 19 details stored,
       no activity created, and a no-op re-run. Those 19 items are the open
       queue now, so the Runalyze import itself has nothing left.
-      **Payload repair (Nov 2026, in progress)**: `enrich --refresh-before
-      2026-11-18T09:58:00Z --wait` is re-reading every payload fetched before
-      the detail endpoint began returning `hr_avg`/`vo2max`. When it finishes,
-      run `runalyze vo2max` (dry-run first) to fill `vo2max_runalyze` from the
-      refreshed payloads; that unblocks reports item 15.
+      **Payload repair (done Nov 2026)**: the `--refresh-before` sweep re-read
+      all 2,843 payloads (3 transient 502s recovered on retry) and closed the
+      `hr_avg` gap from 1,752 linked rows to 5; `runalyze vo2max` then filled
+      `vo2max_runalyze` from 843 to 2,225 values (2019-01-22 → 2026-11-16).
+      Reports item 15 is unblocked.
       **Race-method gap (Nov 2026, owner: maintenance)**: the race results are
       complete — 37 rows in the API, 37 stored, field-for-field equal — but 18
       of those activities carry no `race` method or target (2021 ×1, 2022 ×1,
@@ -618,8 +618,7 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `(activity_id, source)`, with title, description, external id, url,
       source record and manual flag. A source refreshes only its own row; a
       manual row survives imports. The session report renders a `Strava: …`
-      line under the external links. Schema v22 is tested on a copy; it applies
-      to the real DB after the payload sweep.
+      line under the external links. Schema v22 is applied to the real DB.
     - **CSV first, no subscription**: `hobbyjogging-import strava <zip|dir>`
       reads `activities.csv`, `bikes.csv` and `shoes.csv`. It matches by local
       wall time (reconstructing the canonical window from
@@ -1242,10 +1241,10 @@ editing, analysis and lab work; phase 3 is the dormant future.
       the recompute may land alongside. The second-athlete test (item 23) is
       the acceptance test.
 
-The Runalyze payload sweep is running; when it finishes, `runalyze vo2max`
-fills the column from the refreshed payloads and unblocks reports item 15. The
-review queue holds the 19 ambiguous-match items, all four suites are green, and
-the demo deploys from GitHub Actions.
+The Runalyze payload sweep and the `vo2max` fill are done
+(`vo2max_runalyze` 843 → 2,225), so reports item 15 is unblocked. The review
+queue holds the 19 ambiguous-match items, all four suites are green, and the
+demo deploys from GitHub Actions.
 
 ## Notes
 

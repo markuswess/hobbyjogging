@@ -5,6 +5,13 @@ on.
 
 ## Done
 
+- **Runalyze payload repair and VO2max fill.** The `--refresh-before` sweep
+  re-read all 2,843 activity payloads (a 2023 row went from 64 to 87 keys with
+  `hr_avg`/`vo2max`), closing the `hr_avg` gap from 1,752 linked rows to 5;
+  three transient 502s recovered on retry. `runalyze vo2max` then filled
+  `vo2max_runalyze` from 843 to 2,225 values (2019-01-22 → 2026-11-16), which
+  unblocks reports item 15.
+
 - **Strava CSV social + gear.** `hobbyjogging-import strava <zip|dir>` reads
   `activities.csv`, `bikes.csv` and `shoes.csv` without an API app or
   subscription. It matches by local wall time (the canonical window is
@@ -220,24 +227,6 @@ on.
 
 ## Next
 
-- **Runalyze effective VO2max payload gap.** Measured, not a Runalyze policy
-  and not a date cutoff: the detail endpoint began returning `hr_avg`,
-  `hr_max`, `trimp`, `vo2max`, `fit_*`, HR zones and HRV for FIT-backed
-  activities at **2026-11-17 22:00 UTC**. The history loop walked newest-first
-  and stored a reduced payload for everything fetched before that moment;
-  `_already_processed()` then treated those snapshots as done forever. Live
-  check: the stored `2023-05-02` payload has 64 keys, the endpoint now returns
-  87 (`hr_avg=141`, `vo2max=56.16`), while a 2019 payload is byte-identical.
-  1,752 linked rows have `avg_hr` in canonical but no `hr_avg` in the stored
-  payload. **Repair in place:** `enrich --refresh-before TIMESTAMP --wait`
-  re-reads every stored payload older than the cutoff, one row at a time, and
-  the newer `fetched_at` makes the sweep advance and stop. The full history
-  is ~12 h at ~240 requests/hour. Then `runalyze vo2max` fills the column
-  from the refreshed payloads (reports item 15 unblocks). **Status (Nov
-  2026)**: the sweep is running; the fill is the next step once it exits
-  cleanly. `fit_vo2max_estimate`
-  is expected to stop now that Garmin no longer syncs it; the gap that
-  matters is `hr_avg`/`vo2max`.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with
@@ -346,9 +335,9 @@ on.
   write.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
-pair done and the VO2max series waiting on the payload sweep and the
-`runalyze vo2max` fill. The unmatched rows are now 19 open `ambiguous_match`
-items, which is a triage job, not import code.
+pair done and the VO2max series ready (`vo2max_runalyze` now holds 2,225
+values). The unmatched rows are 19 open `ambiguous_match` items, which is a
+triage job, not import code.
 
 ## Notes / risks
 
