@@ -563,7 +563,7 @@ class IntervalsImporterTests(unittest.TestCase):
             date(2026, 10, 1),
         )
         self.assertEqual(["fit-uuid"], [activity.id for activity in activities])
-        # Intervals is authoritative for elapsed time, so its value replaces
+        # Intervals is ranked first for elapsed time, so its value replaces
         # FIT's without a review item; FIT keeps the other fields.
         self.assertEqual("Run", activities[0].name)
         self.assertEqual(3600, activities[0].duration_s)

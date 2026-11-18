@@ -92,10 +92,10 @@ writer.replace_activity_tags(
 
 - Manual values (`is_manual = 1`) are never overwritten.
 - The first source to write a field keeps it; re-importing from the same
-  source refreshes its own fields. The fixed exception is `moving_s` and
-  `elapsed_s`, which are Intervals-authoritative: an Intervals value replaces
-  another source's value silently, and a non-Intervals value never overrides
-  it or opens a conflict.
+  source refreshes its own fields. The exception is a ranked authority:
+  `moving_s` and `elapsed_s` prefer Intervals, then FIT. The ranked value
+  replaces another source's value silently, and an unranked value never
+  overrides it or opens a conflict.
 - Agreement within tolerance is a no-op; a meaningful disagreement on any
   other field becomes a `field_conflict` review item and changes nothing.
   Average HR uses a wider 5 bpm floor because device and stream averages
@@ -105,7 +105,7 @@ writer.replace_activity_tags(
 - `force=True` overrides ownership for one explicit re-import, except for
   manual fields.
 - `duration_s` (recording/timer) is owner-tracked; `moving_s` (moving time)
-  and `elapsed_s` are Intervals-authoritative.
+  and `elapsed_s` use a ranked authority (Intervals, then FIT).
 - VO2max has independent owners: Garmin FIT writes `vo2max_garmin`, Runalyze
   writes `vo2max_runalyze`, and Runalyze may fill an empty Garmin slot.
 

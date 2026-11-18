@@ -29,7 +29,7 @@ completion criteria, not a second task list.
 | phase | scope | complete when |
 |---|---|---|
 | **1. Complete the pipeline** | canonical DB, review, every source imported (FIT archive, Intervals.icu, Garmin Personal API, Runalyze, Strava), reports, dashboard and race pages | all imports are in and the reports/dashboard answer the daily questions |
-| **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
+| **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing and a rebuildable canonical layer, per-athlete import policy, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
 | **3. Beyond the database** | web editing interface, homelab migration, platform independence, LLM coaching, detailed per-second streams, vague ideas | deliberately dormant until phases 1–2 are complete |
 
 Phase 1 is current: Runalyze and the Strava CSV import are landed, the
@@ -62,9 +62,20 @@ where one source is a better measurement. There is no global source order.
 `hobbyjogging_import.matching` owns the shared ladder: existing link →
 temporal overlap (the profile may allow a contained FIT segment) → distance
 agreement → same-day exact twin → `ambiguous_match` review → create only when
-the profile allows it. A source that only knows local wall time (Strava CSV)
-matches against the canonical window reconstructed from
-`started_at_utc + tz_offset_min`.
+the policy allows it and there is nothing to review. A source that only knows
+local wall time (Strava CSV) matches against the canonical window reconstructed
+from `started_at_utc + tz_offset_min`.
+
+Every source that yields activity rows may create. What an unmatched row does
+is policy, not capability: per source `create | review | ignore` in
+`sources.toml`, defaulting to create. A row with a rejected candidate becomes a
+review item instead of a creation, so the default cannot manufacture
+duplicates. The same file sets the text targets: a title or description stays
+in `activity_social` (default) or is promoted to `activities.name`/
+`description`; a promoted title feeds the classifier, a description does not.
+
+Each adapter declares its payload→field mapping (`FIELD_MAP`), so the derive
+check, the rebuild and the settings view read one table.
 
 A new source is a profile plus a fetch/normalize adapter. It should not add a
 branch to the writer, the matcher or the quality rules.
@@ -91,6 +102,22 @@ branch to the writer, the matcher or the quality rules.
    `DataSource`, never a specific API or file format.
 7. **Reproducible output.** Same database and date range produce the same
    report; generation timestamps are explicit, not hidden.
+
+### Inputs and projections
+
+Principle 1 splits stored data into two kinds:
+
+- **Inputs** are never rebuilt: source payloads, ownership pointers, manual
+  field edits, links, exclusions, review answers and entity rows.
+- **Projections** are rebuildable: canonical activity scalar fields (by
+  `recompute_canonical`), classification (by its own recompute) and quality
+  flags.
+
+`verify_canonical` diffs a derivation without writing. Ownership is an
+**input** (a recorded decision), not a projection: the first owner keeps a
+field, per-field ranked authority resolves the declared exceptions, and a
+meaningful disagreement becomes a review item. There is no global source order
+and no virtual read path.
 
 ## Topology
 
@@ -461,13 +488,14 @@ successful sync; `--no-classify` skips them. Backfills stay deliberate.
 2. **Match.** A FIT session is matched to a canonical activity by temporal
    overlap; ambiguous one-to-many matches are queued, not guessed. Intervals
    matches by external id, then temporally.
-3. **Write with owner-based precedence.** There is no per-source priority,
-   except that `moving_s` and `elapsed_s` are Intervals-authoritative:
+3. **Write with owner-based precedence.** There is no per-source priority;
+   a field may declare a ranked authority where one source is a better
+   measurement:
    - manual field → never written;
    - same source reimporting → refreshes its own field;
-   - Intervals `moving_s`/`elapsed_s` → replaces another source's value
-     silently; a non-Intervals value keeps the Intervals value and is not a
-     conflict;
+   - a ranked source (`moving_s`/`elapsed_s`: Intervals, then FIT;
+     `device_id`/`vo2max_garmin`: FIT) replaces another source's value
+     silently; an unranked value keeps it and is not a conflict;
    - first owner keeps every other field while other sources agree within
      tolerance (about 1%, with 2 s / 10 m floors; average HR has a wider
      5 bpm floor; 15 s for start times);
@@ -476,11 +504,13 @@ successful sync; `--no-classify` skips them. Backfills stay deliberate.
    - a meaningful cross-source disagreement on any other field changes nothing
      and is recorded as a `field_conflict` review item;
    - an explicit trusted re-import (`force=True`, triage `(t)`) takes
-     ownership of non-manual fields.
+     ownership of non-manual fields (this becomes a manual owner patch, item
+     17).
    Conflict-tracked fields are `duration_s`, distance, average HR, start
    time/date, timezone offset, sport, and training load. `moving_s` and
-   `elapsed_s` resolve to Intervals without review, and average HR only opens
-   a review item beyond 5 bpm. Subjective fields keep their owner silently.
+   `elapsed_s` resolve to the ranked source (Intervals, then FIT) without
+   review, and average HR only opens a review item beyond 5 bpm. Subjective
+   fields keep their owner silently.
 4. **Quality rules.** Canonical values are checked for zero duration, missing
    distance for pace sports, implausible implied pace, and a moving-time vs
    recording-time gap above `max(10 min, 25% of recording)`; findings are

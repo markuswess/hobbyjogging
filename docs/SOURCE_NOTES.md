@@ -109,8 +109,8 @@ the `moving_time_mismatch` quality rule.
 ## Precedence and review
 
 - `duration_s` is owner-tracked; reimports from the same source refresh it.
-- `moving_s` and `elapsed_s` are Intervals-authoritative and never produce a
-  review item.
+- `moving_s` and `elapsed_s` use a ranked authority (Intervals, then FIT) and
+  never produce a review item.
 - `avg_hr` differences only count beyond 5 bpm.
 - Other timing fields use about 1% relative tolerance with 2 s / 10 m floors;
   start times tolerate 15 s.
@@ -198,10 +198,14 @@ no API app, OAuth token or Strava subscription.
   (same local date, duration and distance).
 - `Distance` is kilometers by default; `--distance-unit m` handles an export
   that writes meters.
-- Social text goes to `activity_social(source='strava')`; it never touches
-  `activities.name` or `activities.description`, so the classifier cannot see
-  a pun. Unmatched rows are reported and write nothing; the CSV path never
-  creates an activity.
+- Social text goes to `activity_social(source='strava')` by default. A
+  per-source target (root item 40) may promote it to `activities.name`/
+  `description`; a promoted title reaches `classify()`, which matches `race`,
+  `tempo`, `subt` and `warm up` as substrings — "Race you to the bakery"
+  classifies as a race (quality). Descriptions do not feed the classifier.
+- Unmatched rows are reported and write nothing today; creation becomes a
+  per-source `create | review | ignore` policy (root item 40), and creation
+  only happens when there is nothing to review.
 - Gear is matched by exact normalized name. A matched equipment row is only
   linked, never rewritten; an unknown name creates
   `strava:gear:<slug>` with the CSV brand/model.

@@ -548,16 +548,19 @@ the threshold trend landed here.
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
 
-15. **Runalyze VO2max second owner** (blocked on the import payload).
+15. **Runalyze VO2max second owner** (waiting on the payload sweep).
     The race pair and the gear coverage landed; this item is now only the
     second VO2max owner.
+    - **Status (Nov 2026)**: the import's `--refresh-before` sweep is
+      re-reading the stale payloads; once it exits cleanly, `runalyze vo2max`
+      fills `vo2max_runalyze` from them and this item can start.
     - `vo2max_runalyze` holds 843 values (2019-01-22 → 2022-06-22, mean −2.1
       against Garmin on the 829 activities that carry both). The early ceiling
       is not "Runalyze has no estimate from 2023": the activity-detail API
       returns `hr_avg`, `vo2max`, `trimp` and `fit_vo2max_estimate` as null
       for every Enduro activity (2022→), while the web shows the effective
       estimate and `efficiency_index` is populated. The import package's
-      *Runalyze effective VO2max payload gap* item owns the investigation.
+      *Runalyze effective VO2max payload gap* item owns the repair.
     - When the import supplies 2023+ values, add a labeled Runalyze series to
       `vo2max` and `compare-vo2max` (open muted markers, no EWMA, no blend
       with `vo2max_garmin`). Computing an effective estimate ourselves is a

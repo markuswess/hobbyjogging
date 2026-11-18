@@ -79,6 +79,13 @@ This file records what the package is still waiting on.
   so the reports can show both. Idempotent, dry-run, and it reports the delta
   to the stamped values.
 
+- **Canonical rebuild** (root item 17). `verify_canonical` (read-only diff) and
+  `recompute_canonical` (dry-run first) land here, on top of the manual input
+  layer and the per-adapter mapping. They derive activity scalar fields from
+  the stored pointer and payload, apply manual edits last, and never touch
+  links, exclusions, review answers, child tables or entity rows. The
+  fresh-database rebuild proof with the manual overlay is root item 34.
+
 Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on

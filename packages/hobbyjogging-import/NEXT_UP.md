@@ -9,13 +9,15 @@ on.
   `activities.csv`, `bikes.csv` and `shoes.csv` without an API app or
   subscription. It matches by local wall time (the canonical window is
   reconstructed from `started_at_utc + tz_offset_min`), falls back to the
-  exact-twin rule, and never creates an activity. Social text goes to
-  `activity_social(source='strava')` only; gear links by exact normalized name
-  or creates `strava:gear:<slug>` without rewriting an existing row. Tested
-  end to end on a copy of the real DB: one matched activity, one social row,
-  one gear row, one activity-gear link, and a no-op re-run for the social row.
-  Remaining: run it on the real export; decide whether a Strava-only second
-  athlete may create a minimal activity (currently no).
+  exact-twin rule, and writes nothing for an unmatched row. Social text goes
+  to `activity_social(source='strava')`; the canonical text target is a
+  per-source setting (root item 40), default social. Gear links by exact
+  normalized name or creates `strava:gear:<slug>` without rewriting an
+  existing row. Tested end to end on a copy of the real DB: one matched
+  activity, one social row, one gear row, one activity-gear link, and a no-op
+  re-run for the social row. Remaining: run it on the real export. The create
+  decision is settled (root item 40): every source may create, and this
+  athlete configures Strava as `ignore`.
 
 - **Runalyze match review.** A row the temporal matcher rejects is checked
   once more for a perfect twin (same day, duration within 2 s, distance within
@@ -231,7 +233,9 @@ on.
   re-reads every stored payload older than the cutoff, one row at a time, and
   the newer `fetched_at` makes the sweep advance and stop. The full history
   is ~12 h at ~240 requests/hour. Then `runalyze vo2max` fills the column
-  from the refreshed payloads (reports item 15 unblocks). `fit_vo2max_estimate`
+  from the refreshed payloads (reports item 15 unblocks). **Status (Nov
+  2026)**: the sweep is running; the fill is the next step once it exits
+  cleanly. `fit_vo2max_estimate`
   is expected to stop now that Garmin no longer syncs it; the gap that
   matters is `hr_avg`/`vo2max`.
 - **Activity edit command.** The human write surface next to triage: a general
@@ -322,6 +326,12 @@ on.
   personal ODS lives in `hobbyjogging_core.workouts`; move it into this
   package so the canonical vocabulary is not shaped by one spreadsheet.
   Maintenance already depends on import, so its backfills keep working.
+- **Declared payload mapping and the create policy** (root items 17 and 40).
+  Each adapter gets a `FIELD_MAP` (canonical field → payload key) plus a
+  contract test; `verify_canonical`/`recompute_canonical` read it. The
+  per-source `create | review | ignore` policy and the text targets then change
+  the Runalyze and Strava adapters, including a summary-create path and a
+  create-from-review action.
 
 ## Waiting on
 
@@ -336,9 +346,9 @@ on.
   write.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
-pair done and the VO2max series deferred on the payload gap above. The
-unmatched rows are now 19 open `ambiguous_match` items, which is a triage
-job, not import code.
+pair done and the VO2max series waiting on the payload sweep and the
+`runalyze vo2max` fill. The unmatched rows are now 19 open `ambiguous_match`
+items, which is a triage job, not import code.
 
 ## Notes / risks
 

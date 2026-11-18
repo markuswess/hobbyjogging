@@ -214,10 +214,10 @@ class TrainingWriter:
         leaves the stored value untouched. Re-importing from the same source
         refreshes that source's own fields.
 
-        The fixed exception is ``moving_s`` and ``elapsed_s``: Intervals is
-        authoritative, so its value replaces another source's value silently
-        and a non-Intervals value never overrides or reports a conflict
-        against it. Manual values still win.
+        ``moving_s`` and ``elapsed_s`` use a ranked authority (Intervals,
+        then FIT): a higher-ranked value replaces another source's value
+        silently and a lower-ranked value never overrides it or reports a
+        conflict. Manual values still win.
 
         ``force=True`` lets this source take ownership of every non-manual
         field in ``values``, replacing another source's value silently. Manual

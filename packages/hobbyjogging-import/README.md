@@ -286,7 +286,9 @@ An unresolved row is not discarded: its detail is stored (unlinked) and an
 `ambiguous_match` review item lists the same-day candidates. Triage links one
 with `(1-N)`, and the stored note and tags are applied on the spot — the
 matcher is not re-run, because it would reject the distance again. Runalyze
-never writes `name`, timing, or distance, and never creates an activity.
+never writes `name`, timing, or distance, and this path never creates an
+activity. The per-source create policy (root item 40) will make creation
+configurable.
 `--output PATH` still writes the unresolved rows with their reason and
 suggestion.
 
@@ -471,14 +473,15 @@ The import reads `activities.csv`, `bikes.csv` and `shoes.csv`; the
 `activities/` files are ignored because the FIT archive already covers them.
 `Activity Date` is local wall time, so matching reconstructs the canonical
 local window from `started_at_utc + tz_offset_min`, then falls back to the
-exact-twin rule. A row that matches nothing is reported and writes nothing;
-the CSV path never creates an activity.
+exact-twin rule. A row that matches nothing is reported and writes nothing
+today; creation becomes a per-source policy (root item 40).
 
-Social text goes to `activity_social(source='strava')` only, never to
-`activities.name` or `activities.description`. Gear is matched by exact
-normalized name; an existing equipment row is only linked, never rewritten,
-and an unknown name creates `strava:gear:<slug>` with the CSV brand/model.
-A re-run refreshes the same rows instead of duplicating them.
+Social text goes to `activity_social(source='strava')`; the default target is
+social only, and a per-source setting may promote it to `name`/`description`
+(root item 40). Gear is matched by exact normalized name; an existing
+equipment row is only linked, never rewritten, and an unknown name creates
+`strava:gear:<slug>` with the CSV brand/model. A re-run refreshes the same
+rows instead of duplicating them.
 
 The API is deferred: creating a Strava app now requires a Strava
 subscription, and single-player reads are limited to 100 per 15 minutes and
@@ -507,6 +510,11 @@ measurement:
 
 The authoritative value replaces another source's value silently and never
 opens a review item; manual values still win.
+
+Creation is currently source-specific: FIT, Intervals and the sheet create,
+while Runalyze and Strava enrich. Root item 40 replaces that with a per-source
+`create | review | ignore` policy in `sources.toml`, and creation only happens
+when there is nothing to review.
 
 Conflict-tracked fields are `duration_s`, `elapsed_s`, `moving_s`,
 `distance_m`, `elevation_gain_m`, `elevation_loss_m`, `max_hr`, `avg_hr`,

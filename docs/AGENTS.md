@@ -77,10 +77,10 @@ cleanup pass is part of the todo list, not a rewrite project.
 
 - `packages/hobbyjogging-core` — canonical model, schema/migrations, sport
   vocabulary, `TrainingWriter`, `TrainingRepository`.
-- `packages/hobbyjogging-import` — FIT, Intervals.icu, and Garmin Personal API
-  importers, review queue and triage. Runalyze phases 1–5 (inventory, comments
-  and tags, gear, race results, `vo2max_runalyze`) have landed; the reports are
-  the remaining phase.
+- `packages/hobbyjogging-import` — FIT, Intervals.icu, Garmin Personal API,
+  Runalyze and Strava CSV importers, review queue and triage. Runalyze phases
+  1–5 and the Strava social/gear import have landed; the reports phase is
+  item 15 there, and the per-source create policy is root item 40.
 - `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
   backfills/recomputes.
 - `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
@@ -120,7 +120,9 @@ Cross-package changes must leave all four suites green.
 - Events are Intervals-authoritative: fields are replaced (including NULLs),
   removed events are soft-excluded, and manual/other-source events are left
   alone.
-- Manual values outrank every import source and survive reimports.
+- Manual values outrank every import source and survive reimports; they are
+  stored as inputs (the `activity_manual_fields` layer, item 17), so a rebuild
+  reproduces them.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
   `elapsed_s` is elapsed time. `duration_s` is owner-tracked; `moving_s` and
   `elapsed_s` have a ranked authority (Intervals, then FIT) and never produce
@@ -133,17 +135,26 @@ Cross-package changes must leave all four suites green.
   a ranked authority where one source is a better measurement:
   `moving_s`/`elapsed_s` → Intervals, then FIT; `device_id` and
   `vo2max_garmin` → FIT. Manual values always win.
-- Social text is per source in `activity_social`, never in
-  `activities.name`/`description`: a source refreshes its own row, a manual
-  row survives imports, and the Strava CSV path is social + gear only — it
-  never creates an activity or writes training data.
+- Social text is per source in `activity_social`: a source refreshes its own
+  row and a manual row survives imports. A per-source target may promote it to
+  `activities.name`/`description` (default: social only), because a promoted
+  title feeds `classify()`; a description does not.
+- Every source that yields activity rows may create. The per-source
+  `create | review | ignore` policy in `sources.toml` (item 40) decides what an
+  unmatched row does, and creation happens only when there is nothing to
+  review.
+- Inputs are never rebuilt, projections are: payloads, pointers, manual edits,
+  links, exclusions and review answers are inputs; canonical activity fields
+  are a cache rebuilt by `recompute_canonical` and checked by
+  `verify_canonical`. Ownership stays a recorded decision, not a derivation.
 - Add a source as a `SourceProfile` plus an adapter, not as a new branch in
-  matching or quality. The profile declares what it can create, how it
-  matches and whether absence means deletion.
+  matching or quality. The profile declares what it can fill, how it matches
+  and whether absence means deletion.
 - A blank text field counts as unfilled: a later source may fill an empty
   `name`/`description`, while an empty incoming value never clears text.
 - A trusted source may force ownership only on an explicit human action
-  (triage `(t)`); manual fields still win. Normal imports never force.
+  (triage `(t)`), recorded as a manual owner patch; manual fields still win.
+  Normal imports never force.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →
   `vo2max_runalyze`. Tags are per-source and manual tags are never replaced.
 - Route identity is source-scoped: the sheet keys by `Streckennummer` (or the
