@@ -289,15 +289,16 @@ on.
 
 - **Historical refurbishment** (root item 37). The comment/tag workout
   proposals and triage actions start after the Runalyze import settles.
-- **Runalyze unmatched rows** (root item 12). 19 rows the enricher could not
-  place. 4 have a same-day canonical activity with the same duration *and*
-  distance, but the day carries two canonical rows for one session (one of
-  them nameless), so the matcher picked the other one; 12 share the duration
-  but disagree on distance by 8–15 %; and 3 have no duration twin at all (one
-  is a 41.7 km ride with no plausible candidate, so it is genuinely missing).
-  Creating them as the design says would add about 16 duplicates, so a
-  decision comes first: a distance rule, duplicate detection for the paired
-  days, and whether Runalyze may create an activity at all. Evidence:
+- **Runalyze unmatched rows** (root item 12). **Decision**: auto-match only
+  the perfect twins — same day, duration within 2 s, distance within 10 m,
+  exactly one candidate. The 4 exact rows auto-link; the 12 duration twins and
+  3 no-twin rows get an `ambiguous_match` review item with their same-day
+  candidates. Runalyze never creates an activity automatically; creation is a
+  separate manual decision. Implement candidate ranking, store the detail for
+  unmatched rows, apply its note/tags when a review resolves, regenerate the
+  JSON (expect 4 links + 15 items), and test exact match, multiple exact →
+  review, distance mismatch → review, no temporal match → review, no
+  creation and idempotency. Evidence:
   `~/projects/laufen_private/data/runalyze-unmatched.json`; the saved file
   still lists the now-matched 142 s cooldown until the next enrich run
   regenerates it, so the effective count is 19.

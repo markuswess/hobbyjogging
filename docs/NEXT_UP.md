@@ -520,10 +520,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
       nameless), so the matcher chose the other; 12 share the duration but
       disagree on distance by 8–15 %; 3 have no duration twin (one is a
       41.7 km ride with no plausible candidate, so genuinely missing).
-      Creating them would add about 16 duplicates, so the rule comes first: a
-      distance rule, duplicate detection for the paired days, and whether
-      Runalyze may create an activity. The short-activity floor is fixed (a
-      142 s cooldown now links). Evidence:
+      **Decision (Nov 2026)**: auto-match only the perfect twins — same day,
+      duration within 2 s, distance within 10 m, exactly one candidate. The 4
+      exact rows auto-link; every other unmatched row gets an `ambiguous_match`
+      review item with its same-day candidates. Runalyze never creates an
+      activity automatically; the 12 duration twins and 3 no-twin rows are
+      reviewed, and creation is a separate manual decision. The short-activity
+      floor is fixed (a 142 s cooldown now links). Evidence:
       `~/projects/laufen_private/data/runalyze-unmatched.json`.
     - **Not scheduled**: Runalyze weather (0 rows; the payload carries
       humidity, wind, pressure, UV, clouds and condition), routes (0; the
