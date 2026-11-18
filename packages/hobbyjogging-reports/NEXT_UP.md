@@ -4,7 +4,8 @@ Updated 2026-11-17.
 
 Current focus: routes and wellness extras are now reports-ready; max HR and
 elevation still need core exposure, 10 is parked, 12 is behind the lab gate,
-13 is the last CLI-parity follow-up, and 14 is an open idea.
+13 is the last CLI-parity follow-up, 14 is an open idea, and 15 is the
+Runalyze handoff.
 
 ## Done
 
@@ -24,8 +25,7 @@ this list keeps the recent decisions only.
   wins the 5k PB; Trail and Other still use the fastest raw time. The PB
   tables show the distance, and the Riegel `PB` column uses the same
   qualified PB. Official race results are stored now (`race_results`, schema
-  v16); the tables still have to prefer the official pair, which is the next
-  step here.
+  v16); preferring the official pair is item 15.
 - **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
@@ -535,6 +535,27 @@ the threshold trend landed here.
     category symbols, steady outlines and efficiency lines, so the extra
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
+
+15. **Runalyze data in the reports** (handed over by the import package).
+    Phases 1–5 landed and are applied to the real DB, so the data is there.
+    - **Gear coverage needs no work.** The `equipment` report's coverage table
+      already reads the new links and now runs into 2026 (2023: 247 of 357,
+      2024: 328 of 438, 2025: 446 of 473, 2026: 366 of 387 with gear). 2022
+      is empty because no source has gear for it — the sheet ends in 2021 and
+      Runalyze tracks gear from 2023. The two pre-2023 `Lunge C-Dur` shoes
+      (rot, schwarz) resolve onto their sheet rows, so the table no longer
+      lists a Runalyze duplicate.
+    - **A second VO2max owner.** `vo2max_runalyze` holds 843 values, all
+      2019–2022 (mean −2.1 against Garmin on the 829 activities that carry
+      both), and `vo2max_points` ignores them by design. Deciding where they
+      belong is the work: a labeled series on the VO2max chart, not a switch
+      to `Activity.vo2max`, which falls back Garmin → Runalyze and would
+      blend the two without saying so.
+    - **The official race pair.** 37 `race_results` rows (2019–2026, 33 with
+      a placement, 21 officially measured). `race_pace_points` and the
+      threshold estimate already use the official distance and time;
+      `personal_bests()` and the race tables still use the measured activity,
+      and no report shows placement or participant counts.
 
 ## Tests and docs
 
