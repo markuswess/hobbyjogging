@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
-from hobbyjogging_import.cli import build_parser
+from hobbyjogging_import.cli import build_parser, run_runalyze
 from hobbyjogging_import.runalyze import (
     RunalyzeRateLimitError,
     RunalyzeResponse,
@@ -616,6 +616,89 @@ class RunalyzeEnrichTests(unittest.TestCase):
             self.client.detail_calls[-4:],
         )
 
+    def _backdate(self, external_id, value="2020-01-01 00:00:00"):
+        self.conn.execute(
+            "UPDATE source_records SET fetched_at = ? "
+            "WHERE source = 'runalyze' AND record_type = 'activity' "
+            "AND external_id = ?",
+            (value, external_id),
+        )
+        self.conn.commit()
+
+    def test_refresh_before_re_reads_only_the_older_payloads(self):
+        self.enricher.enrich()
+        self._backdate("201")
+
+        summary = self.enricher.enrich(
+            refresh_before="2025-01-01T00:00:00Z"
+        )
+
+        self.assertEqual(1, summary.refreshed)
+        self.assertEqual(1, summary.detail_fetches)
+        self.assertEqual(["201"], self.client.detail_calls[-1:])
+
+    def test_refresh_before_skips_payloads_fetched_after_the_cutoff(self):
+        self.enricher.enrich()
+
+        summary = self.enricher.enrich(
+            refresh_before="2020-01-01T00:00:00Z"
+        )
+
+        self.assertEqual(0, summary.refreshed)
+        self.assertEqual(0, summary.detail_fetches)
+        self.assertEqual(2, summary.already_enriched)
+
+    def test_refresh_before_sweep_advances_and_stops(self):
+        self.enricher.enrich()
+        for external_id in ("201", "202", "203", "204"):
+            self._backdate(external_id)
+
+        client = FakeRunalyze(
+            _fixture("enrich_collection.json"),
+            self.details,
+            rate_limited={"201"},
+        )
+        enricher = RunalyzeEnricher(self.conn, client=client)
+
+        with patch(
+            "hobbyjogging_import.runalyze_import.time.sleep"
+        ) as sleep:
+            summary = enricher.enrich(
+                wait=True,
+                refresh_before="2025-01-01T00:00:00Z",
+            )
+
+        sleep.assert_called_once_with(6.0)
+        self.assertEqual(4, summary.refreshed)
+        self.assertEqual(
+            ["201", "201", "202", "203", "204"],
+            client.detail_calls,
+        )
+
+        # The refreshed rows carry a newer fetched_at, so a second sweep is
+        # a no-op instead of re-reading the same prefix.
+        again = enricher.enrich(
+            refresh_before="2025-01-01T00:00:00Z"
+        )
+
+        self.assertEqual(0, again.refreshed)
+        self.assertEqual(0, again.detail_fetches)
+        self.assertEqual(5, len(client.detail_calls))
+
+    def test_refresh_before_is_exclusive_with_refresh_and_ids(self):
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(
+                refresh=True,
+                refresh_before="2025-01-01T00:00:00Z",
+            )
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(
+                ids=["201"],
+                refresh_before="2025-01-01T00:00:00Z",
+            )
+        with self.assertRaises(ValueError):
+            self.enricher.enrich(refresh_before="not-a-timestamp")
+
     def test_wait_sleeps_and_resumes_until_complete(self):
         client = FakeRunalyze(
             _fixture("enrich_collection.json"),
@@ -728,6 +811,29 @@ class RunalyzeEnrichCliTests(unittest.TestCase):
         self.assertEqual(date(2024, 12, 31), args.end)
         self.assertEqual(10, args.limit)
         self.assertEqual(Path("/tmp/unmatched.json"), args.output)
+
+    def test_parser_accepts_refresh_before(self):
+        args = build_parser().parse_args(
+            [
+                "runalyze",
+                "enrich",
+                "--refresh-before",
+                "2026-11-17T22:00:00Z",
+                "--wait",
+            ]
+        )
+
+        self.assertEqual("2026-11-17T22:00:00Z", args.refresh_before)
+        self.assertTrue(args.wait)
+
+    def test_cli_rejects_a_bare_refresh_under_wait(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            ["runalyze", "enrich", "--refresh", "--wait"]
+        )
+
+        with self.assertRaises(SystemExit):
+            run_runalyze(args, parser)
 
 
 if __name__ == "__main__":

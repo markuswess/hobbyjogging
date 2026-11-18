@@ -206,17 +206,22 @@ on.
 
 ## Next
 
-- **Runalyze effective VO2max payload gap.** Every Enduro activity (2022→)
-  has `hr_avg`, `hr_max`, `trimp` and `vo2max` null in its stored detail,
-  while `efficiency_index` is populated; the Forerunner 645 payloads carry
-  them. The web shows the effective estimate to the present, so the detail
-  endpoint — not the date — is the cutoff. (`fit_vo2max_estimate` is expected
-  to stop now that Garmin no longer syncs it; the gap that matters is
-  `hr_avg`/`vo2max`.) Check the collection payload with
-  `runalyze inventory --since 2026-10-01 --limit 5`, which prints per-field
-  non-null counts; if it carries `hr_avg`, merge it before `runalyze vo2max`.
-  If only the web computes the estimate, record the limitation. Reports item
-  15 (second VO2max owner) is deferred on this.
+- **Runalyze effective VO2max payload gap.** Measured, not a Runalyze policy
+  and not a date cutoff: the detail endpoint began returning `hr_avg`,
+  `hr_max`, `trimp`, `vo2max`, `fit_*`, HR zones and HRV for FIT-backed
+  activities at **2026-11-17 22:00 UTC**. The history loop walked newest-first
+  and stored a reduced payload for everything fetched before that moment;
+  `_already_processed()` then treated those snapshots as done forever. Live
+  check: the stored `2023-05-02` payload has 64 keys, the endpoint now returns
+  87 (`hr_avg=141`, `vo2max=56.16`), while a 2019 payload is byte-identical.
+  1,752 linked rows have `avg_hr` in canonical but no `hr_avg` in the stored
+  payload. **Repair in place:** `enrich --refresh-before TIMESTAMP --wait`
+  re-reads every stored payload older than the cutoff, one row at a time, and
+  the newer `fetched_at` makes the sweep advance and stop. The full history
+  is ~12 h at ~240 requests/hour. Then `runalyze vo2max` fills the column
+  from the refreshed payloads (reports item 15 unblocks). `fit_vo2max_estimate`
+  is expected to stop now that Garmin no longer syncs it; the gap that
+  matters is `hr_avg`/`vo2max`.
 - **Activity edit command.** The human write surface next to triage: a general
   `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
   sub-sport, tags, classification and equipment without a review item, with

@@ -295,6 +295,7 @@ Runalyze enrich dry run: 9 activities
   processed: 9
   not processed: 0
   matched: 9
+  refreshed: 0
   already enriched: 0
   unmatched: 0
   ambiguous: 0
@@ -306,7 +307,8 @@ Runalyze enrich dry run: 9 activities
 ```
 
 Options: `--since`/`--to`, `--limit N`, `--per-page N`, `--dry-run`,
-`--refresh`, `--wait`, `--output PATH`, `--ids 1,2,3`, and `--database PATH`.
+`--refresh`, `--refresh-before TIMESTAMP`, `--wait`, `--output PATH`,
+`--ids 1,2,3`, and `--database PATH`.
 `--ids` is the repair path for a detail whose fetch failed (HTTP 5xx): it reads
 those activities directly instead of the collection, using the detail's own
 date, duration and distance for the match — three requests instead of a full
@@ -320,6 +322,24 @@ Runalyze side); a fully current run reports `already enriched: N` and
 several runs; a stopped run lists `processed`/`not processed` and is marked
 `partial`.
 
+The stored payload is a snapshot, so a field Runalyze only starts serving
+later stays absent. `--refresh-before TIMESTAMP` re-reads every detail stored
+before that moment and nothing newer: a refreshed row gets a fresh
+`fetched_at`, so under `--wait` the sweep advances window by window and stops
+when none remain. This is how the 2026-11 payload gap was repaired — the
+detail endpoint began returning `hr_avg`, `vo2max`, `trimp` and the `fit_*`
+fields for FIT-backed activities at 2026-11-17 22:00 UTC, and everything
+fetched earlier had been frozen without them:
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze enrich \
+  --refresh-before 2026-11-18T09:58:00Z --wait
+```
+
+At ~240 requests per hour this takes one window per ~240 rows (~12 h for the
+full history); it is resumable, so a restart with the same cutoff continues
+where it stopped.
+
 Run the whole history unattended; `--wait` fetches the collection once, sleeps
 until each reset, and resumes:
 
@@ -332,7 +352,8 @@ It prints a progress line per window (`window: N details, M skipped, K not
 processed; sleeping Ns`) and finishes with one summary. At 240 requests per
 window, 2,841 activities take roughly a dozen windows, so run it in
 `tmux`/`nohup` if the terminal may close. `--wait` cannot be combined with
-`--dry-run` or `--refresh` (both defeat the stored-detail resume).
+`--dry-run` or a bare `--refresh` (both defeat the stored-detail resume); use
+`--refresh-before` for a sweep.
 
 ### Gear (phase 3)
 

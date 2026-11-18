@@ -61,6 +61,7 @@ class RunalyzeEnrichSummary:
     processed: int = 0
     not_processed: int = 0
     matched: int = 0
+    refreshed: int = 0
     already_enriched: int = 0
     unmatched: int = 0
     ambiguous: int = 0
@@ -109,6 +110,15 @@ class _Review:
     payload: dict
 
 
+@dataclass(frozen=True)
+class _Stored:
+    """One stored activity detail and its link, as the skip rule sees it."""
+
+    payload: dict
+    activity_id: str | None
+    fetched_at: str | None
+
+
 
 class RunalyzeEnricher:
     """Enrich matched activities with Runalyze comments and tags."""
@@ -132,6 +142,7 @@ class RunalyzeEnricher:
         per_page: int = 100,
         dry_run: bool = False,
         refresh: bool = False,
+        refresh_before: str | None = None,
         wait: bool = False,
         output: str | Path | None = None,
         ids: list[str] | None = None,
@@ -141,13 +152,36 @@ class RunalyzeEnricher:
         ``wait`` sleeps until the reset after a 429 and resumes with the rows
         that are still unprocessed; it needs the stored-detail skip, so it
         cannot be combined with ``refresh`` or ``dry_run``.
+
+        ``refresh_before`` is the sweep: it re-reads every detail whose stored
+        payload was fetched before that moment. A refreshed row carries a
+        newer ``fetched_at``, so a ``--wait`` sweep advances window by window
+        and stops on its own — a bare ``refresh`` under ``wait`` would refetch
+        the same prefix forever.
         """
         if wait and dry_run:
             raise ValueError("wait cannot be combined with dry_run")
         if wait and refresh:
-            raise ValueError("wait cannot be combined with refresh")
+            raise ValueError(
+                "wait cannot be combined with refresh; "
+                "use refresh_before for a sweep"
+            )
+        if refresh and refresh_before:
+            raise ValueError(
+                "refresh and refresh_before are exclusive"
+            )
         if ids and wait:
             raise ValueError("ids cannot be combined with wait")
+        if ids and refresh_before:
+            raise ValueError(
+                "ids cannot be combined with refresh_before"
+            )
+
+        cutoff = (
+            _refresh_cutoff(refresh_before)
+            if refresh_before
+            else None
+        )
 
         if ids:
             return self.enrich_ids(
@@ -163,6 +197,7 @@ class RunalyzeEnricher:
                 end=end,
                 limit=limit,
                 per_page=per_page,
+                refresh_before=cutoff,
                 output=output,
             )
 
@@ -173,6 +208,7 @@ class RunalyzeEnricher:
             per_page=per_page,
             dry_run=dry_run,
             refresh=refresh,
+            refresh_before=cutoff,
             output=output,
         )
 
@@ -247,6 +283,7 @@ class RunalyzeEnricher:
         dry_run: bool,
         refresh: bool,
         output: str | Path | None,
+        refresh_before: str | None = None,
         activities: list[dict] | None = None,
         details: dict[str, dict] | None = None,
     ) -> RunalyzeEnrichSummary:
@@ -261,6 +298,7 @@ class RunalyzeEnricher:
                     "end": end.isoformat() if end else None,
                     "limit": limit,
                     "refresh": refresh,
+                    "refresh_before": refresh_before,
                 },
             )
 
@@ -281,6 +319,7 @@ class RunalyzeEnricher:
                 summary,
                 stored=stored,
                 refresh=refresh,
+                refresh_before=refresh_before,
                 details=details,
             )
             summary.not_processed = max(
@@ -336,6 +375,7 @@ class RunalyzeEnricher:
         end: date | None,
         limit: int | None,
         per_page: int,
+        refresh_before: str | None = None,
         output: str | Path | None,
     ) -> RunalyzeEnrichSummary:
         """Repeat the range across windows until everything is done."""
@@ -369,6 +409,7 @@ class RunalyzeEnricher:
                 per_page=per_page,
                 dry_run=False,
                 refresh=False,
+                refresh_before=refresh_before,
                 output=output,
                 activities=activities,
             )
@@ -379,6 +420,7 @@ class RunalyzeEnricher:
             aggregate.unmatched = summary.unmatched
             aggregate.ambiguous = summary.ambiguous
             aggregate.already_enriched = summary.already_enriched
+            aggregate.refreshed += summary.refreshed
             aggregate.unmatched_rows = summary.unmatched_rows
             aggregate.run_id = summary.run_id
             aggregate.matched += summary.matched
@@ -415,8 +457,9 @@ class RunalyzeEnricher:
         activities: list[dict],
         summary: RunalyzeEnrichSummary,
         *,
-        stored: dict[str, tuple[dict, str | None]],
+        stored: dict[str, _Stored],
         refresh: bool,
+        refresh_before: str | None = None,
         details: dict[str, dict] | None = None,
     ) -> tuple[dict[str, _Matched], list[_Review]]:
         matched: dict[str, _Matched] = {}
@@ -429,17 +472,26 @@ class RunalyzeEnricher:
 
             outcome = self._decide(activity)
             external_id = str(activity.get("id") or "")
+            stale = (
+                refresh_before is not None
+                and _is_stale(stored.get(external_id), refresh_before)
+            )
 
-            if not refresh and _already_processed(
-                stored,
-                external_id,
-                outcome.activity_id,
+            if (
+                not refresh
+                and not stale
+                and _already_processed(
+                    stored,
+                    external_id,
+                    outcome.activity_id,
+                )
             ):
                 if outcome.reviewed:
                     summary.already_reviewed += 1
                 else:
                     summary.already_enriched += 1
                 continue
+
 
             payload = details.get(external_id) if details else None
             if payload is None:
@@ -459,6 +511,9 @@ class RunalyzeEnricher:
                     )
                     continue
                 payload = detail.payload
+
+            if stale:
+                summary.refreshed += 1
 
             if outcome.reviewed:
                 if outcome.reason == "several_exact":
@@ -622,10 +677,11 @@ class RunalyzeEnricher:
         ]
 
 
-    def _stored_details(self) -> dict[str, tuple[dict, str | None]]:
+    def _stored_details(self) -> dict[str, _Stored]:
         rows = self.connection.execute(
             """
-            SELECT sr.external_id, sr.payload_json, als.activity_id
+            SELECT sr.external_id, sr.payload_json, sr.fetched_at,
+                   als.activity_id
             FROM source_records sr
             LEFT JOIN activity_sources als
                 ON als.source_record_id = sr.id
@@ -634,7 +690,7 @@ class RunalyzeEnricher:
             (SOURCE,),
         ).fetchall()
 
-        stored: dict[str, tuple[dict, str | None]] = {}
+        stored: dict[str, _Stored] = {}
         for row in rows:
             try:
                 payload = json.loads(row["payload_json"] or "{}")
@@ -646,8 +702,14 @@ class RunalyzeEnricher:
             external_id = str(row["external_id"])
             linked = row["activity_id"]
             entry = stored.get(external_id)
-            if entry is None or (entry[1] is None and linked is not None):
-                stored[external_id] = (payload, linked)
+            if entry is None or (
+                entry.activity_id is None and linked is not None
+            ):
+                stored[external_id] = _Stored(
+                    payload=payload,
+                    activity_id=linked,
+                    fetched_at=row["fetched_at"],
+                )
 
         return stored
 
@@ -920,6 +982,7 @@ def format_enrich_summary(summary: RunalyzeEnrichSummary) -> str:
         f"  processed: {summary.processed}",
         f"  not processed: {summary.not_processed}",
         f"  matched: {summary.matched}",
+        f"  refreshed: {summary.refreshed}",
         f"  already enriched: {summary.already_enriched}",
         f"  unmatched: {summary.unmatched}",
         f"  ambiguous: {summary.ambiguous}",
@@ -957,7 +1020,7 @@ def _unmatched_row(activity: dict, outcome: _Outcome) -> dict:
 
 
 def _already_processed(
-    stored: dict[str, tuple[dict, str | None]],
+    stored: dict[str, _Stored],
     external_id: str,
     activity_id: str | None,
 ) -> bool:
@@ -967,16 +1030,42 @@ def _already_processed(
     its note/tags or triage resolved the review and applied them. A stored
     detail with no link is the reviewed case: the open review item holds the
     decision, so re-reading it every window would starve the new rows.
-    ``--refresh`` is the way to pick up edits made on the Runalyze side.
+    ``--refresh`` is the way to pick up edits made on the Runalyze side, and
+    ``--refresh-before`` re-reads the payloads fetched before a moment.
     """
     entry = stored.get(external_id)
     if entry is None:
         return False
 
-    _, linked_activity = entry
-    if linked_activity is None:
+    if entry.activity_id is None:
         return True
-    return activity_id is None or linked_activity == activity_id
+    return activity_id is None or entry.activity_id == activity_id
+
+
+def _is_stale(entry: _Stored | None, refresh_before: str) -> bool:
+    """True when the stored payload predates the sweep cutoff.
+
+    ``fetched_at`` is SQLite's UTC ``YYYY-MM-DD HH:MM:SS``; the cutoff is
+    normalised to the same form so the comparison is a plain string one.
+    """
+    if entry is None or not entry.fetched_at:
+        return False
+    return str(entry.fetched_at) < refresh_before
+
+
+def _refresh_cutoff(value: str) -> str:
+    """Normalise a ``--refresh-before`` timestamp to SQLite UTC form."""
+    raw = str(value).strip().replace("Z", "+00:00")
+    try:
+        moment = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise ValueError(
+            f"invalid refresh_before timestamp: {value}"
+        ) from exc
+
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    return moment.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _local_date(activity: dict) -> str | None:

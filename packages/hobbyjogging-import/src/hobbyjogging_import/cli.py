@@ -310,7 +310,14 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
     if args.wait and args.dry_run:
         parser.error("--wait cannot be combined with --dry-run")
     if args.wait and args.refresh:
-        parser.error("--wait cannot be combined with --refresh")
+        parser.error(
+            "--wait cannot be combined with --refresh; "
+            "use --refresh-before for a sweep"
+        )
+    if args.refresh and args.refresh_before:
+        parser.error("--refresh and --refresh-before are exclusive")
+    if args.ids and args.refresh_before:
+        parser.error("--ids cannot be combined with --refresh-before")
 
     try:
         connection = open_database(args.database)
@@ -330,11 +337,12 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
                 per_page=args.per_page,
                 dry_run=args.dry_run,
                 refresh=args.refresh,
+                refresh_before=args.refresh_before,
                 wait=args.wait,
                 output=args.output,
                 ids=args.ids,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise SystemExit(str(exc)) from exc
     finally:
         connection.close()

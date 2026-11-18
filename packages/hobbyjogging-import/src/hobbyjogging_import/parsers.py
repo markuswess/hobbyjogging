@@ -254,6 +254,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="re-fetch details even when the stored copy is current",
     )
     runalyze_enrich.add_argument(
+        "--refresh-before",
+        metavar="TIMESTAMP",
+        help=(
+            "re-fetch every detail stored before this ISO timestamp; with "
+            "--wait it sweeps across rate-limit windows until none remain"
+        ),
+    )
+    runalyze_enrich.add_argument(
         "--wait",
         action="store_true",
         help=(
