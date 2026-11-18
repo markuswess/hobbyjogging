@@ -505,11 +505,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
       description fills `description` only when blank; comments go there, not
       into a separate table.
     - **Matching**: temporal plus distance, since Runalyze exposes no Garmin
-      activity id; unmatched rows create activities so the history stays
-      complete. Enrichment only — never timing or distance.
-    - **Reports**: gear coverage per year closes the 2022–2026 gap on the gear
-      page, comments appear where the text home decides, and `vo2max_runalyze`
-      sits beside `vo2max_garmin`.
+      activity id. Unmatched rows were planned to create activities so the
+      history stays complete, but the measured set says most are duplicates —
+      the decision is in *Remaining* below. Enrichment only: never timing or
+      distance.
+    - **Reports**: the gear page's coverage already runs into 2026 (2022 has
+      no gear in any source), comments appear where the text home decides,
+      and `vo2max_runalyze` sits beside `vo2max_garmin` — reports item 15.
     - **Remaining (Nov 2026)**: phases 1–5 are landed and applied, so the only
       missing phase is 6 (reports), now item 15 of the reports list. One
       import leftover needs a root decision: the 20 rows the enricher could

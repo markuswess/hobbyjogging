@@ -283,9 +283,19 @@ on.
 
 - **Historical refurbishment** (root item 37). The comment/tag workout
   proposals and triage actions start after the Runalyze import settles.
+- **Runalyze unmatched rows** (root item 12). 20 rows the enricher could not
+  place. 5 have a same-day canonical activity with the same duration *and*
+  distance (the matcher missed a perfect twin), 12 share the duration but
+  disagree on distance by 8–15 %, and 3 have no duration twin at all (one is
+  a 41.7 km ride with no plausible candidate, so it is genuinely missing).
+  Creating them as the design says would add roughly 19 duplicates, so a
+  matching decision comes first: a short-activity rule (a 141 s activity
+  never reaches the 120 s overlap floor) and a candidate choice that weighs
+  every same-day match instead of the one that overlaps. Evidence:
+  `~/projects/laufen_private/data/runalyze-unmatched.json`.
 
-Nothing else. Runalyze phases 1–2 have landed; phases 3–6 are scoped in root
-item 12.
+Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) is on the
+reports list, and the unmatched rows are the only import leftover.
 
 ## Notes / risks
 

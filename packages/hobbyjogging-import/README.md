@@ -313,7 +313,7 @@ until each reset, and resumes:
 
 ```bash
 uv run --env-file .env hobbyjogging-import runalyze enrich --wait \
-  --output /tmp/runalyze-unmatched.json
+  --output ~/projects/laufen_private/data/runalyze-unmatched.json
 ```
 
 It prints a progress line per window (`window: N details, M skipped, K not
