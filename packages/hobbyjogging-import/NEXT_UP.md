@@ -7,8 +7,9 @@ on.
 
 - **Runalyze phase 5.** Offline `runalyze vo2max` fills `vo2max_runalyze` from
   the stored payloads' effective `vo2max`, leaving `vo2max_garmin` untouched
-  and skipping unlinked activities. On a DB copy: 843 values, all 2019–2022,
-  and a second run reports 843 `unchanged`.
+  and skipping unlinked activities. 843 values, all 2019–2022, and a second
+  run reports 843 `unchanged`. Applied to the real DB, so `vo2max_runalyze`
+  now sits beside `vo2max_garmin` (2,812 values).
 - **Runalyze phase 3 follow-up.** Clothing (category 78698) is skipped, name
   matching falls back to the colour-stripped form (the sheet names carry no
   colour, and co-occurrence cannot bridge gear before 2023 — no sheet-linked
@@ -19,6 +20,8 @@ on.
   `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` → sheet
   `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur (rot)` vs the
   two sheet `Lunge C-Dur` rows), 491 new activity links, and a no-op re-run.
+  Applied to the real DB: 32 equipment rows, 3,299 activity links, one open
+  `ambiguous_equipment` item.
 - **Runalyze phase 3.** Offline `runalyze gear` reads the stored activity
   payloads' `equipment` arrays and resolves each gear record by
   co-occurrence → exact normalized name → new `runalyze:equipment:<id>` row,

@@ -446,7 +446,10 @@ editing, analysis and lab work; phase 3 is the dormant future.
       records, 6 clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline
       20`, `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` →
       sheet `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur
-      (rot)` vs the two sheet `Lunge C-Dur` rows), 491 new links.
+      (rot)` vs the two sheet `Lunge C-Dur` rows), 491 new links. Applied to
+      the real DB: 32 equipment rows (22 of them Runalyze-owned), 26 gear
+      source records, one open `ambiguous_equipment` item. `Lunge C-Dur
+      (schwarz)` stays a separate row until that same choice is made.
     - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
       stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
       all 2019–2022 (Runalyze has none from 2023 on), mean −2.1 against
