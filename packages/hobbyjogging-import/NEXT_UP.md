@@ -319,8 +319,9 @@ on.
   write.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
-pair done and the VO2max series deferred on the payload gap above, and the
-unmatched rows are the only import leftover.
+pair done and the VO2max series deferred on the payload gap above. The
+unmatched rows are now 19 open `ambiguous_match` items, which is a triage
+job, not import code.
 
 ## Notes / risks
 
