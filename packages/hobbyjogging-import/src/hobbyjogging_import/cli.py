@@ -36,6 +36,7 @@ from .runalyze_vo2max import (
     format_vo2max_summary,
 )
 from .sheet_import import SheetImporter, format_sheet_summary
+from .strava_import import StravaCsvImporter, format_strava_summary
 from .sync import format_sync_summary, run_sync
 
 
@@ -244,6 +245,38 @@ def _run_sheet_inspect(args, parser: argparse.ArgumentParser) -> int:
             if values:
                 print("  " + " | ".join(values))
 
+    return 0
+
+
+def run_strava(args, parser: argparse.ArgumentParser) -> int:
+    path = args.path
+    if path is None:
+        parser.error("a Strava export ZIP or directory is required")
+    if not path.exists():
+        parser.error(f"Strava export not found: {path}")
+    if args.start is not None and args.end is not None and args.start > args.end:
+        parser.error("--from must not be after --to")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            summary = StravaCsvImporter(connection).import_export(
+                path,
+                dry_run=args.dry_run,
+                distance_unit=args.distance_unit,
+                start=args.start,
+                end=args.end,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(format_strava_summary(summary, str(path)))
     return 0
 
 
@@ -703,6 +736,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "sheet":
         return run_sheet(args, parser)
+
+    if args.command == "strava":
+        return run_strava(args, parser)
 
     if args.command == "runalyze":
         return run_runalyze(args, parser)

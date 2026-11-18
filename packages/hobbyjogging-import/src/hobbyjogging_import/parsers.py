@@ -181,6 +181,27 @@ def build_parser() -> argparse.ArgumentParser:
     sheet.add_argument("--dry-run", action="store_true")
     sheet.add_argument("--database", type=Path)
 
+    strava = subparsers.add_parser(
+        "strava",
+        help="import a Strava bulk export (social text and gear)",
+    )
+    strava.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        help="Strava export ZIP or extracted directory",
+    )
+    strava.add_argument("--from", dest="start", type=date_arg)
+    strava.add_argument("--to", dest="end", type=date_arg)
+    strava.add_argument(
+        "--distance-unit",
+        choices=("km", "m"),
+        default="km",
+        help="unit of the Distance column (default: km)",
+    )
+    strava.add_argument("--dry-run", action="store_true")
+    strava.add_argument("--database", type=Path)
+
     runalyze = subparsers.add_parser(
         "runalyze",
         help="read-only Runalyze API access",

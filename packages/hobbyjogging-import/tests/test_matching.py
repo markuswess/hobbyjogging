@@ -413,6 +413,33 @@ class MatchDecisionTests(unittest.TestCase):
         self.assertEqual("a1", decision.activity_id)
         self.assertEqual("contained_fit", decision.match_method)
 
+    def test_local_wall_time_uses_the_canonical_offset(self):
+        self.conn.execute(
+            "UPDATE activities SET tz_offset_min = 120 WHERE id = 'a1'"
+        )
+
+        decision = self._decide(
+            started_at_utc=None,
+            started_at_local=datetime(2026, 10, 1, 8, 10),
+        )
+
+        self.assertEqual("a1", decision.activity_id)
+        self.assertEqual("temporal_overlap", decision.match_method)
+
+    def test_local_wall_time_without_an_offset_is_not_guessed(self):
+        self.conn.execute(
+            "UPDATE activities SET tz_offset_min = NULL WHERE id = 'a1'"
+        )
+
+        decision = self._decide(
+            started_at_utc=None,
+            started_at_local=datetime(2026, 10, 1, 8, 10),
+            distance_m=20000,
+        )
+
+        self.assertIsNone(decision.activity_id)
+        self.assertEqual("no_temporal_match", decision.reason)
+
 
 if __name__ == "__main__":
     unittest.main()

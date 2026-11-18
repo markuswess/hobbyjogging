@@ -268,6 +268,45 @@ class ActivityMatcher:
             candidate_is_fit=_match_mode(source) == "contained_fit",
         )
 
+    def find_local(
+        self,
+        *,
+        started_at_local: datetime,
+        source: str,
+        elapsed_s: float = 0,
+        duration_s: float = 0,
+        exclude_activity_id: str | None = None,
+        search_days: int = 1,
+    ) -> list[MatchCandidate]:
+        """Match a source that only knows local wall time.
+
+        A CSV export often carries a local timestamp and no UTC offset. The
+        canonical row has both, so its local window is reconstructed from
+        ``started_at_utc + tz_offset_min``. A row without an offset cannot be
+        placed on the local clock and is skipped; the exact-twin path still
+        covers it by date, duration and distance.
+        """
+        window_s = elapsed_s if elapsed_s > 0 else duration_s
+        if window_s <= 0:
+            return []
+
+        start = started_at_local.replace(tzinfo=None)
+        candidate = ActivityWindow(
+            activity_id="__candidate__",
+            start=start,
+            end=start + timedelta(seconds=window_s),
+        )
+        windows = self._local_windows(
+            start.date(),
+            search_days=search_days,
+            exclude_activity_id=exclude_activity_id,
+        )
+        return find_matches(
+            candidate,
+            windows,
+            candidate_is_fit=_match_mode(source) == "contained_fit",
+        )
+
     def _windows(
         self,
         center: date,
@@ -311,12 +350,60 @@ class ActivityMatcher:
 
         return windows
 
+    def _local_windows(
+        self,
+        center: date,
+        *,
+        search_days: int,
+        exclude_activity_id: str | None,
+    ) -> list[ActivityWindow]:
+        first_date = (center - timedelta(days=search_days)).isoformat()
+        last_date = (center + timedelta(days=search_days)).isoformat()
+        sql = """
+            SELECT id, started_at_utc, tz_offset_min, elapsed_s, duration_s
+            FROM activities
+            WHERE local_date BETWEEN ? AND ?
+              AND started_at_utc IS NOT NULL
+              AND started_at_utc != ''
+              AND tz_offset_min IS NOT NULL
+              AND excluded_at IS NULL
+        """
+        params: list[object] = [first_date, last_date]
+
+        if exclude_activity_id is not None:
+            sql += " AND id != ?"
+            params.append(exclude_activity_id)
+
+        rows = self.connection.execute(sql, params).fetchall()
+        windows: list[ActivityWindow] = []
+
+        for row in rows:
+            start = parse_utc(row["started_at_utc"])
+            window_s = row["elapsed_s"] if row["elapsed_s"] > 0 else row["duration_s"]
+
+            if start is None or window_s <= 0:
+                continue
+
+            local_start = (
+                start + timedelta(minutes=int(row["tz_offset_min"]))
+            ).replace(tzinfo=None)
+            windows.append(
+                ActivityWindow(
+                    activity_id=row["id"],
+                    start=local_start,
+                    end=local_start + timedelta(seconds=window_s),
+                )
+            )
+
+        return windows
+
 
 def decide_match(
     connection: sqlite3.Connection,
     *,
     source: str,
-    started_at_utc: str | None,
+    started_at_utc: str | None = None,
+    started_at_local: datetime | None = None,
     elapsed_s: float = 0,
     duration_s: float = 0,
     distance_m: float | None = None,
@@ -339,19 +426,28 @@ def decide_match(
     Runalyze passes ``exact_twin=False`` because its review path owns the
     sheet-duplicate refinement; the temporal and distance steps are the same.
     """
-    if not started_at_utc:
-        return MatchDecision(None, "no_start")
-
     if elapsed_s <= 0 and duration_s <= 0:
         return MatchDecision(None, "no_duration")
 
-    matches = ActivityMatcher(connection).find(
-        started_at_utc=started_at_utc,
-        source=source,
-        elapsed_s=elapsed_s,
-        duration_s=duration_s,
-        exclude_activity_id=exclude_activity_id,
-    )
+    if started_at_utc:
+        matches = ActivityMatcher(connection).find(
+            started_at_utc=started_at_utc,
+            source=source,
+            elapsed_s=elapsed_s,
+            duration_s=duration_s,
+            exclude_activity_id=exclude_activity_id,
+        )
+    elif started_at_local is not None:
+        matches = ActivityMatcher(connection).find_local(
+            started_at_local=started_at_local,
+            source=source,
+            elapsed_s=elapsed_s,
+            duration_s=duration_s,
+            exclude_activity_id=exclude_activity_id,
+        )
+    else:
+        return MatchDecision(None, "no_start")
+
     viable = [
         match
         for match in matches
@@ -377,7 +473,15 @@ def decide_match(
     if policy.exact_twin and distance_m is not None:
         twins = _exact_twins(
             connection,
-            local_date=local_date or _local_date(started_at_utc),
+            local_date=(
+                local_date
+                or _local_date(started_at_utc)
+                or (
+                    started_at_local.date().isoformat()
+                    if started_at_local is not None
+                    else None
+                )
+            ),
             duration_s=duration_s or elapsed_s,
             distance_m=distance_m,
             policy=policy,
@@ -482,7 +586,9 @@ def _exact_twins(
     return twins
 
 
-def _local_date(started_at_utc: str) -> str | None:
+def _local_date(started_at_utc: str | None) -> str | None:
+    if not started_at_utc:
+        return None
     moment = parse_utc(started_at_utc)
     return moment.date().isoformat() if moment is not None else None
 
