@@ -30,6 +30,10 @@ from .runalyze_gear import (
     format_gear_summary,
 )
 from .runalyze_import import RunalyzeEnricher, format_enrich_summary
+from .runalyze_vo2max import (
+    RunalyzeVo2maxImporter,
+    format_vo2max_summary,
+)
 from .sheet_import import SheetImporter, format_sheet_summary
 from .sync import format_sync_summary, run_sync
 
@@ -249,6 +253,8 @@ def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
         return _run_runalyze_enrich(args, parser)
     if args.runalyze_action == "gear":
         return _run_runalyze_gear(args, parser)
+    if args.runalyze_action == "vo2max":
+        return _run_runalyze_vo2max(args, parser)
 
     parser.error(f"unknown runalyze command: {args.runalyze_action}")
 
@@ -361,6 +367,36 @@ def _run_runalyze_gear(args, parser: argparse.ArgumentParser) -> int:
         connection.close()
 
     print(format_gear_summary(summary))
+    print(f"Database: {args.database or default_database_path()}")
+    return 0
+
+
+def _run_runalyze_vo2max(args, parser: argparse.ArgumentParser) -> int:
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be greater than zero")
+    if (
+        args.start is not None
+        and args.end is not None
+        and args.start > args.end
+    ):
+        parser.error("--since must not be after --to")
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        summary = RunalyzeVo2maxImporter(connection).import_vo2max(
+            start=args.start,
+            end=args.end,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    finally:
+        connection.close()
+
+    print(format_vo2max_summary(summary))
     print(f"Database: {args.database or default_database_path()}")
     return 0
 

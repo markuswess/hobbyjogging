@@ -5,6 +5,20 @@ on.
 
 ## Done
 
+- **Runalyze phase 5.** Offline `runalyze vo2max` fills `vo2max_runalyze` from
+  the stored payloads' effective `vo2max`, leaving `vo2max_garmin` untouched
+  and skipping unlinked activities. On a DB copy: 843 values, all 2019–2022,
+  and a second run reports 843 `unchanged`.
+- **Runalyze phase 3 follow-up.** Clothing (category 78698) is skipped, name
+  matching falls back to the colour-stripped form (the sheet names carry no
+  colour, and co-occurrence cannot bridge gear before 2023 — no sheet-linked
+  activity carries Runalyze gear), and a row the importer created earlier is
+  reconciled onto the matched row: links move, the duplicate goes. Validated
+  on a DB copy with the full history: 2,823 payloads, 26 gear records, 6
+  clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline 20`,
+  `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` → sheet
+  `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur (rot)` vs the
+  two sheet `Lunge C-Dur` rows), 491 new activity links, and a no-op re-run.
 - **Runalyze phase 3.** Offline `runalyze gear` reads the stored activity
   payloads' `equipment` arrays and resolves each gear record by
   co-occurrence → exact normalized name → new `runalyze:equipment:<id>` row,

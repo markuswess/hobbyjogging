@@ -1,24 +1,33 @@
 """Resolve Runalyze gear records from stored activity payloads.
 
 Phase 3 is offline: every Runalyze detail already sits in ``source_records``,
-so gear needs no activity-detail request. A gear record is resolved in this
-order (root item 12):
+so gear needs no activity-detail request. Resolution order (root item 12):
 
 1. co-occurrence with the sheet shoes on its matched activities
    (at least 3 activities, one item on at least 80% of them);
-2. exact normalized name against existing equipment names / brand+model;
+2. exact normalized name against existing equipment names / brand+model,
+   then the same comparison with a trailing colour/size parenthetical removed
+   (Runalyze tracks gear from 2023 on, so the sheet is the only bridge for the
+   older shoes and its names carry no colour);
 3. a new ``runalyze:equipment:<id>`` row.
 
-Ambiguity (a split co-occurrence or several name matches) opens a non-hiding
-``ambiguous_equipment`` review item; the gear is never guessed. Resolved gear
-is linked to its activities: the first shoe/bike item is primary, the rest
-secondary, manual and sheet links win.
+Clothing (category 78698) is skipped: it is kit, not equipment. Ambiguity (a
+split co-occurrence, or several name matches after stripping the parenthetical)
+opens a non-hiding ``ambiguous_equipment`` review item; the gear is never
+guessed. Resolved gear is linked to its activities: the first shoe/bike item is
+primary, the rest secondary, manual and sheet links win.
+
+A gear row the importer created earlier is reconciled: when the rule now
+resolves it to an existing equipment row, its activity and source links move
+there and the importer-owned duplicate is removed. Rows with manual links or
+another source link are left alone.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -38,6 +47,9 @@ CATEGORY_TYPES = {
     78697: "shoe",
     78699: "bike",
 }
+# Clothing and kit: Runalyze tracks it next to gear, but a T-shirt is not
+# equipment in the canonical model and would only add one-link rows.
+IGNORED_CATEGORIES = frozenset({78698})
 OTHER_CATEGORY_TYPE = "other"
 PRIMARY_TYPES = frozenset({"shoe", "bike"})
 
@@ -67,9 +79,11 @@ class RunalyzeGearSummary:
     dry_run: bool = False
     payloads: int = 0
     gear_items: int = 0
+    skipped_clothing: int = 0
     created: int = 0
     linked_existing: int = 0
     already_linked: int = 0
+    reconciled: int = 0
     ambiguous: int = 0
     ambiguous_resolved: int = 0
     reviews_recorded: int = 0
@@ -119,7 +133,13 @@ class RunalyzeGearImporter:
             summary.payloads = payloads
             summary.gear_items = len(gear)
 
-            gear_ids = sorted(gear)
+            gear_ids = [
+                gear_id
+                for gear_id in sorted(gear)
+                if gear[gear_id].category_id not in IGNORED_CATEGORIES
+            ]
+            summary.skipped_clothing = len(gear) - len(gear_ids)
+            summary.gear_items = len(gear_ids)
             if limit is not None:
                 gear_ids = gear_ids[:limit]
 
@@ -127,13 +147,17 @@ class RunalyzeGearImporter:
             primary = _primary_by_activity(gear, activity_order)
 
             for gear_id in gear_ids:
-                self._resolve_one(
+                changed = self._resolve_one(
                     gear[gear_id],
                     context,
                     primary,
                     summary,
                     dry_run=dry_run,
                 )
+                if changed:
+                    # A created or merged row changes the name map; keep the
+                    # next gear from resolving to a row this run removed.
+                    context = self._contexts()
 
             if output is not None:
                 _write_ambiguous(Path(output), summary.ambiguous_rows)
@@ -250,10 +274,10 @@ class RunalyzeGearImporter:
             "SELECT id, name, brand, model FROM equipment"
         ):
             equipment[row["id"]] = row["name"]
-            name_map[_normalize(row["name"])].append(row["id"])
-            combined = f"{row['brand'] or ''} {row['model'] or ''}".strip()
-            if combined:
-                name_map[_normalize(combined)].append(row["id"])
+            combined = f"{row['brand'] or ''} {row['model'] or ''}"
+            for value in (row["name"], combined):
+                for key in _name_keys(value):
+                    name_map[key].append(row["id"])
 
         sheet_links: dict[str, set[str]] = defaultdict(set)
         for row in self.connection.execute(
@@ -271,11 +295,28 @@ class RunalyzeGearImporter:
             )
         }
 
+        # Rows the importer created for another gear record are not candidates:
+        # two Runalyze gear ids are two items, even when the names differ only
+        # in the colour parenthetical.
+        gear_owned = {
+            row["equipment_id"]
+            for row in self.connection.execute(
+                """
+                SELECT esl.equipment_id
+                FROM equipment_source_links esl
+                JOIN source_records sr ON sr.id = esl.source_record_id
+                WHERE sr.source = ? AND sr.record_type = ?
+                """,
+                (SOURCE, GEAR_RECORD_TYPE),
+            )
+        }
+
         return {
             "equipment": equipment,
             "name_map": name_map,
             "sheet_links": sheet_links,
             "linked_pairs": linked_pairs,
+            "gear_owned": gear_owned,
         }
 
     # -- resolution ---------------------------------------------------------
@@ -288,7 +329,7 @@ class RunalyzeGearImporter:
         summary: RunalyzeGearSummary,
         *,
         dry_run: bool,
-    ) -> None:
+    ) -> bool:
         external_id = _external_id(gear.gear_id)
         payload_json = _payload_json(gear.payload)
 
@@ -311,8 +352,21 @@ class RunalyzeGearImporter:
         )
 
         if current is not None:
-            equipment_id = current
-            summary.already_linked += 1
+            target = self._reconciled_target(gear, context, current)
+            if target is not None:
+                self._merge_equipment(
+                    current,
+                    target,
+                    context["linked_pairs"],
+                    dry_run=dry_run,
+                )
+                summary.reconciled += 1
+                equipment_id = target
+                changed = True
+            else:
+                equipment_id = current
+                summary.already_linked += 1
+                changed = False
             self._resolve_ambiguous(
                 external_id,
                 "resolved: gear linked",
@@ -324,6 +378,7 @@ class RunalyzeGearImporter:
                 gear,
                 context["sheet_links"],
                 context["name_map"],
+                context["gear_owned"],
             )
             if resolution[0] == "ambiguous":
                 self._record_ambiguous(
@@ -333,11 +388,12 @@ class RunalyzeGearImporter:
                     summary,
                     dry_run,
                 )
-                return
+                return False
 
             equipment_id = resolution[1]
             if resolution[0] == "existing":
                 summary.linked_existing += 1
+                changed = False
                 if not dry_run:
                     self.writer.link_equipment_source(
                         equipment_id,
@@ -345,6 +401,7 @@ class RunalyzeGearImporter:
                     )
             else:
                 summary.created += 1
+                changed = True
                 if not dry_run:
                     self.writer.upsert_equipment(
                         equipment_id,
@@ -370,6 +427,7 @@ class RunalyzeGearImporter:
             summary,
             dry_run=dry_run,
         )
+        return changed
 
     def _link_activities(
         self,
@@ -417,6 +475,134 @@ class RunalyzeGearImporter:
             if written:
                 linked_pairs.add(pair)
                 _count_link(summary, role)
+
+    # -- reconciliation -----------------------------------------------------
+
+    def _reconciled_target(
+        self,
+        gear: GearItem,
+        context: dict,
+        current: str,
+    ) -> str | None:
+        """Return a better existing row for a gear the importer already linked.
+
+        Only an importer-owned row qualifies: a human-edited row or one that
+        another source also links must keep its identity.
+        """
+        if not current.startswith(GEAR_EQUIPMENT_PREFIX):
+            return None
+        if self.connection.execute(
+            """
+            SELECT 1 FROM activity_equipment
+            WHERE equipment_id = ? AND is_manual = 1
+            """,
+            (current,),
+        ).fetchone():
+            return None
+        if self.connection.execute(
+            """
+            SELECT 1 FROM equipment_source_links
+            WHERE equipment_id = ? AND source_record_id NOT IN (
+                SELECT id FROM source_records
+                WHERE source = ? AND record_type = ?
+            )
+            """,
+            (current, SOURCE, GEAR_RECORD_TYPE),
+        ).fetchone():
+            return None
+
+        resolution = _resolve(
+            gear,
+            context["sheet_links"],
+            context["name_map"],
+            context["gear_owned"],
+        )
+        if resolution[0] != "existing" or resolution[1] == current:
+            return None
+        target = resolution[1]
+        if self.connection.execute(
+            "SELECT 1 FROM equipment WHERE id = ?",
+            (target,),
+        ).fetchone() is None:
+            return None
+        return target
+
+    def _merge_equipment(
+        self,
+        old_id: str,
+        new_id: str,
+        linked_pairs: set[tuple[str, str]],
+        *,
+        dry_run: bool,
+    ) -> None:
+        """Move a duplicate gear row's links onto the match, then drop it."""
+        rows = self.connection.execute(
+            """
+            SELECT activity_id, role FROM activity_equipment
+            WHERE equipment_id = ?
+            ORDER BY activity_id, role
+            """,
+            (old_id,),
+        ).fetchall()
+
+        for row in rows:
+            activity_id = row["activity_id"]
+            role = row["role"]
+            linked_pairs.add((activity_id, new_id))
+            if dry_run:
+                linked_pairs.discard((activity_id, old_id))
+                continue
+
+            if role == "primary":
+                holder = self.connection.execute(
+                    """
+                    SELECT equipment_id FROM activity_equipment
+                    WHERE activity_id = ? AND role = 'primary'
+                    """,
+                    (activity_id,),
+                ).fetchone()
+                if holder is not None and holder["equipment_id"] != old_id:
+                    # The sheet or a human owns the primary slot.
+                    role = "secondary"
+            self.connection.execute(
+                """
+                DELETE FROM activity_equipment
+                WHERE activity_id = ? AND equipment_id = ?
+                """,
+                (activity_id, old_id),
+            )
+            exists = self.connection.execute(
+                """
+                SELECT 1 FROM activity_equipment
+                WHERE activity_id = ? AND equipment_id = ? AND role = ?
+                """,
+                (activity_id, new_id, role),
+            ).fetchone()
+            if exists is None:
+                self.connection.execute(
+                    """
+                    INSERT INTO activity_equipment (
+                        activity_id, equipment_id, role, source
+                    ) VALUES (?, ?, ?, ?)
+                    """,
+                    (activity_id, new_id, role, SOURCE),
+                )
+            linked_pairs.discard((activity_id, old_id))
+
+        if dry_run:
+            return
+
+        self.connection.execute(
+            """
+            UPDATE equipment_source_links SET equipment_id = ?
+            WHERE equipment_id = ?
+            """,
+            (new_id, old_id),
+        )
+        self.connection.execute(
+            "DELETE FROM equipment WHERE id = ?",
+            (old_id,),
+        )
 
     # -- review items -------------------------------------------------------
 
@@ -538,6 +724,7 @@ def _resolve(
     gear: GearItem,
     sheet_links: dict[str, set[str]],
     name_map: dict[str, list[str]],
+    gear_owned: set[str] = frozenset(),
 ) -> tuple[str, object]:
     """Return (existing|new|ambiguous, equipment id or candidate list)."""
     with_links = [
@@ -564,19 +751,42 @@ def _resolve(
             for equipment_id, count in counts.most_common()
         ]
 
-    candidates = sorted(set(name_map.get(_normalize(gear.name), [])))
-    if len(candidates) == 1:
-        return "existing", candidates[0]
-    if len(candidates) > 1:
+    candidates = _name_candidates(
+        gear.name,
+        name_map,
+        "name",
+        gear_owned,
+    )
+    if candidates:
+        if len(candidates) == 1:
+            return "existing", candidates[0][0]
         return "ambiguous", [
-            {
-                "equipment_id": equipment_id,
-                "reason": "name",
-            }
-            for equipment_id in candidates
+            {"equipment_id": equipment_id, "reason": reason}
+            for equipment_id, reason in candidates
         ]
 
     return "new", f"{GEAR_EQUIPMENT_PREFIX}{gear.gear_id}"
+
+
+def _name_candidates(
+    value: str,
+    name_map: dict[str, list[str]],
+    reason: str,
+    excluded: set[str] = frozenset(),
+) -> list[tuple[str, str]]:
+    """Match an exact name, then with the colour/size parenthetical gone."""
+    exact = sorted(set(name_map.get(_normalize(value), [])) - excluded)
+    if exact:
+        return [(equipment_id, reason) for equipment_id in exact]
+
+    loose_key = _normalize(_PARENTHETICAL.sub("", value))
+    if not loose_key or loose_key == _normalize(value):
+        return []
+    loose = sorted(set(name_map.get(loose_key, [])) - excluded)
+    return [
+        (equipment_id, f"{reason}_parenthetical")
+        for equipment_id in loose
+    ]
 
 
 def _primary_by_activity(
@@ -598,9 +808,11 @@ def format_gear_summary(summary: RunalyzeGearSummary) -> str:
     lines = [
         f"{label}: {summary.payloads} payloads, "
         f"{summary.gear_items} gear records",
+        f"  skipped clothing: {summary.skipped_clothing}",
         f"  created: {summary.created}",
         f"  linked existing: {summary.linked_existing}",
         f"  already linked: {summary.already_linked}",
+        f"  reconciled duplicates: {summary.reconciled}",
         f"  ambiguous: {summary.ambiguous}",
         f"  ambiguous resolved: {summary.ambiguous_resolved}",
         f"  review items recorded: {summary.reviews_recorded}",
@@ -646,6 +858,19 @@ def _gear_id(value: object) -> int | None:
 
 def _external_id(gear_id: int) -> str:
     return f"{GEAR_EXTERNAL_PREFIX}{gear_id}"
+
+
+_PARENTHETICAL = re.compile(r"\s*\([^()]*\)\s*$")
+
+
+def _name_keys(value: object) -> list[str]:
+    """Both comparison keys: the exact name and its colour-stripped form."""
+    text = str(value or "")
+    keys = [_normalize(text)]
+    stripped = _normalize(_PARENTHETICAL.sub("", text))
+    if stripped and stripped not in keys:
+        keys.append(stripped)
+    return [key for key in keys if key]
 
 
 def _normalize(value: object) -> str:

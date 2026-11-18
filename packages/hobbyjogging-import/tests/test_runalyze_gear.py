@@ -331,6 +331,140 @@ class RunalyzeGearTests(unittest.TestCase):
             "other", self._equipment_row("runalyze:equipment:21")["type"]
         )
 
+    def test_clothing_is_skipped(self):
+        self._activity("a1")
+        self._runalyze(
+            "a1",
+            [
+                self._gear(30, "Laufshirt", category_id=78698),
+                self._gear(31, "Lunge Neo Run (blau)"),
+            ],
+        )
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.skipped_clothing)
+        self.assertEqual(1, summary.created)
+        self.assertIsNone(self._equipment_row("runalyze:equipment:30"))
+        self.assertIsNotNone(self._equipment_row("runalyze:equipment:31"))
+        self.assertEqual(1, summary.activity_links)
+
+    def test_parenthetical_is_stripped_for_a_unique_match(self):
+        # Runalyze tracks gear from 2023 on, so its colour parenthetical is the
+        # only difference from the sheet names before that.
+        self._equipment("sheet:equipment:7", "Lunge Fis")
+        self._activity("a1")
+        self._runalyze("a1", [self._gear(7, "Lunge Fis (dunkelblau)")])
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.linked_existing)
+        self.assertIsNone(self._equipment_row("runalyze:equipment:7"))
+        self.assertEqual(
+            "sheet:equipment:7",
+            self._gear_source_link(7)["equipment_id"],
+        )
+
+    def test_parenthetical_keeps_two_sheet_rows_ambiguous(self):
+        self._equipment("sheet:equipment:5", "Lunge C-Dur")
+        self._equipment("sheet:equipment:6", "Lunge C-Dur")
+        self._activity("a1")
+        self._runalyze("a1", [self._gear(9, "Lunge C-Dur (rot)")])
+
+        summary = self._import()
+
+        self.assertEqual(1, summary.ambiguous)
+        self.assertEqual(0, summary.created)
+        item = self.conn.execute(
+            "SELECT context_json FROM review_items WHERE category = ?",
+            (AMBIGUOUS_EQUIPMENT,),
+        ).fetchone()
+        candidates = json.loads(item["context_json"])["candidates"]
+        self.assertEqual(
+            {"sheet:equipment:5", "sheet:equipment:6"},
+            {candidate["equipment_id"] for candidate in candidates},
+        )
+
+    def test_payloads_from_two_gear_records_stay_separate(self):
+        self._activity("a1")
+        self._runalyze(
+            "a1",
+            [
+                self._gear(1, "Lunge C-Dur (schwarz)"),
+                self._gear(2, "Lunge C-Dur (rot)"),
+            ],
+        )
+
+        summary = self._import()
+
+        self.assertEqual(2, summary.created)
+        self.assertIsNotNone(self._equipment_row("runalyze:equipment:1"))
+        self.assertIsNotNone(self._equipment_row("runalyze:equipment:2"))
+
+    def test_an_importer_duplicate_is_reconciled_onto_the_sheet_row(self):
+        self._activity("a1")
+        self._runalyze("a1", [self._gear(1, "Lunge Neo Run (grau)")])
+        self._import()
+        self.assertIsNotNone(self._equipment_row("runalyze:equipment:1"))
+
+        self._equipment("sheet:equipment:10", "Lunge Neo Run")
+        summary = self._import()
+
+        self.assertEqual(1, summary.reconciled)
+        self.assertIsNone(self._equipment_row("runalyze:equipment:1"))
+        self.assertIsNotNone(self._equipment_row("sheet:equipment:10"))
+        self.assertEqual(
+            "sheet:equipment:10",
+            self._gear_source_link(1)["equipment_id"],
+        )
+        self.assertEqual(
+            [
+                ("a1", "sheet:equipment:10", "primary", "runalyze", 0),
+            ],
+            self._links(),
+        )
+
+    def test_reconciliation_keeps_a_sheet_primary(self):
+        self._equipment("sheet:equipment:11", "Old Shoe")
+        self._activity("a1")
+        self._sheet_link("a1", "sheet:equipment:11")
+        self._runalyze("a1", [self._gear(1, "Lunge Neo Run (grau)")])
+        self._import()
+
+        self._equipment("sheet:equipment:10", "Lunge Neo Run")
+        summary = self._import()
+
+        self.assertEqual(1, summary.reconciled)
+        self.assertEqual(
+            [
+                ("a1", "sheet:equipment:11", "primary", "sheet", 0),
+                ("a1", "sheet:equipment:10", "secondary", "runalyze", 0),
+            ],
+            self._links(),
+        )
+
+    def test_a_manual_link_blocks_reconciliation(self):
+        self._activity("a1")
+        self._runalyze("a1", [self._gear(1, "Demo Shoe (blau)")])
+        self._import()
+        # A human confirming the importer's row makes it human-owned.
+        self.writer.link_activity_equipment(
+            "a1",
+            "runalyze:equipment:1",
+            source="manual",
+            is_manual=True,
+        )
+        self._equipment("manual:shoe", "Demo Shoe")
+
+        summary = self._import()
+
+        self.assertEqual(0, summary.reconciled)
+        self.assertIsNotNone(self._equipment_row("runalyze:equipment:1"))
+        self.assertEqual(
+            "runalyze:equipment:1",
+            self._gear_source_link(1)["equipment_id"],
+        )
+
     # -- idempotency and dry run -------------------------------------------
 
     def test_reimport_is_idempotent(self):

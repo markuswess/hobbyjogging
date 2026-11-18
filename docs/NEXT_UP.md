@@ -399,8 +399,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
       and per year, writing nothing; (2) **done, import package** — comments
       and tags into `activities.description` (blank-fill) and `activity_tags`;
       (3) **done, import package** — gear identity and activity links;
-      (4) race results; (5) `vo2max_runalyze` as the second owner;
-      (6) the reports.
+      (4) race results; (5) **done, import package** — `vo2max_runalyze` as the
+      second owner; (6) the reports.
     - **Phase 1 result (Nov 2026)**: the import package ships the read-only
       client and the inventory. Live run: 2,841 activities (2019–2026), 82
       collection fields, 85–88 non-null detail fields (153 in the schema),
@@ -435,9 +435,24 @@ editing, analysis and lab work; phase 3 is the dormant future.
       796 activity links (774 primary, 22 secondary), no co-occurrence or name
       matches yet, and a second run is a no-op. The real run matched that:
       21 `runalyze:equipment:<id>` rows with empty brand/model, 21 gear source
-      records, 796 links and no review items. Co-occurrence and name matches
-      are fixture-tested; re-run after the 2019–2021 payloads arrive, when the
-      older gear IDs will have sheet shoes to match against.
+      records, 796 links and no review items.
+    - **Phase 3 follow-up (Nov 2026)**: the full history changed the rule.
+      Co-occurrence cannot bridge the old gear at all (680 activities carry
+      both a sheet link and a Runalyze link, but none of them carries gear —
+      Runalyze tracks gear from 2023 on), so name matching now falls back to
+      the colour-stripped form. Clothing (78698) is skipped, rows the importer
+      created for another gear record are never candidates, and an earlier
+      duplicate is reconciled onto the matched row. On a copy: 26 gear
+      records, 6 clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline
+      20`, `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` →
+      sheet `Lunge Neo Run`), 1 ambiguity left for a human (`Lunge C-Dur
+      (rot)` vs the two sheet `Lunge C-Dur` rows), 491 new links.
+    - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
+      stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
+      all 2019–2022 (Runalyze has none from 2023 on), mean −2.1 against
+      Garmin where both exist. `vo2max_garmin` is untouched. The alternative
+      estimates (`vo2max_by_time`, `vo2max_with_elevation`) are documented but
+      not stored.
     - **Gear identity (decided)**: gear records become
       `source_records(record_type='gear', external_id='runalyze:<id>')` plus
       `equipment` rows, linked through `activity_equipment` with

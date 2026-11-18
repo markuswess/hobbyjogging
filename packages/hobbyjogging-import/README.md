@@ -329,29 +329,62 @@ uv run --env-file .env hobbyjogging-import runalyze gear --dry-run
 Each Runalyze gear record resolves in this order:
 
 1. **Co-occurrence** with the sheet shoes on its matched activities (at least
-   3 activities, one sheet item on at least 80% of them).
+   3 activities, one sheet item on at least 80% of them). Runalyze only tracks
+   gear from 2023 on, so no sheet-linked activity before that carries one and
+   the older shoes never match this way.
 2. **Name**: exact normalized match against existing `equipment.name` or
-   `brand + model` (colour/size parentheticals are not stripped).
+   `brand + model`, then the same comparison with a trailing colour/size
+   parenthetical removed (`Lunge Fis (dunkelblau)` → `Lunge Fis`). The sheet
+   names carry no colour, so this is the bridge for the pre-2023 shoes.
 3. **New row** `runalyze:equipment:<id>`: type from the category (78697 shoe,
    78699 bike, else other), dates and notes from the payload, brand/model empty.
 
-A split co-occurrence or several name matches opens a non-hiding
-`ambiguous_equipment` review item; nothing is guessed. For each activity the
-first shoe/bike item is primary and the rest secondary; sheet and manual links
-win, and a matched row is never rewritten. Re-runs are idempotent; scope with
-`--since`/`--to`/`--limit` and write the ambiguous cases with `--output PATH`.
-Re-run after the 2019–2021 payloads arrive so co-occurrence can resolve the
-older gear.
+Clothing (category 78698: T-shirt, jacket, gloves, hat, ...) is skipped — it is
+kit, not equipment. A split co-occurrence or several name matches opens a
+non-hiding `ambiguous_equipment` review item; nothing is guessed. Rows the
+importer created for another gear record are never name candidates, so two
+Runalyze gear ids stay two items.
+
+For each activity the first shoe/bike item is primary and the rest secondary;
+sheet and manual links win, and a matched row is never rewritten. When a row
+the importer created earlier now resolves to an existing row (the sheet shoe
+whose name matches once the colour is gone), its links move there and the
+duplicate row is removed; a row with manual links or another source link is
+left alone. Re-runs are idempotent; scope with `--since`/`--to`/`--limit` and
+write the ambiguous cases with `--output PATH`.
 
 ```text
-Runalyze gear: 807 payloads, 21 gear records
-  created: 21
-  linked existing: 0
-  already linked: 0
-  ambiguous: 0
+Runalyze gear: 2823 payloads, 26 gear records
+  skipped clothing: 6
+  created: 0
+  linked existing: 2
+  already linked: 22
+  reconciled duplicates: 1
+  ambiguous: 1
   ambiguous resolved: 0
-  review items recorded: 0
-  activity links: 796 (774 primary, 22 secondary, 0 already present)
+  review items recorded: 1
+  activity links: 491 (442 primary, 49 secondary, 966 already present)
+```
+
+### VO2max (phase 5)
+
+Runalyze writes the **second** VO2max owner, offline from the stored details:
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze vo2max --dry-run
+```
+
+`vo2max` is Runalyze's *effective* estimate; `vo2max_by_time` and
+`vo2max_with_elevation` sit beside it and are not stored. `vo2max_garmin` is
+never touched, an activity the import has no Runalyze link for is skipped, and
+a re-run reports `unchanged` instead of rewriting. On the real data the
+payloads carry 843 values, all from 2019–2022.
+
+```text
+Runalyze VO2max: 2823 payloads, 843 with a value
+  written: 843
+  unchanged: 0
+  skipped excluded: 0
 ```
 
 ## Source precedence

@@ -278,6 +278,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="report what would change without writing",
     )
 
+    runalyze_vo2max = runalyze_sub.add_parser(
+        "vo2max",
+        help="fill vo2max_runalyze from the stored activity payloads",
+    )
+    runalyze_vo2max.add_argument("--since", dest="start", type=date_arg)
+    runalyze_vo2max.add_argument("--to", dest="end", type=date_arg)
+    runalyze_vo2max.add_argument(
+        "--limit",
+        type=int,
+        help="process at most this many stored payloads",
+    )
+    runalyze_vo2max.add_argument("--database", type=Path)
+    runalyze_vo2max.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing",
+    )
+
     garmin = subparsers.add_parser(
         "garmin",
         help="fetch original FIT files from Garmin Connect",
