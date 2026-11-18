@@ -12,6 +12,7 @@ from ..analysis import (
     bucket_label,
     equivalent_times,
     fit_riegel,
+    official_by_activity,
     pb_progressions,
     personal_bests,
     race_results,
@@ -19,7 +20,7 @@ from ..analysis import (
 )
 from ..charts import plot_pb_progressions, plot_races
 from ..command_support import activity_start
-from ..format import fmt_clock, format_pace
+from ..format import fmt_clock, format_pace, format_place
 from ..html import esc, table
 from ..review import exclude_review
 
@@ -66,7 +67,10 @@ def build_performance_section(
         source.activities(activity_start(source, today), today),
         include_review=include_review,
     )
-    results = race_results(activities)
+    results = race_results(
+        activities,
+        official_by_activity(source.race_results()),
+    )
     upcoming = upcoming_races(
         source.events(today, today + timedelta(days=future_days)),
         today,
@@ -104,7 +108,18 @@ def build_performance_section(
     )
 
     results_html = table(
-        ["Date", "Race", "Bucket", "Distance", "Time", "Pace", "HR", "Load"],
+        [
+            "Date",
+            "Race",
+            "Bucket",
+            "Distance",
+            "Time",
+            "Pace",
+            "Place",
+            "AG",
+            "HR",
+            "Load",
+        ],
         [
             [
                 f'<a href="{race_href(result.activity.id)}">'
@@ -112,9 +127,17 @@ def build_performance_section(
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.name or '-')}</a>",
                 esc(result.bucket),
-                _distance(result.activity.distance_m),
-                _time(result.activity.duration_s),
+                _distance(result.distance_m),
+                _time(result.time_s),
                 _pace(result.pace_s_per_km),
+                format_place(
+                    result.place_overall,
+                    result.participants_overall,
+                ),
+                format_place(
+                    result.place_ageclass,
+                    result.participants_ageclass,
+                ),
                 "-" if result.activity.avg_hr is None
                 else f"{result.activity.avg_hr:.0f}",
                 "-" if result.activity.training_load is None
@@ -122,10 +145,16 @@ def build_performance_section(
             ]
             for result in results
         ],
-        numeric=(3, 4, 5, 6, 7),
+        numeric=(3, 4, 5, 6, 7, 8, 9),
         empty="No race results.",
         collapse="races",
     )
+
+    if any(result.official_used for result in results):
+        results_html += (
+            '<p class="muted">Official distance and time replace the '
+            "measured activity where the race result provides them.</p>"
+        )
 
     pbs_html = table(
         ["Bucket", "Date", "Race", "Distance", "Time", "Pace"],
@@ -136,8 +165,8 @@ def build_performance_section(
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.name or '-')}</a>",
-                _distance(result.activity.distance_m),
-                _time(result.activity.duration_s),
+                _distance(result.distance_m),
+                _time(result.time_s),
                 _pace(result.pace_s_per_km),
             ]
             for result in pbs
@@ -181,8 +210,9 @@ def build_performance_section(
             ],
             numeric=(1, 2, 3, 4),
         ) + (
-            '<p class="muted">PB paces use the race\'s measured distance, so '
-            "a short course can pace slower than its time.</p>"
+            '<p class="muted">PB paces use the official distance where a '
+            "race result provides one, otherwise the measured activity "
+            "distance.</p>"
         )
     else:
         equivalent_html = (

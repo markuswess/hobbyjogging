@@ -530,7 +530,7 @@ def run_threshold_chart(output: str, source: DataSource) -> None:
 
 
 def _reviewed_results(source: DataSource, include_review: bool):
-    from .analysis import race_results
+    from .analysis import official_by_activity, race_results
 
     today = date.today()
     activities = reviewed_range(
@@ -539,7 +539,10 @@ def _reviewed_results(source: DataSource, include_review: bool):
         today,
         include_review,
     )
-    return race_results(activities)
+    return race_results(
+        activities,
+        official_by_activity(source.race_results()),
+    )
 
 
 def run_races_chart(

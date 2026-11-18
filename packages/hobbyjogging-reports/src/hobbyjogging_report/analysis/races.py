@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from hobbyjogging_core.model import Activity, Event, Lap
+from hobbyjogging_core.model import (
+    Activity,
+    Event,
+    Lap,
+    RaceResult as OfficialRaceResult,
+)
 
 from .common import RUN_TYPES, pace_s_per_km
 
@@ -51,12 +57,17 @@ def is_race(activity: Activity) -> bool:
     )
 
 
-def race_bucket(activity: Activity) -> str:
-    """Distance bucket with a tolerance for GPS/shortened courses."""
+def race_bucket(activity: Activity, distance_m: float | None = None) -> str:
+    """Distance bucket with a tolerance for GPS/shortened courses.
+
+    Trail is decided by the activity type; every other bucket uses
+    ``distance_m`` when the caller has an effective distance (the official
+    race distance) and the measured activity distance otherwise.
+    """
     if activity.type == "trail_run":
         return TRAIL_BUCKET
 
-    km = (activity.distance_m or 0) / 1000
+    km = (activity.distance_m if distance_m is None else distance_m or 0) / 1000
 
     for name, low, high in RACE_BUCKETS:
         if low <= km <= high:
@@ -65,27 +76,95 @@ def race_bucket(activity: Activity) -> str:
     return OTHER_BUCKET
 
 
+def official_pair(official: OfficialRaceResult | None) -> bool:
+    """True when the official result supplies both a distance and a time."""
+    return bool(
+        official is not None
+        and official.official_distance_m
+        and official.official_time_s
+    )
+
+
+def official_by_activity(
+    results: Iterable[OfficialRaceResult],
+) -> dict[str, OfficialRaceResult]:
+    """Index official race results by activity for the race analysis."""
+    return {result.activity_id: result for result in results}
+
+
 @dataclass(frozen=True)
 class RaceResult:
+    """A race activity with the distance, time and placement it is ranked on.
+
+    ``distance_m`` and ``time_s`` are the official pair when the race has
+    one, so every consumer (PB, Riegel, tables, charts) ranks the same values.
+    ``official`` keeps the row for its placement and the official flags.
+    """
+
     activity: Activity
     bucket: str
     pace_s_per_km: float | None
+    distance_m: float
+    time_s: float
+    official: OfficialRaceResult | None = None
+
+    @property
+    def official_used(self) -> bool:
+        return official_pair(self.official)
+
+    @property
+    def place_overall(self) -> int | None:
+        return self.official.place_total if self.official else None
+
+    @property
+    def participants_overall(self) -> int | None:
+        return self.official.participants_total if self.official else None
+
+    @property
+    def place_ageclass(self) -> int | None:
+        return self.official.place_ageclass if self.official else None
+
+    @property
+    def participants_ageclass(self) -> int | None:
+        return self.official.participants_ageclass if self.official else None
 
 
-def race_results(activities: list[Activity]) -> list[RaceResult]:
-    """Race activities newest first, with their bucket and pace."""
-    results = [
-        RaceResult(
-            activity=activity,
-            bucket=race_bucket(activity),
-            pace_s_per_km=pace_s_per_km(
-                activity.duration_s,
-                activity.distance_m,
-            ),
+def race_results(
+    activities: list[Activity],
+    official_by_id: Mapping[str, OfficialRaceResult] | None = None,
+) -> list[RaceResult]:
+    """Race activities newest first, with their bucket and effective values.
+
+    ``official_by_id`` is the activity-keyed official result set. When a row
+    carries both an official distance and time, those replace the measured
+    activity values for the bucket, PB selection, fit and tables; the measured
+    activity remains the identity and the source of HR, load and links.
+    """
+    official_by_id = official_by_id or {}
+    results = []
+
+    for activity in activities:
+        if activity.type not in RUN_TYPES or not is_race(activity):
+            continue
+
+        official = official_by_id.get(activity.id)
+        distance_m = activity.distance_m or 0.0
+        time_s = activity.duration_s or 0.0
+
+        if official_pair(official):
+            distance_m = official.official_distance_m or 0.0
+            time_s = official.official_time_s or 0.0
+
+        results.append(
+            RaceResult(
+                activity=activity,
+                bucket=race_bucket(activity, distance_m),
+                pace_s_per_km=pace_s_per_km(time_s, distance_m),
+                distance_m=distance_m,
+                time_s=time_s,
+                official=official,
+            )
         )
-        for activity in activities
-        if activity.type in RUN_TYPES and is_race(activity)
-    ]
 
     return sorted(
         results,
@@ -97,10 +176,10 @@ def race_results(activities: list[Activity]) -> list[RaceResult]:
 def personal_bests(results: list[RaceResult]) -> list[RaceResult]:
     """Fastest race in each bucket, in bucket order.
 
-    Standard-distance buckets only count races whose measured distance is
-    within ``PB_DISTANCE_TOLERANCE`` of the standard, so a 4.2 km race cannot
-    win the 5k PB. Trail and Other keep the fastest raw time because they have
-    no standard distance.
+    Standard-distance buckets only count races whose effective distance is
+    within ``PB_DISTANCE_TOLERANCE`` of the standard, so a 4.2 km measured
+    race cannot win the 5k PB unless its official distance is 5k. Trail and
+    Other keep the fastest raw time because they have no standard distance.
     """
     best: dict[str, RaceResult] = {}
 
@@ -110,7 +189,7 @@ def personal_bests(results: list[RaceResult]) -> list[RaceResult]:
 
         current = best.get(result.bucket)
 
-        if current is None or result.activity.duration_s < current.activity.duration_s:
+        if current is None or result.time_s < current.time_s:
             best[result.bucket] = result
 
     return [
@@ -126,9 +205,7 @@ def _qualifies_for_pb(result: RaceResult) -> bool:
     if standard is None:
         return True
 
-    distance = result.activity.distance_m or 0
-
-    return abs(distance - standard) / standard <= PB_DISTANCE_TOLERANCE
+    return abs(result.distance_m - standard) / standard <= PB_DISTANCE_TOLERANCE
 
 
 @dataclass(frozen=True)
@@ -153,7 +230,7 @@ def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
         (result for result in results if _qualifies_for_pb(result)),
         key=lambda result: (
             result.activity.date,
-            result.activity.duration_s,
+            result.time_s,
         ),
     )
     best: dict[str, RaceResult] = {}
@@ -163,10 +240,7 @@ def pb_progressions(results: list[RaceResult]) -> list[PbProgression]:
     for result in ordered:
         current = best.get(result.bucket)
 
-        if (
-            current is None
-            or result.activity.duration_s < current.activity.duration_s
-        ):
+        if current is None or result.time_s < current.time_s:
             best[result.bucket] = result
             steps.setdefault(result.bucket, []).append(result)
         else:
@@ -218,14 +292,14 @@ def fit_riegel(results: list[RaceResult]) -> RiegelFit | None:
     points = [
         result
         for result in results
-        if result.activity.distance_m and result.activity.duration_s
+        if result.distance_m and result.time_s
     ]
 
     if len(points) < 3:
         return None
 
-    xs = [math.log(result.activity.distance_m / 1000) for result in points]
-    ys = [math.log(result.activity.duration_s / 60) for result in points]
+    xs = [math.log(result.distance_m / 1000) for result in points]
+    ys = [math.log(result.time_s / 60) for result in points]
     mean_x = sum(xs) / len(xs)
     mean_y = sum(ys) / len(ys)
     sxx = sum((x - mean_x) ** 2 for x in xs)
@@ -263,10 +337,8 @@ def riegel_time(
     passes through the reference result, which a free least-squares line does
     not.
     """
-    activity = reference.activity
-
-    return activity.duration_s * (
-        distance_m / activity.distance_m
+    return reference.time_s * (
+        distance_m / reference.distance_m
     ) ** fit.exponent
 
 
@@ -341,8 +413,8 @@ def equivalent_times(
                 label=label,
                 distance_m=distance_m,
                 predicted_s=riegel_time(race, fit, distance_m),
-                pb_s=pb.activity.duration_s if pb else None,
-                pb_distance_m=pb.activity.distance_m if pb else None,
+                pb_s=pb.time_s if pb else None,
+                pb_distance_m=pb.distance_m if pb else None,
             )
         )
 

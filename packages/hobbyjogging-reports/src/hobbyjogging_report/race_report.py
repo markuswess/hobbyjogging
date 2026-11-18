@@ -11,6 +11,8 @@ from .analysis import (
     equivalent_times,
     fit_riegel,
     half_split,
+    official_by_activity,
+    official_pair,
     pace_s_per_km,
     personal_bests,
     race_results,
@@ -22,6 +24,7 @@ from .command_support import activity_start, resting_hr_lookup
 from .format import (
     fmt_clock,
     format_pace,
+    format_place,
     format_session_activity,
     table_text,
 )
@@ -66,7 +69,10 @@ def races_report(
     )
     results = [
         result
-        for result in race_results(activities)
+        for result in race_results(
+            activities,
+            official_by_activity(source.race_results()),
+        )
         if (bucket is None or result.bucket == bucket)
         and (start is None or result.activity.date >= start)
         and (end is None or result.activity.date <= end)
@@ -135,20 +141,31 @@ def races_report(
             "",
             "## Results",
             "",
-            "| Date | Race | Bucket | Distance | Time | Pace | HR | Load |",
-            "|---|---|---|---:|---:|---:|---:|---:|",
+            "| Date | Race | Bucket | Distance | Time | Pace | Place | AG | "
+            "HR | Load |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ])
         for result in shown:
             activity = result.activity
             lines.append(
                 f"| {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
-                f"{result.bucket} | {_distance(activity.distance_m)} | "
-                f"{fmt_clock(activity.duration_s)} | "
+                f"{result.bucket} | {_distance(result.distance_m)} | "
+                f"{fmt_clock(result.time_s)} | "
                 f"{_pace(result.pace_s_per_km)} | "
+                f"{format_place(result.place_overall, result.participants_overall)} "
+                f"| {format_place(result.place_ageclass, result.participants_ageclass)} "
+                "| "
                 f"{'-' if activity.avg_hr is None else f'{activity.avg_hr:.0f}'} | "
                 f"{_load(activity.training_load)} |"
             )
+
+        if any(result.official_used for result in shown):
+            lines.extend([
+                "",
+                "Official distance and time replace the measured activity "
+                "where the race result provides them.",
+            ])
 
         if len(shown) < len(results):
             lines.extend([
@@ -166,12 +183,12 @@ def races_report(
             "|---|---|---|---:|---:|---:|",
         ])
         for result in groups:
-            activity = result.activity
             lines.append(
-                f"| {bucket_label(result.bucket)} | {activity.date} | "
-                f"{table_text(activity.name) or '-'} | "
-                f"{_distance(activity.distance_m)} | "
-                f"{fmt_clock(activity.duration_s)} | "
+                f"| {bucket_label(result.bucket)} | "
+                f"{result.activity.date} | "
+                f"{table_text(result.activity.name) or '-'} | "
+                f"{_distance(result.distance_m)} | "
+                f"{fmt_clock(result.time_s)} | "
                 f"{_pace(result.pace_s_per_km)} |"
             )
     else:
@@ -217,8 +234,8 @@ def races_report(
 
         lines.extend([
             "",
-            "PB paces use the race's measured distance, so a short course can "
-            "pace slower than its time.",
+            "PB paces use the official distance where a race result provides "
+            "one, otherwise the measured activity distance.",
         ])
 
     return "\n".join(lines)
@@ -332,13 +349,57 @@ def race_report(
         for item in source.review_items(status="open")
         if item.activity_id == activity.id
     ]
+    official = next(
+        (
+            result
+            for result in source.race_results()
+            if result.activity_id == activity.id
+        ),
+        None,
+    )
 
-    lines = [
-        f"# Race {activity.date}",
-        f"- Time: {fmt_clock(activity.duration_s)}",
-        f"- Distance: {_distance(activity.distance_m)}",
-        f"- Pace: {_pace(pace_s_per_km(activity.duration_s, activity.distance_m))}",
-    ]
+    lines = [f"# Race {activity.date}"]
+
+    if official_pair(official):
+        time_s = official.official_time_s or activity.duration_s
+        distance_m = official.official_distance_m or (activity.distance_m or 0)
+        time_note = (
+            " (official)"
+            if abs(time_s - activity.duration_s) < 1
+            else f" (official; measured {fmt_clock(activity.duration_s)})"
+        )
+        distance_note = (
+            " (official)"
+            if abs(distance_m - (activity.distance_m or 0)) < 10
+            else f" (official; measured {_distance(activity.distance_m)})"
+        )
+        lines.extend([
+            f"- Time: {fmt_clock(time_s)}{time_note}",
+            f"- Distance: {_distance(distance_m)}{distance_note}",
+            f"- Pace: {_pace(pace_s_per_km(time_s, distance_m))}",
+        ])
+    else:
+        lines.extend([
+            f"- Time: {fmt_clock(activity.duration_s)}",
+            f"- Distance: {_distance(activity.distance_m)}",
+            f"- Pace: {_pace(pace_s_per_km(activity.duration_s, activity.distance_m))}",
+        ])
+
+    if official is not None:
+        overall = format_place(
+            official.place_total,
+            official.participants_total,
+        )
+        ageclass = format_place(
+            official.place_ageclass,
+            official.participants_ageclass,
+        )
+
+        if overall != "-":
+            lines.append(f"- Place: {overall} overall")
+        if ageclass != "-":
+            lines.append(f"- Age group: {ageclass}")
+
     note = review_note(excluded)
     if note:
         lines.append(f"\n> {note}")

@@ -2,12 +2,18 @@ import math
 import unittest
 from datetime import date, timedelta
 
-from hobbyjogging_core.model import Event, EventZoneTime, Lap
+from hobbyjogging_core.model import (
+    Event,
+    EventZoneTime,
+    Lap,
+    RaceResult as OfficialRaceResult,
+)
 from hobbyjogging_report.analysis import (
     bucket_label,
     equivalent_times,
     fit_riegel,
     half_split,
+    official_by_activity,
     pb_progressions,
     personal_bests,
     race_bucket,
@@ -16,7 +22,7 @@ from hobbyjogging_report.analysis import (
     riegel_time,
     upcoming_races,
 )
-from hobbyjogging_report.format import fmt_clock
+from hobbyjogging_report.format import fmt_clock, format_place
 from hobbyjogging_report.race_report import race_report, races_report
 from support import FakeSource, activity_factory
 
@@ -32,6 +38,17 @@ def _race(**overrides):
     }
     values.update(overrides)
     return activity(**values)
+
+
+def _official(activity_id, **overrides):
+    values = {
+        "official_distance_m": 5000.0,
+        "official_time_s": 1200.0,
+        "officially_measured": True,
+        "status": "completed",
+    }
+    values.update(overrides)
+    return OfficialRaceResult(activity_id=activity_id, **values)
 
 
 class RaceAnalysisTests(unittest.TestCase):
@@ -353,6 +370,105 @@ class RaceAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(24, split.delta_s_per_km)
 
 
+class OfficialRaceResultTests(unittest.TestCase):
+
+    def test_official_pair_changes_bucket_and_pb_qualification(self):
+        measured = _race(
+            id="short",
+            date=D,
+            distance_m=4200,
+            duration_s=1000,
+        )
+
+        without = race_results([measured])
+        self.assertEqual([], personal_bests(without))
+
+        results = race_results(
+            [measured],
+            official_by_activity([
+                _official("short", official_distance_m=5000.0, official_time_s=1260.0),
+            ]),
+        )
+        result = results[0]
+
+        self.assertTrue(result.official_used)
+        self.assertEqual("5k", result.bucket)
+        self.assertEqual(5000.0, result.distance_m)
+        self.assertEqual(1260.0, result.time_s)
+        self.assertAlmostEqual(252.0, result.pace_s_per_km)
+        self.assertEqual(
+            ["short"],
+            [pb.activity.id for pb in personal_bests(results)],
+        )
+
+    def test_official_time_ranks_the_podium(self):
+        results = race_results(
+            [
+                _race(id="measured", date=D, distance_m=5000, duration_s=1260),
+                _race(
+                    id="official",
+                    date=D - timedelta(days=1),
+                    distance_m=5000,
+                    duration_s=1300,
+                ),
+            ],
+            official_by_activity([
+                _official("official", official_time_s=1200.0),
+            ]),
+        )
+
+        pbs = personal_bests(results)
+
+        self.assertEqual(["official"], [pb.activity.id for pb in pbs])
+        self.assertAlmostEqual(240.0, pbs[0].pace_s_per_km)
+
+    def test_incomplete_official_pair_falls_back_to_measured(self):
+        results = race_results(
+            [
+                _race(id="a", date=D, distance_m=4200, duration_s=1000),
+            ],
+            official_by_activity([
+                _official("a", official_time_s=None),
+            ]),
+        )
+
+        self.assertFalse(results[0].official_used)
+        self.assertEqual(4200.0, results[0].distance_m)
+        self.assertEqual(1000.0, results[0].time_s)
+
+    def test_placements_come_from_the_official_row(self):
+        results = race_results(
+            [_race(id="a", date=D)],
+            official_by_activity([
+                _official(
+                    "a",
+                    place_total=12,
+                    participants_total=340,
+                    place_ageclass=3,
+                    participants_ageclass=54,
+                ),
+            ]),
+        )
+        result = results[0]
+
+        self.assertEqual(12, result.place_overall)
+        self.assertEqual(340, result.participants_overall)
+        self.assertEqual(3, result.place_ageclass)
+        self.assertEqual(54, result.participants_ageclass)
+
+    def test_place_format_handles_ordinals_and_unknown_fields(self):
+        self.assertEqual("1st", format_place(1))
+        self.assertEqual("2nd", format_place(2))
+        self.assertEqual("3rd/340", format_place(3, 340))
+        self.assertEqual("4th", format_place(4))
+        self.assertEqual("11th", format_place(11))
+        self.assertEqual("21st/500", format_place(21, 500))
+        self.assertEqual("22nd", format_place(22))
+        self.assertEqual("23rd", format_place(23))
+        self.assertEqual("-", format_place(None))
+        self.assertEqual("-", format_place(0))
+
+
 class RiegelLineTests(unittest.TestCase):
 
     def _results(self):
@@ -523,6 +639,110 @@ class RaceReportTests(unittest.TestCase):
             text = fmt_clock(row.predicted_s)
             self.assertIn(f"| {row.label} | {text} |", report)
             self.assertIn(text, section.equivalent_html)
+
+    def test_official_pair_and_placements_in_the_report(self):
+        source = FakeSource(
+            [
+                _race(
+                    id="a",
+                    date=D,
+                    name="Spring 5k",
+                    distance_m=4200,
+                    duration_s=1000,
+                )
+            ],
+            race_results=[
+                _official(
+                    "a",
+                    official_distance_m=5000.0,
+                    official_time_s=1200.0,
+                    place_total=12,
+                    participants_total=340,
+                    place_ageclass=3,
+                    participants_ageclass=54,
+                )
+            ],
+        )
+
+        report = races_report(source, today=D)
+
+        self.assertIn("| 12th/340 | 3rd/54 |", report)
+        self.assertIn("| 5.00 km | 20:00 |", report)
+        self.assertIn("Official distance and time replace", report)
+        self.assertIn("| 5k |", report)
+
+    def test_dashboard_performance_shows_official_pair_and_placements(self):
+        from hobbyjogging_report.dashboard.performance import (
+            build_performance_section,
+        )
+
+        source = FakeSource(
+            [
+                _race(
+                    id="a",
+                    date=D,
+                    name="Spring 5k",
+                    distance_m=4200,
+                    duration_s=1000,
+                )
+            ],
+            race_results=[
+                _official(
+                    "a",
+                    official_distance_m=5000.0,
+                    official_time_s=1200.0,
+                    place_total=12,
+                    participants_total=340,
+                    place_ageclass=3,
+                    participants_ageclass=54,
+                )
+            ],
+        )
+
+        section = build_performance_section(source, today=D)
+
+        self.assertIn("12th/340", section.results_html)
+        self.assertIn("3rd/54", section.results_html)
+        self.assertIn("5.00 km", section.results_html)
+        self.assertIn("20:00", section.pbs_html)
+        self.assertIn("Official distance and time replace", section.results_html)
+
+    def test_race_report_header_uses_official_result(self):
+        source = FakeSource(
+            [
+                _race(
+                    id="a",
+                    date=D,
+                    name="Spring 5k",
+                    distance_m=4200,
+                    duration_s=1000,
+                )
+            ],
+            race_results=[
+                _official(
+                    "a",
+                    official_distance_m=5000.0,
+                    official_time_s=1200.0,
+                    place_total=12,
+                    participants_total=340,
+                    place_ageclass=3,
+                    participants_ageclass=54,
+                )
+            ],
+        )
+
+        report = race_report("a", source, today=D)
+
+        self.assertIn(
+            "- Time: 20:00 (official; measured 16:40)",
+            report,
+        )
+        self.assertIn(
+            "- Distance: 5.00 km (official; measured 4.20 km)",
+            report,
+        )
+        self.assertIn("- Place: 12th/340 overall", report)
+        self.assertIn("- Age group: 3rd/54", report)
 
     def test_raw_bucket_pb_is_labelled(self):
         source = FakeSource(

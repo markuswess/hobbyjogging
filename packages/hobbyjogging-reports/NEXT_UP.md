@@ -1,13 +1,24 @@
 # Next up: reports package
 
-Updated 2026-11-17.
+Updated 2026-11-18.
 
-Current focus: routes and wellness extras are now reports-ready; max HR and
-elevation still need core exposure, 10 is parked, 12 is behind the lab gate,
-13 is the last CLI-parity follow-up, 14 is an open idea, and 15 is the
-Runalyze handoff.
+Current focus: the Runalyze race pair landed; max HR and elevation still need
+core exposure, 10 is parked, 12 is behind the lab gate, 13 is the last
+CLI-parity follow-up, 14 is an open idea, and 15 is the VO2max series blocked
+on the import payload.
 
 ## Done
+
+- **Runalyze official race pair.** `race_results()` now takes the official
+  results keyed by activity id and ranks on the official distance/time when
+  both exist, falling back to the measured activity when the pair is
+  incomplete. Bucket, PB qualification and time, the PB progressions, the
+  Riegel fit and the equivalent times all use the same effective values, so
+  they agree with the threshold chart that already preferred them. The
+  Performance tab and the `races` report add Place and AG columns
+  (`3rd/340`, participants only when known); the race-day report shows the
+  official pair (measured in parentheses when they differ) and the placement
+  lines. The demo's last three races carry placements.
 
 - **Static dashboard.** `dashboard.sh` writes a self-contained site with an
   overview (7/42/182-day hard/total EWMAs, running volume by intensity group,
@@ -21,11 +32,12 @@ Older work (imports, charts, tabs, review queue) lives in `git log`;
 this list keeps the recent decisions only.
 
 - **Standard-distance PBs.** `personal_bests()` only accepts a race within
-  2% of the standard distance for 5k/10k/HM/M, so a 4.2 km race no longer
-  wins the 5k PB; Trail and Other still use the fastest raw time. The PB
-  tables show the distance, and the Riegel `PB` column uses the same
-  qualified PB. Official race results are stored now (`race_results`, schema
-  v16); preferring the official pair is item 15.
+  2% of the standard distance for 5k/10k/HM/M, so a short measured course no
+  longer wins the 5k PB unless its official distance is 5k; Trail and Other
+  still use the fastest raw time. The PB tables show the distance, and the
+  Riegel `PB` column uses the same qualified PB. The official race pair
+  (`race_results`, schema v16) now supplies the distance and time for the
+  bucket, PB and fit, with the measured activity as the fallback.
 - **Race report filters.** `races` accepts `--bucket 5k|10k|HM|M|Trail|Other`,
   `--year YYYY` (or `--from`/`--to`) and `--limit N`. Bucket and date
   filters scope the results, PB and Riegel tables; a date filter also scopes
@@ -536,26 +548,20 @@ the threshold trend landed here.
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
 
-15. **Runalyze data in the reports** (handed over by the import package).
-    Phases 1–5 landed and are applied to the real DB, so the data is there.
-    - **Gear coverage needs no work.** The `equipment` report's coverage table
-      already reads the new links and now runs into 2026 (2023: 247 of 357,
-      2024: 328 of 438, 2025: 446 of 473, 2026: 366 of 387 with gear). 2022
-      is empty because no source has gear for it — the sheet ends in 2021 and
-      Runalyze tracks gear from 2023. The two pre-2023 `Lunge C-Dur` shoes
-      (rot, schwarz) resolve onto their sheet rows, so the table no longer
-      lists a Runalyze duplicate.
-    - **A second VO2max owner.** `vo2max_runalyze` holds 843 values, all
-      2019–2022 (mean −2.1 against Garmin on the 829 activities that carry
-      both), and `vo2max_points` ignores them by design. Deciding where they
-      belong is the work: a labeled series on the VO2max chart, not a switch
-      to `Activity.vo2max`, which falls back Garmin → Runalyze and would
-      blend the two without saying so.
-    - **The official race pair.** 37 `race_results` rows (2019–2026, 33 with
-      a placement, 21 officially measured). `race_pace_points` and the
-      threshold estimate already use the official distance and time;
-      `personal_bests()` and the race tables still use the measured activity,
-      and no report shows placement or participant counts.
+15. **Runalyze VO2max second owner** (blocked on the import payload).
+    The race pair and the gear coverage landed; this item is now only the
+    second VO2max owner.
+    - `vo2max_runalyze` holds 843 values (2019-01-22 → 2022-06-22, mean −2.1
+      against Garmin on the 829 activities that carry both). The early ceiling
+      is not "Runalyze has no estimate from 2023": the activity-detail API
+      returns `hr_avg`, `vo2max`, `trimp` and `fit_vo2max_estimate` as null
+      for every Enduro activity (2022→), while the web shows the effective
+      estimate and `efficiency_index` is populated. The import package's
+      *Runalyze effective VO2max payload gap* item owns the investigation.
+    - When the import supplies 2023+ values, add a labeled Runalyze series to
+      `vo2max` and `compare-vo2max` (open muted markers, no EWMA, no blend
+      with `vo2max_garmin`). Computing an effective estimate ourselves is a
+      lab candidate (`HR/economy-based VO2max`), not this item.
 
 ## Tests and docs
 
@@ -567,6 +573,9 @@ Covered now:
 - zone EWMA points past the requested end are marked projected;
 - PB selection per distance bucket (tolerance and short-course rejection)
   and the race-day report;
+- the official race pair: bucket, PB and fit on the official distance/time,
+  the measured fallback when only one half exists, placement ordinals and
+  field sizes, and the Place/AG columns in the report and Performance tab;
 - the Docs page render (README content present, nav marks Docs active);
 - the race chart line passes through the reference race and matches the
   equivalent-time table at every standard distance, and the CLI `races`

@@ -232,16 +232,27 @@ def _write_thresholds(writer, start: date, today: date) -> None:
 
 
 def _write_race_results(writer, activities: list[dict]) -> None:
-    """Give the latest demo races an official distance and time."""
+    """Give the latest demo races an official result and placement."""
     races = [
         activity
         for activity in activities
         if "race" in activity["methods"]
     ]
     races.sort(key=lambda activity: activity["day"])
+    placements = (
+        (12, 340, 3, 54),
+        (8, None, 4, 87),
+        (21, 512, None, None),
+    )
 
-    for activity in races[-3:]:
+    for activity, placement in zip(races[-3:], placements):
         values = activity["values"]
+        (
+            place_total,
+            participants_total,
+            place_ageclass,
+            participants_ageclass,
+        ) = placement
         writer.upsert_race_result(
             activity["id"],
             source="demo",
@@ -249,6 +260,10 @@ def _write_race_results(writer, activities: list[dict]) -> None:
             official_distance_m=round(values["distance_m"], 1),
             official_time_s=round(values["duration_s"]),
             officially_measured=True,
+            place_total=place_total,
+            participants_total=participants_total,
+            place_ageclass=place_ageclass,
+            participants_ageclass=participants_ageclass,
             status="completed",
         )
 

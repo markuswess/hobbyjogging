@@ -2322,8 +2322,8 @@ def plot_pb_progressions(
         for step in progression.steps
         if (
             pace := pace_s_per_km(
-                step.activity.duration_s,
-                step.activity.distance_m,
+                step.time_s,
+                step.distance_m,
             )
         )
         is not None
@@ -2334,8 +2334,8 @@ def plot_pb_progressions(
         for step in progression.others
         if (
             pace := pace_s_per_km(
-                step.activity.duration_s,
-                step.activity.distance_m,
+                step.time_s,
+                step.distance_m,
             )
         )
         is not None
@@ -2366,8 +2366,8 @@ def plot_pb_progressions(
                 },
                 text=[
                     f"{step.activity.date} {step.activity.name or bucket}"
-                    f"<br>{step.activity.distance_m / 1000:.2f} km, "
-                    f"{fmt_clock(step.activity.duration_s)}"
+                    f"<br>{step.distance_m / 1000:.2f} km, "
+                    f"{fmt_clock(step.time_s)}"
                     f" · {format_pace(pace)}/km"
                     for step, pace, bucket in visible
                 ],
@@ -2404,8 +2404,8 @@ def plot_pb_progressions(
         color = PB_COLORS[progression.bucket]
         step_paces = [
             pace_s_per_km(
-                step.activity.duration_s,
-                step.activity.distance_m,
+                step.time_s,
+                step.distance_m,
             )
             for step in steps
         ]
@@ -2421,8 +2421,8 @@ def plot_pb_progressions(
                     (
                         f"{step.activity.date} "
                         f"{step.activity.name or progression.bucket}"
-                        f"<br>{step.activity.distance_m / 1000:.2f} km, "
-                        f"{fmt_clock(step.activity.duration_s)}"
+                        f"<br>{step.distance_m / 1000:.2f} km, "
+                        f"{fmt_clock(step.time_s)}"
                         f" · {format_pace(pace)}/km"
                     )
                     for step, pace in zip(steps, step_paces)
@@ -2489,8 +2489,8 @@ def plot_races(
         years = [point.activity.date.year for point in points]
         figure.add_trace(
             go.Scatter(
-                x=[point.activity.distance_m / 1000 for point in points],
-                y=[point.activity.duration_s / 60 for point in points],
+                x=[point.distance_m / 1000 for point in points],
+                y=[point.time_s / 60 for point in points],
                 mode="markers",
                 name="races",
                 marker={
@@ -2507,8 +2507,8 @@ def plot_races(
                 text=[
                     f"{point.activity.date} "
                     f"{point.activity.name or point.bucket}"
-                    f"<br>{point.activity.distance_m / 1000:.2f} km, "
-                    f"{fmt_clock(point.activity.duration_s)}"
+                    f"<br>{point.distance_m / 1000:.2f} km, "
+                    f"{fmt_clock(point.time_s)}"
                     for point in points
                 ],
                 hoverinfo="text",
@@ -2517,8 +2517,8 @@ def plot_races(
 
     if fit is not None and points:
         reference = riegel_reference(results)
-        low = min(point.activity.distance_m for point in points)
-        high = max(point.activity.distance_m for point in points)
+        low = min(point.distance_m for point in points)
+        high = max(point.distance_m for point in points)
 
         # One line: the one the equivalent-time table uses, anchored on the
         # reference race rather than a free fit that can miss every point.
@@ -2539,8 +2539,8 @@ def plot_races(
             )
             figure.add_trace(
                 go.Scatter(
-                    x=[race.distance_m / 1000],
-                    y=[race.duration_s / 60],
+                    x=[reference.distance_m / 1000],
+                    y=[reference.time_s / 60],
                     mode="markers",
                     name="reference race",
                     marker={
@@ -2550,8 +2550,8 @@ def plot_races(
                     },
                     text=[
                         f"{race.date} {race.name or reference.bucket}"
-                        f"<br>{race.distance_m / 1000:.2f} km, "
-                        f"{fmt_clock(race.duration_s)}"
+                        f"<br>{reference.distance_m / 1000:.2f} km, "
+                        f"{fmt_clock(reference.time_s)}"
                     ],
                     hoverinfo="text",
                 )

@@ -292,6 +292,26 @@ def format_pace(seconds):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
+def ordinal(value: int) -> str:
+    """Format an integer with its English ordinal suffix."""
+    if 10 <= value % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+
+    return f"{value}{suffix}"
+
+
+def format_place(place: int | None, participants: int | None = None) -> str:
+    """Placement as ``3rd`` or ``3rd/340``; a dash when unknown."""
+    if not place:
+        return "-"
+
+    label = ordinal(place)
+
+    return f"{label}/{participants}" if participants else label
+
+
 def work_summary_for_activity(
     activity: Activity,
     intervals: list[Interval],
