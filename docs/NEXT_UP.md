@@ -521,12 +521,20 @@ editing, analysis and lab work; phase 3 is the dormant future.
       disagree on distance by 8–15 %; 3 have no duration twin (one is a
       41.7 km ride with no plausible candidate, so genuinely missing).
       **Decision (Nov 2026)**: auto-match only the perfect twins — same day,
-      duration within 2 s, distance within 10 m, exactly one candidate. The 4
-      exact rows auto-link; every other unmatched row gets an `ambiguous_match`
-      review item with its same-day candidates. Runalyze never creates an
-      activity automatically; the 12 duration twins and 3 no-twin rows are
-      reviewed, and creation is a separate manual decision. The short-activity
-      floor is fixed (a 142 s cooldown now links). Evidence:
+      duration within 2 s, distance within 10 m, exactly one candidate. Every
+      other unmatched row gets an `ambiguous_match` review item with its
+      same-day candidates, and Runalyze never creates an activity
+      automatically; creation stays a separate manual decision. **Preference
+      (Nov 2026)**: a sheet-only row that mirrors a device (FIT/Intervals) row
+      on the same day is a duplicate, not a second session — 38 of the 1,272
+      sheet-only rows are, so the check stays narrow — and a perfect twin on
+      such a day does not auto-link. It opens a review item listing both rows
+      and suggesting the device one, because enriching the duplicate would put
+      tags on the row that should be retired. That leaves the three remaining
+      twins (`2019-05-08`, `2019-06-03`, `2019-11-29`) in review, so a
+      regenerated run expects **0 links and 19 items**; the stale 20-row file
+      reads 1 + 19 because the 142 s cooldown is already linked and its twin
+      is named. Evidence:
       `~/projects/laufen_private/data/runalyze-unmatched.json`.
     - **Not scheduled**: Runalyze weather (0 rows; the payload carries
       humidity, wind, pressure, UV, clouds and condition), routes (0; the

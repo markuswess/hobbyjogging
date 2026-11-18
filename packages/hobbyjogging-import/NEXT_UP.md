@@ -291,17 +291,24 @@ on.
   proposals and triage actions start after the Runalyze import settles.
 - **Runalyze unmatched rows** (root item 12). **Decision**: auto-match only
   the perfect twins — same day, duration within 2 s, distance within 10 m,
-  exactly one candidate. The 4 exact rows auto-link; the 12 duration twins and
-  3 no-twin rows get an `ambiguous_match` review item with their same-day
-  candidates. Runalyze never creates an activity automatically; creation is a
-  separate manual decision. Implement candidate ranking, store the detail for
+  exactly one candidate. **Preference**: a perfect twin that is a sheet-only
+  duplicate of a device (FIT/Intervals) row does not auto-link; it becomes a
+  review item that suggests the device row. Every other unmatched row gets an
+  `ambiguous_match` item with its same-day candidates, and Runalyze never
+  creates an activity. Implement candidate ranking, store the detail for
   unmatched rows, apply its note/tags when a review resolves, regenerate the
-  JSON (expect 4 links + 15 items), and test exact match, multiple exact →
-  review, distance mismatch → review, no temporal match → review, no
-  creation and idempotency. Evidence:
-  `~/projects/laufen_private/data/runalyze-unmatched.json`; the saved file
-  still lists the now-matched 142 s cooldown until the next enrich run
-  regenerates it, so the effective count is 19.
+  JSON (expect 0 links + 19 items), and test: exact match; exact twin that is
+  a sheet duplicate → review; several exact → review; distance mismatch →
+  review; no temporal match → review; no creation; idempotency. Evidence:
+  `~/projects/laufen_private/data/runalyze-unmatched.json` — stale, it still
+  lists the 142 s cooldown as one of 20 rows, so the effective set is 19.
+- **Sheet duplicates (38).** 1,272 activities are sheet-only, and 38 of them
+  mirror a device (FIT/Intervals) row on the same day with the duration within
+  5 %, so those sessions count twice in the reports. The sheet row often holds
+  the only description (`mit Vicky`, `Oberwolfach am Ende gas`). Fixing it
+  rewrites existing rows, so it belongs in a maintenance task — blank-fill the
+  description from the sheet row, then exclude the sheet row — not an import
+  write.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) is on the
 reports list, and the unmatched rows are the only import leftover.
