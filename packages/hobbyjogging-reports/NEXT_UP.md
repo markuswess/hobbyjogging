@@ -9,6 +9,12 @@ VO2max series ready now that the import filled the column.
 
 ## Done
 
+- **Detail-page links.** `race/*.html` was rendered without the `../` root, so
+  its nav, Performance back-link and health-banner link pointed inside
+  `/race/`. The race page now uses the same root as the activity and event
+  pages, and the dashboard build test walks every generated `href`/`src` and
+  fails on a missing target.
+
 - **One session renderer.** The CLI session report, the dashboard activity
   page and the race page now share `session_activity_lines` /
   `SessionRenderContext`. The dashboard used to assemble the renderer

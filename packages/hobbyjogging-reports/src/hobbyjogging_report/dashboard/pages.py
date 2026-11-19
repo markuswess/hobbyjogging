@@ -656,7 +656,7 @@ def race_page(
 ) -> str:
     """Render one race-day report."""
     body = (
-        f'<p>{link("performance.html", "← Performance")}</p>'
+        f'<p>{link("../performance.html", "← Performance")}</p>'
         + card(None, f'<div class="report">{report_html}</div>')
     )
 
@@ -666,10 +666,12 @@ def race_page(
         generated_at=generated_at,
         health_html=banner(
             health,
+            root="../",
             include_review=include_review,
         ),
         demo_label=demo_label,
         active="performance",
+        root="../",
     )
 
 

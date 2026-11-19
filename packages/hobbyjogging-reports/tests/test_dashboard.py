@@ -2,8 +2,10 @@ import os
 import tempfile
 import unittest
 from datetime import date, timedelta
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import unquote, urlparse
 
 from hobbyjogging_core.model import (
     ActivitySocial,
@@ -239,7 +241,40 @@ def _source():
     )
 
 
+class _LinkCollector(HTMLParser):
+
+    def __init__(self):
+        super().__init__()
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+
+        for key in ("href", "src"):
+            value = values.get(key)
+
+            if value:
+                self.links.append(value)
+
+
 class DashboardBuildTests(unittest.TestCase):
+
+    def _assert_no_dead_links(self, target: Path) -> None:
+        for page in target.rglob("*.html"):
+            collector = _LinkCollector()
+            collector.feed(page.read_text(encoding="utf-8"))
+
+            for value in collector.links:
+                parsed = urlparse(value)
+
+                if parsed.scheme or parsed.netloc or value.startswith("#"):
+                    continue
+
+                link = page.parent / unquote(parsed.path)
+                self.assertTrue(
+                    link.exists(),
+                    f"{page.relative_to(target)} -> {value}",
+                )
 
     def test_builds_pages_and_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -507,6 +542,10 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Pace zones", race)
             self.assertIn("Autumn race", race)
             self.assertIn("https://www.strava.com/activities/2", race)
+            self.assertIn('href="../performance.html"', race)
+            self.assertIn('href="../index.html"', race)
+
+            self._assert_no_dead_links(target)
 
             gear = (target / "gear.html").read_text()
             self.assertIn(">Gear</a>", gear)
