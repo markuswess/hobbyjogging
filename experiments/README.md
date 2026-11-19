@@ -76,6 +76,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | parked | `threshold_pace.py` | 2026-11-17 |
 | Race-derived threshold | Compute the 1-hour all-out pace from race results and compare it with the threshold setting and work reps. | parked | `race_threshold.py` | 2026-11-19 |
+| Threshold reference comparison | Which reference (Daniels T, current-form 60m, %10k, %5k, critical speed) best matches the setting, the subT-short work reps and race form? | parked | `threshold_references.py` | 2026-11-19 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (37 official results plus 28 race logs; lab verdict only for now) | parked | `race_fitness.py` | 2026-11-19 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (37 official results; still thin for a two-timescale fit) | candidate | — | 2026-11-19 |
@@ -233,15 +234,44 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   exponent is fitted on prior races, but the 60-minute level is anchored to the
   mean of the best two of the last five prior road races (latest-10k anchor as
   a comparison). Setting − current-form 60m: mean −2.6 / median −3.8 s/km;
-  setting − latest-10k 60m: −7.2 / −6.6. Latest: setting 3:26, current-form
-  60m 3:34.2, latest-10k 3:35.5. In 2022 the setting was even slower than
+  setting − latest-10k 60m: −7.2 / −6.6. Latest snapshot: setting 3:26,
+  current-form 60m 3:31.8 (3:34.2 over all races including the two after the
+  snapshot), latest-10k 3:35.5. In 2022 the setting was even slower than
   current form (3:42 vs 3:37.7); it matched in mid-2025 and has since drifted
-  ~8 s/km faster. The setting is a threshold-ish ceiling, not a gross
-  mismatch; the free historical fit was the misleading part. No data change;
-  a reports chart could show the current-form 60m line beside the setting.
-  Caveats: 1-hour threshold is approximate, official road races only, and the
-  best-two anchor is a small-sample level estimate. Evidence:
-  `experiments/race_threshold.py`; plot `race-threshold.png`.
+  ~6 s/km faster at the latest snapshot. The setting is a threshold-ish
+  ceiling, not a gross mismatch; the free historical fit was the misleading
+  part. No data change; a reports chart could show the current-form 60m line
+  beside the setting. Caveats: 1-hour threshold is approximate, official road
+  races only, and the best-two anchor is a small-sample level estimate.
+  Evidence: `experiments/race_threshold.py`; plot `race-threshold.png`.
+- **Threshold reference comparison** — tested on 34 official road races, 50
+  subT-short interval sessions and 13 run snapshots with ≥6 prior races. Every
+  candidate is scored against the stored setting, the subT-short work reps and
+  the race-implied 60m (median of the last 365 days of races converted on the
+  fitted Riegel exponent). Mean absolute difference vs setting / subT / race
+  in s/km: Daniels T 4.0 / 3.2 / 3.6, current-form 60m 3.7 / 3.1 / 4.1, %10k
+  (0.95) 8.8 / 4.9 / 2.5, %5k (0.92) 9.8 / 6.8 / 4.3, critical speed
+  12.0 / 11.2 / 6.2; equal-weight scores 3.6, 3.6, 5.4, 7.0, 9.8.
+  Latest levels: setting 3:26, Daniels T 3:32, 60m 3:32, subT-short 3:29,
+  race-implied 60m 3:37, %10k 3:37, %5k 3:35, CS 3:47. Relative to the latest
+  10k race pace the setting is 1.011, Daniels T / 60m / subT 1.026–1.028, the
+  race-implied 60m 1.048, and the textbook 0.95 factor 1.053.
+  Daniels T and current-form 60m are effectively tied and clearly better than
+  %10k, %5k and CS; Daniels T is closer to race form, 60m slightly closer to
+  the setting and work reps. The setting is only 1.1% slower than 10k, so it
+  is a ceiling; the race-implied 1-hour pace is ~4.8% slower. The subT-short
+  reps sit at HR 159 vs LTHR 174 (short reps do not reach steady state), so
+  they are an executed-pace benchmark, not a measured LT2, and their close
+  match is partly by prescription. The percentage references are noisy
+  because 10k/5k races are sparse and a single fresh race can be slow or
+  stale; the %10k race match is also partly built in, because both it and the
+  race-implied 60m encode a ~5% 10k-to-60m conversion. If a percentage is
+  used, state the share: 0.95 matches the race model, while the setting/work
+  reps imply ~0.97. No data change. Reports handoff candidate: draw the
+  Daniels T line (or the anchored 60m line) beside the setting and label the
+  setting as a ceiling. Evidence:
+  `experiments/threshold_references.py`; plots `threshold-references.png`,
+  `threshold-reference-errors.png`.
 - **Race-derived fitness bundle** — tested on 65 race logs (37 result rows +  28 sheet/race-log rows), with elevation classification. After excluding 3
   trail, 1 ultra, 1 relay and 8 hill races, 52 remain: CS 3.85 m/s
   (4:20/km), D′ 1,635 m, Riegel b 1.099, both R² 0.99; leave-one-out median
