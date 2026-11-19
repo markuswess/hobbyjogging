@@ -13,6 +13,7 @@ from hobbyjogging_core.model import Interval
 from hobbyjogging_core.sports import canonical_sport
 
 from .client import IntervalsApi, IntervalsClient
+from .devices import resolve_provider_device
 from .event_zones import current_zone_times, event_zone_data
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
 from .quality import (
@@ -403,12 +404,16 @@ class IntervalsImporter:
             return None
 
         values = _activity_values(raw)
-        device_id = _device_id(raw.get("device_name"))
-        if device_id is not None:
-            self.writer.upsert_device(
-                device_id,
-                name=str(raw.get("device_name") or "").strip(),
+        device_id = (
+            None
+            if _fit_backed(self.connection, activity_id)
+            else resolve_provider_device(
+                self.connection,
+                self.writer,
+                raw.get("device_name"),
             )
+        )
+        if device_id is not None:
             values["device_id"] = device_id
         conflicts = self.writer.upsert_activity(
             activity_id,
@@ -753,21 +758,24 @@ def _event_changed(
     )
 
 
-def _device_id(device_name: object) -> str | None:
-    """A stable id for an Intervals-only device, or None when it is unknown."""
-    text = str(device_name or "").strip().lower()
+def _fit_backed(connection: sqlite3.Connection, activity_id: str) -> bool:
+    """True when FIT already supplies this activity's recorder.
 
-    if not text:
-        return None
-
-    slug = "".join(
-        character if character.isalnum() else "-"
-        for character in text
-    ).strip("-")
-    while "--" in slug:
-        slug = slug.replace("--", "-")
-
-    return f"intervals:{slug}" if slug else None
+    A provider name fills ``device_id`` only when the activity has no FIT
+    source; otherwise the FIT serial is the identity and a provider row would
+    be a duplicate nobody references.
+    """
+    row = connection.execute(
+        """
+        SELECT 1
+        FROM activity_sources als
+        JOIN source_records sr ON sr.id = als.source_record_id
+        WHERE als.activity_id = ? AND sr.source = 'fit'
+        LIMIT 1
+        """,
+        (activity_id,),
+    ).fetchone()
+    return row is not None
 
 
 def _activity_values(raw: dict) -> dict[str, object]:

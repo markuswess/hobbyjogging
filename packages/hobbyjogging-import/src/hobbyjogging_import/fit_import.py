@@ -621,8 +621,9 @@ def device_id_from(
 ) -> str | None:
     """The recorder's stable id, or None for a non-device upload.
 
-    Garmin Connect web uploads carry ``product='connect'`` and no serial; they
-    are uploads, not devices.
+    Garmin Connect web uploads carry ``product='connect'``; a header without a
+    serial (a shared or uploaded file) is not a device either, because the
+    serial is what identifies one recorder.
     """
     manufacturer = str(manufacturer or "").strip()
     product = str(product or "").strip()
@@ -631,6 +632,8 @@ def device_id_from(
         return None
 
     serial = str(serial_number or "").strip()
+    if not serial:
+        return None
     return f"fit:{manufacturer}:{product}:{serial}"
 
 

@@ -5,6 +5,17 @@ on.
 
 ## Done
 
+- **Provider device identity.** An Intervals `device_name` that names an app
+  (`Runalyze`, `Garmin Connect`, `Strava`, `intervals.icu`; case and spacing
+  insensitive) writes no device row and no `device_id`. A real name still fills
+  the fallback `intervals:<slug>` row, whose `devices.name` is collapsed,
+  title-cased and set once. A name that matches exactly one FIT device of its
+  model (manufacturer plus product, separators ignored, serial present) claims
+  that device instead of creating a duplicate row; two devices of the same
+  model keep the provider id. `fit_import.device_id_from` now requires a
+  serial, so a serial-less upload is not a device. Runalyze payloads also carry
+  `device_name`, but nothing maps it to `device_id` today; a mapping would have
+  to use the same resolver.
 - **Source policy and settings view.** `sources.toml` sets enabled, create
   (`create | review | ignore` for Strava and Runalyze) and the text targets;
   `sources` prints the effective policy and `settings` renders the rules and
@@ -338,6 +349,15 @@ on.
   rewrites existing rows, so it belongs in a maintenance task — blank-fill the
   description from the sheet row, then exclude the sheet row — not an import
   write.
+- **`device_identity_v1`** (root item 41, maintenance). The import no longer
+  creates a provider row, but the stored ones remain: two activities point at
+  `intervals:garmin-enduro` (they should carry the Enduro serial) and one at
+  `intervals:runalyze` (it should be NULL), and both provider rows should be
+  soft-excluded, which needs `devices.excluded_at` (v24). The claim is a
+  write-time rule: `derive_value` still maps a payload's `device_name` to the
+  provider id, so until the derive check resolves the claim against the devices
+  table, `verify_canonical` reports drift on a claimed activity and
+  `recompute_canonical` would revert it.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
 pair done and the VO2max series ready (`vo2max_runalyze` now holds 2,225

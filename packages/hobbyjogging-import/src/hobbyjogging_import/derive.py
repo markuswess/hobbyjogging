@@ -14,9 +14,9 @@ from datetime import datetime, timezone
 
 from hobbyjogging_core.sports import canonical_sport
 
+from .devices import provider_device_id
 from .fit_import import device_id_from
 from .intervals import (
-    _device_id as _intervals_device_id,
     _fraction,
     _int,
     _tz_offset_min,
@@ -107,7 +107,7 @@ def _offset_minutes(payload: dict, value: object) -> int | None:
 
 
 def _intervals_device(payload: dict, value: object) -> str | None:
-    return _intervals_device_id(value)
+    return provider_device_id(value)
 
 
 def _fit_sub_sport(payload: dict, value: object) -> str | None:

@@ -770,6 +770,45 @@ class RunalyzeEnrichTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.enricher.enrich(ids=["201"], wait=True)
 
+    def test_the_create_path_makes_no_device_from_an_app_name(self):
+        detail = {
+            "id": 900,
+            "date_time": "2026-05-01T07:00:00+02:00",
+            "duration": 1800,
+            "distance": 5.0,
+            "sport": {"name": "Run"},
+            "note": "",
+            "tags": [],
+            "device_name": " Strava",
+        }
+        collection = [
+            {
+                "id": 900,
+                "date_time": "2026-05-01T07:00:00",
+                "duration": 1800,
+                "distance": 5.0,
+            }
+        ]
+        enricher = RunalyzeEnricher(
+            self.conn,
+            client=FakeRunalyze(collection, {"900": detail}),
+            create="create",
+        )
+
+        summary = enricher.enrich()
+
+        self.assertEqual(1, summary.created)
+        self.assertEqual(
+            0,
+            self.conn.execute("SELECT COUNT(*) FROM devices").fetchone()[0],
+        )
+        row = self.conn.execute(
+            "SELECT device_id FROM activities "
+            "WHERE local_date = '2026-05-01'"
+        ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertIsNone(row["device_id"])
+
     def test_summary_format(self):
         summary = self.enricher.enrich(dry_run=True)
 
