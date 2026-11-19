@@ -29,8 +29,9 @@ Models
 - Riegel: log(time) = a + b*log(distance).
 - Level: residual from the global Riegel fit; higher = faster.
 - Leave-one-out prediction error for both models.
-- Equivalent 5k/10k/HM/M times anchored to the most recent road 10k, as the
-  dashboard does, compared with the free-global and latest-five methods.
+- Equivalent 5k/10k/HM/M times anchored to the most recent road 10k, with the
+  exponent fitted over all race activities as the dashboard does, compared with
+  the free-global filtered fit and latest-five methods.
 
 Deliverable
 -----------
@@ -690,16 +691,15 @@ def main() -> None:
             math.log(row["time_min"]) - b * math.log(row["km"])
             for row in recent
         )
-        result_rows = [
-            row for row in rows if row["tier"] == "result"
-        ]
-        result_fit = fit_riegel_rows(result_rows)
+        dashboard_fit = fit_riegel_rows(rows)
         reference = (
             latest_road_reference(rows, result_only=True)
             or latest_road_reference(rows)
         )
-        result_b = result_fit[0] if result_fit else None
-        anchored = (reference, result_b) if reference and result_b else None
+        dashboard_b = dashboard_fit[0] if dashboard_fit else None
+        anchored = (
+            (reference, dashboard_b) if reference and dashboard_b else None
+        )
 
         print("\ncurrent-form predictions (actual = latest race in bucket):")
         buckets = {
@@ -710,10 +710,10 @@ def main() -> None:
         }
         comparison = []
         errors = {
-            "free global": [],
+            "free global (filtered)": [],
             "latest five": [],
-            "anchored result b": [],
-            "anchored global b": [],
+            "anchored dashboard b": [],
+            "anchored filtered b": [],
         }
 
         for label, (low, high) in buckets.items():
@@ -721,31 +721,31 @@ def main() -> None:
             actual = latest_in_bucket(usable, low, high)
             free_global = math.exp(a + b * math.log(distance))
             latest_five = math.exp(current_a + b * math.log(distance))
-            anchored_result = (
-                anchored_time(reference, result_b, distance)
-                if reference and result_b
+            anchored_dashboard = (
+                anchored_time(reference, dashboard_b, distance)
+                if reference and dashboard_b
                 else None
             )
-            anchored_global = (
+            anchored_filtered = (
                 anchored_time(reference, b, distance)
                 if reference
                 else None
             )
 
             if actual is not None:
-                errors["free global"].append(
+                errors["free global (filtered)"].append(
                     abs(free_global - actual["time_min"])
                 )
                 errors["latest five"].append(
                     abs(latest_five - actual["time_min"])
                 )
-                if anchored_result is not None:
-                    errors["anchored result b"].append(
-                        abs(anchored_result - actual["time_min"])
+                if anchored_dashboard is not None:
+                    errors["anchored dashboard b"].append(
+                        abs(anchored_dashboard - actual["time_min"])
                     )
-                if anchored_global is not None:
-                    errors["anchored global b"].append(
-                        abs(anchored_global - actual["time_min"])
+                if anchored_filtered is not None:
+                    errors["anchored filtered b"].append(
+                        abs(anchored_filtered - actual["time_min"])
                     )
 
             comparison.append(
@@ -754,11 +754,11 @@ def main() -> None:
                     format_time(actual["time_min"]) if actual else "-",
                     format_time(free_global),
                     format_time(latest_five),
-                    format_time(anchored_result)
-                    if anchored_result is not None
+                    format_time(anchored_dashboard)
+                    if anchored_dashboard is not None
                     else "-",
-                    format_time(anchored_global)
-                    if anchored_global is not None
+                    format_time(anchored_filtered)
+                    if anchored_filtered is not None
                     else "-",
                 )
             )
@@ -768,19 +768,21 @@ def main() -> None:
             headers=[
                 "distance",
                 "latest actual",
-                "free global",
+                "free global (filtered)",
                 "latest five",
-                "anchored result b",
-                "anchored global b",
+                "anchored dashboard b",
+                "anchored filtered b",
             ],
         )
-        if reference and result_b:
+        if reference and dashboard_b:
             print(
                 f"anchored to {reference['date']} "
                 f"{reference['name'] or 'race'} "
                 f"({reference['km']:.2f} km, "
                 f"{format_time(reference['time_min'])}); "
-                f"result-row b={result_b:.3f}"
+                f"dashboard exponent b={dashboard_b:.4f} "
+                "over all race activities; filtered exponent "
+                f"b={b:.4f}"
             )
         table(
             [

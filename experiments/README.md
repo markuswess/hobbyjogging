@@ -166,13 +166,15 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   (4:20/km), D′ 1,635 m, Riegel b 1.099, both R² 0.99; leave-one-out median
   errors 1.2 min (3.2%) for Riegel and 2.2 min (5.6%) for CS. Result-row-only
   sensitivity gives CS 4.05 m/s and b 1.085, so the older race logs shift the
-  model modestly. Current-form equivalents anchored to the latest road 10k
-  (the dashboard method): 5k 16.1, 10k 34.4, HM 1:18.1, M 2:47.3. Against the
-  latest actual race in each bucket, the anchored method has **2.8 min mean /
-  0.9 min median error**, versus 4.1/1.8 for the latest-five level and 6.6/3.7
-  for the free global fit — the dashboard's anchoring is the correct
-  current-form method; the free global shape/CS stay descriptive.
-  VDOT vs Garmin: n=34, r=+0.73, median difference −1.1.
+  model modestly. Current-form equivalents use the dashboard method: the
+  exponent is fitted over **all 65 race activities** (b=1.0798) and the line is
+  anchored to the latest road 10k. That gives 5k 16.3, 10k 34.4, HM 1:17.0,
+  M 2:42.7. Against the latest actual race in each bucket it has **1.4 min mean
+  / 0.2 min median error**, versus 2.9/0.9 for the filtered exponent (b=1.099),
+  4.1/1.8 for the latest-five level and 6.6/3.7 for the free global fit. The
+  dashboard's all-race exponent plus anchoring is the correct current-form
+  method; the filtered shape/CS stay descriptive. VDOT vs Garmin: n=34,
+  r=+0.73, median difference −1.1.
   Coherent enough to be useful, but this is a **lab verdict only**: no card or
   report handoff. Caveats: generic older names, 11 unknown-elevation races,
   and elevation-based exclusions. Evidence: `experiments/race_fitness.py`.
