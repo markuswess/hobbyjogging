@@ -96,11 +96,17 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 ### Promoted notes
 - **HR/economy-based VO2max** — promoted 2026-11-19. Session-level effective
   estimate: `VO2 = 3.5 + 0.2·speed_m_min`, divided by `HR / max_HR`. On 498
-  steady runs the mean is 60.9 vs Garmin 61.5 and Runalyze 61.3; it tracks
-  Runalyze per-run at r=+0.90. Garmin is clearly smoothed: 36% of consecutive
-  runs change above 0.1 vs 98% for Runalyze, mean |Δ| 0.11 vs 3.50. A 90-day
-  mean of the estimate tracks Garmin at r=+0.83, RMSE 1.44 (42d r=+0.80,
-  RMSE 1.51). The HR-reserve variant overestimates (~73.5) and is rejected.
+  steady runs the mean is 60.9 vs Garmin 61.5 and Runalyze 61.3 (stored with
+  its 0.93 correction; the uncorrected mean is 65.9, so the estimate aligns
+  with the corrected value). Garmin smoothing is device-specific: FR645 changed
+  607 of 892 runs (mean |Δ| 0.449), Enduro 245 of 1,340 (0.067); Runalyze
+  changed 489 of 497 (3.50) because it uses all runs. Smoothed vs Garmin:
+  estimate 42d r=+0.80 / RMSE 1.51 and 90d +0.83 / 1.44; Runalyze 42d +0.75 /
+  1.79 and 90d +0.78 / 1.63. All-runs sensitivity (closer to Runalyze's
+  all-run input, but still raw pace): n=1,350, mean 60.4, r Runalyze +0.95,
+  42d r Garmin +0.90; steady-only is +0.90 / +0.80. Runalyze's GAP is not
+  reproduced, so hilly and interval runs are not like-for-like.
+  The HR-reserve variant overestimates (~73.5) and is rejected.
   Against Daniels race VDOT on 19 road races since 2024: race VDOT mean 61.5 /
   median 61.8; Garmin 62.5 / 62.2; Runalyze 66.8 / 66.3; the nearest-run
   estimate 61.5. VDOT − Garmin is −1.0 / −1.1, VDOT − Runalyze −5.3 / −4.9,
@@ -111,7 +117,8 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   42–90 day mean; it needs a max-HR source and the steady-run guard. Caveats:
   approximate ACSM economy, Garmin’s own smoothing, no streams, and the
   2026 level gap (estimate 61.7 vs Garmin 63.5). Evidence:
-  `experiments/vo2max_estimates.py`; plot `vo2max-race-validation.png`.
+  `experiments/vo2max_estimates.py`; plots `vo2max-estimates.png`,
+  `vo2max-estimate-scatter.png`, `vo2max-race-validation.png`.
 
 - **Efficiency line shape and confounders** — promoted 2026-11-17. The
   current line through resting HR beats free linear, quadratic, log and
