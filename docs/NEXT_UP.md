@@ -639,14 +639,15 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **API, deferred**: OAuth refresh token; app creation requires a Strava
       subscription in 2026; single-player reads are 100/15 min and 1,000/day.
       `suffer_score` is not `training_load`.
-17. **Inputs vs projections: the derive check and the manual input layer**
+17. **Inputs vs projections: the manual layer, derive check and rebuild**
     (core + import + maintenance; phase 2, before item 38). Principle 3 stays:
     ownership is owner-based with per-field ranked exceptions and a review item
     on disagreement — no global source order. The ownership pointer is an
     **input** (a recorded decision); the canonical row is a **cache** rebuilt
     from inputs: payloads, pointers, manual edits, links, exclusions and review
-    answers. The manual layer, the declared mapping and the derive check have
-    landed; the rebuild remains.
+    answers. The manual layer, the declared mapping, the derive check and the
+    rebuild have landed; item 34's overlay export and fresh-database proof
+    remain.
     - **Manual input layer (done Nov 2026, schema v23)**:
       `activity_manual_fields` holds one row per `(activity, field)` with
       either a `value_json` (a manual value) or an `owner_source` (a manual
@@ -667,11 +668,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
       diffs it against the stored value. On the real DB: 4,143 activities,
       68,001 owned fields, **0 drift, 0 dangling, 0 unmapped**. It is the gate
       before a rebuild; run `maintenance run verify_canonical`.
-    - **`recompute_canonical` (maintenance, dry-run first)**: the same
-      derivation, written back. It never re-decides ownership and never touches
-      links, exclusions, review answers, child tables or entity rows; manual
-      edits are applied last. A mapping change becomes a recompute, not a
-      re-import.
+    - **`recompute_canonical` (done Nov 2026)**: projects every owned field
+      from the manual value, owner patch or stored pointer and writes it back
+      through `project_activity_field`. On the real DB it is a no-op: 68,001
+      fields, 0 written, 0 dangling. It never re-decides ownership and never
+      touches links, exclusions, review answers, child tables or entity rows;
+      manual edits are applied last. A mapping change is now a recompute, not
+      a re-import.
     - **Documented**: ARCHITECTURE gains the inputs/projections paragraph; the
       pointer is described as a decision, not a derivation.
     - **Not doing**: a total priority order, a `redecide_field_owners` replay
@@ -680,8 +683,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Companion**: item 34 exports the overlay and proves the rebuild on a
       fresh database; item 38 consumes the mapping for `activity_metrics`;
       item 40 shows the mapping and the policy in the settings report.
-    - **Order**: manual layer → mapping → `verify_canonical` (all done); the
-      recompute can land with item 40's policy or with item 38.
+    - **Order**: manual layer → mapping → `verify_canonical` → rebuild (all
+      done). Item 34 and item 38 consume the result.
 
 20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
     priority). The payload carries `decoupling`, `efficiency_factor`,

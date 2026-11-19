@@ -787,6 +787,40 @@ class TrainingWriter:
             (activity_id, field_name, source),
         )
 
+    def project_activity_field(
+        self,
+        activity_id: str,
+        field_name: str,
+        value: object,
+        *,
+        update_snapshot: bool = True,
+    ) -> None:
+        """Write a derived value back to the canonical row.
+
+        Only the rebuild uses this: it keeps the stored owner and writes the
+        value that owner's payload derives. ``update_snapshot=False`` is for a
+        manual value, whose pointer snapshot belongs to the underlying source.
+        """
+        if field_name not in ACTIVITY_COLUMNS:
+            raise ValueError(f"unknown activity field: {field_name}")
+
+        self._require_editable_activity(activity_id)
+        self._write_activity_field(activity_id, field_name, value)
+
+        if update_snapshot:
+            self.connection.execute(
+                """
+                UPDATE activity_field_sources
+                SET value_json = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE activity_id = ? AND field_name = ?
+                """,
+                (
+                    json.dumps(value, default=str),
+                    activity_id,
+                    field_name,
+                ),
+            )
+
     def clear_manual_field(
         self,
         activity_id: str,

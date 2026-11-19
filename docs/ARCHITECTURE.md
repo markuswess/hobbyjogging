@@ -113,12 +113,14 @@ Principle 1 splits stored data into two kinds:
   `recompute_canonical`), classification (by its own recompute) and quality
   flags.
 
-`verify_canonical` diffs a derivation without writing; on the real DB every
-owned activity field (68,001 across 4,143 activities) matched its input.
-Ownership is an **input** (a recorded decision), not a projection: the first
-owner keeps a field, per-field ranked authority resolves the declared
-exceptions, and a meaningful disagreement becomes a review item. There is no
-global source order and no virtual read path.
+`recompute_canonical` rebuilds the projections from inputs without re-deciding
+ownership (a no-op on the current DB); `verify_canonical` diffs the same
+derivation without writing. On the real DB every owned activity field (68,001
+across 4,143 activities) matched its input. Ownership is an **input** (a
+recorded decision), not a projection: the first owner keeps a field, per-field
+ranked authority resolves the declared exceptions, and a meaningful
+disagreement becomes a review item. There is no global source order and no
+virtual read path.
 
 ## Topology
 

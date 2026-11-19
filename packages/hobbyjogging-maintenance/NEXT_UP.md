@@ -9,6 +9,10 @@ This file records what the package is still waiting on.
   compares it with the stored value. On the real DB: 4,143 activities, 68,001
   fields, **0 drift, 0 dangling, 0 unmapped**. Run it before trusting a
   rebuild.
+- **`recompute_canonical`.** Projects every owned activity field from its
+  manual value, owner patch or pointer and writes it back through
+  `project_activity_field`. On the real DB it is a no-op: 68,001 fields, 0
+  written, 0 dangling. Ownership is never re-decided.
 - **`race_links_current`.** Matches each race event to an activity on the same
   date and sport within 5% distance, writes `event_activity_links` and derives
   the `race` method under `race_link`. A non-excluded official `race_results`
