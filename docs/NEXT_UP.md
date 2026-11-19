@@ -971,10 +971,10 @@ reports item; 28 is the recurring cleanup.
       removing one credential skips that source with a warning and leaves the
       others working; the dashboard reflects the new metadata.
 
-45. **Readability baseline pass** (reports + tools; small item, before the
-    phase-2 code — item 44 and `init`/`doctor` — or in parallel). The codebase
-    is not bloated yet, but reports and import are two-thirds of it and two
-    files are doing too much. Measured 2026-11-19: reports 75 modules / 22.8k
+45. **Readability baseline pass** (reports + tools; small item, after
+    `init`/`doctor` and before the phase-3 UI). The codebase is not bloated
+    yet, but reports and import are two-thirds of it and two files are doing
+    too much. Measured 2026-11-19: reports 75 modules / 22.8k
     lines, import 41 / 16k, core 14 / 6.3k, maintenance 33 / 4.6k;
     `charts.py` 3,610 lines, `writer.py` 2,898, and
     `analysis/__init__` re-exports 154 names. This item is deletions and
