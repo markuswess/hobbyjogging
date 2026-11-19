@@ -29,7 +29,8 @@ Models
 - Riegel: log(time) = a + b*log(distance).
 - Level: residual from the global Riegel fit; higher = faster.
 - Leave-one-out prediction error for both models.
-- Equivalent 5k/10k/HM/M times from the global shape and the latest five races.
+- Equivalent 5k/10k/HM/M times anchored to the most recent road 10k, as the
+  dashboard does, compared with the free-global and latest-five methods.
 
 Deliverable
 -----------
@@ -388,7 +389,57 @@ def plot_classification(rows: list[dict]) -> None:
     save(figure, "race-classification")
 
 
-def plot_models(rows: list[dict], cs, riegel) -> None:
+def fit_riegel_rows(rows: list[dict]) -> tuple[float, float, float] | None:
+    """Free log-log fit without the road/trail exclusions."""
+    points = [row for row in rows if row["km"] > 0 and row["time_min"] > 0]
+    if len(points) < 3:
+        return None
+    return fit_line(
+        [math.log(row["km"]) for row in points],
+        [math.log(row["time_min"]) for row in points],
+    )
+
+
+def latest_road_reference(
+    rows: list[dict],
+    *,
+    result_only: bool = False,
+) -> dict | None:
+    candidates = [
+        row
+        for row in rows
+        if not row["excluded"]
+        and 9.5 <= row["km"] <= 10.5
+        and (not result_only or row["tier"] == "result")
+    ]
+    if not candidates:
+        candidates = [
+            row
+            for row in rows
+            if not row["excluded"]
+            and (not result_only or row["tier"] == "result")
+        ]
+    return max(candidates, key=lambda row: row["date"]) if candidates else None
+
+
+def latest_in_bucket(
+    rows: list[dict],
+    low: float,
+    high: float,
+) -> dict | None:
+    candidates = [
+        row
+        for row in rows
+        if not row["excluded"] and low <= row["km"] <= high
+    ]
+    return max(candidates, key=lambda row: row["date"]) if candidates else None
+
+
+def anchored_time(reference: dict, exponent: float, km: float) -> float:
+    return reference["time_min"] * (km / reference["km"]) ** exponent
+
+
+def plot_models(rows: list[dict], cs, riegel, anchored) -> None:
     figure = go.Figure()
     usable = [row for row in rows if not row["excluded"]]
     excluded = [row for row in rows if row["excluded"]]
@@ -424,6 +475,19 @@ def plot_models(rows: list[dict], cs, riegel) -> None:
                 mode="lines",
                 line={"color": "#54a24b", "width": 2},
                 name=f"Riegel b={b:.2f}",
+            )
+        )
+    if anchored:
+        reference, exponent = anchored
+        grid = [4 + 0.25 * i for i in range(160)]
+        figure.add_trace(
+            go.Scatter(
+                x=grid,
+                y=[anchored_time(reference, exponent, d) for d in grid],
+                mode="lines",
+                line={"color": "#b279a2", "width": 2, "dash": "dot"},
+                name=f"anchored {reference['name'] or '10k'}"
+                f" (b={exponent:.2f})",
             )
         )
     if cs:
@@ -609,6 +673,7 @@ def main() -> None:
                 f"{error[0]:.1f} min ({error[1]:.1f}%)"
             )
 
+    anchored = None
     if riegel:
         b, a, _ = riegel
         split = len(usable) // 2
@@ -625,22 +690,108 @@ def main() -> None:
             math.log(row["time_min"]) - b * math.log(row["km"])
             for row in recent
         )
-        print("\nequivalent times from the latest five races:")
+        result_rows = [
+            row for row in rows if row["tier"] == "result"
+        ]
+        result_fit = fit_riegel_rows(result_rows)
+        reference = (
+            latest_road_reference(rows, result_only=True)
+            or latest_road_reference(rows)
+        )
+        result_b = result_fit[0] if result_fit else None
+        anchored = (reference, result_b) if reference and result_b else None
+
+        print("\ncurrent-form predictions (actual = latest race in bucket):")
+        buckets = {
+            "5k": (4.0, 6.0),
+            "10k": (9.0, 11.0),
+            "HM": (20.0, 22.0),
+            "M": (41.0, 44.0),
+        }
+        comparison = []
+        errors = {
+            "free global": [],
+            "latest five": [],
+            "anchored result b": [],
+            "anchored global b": [],
+        }
+
+        for label, (low, high) in buckets.items():
+            distance = STANDARD_DISTANCES[label]
+            actual = latest_in_bucket(usable, low, high)
+            free_global = math.exp(a + b * math.log(distance))
+            latest_five = math.exp(current_a + b * math.log(distance))
+            anchored_result = (
+                anchored_time(reference, result_b, distance)
+                if reference and result_b
+                else None
+            )
+            anchored_global = (
+                anchored_time(reference, b, distance)
+                if reference
+                else None
+            )
+
+            if actual is not None:
+                errors["free global"].append(
+                    abs(free_global - actual["time_min"])
+                )
+                errors["latest five"].append(
+                    abs(latest_five - actual["time_min"])
+                )
+                if anchored_result is not None:
+                    errors["anchored result b"].append(
+                        abs(anchored_result - actual["time_min"])
+                    )
+                if anchored_global is not None:
+                    errors["anchored global b"].append(
+                        abs(anchored_global - actual["time_min"])
+                    )
+
+            comparison.append(
+                (
+                    label,
+                    format_time(actual["time_min"]) if actual else "-",
+                    format_time(free_global),
+                    format_time(latest_five),
+                    format_time(anchored_result)
+                    if anchored_result is not None
+                    else "-",
+                    format_time(anchored_global)
+                    if anchored_global is not None
+                    else "-",
+                )
+            )
+
+        table(
+            comparison,
+            headers=[
+                "distance",
+                "latest actual",
+                "free global",
+                "latest five",
+                "anchored result b",
+                "anchored global b",
+            ],
+        )
+        if reference and result_b:
+            print(
+                f"anchored to {reference['date']} "
+                f"{reference['name'] or 'race'} "
+                f"({reference['km']:.2f} km, "
+                f"{format_time(reference['time_min'])}); "
+                f"result-row b={result_b:.3f}"
+            )
         table(
             [
                 (
-                    label,
-                    format_time(
-                        math.exp(current_a + b * math.log(distance))
-                    ),
-                    format_pace(
-                        math.exp(current_a + b * math.log(distance)) * 60
-                        / distance
-                    ),
+                    method,
+                    f"{mean(values):.1f} min" if values else "-",
+                    f"{median(values):.1f} min" if values else "-",
                 )
-                for label, distance in STANDARD_DISTANCES.items()
+                for method, values in errors.items()
             ],
-            headers=["distance", "predicted time", "pace"],
+            headers=["method", "mean abs error", "median abs error"],
         )
 
     print("\nsensitivity:")
@@ -679,7 +830,7 @@ def main() -> None:
             )
 
     plot_classification(rows)
-    plot_models(rows, cs, riegel)
+    plot_models(rows, cs, riegel, anchored)
     plot_level(rows, riegel)
 
     print("\nverdict: inspect the inventory, fits, sensitivity and level plot. "
