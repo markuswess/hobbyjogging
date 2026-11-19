@@ -1,8 +1,21 @@
 """Session selection and the detailed single-session report."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from datetime import date
+from typing import Protocol
 
 from hobbyjogging_core.datasource import DataSource
+from hobbyjogging_core.model import (
+    Activity,
+    Device,
+    Event,
+    Interval,
+    Lap,
+    ReviewItem,
+    WellnessDay,
+)
 
 from .analysis import activity_sort_key
 from .classify import classify
@@ -14,6 +27,97 @@ from .review import exclude_review, review_note
 from .sources import create_source
 
 LAST_SELECTORS = {"last", "latest"}
+
+
+class RestingHrLookup(Protocol):
+    """The callable returned by :func:`resting_hr_lookup`."""
+
+    def __call__(self, day: date) -> float | None: ...
+
+    def estimated(self, day: date) -> bool: ...
+
+
+@dataclass
+class SessionRenderContext:
+    """Source lookups shared by the CLI and the dashboard pages.
+
+    ``day_events`` and ``day_wellness`` are filled lazily so a dashboard
+    build asks once per date instead of once per activity.
+    """
+
+    baseline: RestingHrLookup
+    open_review: list[ReviewItem]
+    devices: dict[str, Device]
+    day_events: dict[date, list[Event]] = field(default_factory=dict)
+    day_wellness: dict[date, WellnessDay | None] = field(default_factory=dict)
+
+    def events_for(self, source: DataSource, day: date) -> list[Event]:
+        if day not in self.day_events:
+            self.day_events[day] = source.events(day, day)
+
+        return self.day_events[day]
+
+    def wellness_for(
+        self,
+        source: DataSource,
+        day: date,
+    ) -> WellnessDay | None:
+        if day not in self.day_wellness:
+            rows = source.wellness(day, day)
+            self.day_wellness[day] = rows[0] if rows else None
+
+        return self.day_wellness[day]
+
+
+def build_session_context(
+    source: DataSource,
+    *,
+    start: date,
+    end: date,
+) -> SessionRenderContext:
+    """Preload the lookups one session render needs."""
+    return SessionRenderContext(
+        baseline=resting_hr_lookup(source, start, end, backfill=True),
+        open_review=source.review_items(status="open"),
+        devices={device.id: device for device in source.devices()},
+    )
+
+
+def session_activity_lines(
+    source: DataSource,
+    activity: Activity,
+    context: SessionRenderContext,
+    *,
+    intervals: list[Interval],
+    laps: list[Lap],
+    planned_events: list[Event],
+    planned_hrefs: dict[str, str] | None = None,
+) -> list[str]:
+    """Render one activity's detailed Markdown block.
+
+    The CLI session report, the dashboard activity page and the race page use
+    this one path, so source lookups and fields cannot drift between them.
+    """
+    return format_session_activity(
+        activity,
+        intervals,
+        category=classify(activity, intervals).path,
+        links=resolve_activity_links(source, activity.id),
+        resting_hr=context.baseline(activity.date),
+        resting_hr_estimated=context.baseline.estimated(activity.date),
+        planned_events=planned_events,
+        planned_hrefs=planned_hrefs,
+        weather=source.activity_weather(activity.id),
+        device=context.devices.get(activity.device_id),
+        wellness=context.wellness_for(source, activity.date),
+        review_items=[
+            item
+            for item in context.open_review
+            if item.activity_id == activity.id
+        ],
+        laps=laps,
+        social=source.activity_social(activity.id),
+    )
 
 
 def select_session(
@@ -131,19 +235,12 @@ def session_report(
             lines.append("\n- No activity")
         return "\n".join(lines)
 
-    baseline = resting_hr_lookup(
+    session_day = day or activities[0].date
+    context = build_session_context(
         source,
-        day or activities[0].date,
-        day,
-        backfill=True,
+        start=session_day,
+        end=session_day,
     )
-    day_events = source.events(day, day) if day else []
-    day_wellness = source.wellness(day, day) if day else []
-    wellness_day = day_wellness[0] if day_wellness else None
-    open_review = source.review_items(status="open") if activities else []
-    devices = {
-        device.id: device for device in source.devices()
-    }
 
     for activity in activities:
         try:
@@ -151,27 +248,17 @@ def session_report(
         except Exception:
             intervals = []
 
-        category = classify(activity, intervals)
-
         lines.extend(
-            format_session_activity(
+            session_activity_lines(
+                source,
                 activity,
-                intervals,
-                category=category.path,
-                links=resolve_activity_links(source, activity.id),
-                resting_hr=baseline(activity.date),
-                resting_hr_estimated=baseline.estimated(activity.date),
-                planned_events=day_events,
-                weather=source.activity_weather(activity.id),
-                device=devices.get(activity.device_id),
-                wellness=wellness_day,
-                review_items=[
-                    item
-                    for item in open_review
-                    if item.activity_id == activity.id
-                ],
+                context,
+                intervals=intervals,
                 laps=source.activity_laps(activity.id),
-                social=source.activity_social(activity.id),
+                planned_events=context.events_for(
+                    source,
+                    activity.date,
+                ),
             )
         )
 

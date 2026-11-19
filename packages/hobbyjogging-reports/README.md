@@ -101,10 +101,10 @@ Pages:
   fewer than 20 HR-backed runs and years without a resting-HR baseline
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, weather and
-  recording device when recorded, workout methods and targets, zone times,
-  description, the raw segment table, and subT/LT1 work reps), exactly as
-  `reports.sh session` renders it. Its planned block links to the day's event
-  page.
+  recording device when recorded, route and social lines, workout methods and
+  targets, zone times, description, the raw segment table, and subT/LT1 work
+  reps), exactly as `reports.sh session` renders it. Its planned block links
+  to the day's event page.
 - `event/<id>.html` — one planned session: date, sport, planned time, distance
   and load, methods and targets, the planned zone distribution, and the
   description. When an activity matches the event by date and sport, the page
@@ -350,7 +350,8 @@ stay compact (`1h02`).
   efficiency (m/excess beat), zones, description, the day's planned workout
   and wellness, one raw segment table (typed intervals when there is more
   than one, otherwise device laps when there is more than one), subT/LT1 work
-  reps, and Intervals/Garmin Connect links when the source knows them.
+  reps, Intervals/Garmin Connect links and the social lines (Strava and other
+  sources) when they exist.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
@@ -686,9 +687,10 @@ stay actual-only.
 The report includes the activity id and date, category, review status,
 duration/moving/elapsed time, distance, elevation and pace, average/max HR,
 sub-sport when it is meaningful, load/RPE/feel/intensity, efficiency, tags,
-VO2max, equipment, device and route when known, pace and HR zones, a fenced
-description block, the day's planned workout and wellness, one raw segment
-table, and the subT/LT1 work-rep summary when applicable.
+VO2max, equipment, device and route when known, social lines such as
+`Strava: title — description (link)`, pace and HR zones, a fenced description
+block, the day's planned workout and wellness, one raw segment table, and the
+subT/LT1 work-rep summary when applicable.
 The segment table shows typed intervals when there is more than one; otherwise
 it falls back to device laps when there is more than one; a single segment on
 either side is skipped because it only restates the activity. Open review

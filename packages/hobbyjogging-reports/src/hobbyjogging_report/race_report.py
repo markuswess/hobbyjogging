@@ -19,18 +19,19 @@ from .analysis import (
     riegel_reference,
     upcoming_races,
 )
-from .classify import classify
 from .command_support import activity_start, resting_hr_lookup
 from .format import (
     fmt_clock,
     format_pace,
     format_place,
-    format_session_activity,
     table_text,
 )
-from .links import resolve_activity_links
 from .review import exclude_review, review_note
-from .sessions import select_session
+from .sessions import (
+    SessionRenderContext,
+    select_session,
+    session_activity_lines,
+)
 
 
 def _pace(value: float | None) -> str:
@@ -362,8 +363,6 @@ def race_report(
     intervals = source.activity_intervals(activity.id)
     laps = source.activity_laps(activity.id)
     events = _event_match(source, activity)
-    wellness = source.wellness(activity.date, activity.date)
-    wellness = wellness[0] if wellness else None
     review_items = [
         item
         for item in source.review_items(status="open")
@@ -433,19 +432,19 @@ def race_report(
         day or activity.date,
         backfill=True,
     )
+    context = SessionRenderContext(
+        baseline=baseline,
+        open_review=review_items,
+        devices={device.id: device for device in source.devices()},
+    )
     lines.extend(
-        format_session_activity(
+        session_activity_lines(
+            source,
             activity,
-            intervals,
-            category=classify(activity, intervals).path,
-            links=resolve_activity_links(source, activity.id),
-            resting_hr=baseline(activity.date),
-            resting_hr_estimated=baseline.estimated(activity.date),
-            planned_events=events,
-            weather=source.activity_weather(activity.id),
-            wellness=wellness,
-            review_items=review_items,
+            context,
+            intervals=intervals,
             laps=laps,
+            planned_events=events,
         )
     )
 

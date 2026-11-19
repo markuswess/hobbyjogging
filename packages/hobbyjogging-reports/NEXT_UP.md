@@ -2,11 +2,19 @@
 
 Updated 2026-11-19.
 
-Current focus: max HR and elevation are exposed and in the session report;
-10 is parked, 12 is behind the lab gate, 13 is the last CLI-parity follow-up,
-14 is an open idea, and 15 is the VO2max series blocked on the import payload.
+Current focus: max HR and elevation are exposed and in the session report, and
+the CLI/dashboard pages share one renderer; 10 is parked, 12 is behind the lab
+gate, 13 is the last CLI-parity follow-up, 14 is an open idea, and 15 is the
+VO2max series ready now that the import filled the column.
 
 ## Done
+
+- **One session renderer.** The CLI session report, the dashboard activity
+  page and the race page now share `session_activity_lines` /
+  `SessionRenderContext`. The dashboard used to assemble the renderer
+  arguments itself and dropped `social`, so the Strava lines were missing
+  from `activity/*.html` and `race/*.html`; the shared path also gives the
+  race page the device, route and social lines.
 
 - **Session elevation and data audit.** `Activity` now exposes `max_hr`,
   `elevation_gain_m` and `elevation_loss_m` from the existing columns, and
@@ -412,18 +420,16 @@ _None._
 ## Next
 
 Schema v12-v21 moved the data under several items, so the picture changed:
-the threshold trend, the season/illness bands and the device timeline landed,
-and routes (v20) and the wellness extras (v19) are now exposed on
-`Activity`/`WellnessDay`, so those two are reports-only. What still needs core
-first: max HR and elevation on `Activity` (the repository query and model drop
-them; items 1 and 5), the per-activity zone config ids (item 4) and social
-titles (6). Item 11 has its data (`event_activity_links`, schema v21); 12's
+the threshold trend, the season/illness bands, the device timeline, max HR and
+elevation (items 1 and 5, now exposed and in the session report), routes (v20)
+and the wellness extras (v19) landed. Routes and wellness are reports-only;
+the only remaining core prerequisite is the per-activity zone config ids
+(item 4). Item 11 has its data (`event_activity_links`, schema v21); 12's
 series needs the lab gate in root item 31. Item 10 stays parked on its
 page-coverage cost, 9 is recurring upkeep, 13 is the event-page parity
-follow-up, and 14 is an open idea. The
-dashboard polish pass is finished. The efficiency floor, the planned-event
-page, the streaks report, the collapsible lists, the season/illness bands and
-the threshold trend landed here.
+follow-up, and 14 is an open idea. The dashboard polish pass is finished. The
+efficiency floor, the planned-event page, the streaks report, the collapsible
+lists, the season/illness bands and the threshold trend landed here.
 
 1. **Max HR in the reports.** The model/repository exposure and the session
    line landed. Remaining: the HR-zone checks and the Max HR column beside
@@ -452,9 +458,11 @@ the threshold trend landed here.
    no altitude stream, so this is lap-level), trail suggestions from the
    ≥40 m/km evidence, and route difficulty on the dashboard.
 
-6. **Strava in the session report.** A `Strava: …` line with the title, the
-   description as an annotation, and a link to the activity. Depends on the
-   root Strava item and on the notes/description decision in root item 1.
+6. **Strava in the session report.** The shared session renderer now shows
+   the generic social line (`Strava: title — description (link)`) on the CLI,
+   the dashboard activity page and the race page. What remains is the
+   notes/description policy in root item 1: whether a description is promoted
+   or stays social-only.
 
 7. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,

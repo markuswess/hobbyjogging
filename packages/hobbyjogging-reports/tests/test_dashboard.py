@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from hobbyjogging_core.model import (
+    ActivitySocial,
     ActivityWeather,
     Equipment,
     Event,
@@ -200,6 +201,25 @@ def _source():
                 intervals="https://intervals.icu/activities/i1",
                 garmin="https://connect.garmin.com/app/activity/2",
             ),
+        },
+        social={
+            "run1": [
+                ActivitySocial(
+                    activity_id="run1",
+                    source="strava",
+                    title="Morning spin",
+                    description="Easy along the river",
+                    url="https://www.strava.com/activities/1",
+                )
+            ],
+            "race1": [
+                ActivitySocial(
+                    activity_id="race1",
+                    source="strava",
+                    title="Autumn race",
+                    url="https://www.strava.com/activities/2",
+                )
+            ],
         },
         review_items=[
             ReviewItem(
@@ -438,6 +458,9 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn('href="../activities.html"', detail)
             self.assertIn('href="../event/ev-matched.html"', detail)
             self.assertIn("Weather: 12 °C, wind 3 m/s", detail)
+            self.assertIn("Morning spin", detail)
+            self.assertIn("Easy along the river", detail)
+            self.assertIn("https://www.strava.com/activities/1", detail)
 
             health = (target / "health.html").read_text()
             self.assertIn("Data coverage", health)
@@ -482,6 +505,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Race 2026-10-30", race)
             self.assertIn("Race execution", race)
             self.assertIn("Pace zones", race)
+            self.assertIn("Autumn race", race)
+            self.assertIn("https://www.strava.com/activities/2", race)
 
             gear = (target / "gear.html").read_text()
             self.assertIn(">Gear</a>", gear)

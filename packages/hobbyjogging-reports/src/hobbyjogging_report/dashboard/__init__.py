@@ -10,7 +10,6 @@ from pathlib import Path
 from time import perf_counter
 
 from hobbyjogging_core.datasource import DataSource
-from hobbyjogging_core.model import Event, WellnessDay
 
 from ..activity_list import select_activities
 from ..analysis import (
@@ -20,17 +19,16 @@ from ..analysis import (
     vo2max_points,
     yearly_coverage,
 )
-from ..classify import classify
 from ..command_support import activity_start, resting_hr_lookup
-from ..format import format_event, format_session_activity
+from ..format import format_event
 from ..html import markdown_to_html
-from ..links import resolve_activity_links
 from ..model import AverageWindows
 from ..overview import overview_report
 from ..race_report import race_report
 from ..recovery_report import WINDOWS as RECOVERY_WINDOWS, recovery_report
 from ..sickness_report import sickness_report
 from ..review import exclude_review
+from ..sessions import SessionRenderContext, session_activity_lines
 from .charts import plotly_js
 from .analysis import build_analysis_section
 from .compare import build_compare_section
@@ -480,10 +478,11 @@ def build_dashboard(
         else (lambda _day: None)
     )
 
-    day_context: dict[date, tuple[list[Event], WellnessDay | None]] = {}
-    device_by_id = {
-        device.id: device for device in source.devices()
-    }
+    context = SessionRenderContext(
+        baseline=baseline,
+        open_review=open_review,
+        devices={device.id: device for device in source.devices()},
+    )
 
     for activity in detail_activities.values():
         try:
@@ -491,43 +490,26 @@ def build_dashboard(
         except Exception:
             intervals = []
 
-        if activity.date not in day_context:
-            day_wellness = source.wellness(activity.date, activity.date)
-            day_context[activity.date] = (
-                source.events(activity.date, activity.date),
-                day_wellness[0] if day_wellness else None,
-            )
-
-        day_events, wellness_day = day_context[activity.date]
-
         try:
             laps = source.activity_laps(activity.id)
         except Exception:
             laps = []
 
+        planned_events = context.events_for(source, activity.date)
+
         report = "\n".join(
-            format_session_activity(
+            session_activity_lines(
+                source,
                 activity,
-                intervals,
-                category=classify(activity, intervals).path,
-                links=resolve_activity_links(source, activity.id),
-                resting_hr=baseline(activity.date),
-                resting_hr_estimated=baseline.estimated(activity.date),
-                planned_events=day_events,
-                weather=source.activity_weather(activity.id),
-                device=device_by_id.get(activity.device_id),
+                context,
+                intervals=intervals,
+                laps=laps,
+                planned_events=planned_events,
                 planned_hrefs={
                     event.id: f"../event/{event_filename(event.id)}"
-                    for event in day_events
+                    for event in planned_events
                     if event.id and event.type
                 },
-                wellness=wellness_day,
-                review_items=[
-                    item
-                    for item in open_review
-                    if item.activity_id == activity.id
-                ],
-                laps=laps,
             )
         )
         detail_pages[
@@ -547,7 +529,7 @@ def build_dashboard(
         if event.id
     }
 
-    for day_events, _wellness in day_context.values():
+    for day_events in context.day_events.values():
         for event in day_events:
             if event.id and event.type:
                 page_events.setdefault(event.id, event)
