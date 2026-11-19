@@ -26,8 +26,7 @@ from hobbyjogging_report.analysis import (
     race_results,
     race_vdot,
     race_vdots,
-    runalyze_vo2max,
-    runalyze_vo2max_average,
+    runalyze_vo2max_points,
     threshold_max_hr,
     vo2max_methods,
     vo2max_points,
@@ -1407,7 +1406,7 @@ class EffectiveVo2maxTests(unittest.TestCase):
         )
         self.assertIsNone(threshold_max_hr([], D))
 
-    def test_samples_split_all_runs_from_the_steady_band(self):
+    def test_samples_keep_qualifying_runs_only(self):
         activities = [
             run(
                 id="steady",
@@ -1450,15 +1449,10 @@ class EffectiveVo2maxTests(unittest.TestCase):
             AthleteThreshold(effective_from=D, sport="run", max_hr=192)
         ]
 
-        all_runs = vo2max_samples(activities, thresholds)
-        steady_runs = vo2max_samples(activities, thresholds, steady_only=True)
+        samples = vo2max_samples(activities, thresholds)
 
-        self.assertEqual(4, len(all_runs))
-        self.assertEqual(1, len(steady_runs))
-        self.assertAlmostEqual(
-            all_runs[0].value,
-            steady_runs[0].value,
-        )
+        self.assertEqual(4, len(samples))
+        self.assertNotIn(None, [sample.value for sample in samples])
 
 
 class Vo2maxPointTests(unittest.TestCase):
@@ -1550,9 +1544,37 @@ class Vo2maxComparisonTests(unittest.TestCase):
         )
         self.assertEqual([60], [m.value for m in series[0].measurements])
         self.assertEqual((D, 60.0), series[0].avg_42[0])
+        self.assertEqual((D, 60.0), series[0].avg_182[0])
         self.assertEqual(11, len(series[0].avg_42))
+        self.assertEqual(11, len(series[0].avg_182))
 
-    def test_runalyze_keeps_its_stored_values_and_42_day_mean(self):
+    def test_a_device_with_no_readings_in_range_is_dropped(self):
+        old_watch = Device(
+            id="old",
+            manufacturer="garmin",
+            product="fr235",
+        )
+        activities = [
+            run(
+                id="a",
+                date=D,
+                device_id="old",
+                vo2max_garmin=50,
+            )
+        ]
+        start = D + timedelta(days=365)
+
+        self.assertEqual(
+            [],
+            garmin_vo2max_devices(
+                activities,
+                [old_watch],
+                start,
+                start,
+            ),
+        )
+
+    def test_runalyze_gets_42_and_182_day_ewmas(self):
         activities = [
             run(
                 id="a",
@@ -1566,23 +1588,22 @@ class Vo2maxComparisonTests(unittest.TestCase):
             ),
         ]
 
-        measurements = runalyze_vo2max(
-            activities,
-            D,
-            D + timedelta(days=2),
-        )
-        average = runalyze_vo2max_average(
+        points = runalyze_vo2max_points(
             activities,
             D,
             D + timedelta(days=2),
         )
 
-        self.assertEqual([60, 66], [m.value for m in measurements])
         self.assertEqual(
-            [(D, 60.0), (D + timedelta(days=1), 60.0),
-             (D + timedelta(days=2), 63.0)],
-            average,
+            [D, D + timedelta(days=1), D + timedelta(days=2)],
+            [point.date for point in points],
         )
+        self.assertIsNone(points[0].value)
+        self.assertEqual(60, points[0].avg_42)
+        self.assertEqual(60, points[0].avg_182)
+        self.assertAlmostEqual(60.14, points[-1].avg_42, places=2)
+        self.assertAlmostEqual(60.03, points[-1].avg_182, places=2)
+        self.assertGreater(points[-1].avg_42, points[-1].avg_182)
 
     def test_race_vdot_uses_official_road_results_only(self):
         self.assertIsNone(race_vdot(0, 0))
@@ -1639,10 +1660,8 @@ class Vo2maxComparisonTests(unittest.TestCase):
         )
 
         self.assertTrue(methods.all_runs)
-        self.assertTrue(methods.steady)
         self.assertEqual(1, len(methods.garmin))
-        self.assertEqual(1, len(methods.runalyze))
-        self.assertTrue(methods.runalyze_avg_42)
+        self.assertTrue(methods.runalyze)
         self.assertEqual([], methods.races)
 
 

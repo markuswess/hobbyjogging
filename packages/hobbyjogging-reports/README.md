@@ -419,10 +419,10 @@ stay compact (`1h02`).
   the official race title when it differs from the activity title.
 - **compare-vo2max / compare-pace-hr** — the Compare tab's raw VO2max by year
   and the year-coloured pace/HR scatter.
-- **vo2max** — the Performance tab's VO2max methods chart over all history:
-  the effective estimate (all runs and the steady 40–75 min band) as 42- and
-  182-day EWMAs against raw Garmin readings per recording device, Runalyze's
-  stored values with their 42-day mean, and official race VDOT.
+- **vo2max** — the Performance tab's VO2max methods chart from 2023: the
+  effective estimate (all runs) as 42- and 182-day EWMAs, Runalyze's stored
+  values as the same pair of EWMAs, raw Garmin readings per recording device
+  (the latest device adds its 42- and 182-day lines), and official race VDOT.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
@@ -644,9 +644,10 @@ wellness data does not pull an average down.
 
 ### VO2max chart
 
-`vo2max` compares every VO2max method over all history rather than plotting
-Garmin's stored estimate alone. The primary series is the lab's effective
-estimate, the ACSM running oxygen cost divided by the heart-rate fraction:
+`vo2max` compares every VO2max method rather than plotting Garmin's stored
+estimate alone, and it starts in 2023. The primary series is the lab's
+effective estimate, the ACSM running oxygen cost divided by the heart-rate
+fraction:
 
     VO2max = (3.5 + 0.2 * speed_m_min) / (avg_hr / max_hr)
 
@@ -655,29 +656,26 @@ on or before the run's day (the earliest snapshot covers days before it).
 A run is dropped when it has no average HR or duration, when its speed falls
 outside 1.5–6.0 m/s, or when the HR fraction falls outside 0.5–0.95.
 
-Same-day runs are averaged, and days without a run carry the last value
+Same-day runs are averaged, and days without a value carry the last one
 forward, so the 42- and 182-day EWMAs (`alpha = 1 - exp(-1 / days)`) describe
-the metric's standing value. The chart keeps 910 days (five long windows) of
+each metric's standing value. The chart keeps 910 days (five long windows) of
 history before the first plotted run.
 
-Four series are drawn:
+Three methods are drawn, each as a 42-day solid and a 182-day dash-dot EWMA:
 
-- **all runs** — the primary effective estimate, 42-day solid and 182-day
-  dash-dot.
-- **steady 40–75** — the same estimate on non-quality, non-recovery road runs
-  in the steady band, the lower-noise secondary series.
-- **Garmin** — raw readings as one marker series per recording device (a
-  stored device name wins, else manufacturer + product, so the FIT and
-  provider shapes read alike), with the latest device's 42-day carry-forward
-  EWMA as a dotted line.
-- **Runalyze and race VDOT** — Runalyze's stored value as grey markers with
-  its 42-day calendar mean (days without a reading skipped), and Daniels'
-  VDOT as red stars for official road-race results.
+- **Estimate** — the effective estimate over all runs, in green.
+- **Runalyze** — Runalyze's stored effective VO2max, in grey. It stores the
+  value with an internal 0.93 correction already applied, so it is not
+  divided again.
+- **Garmin Enduro** — the raw readings as one marker series per recording
+  device (a stored device name wins, else manufacturer + product, so the FIT
+  and provider shapes read alike); the latest device (the Enduro) also
+  carries its 42-day (dotted) and 182-day lines. An earlier watch keeps its
+  raw markers only, and a device with no readings after 2023 is left out.
 
-Runalyze stores its effective VO2max with an internal 0.93 correction already
-applied, so the plotted value is not divided again. Garmin readings and
-Runalyze values are comparison series and never feed the estimate.
-Individual values are not reliably comparable across devices or formulas;
+Official road-race results add Daniels' VDOT as red stars. Garmin readings
+and Runalyze values are comparison series and never feed the estimate.
+Individual readings are not reliably comparable across devices or formulas;
 the EWMAs are the point.
 
     ./charts.sh vo2max

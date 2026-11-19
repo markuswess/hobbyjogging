@@ -366,6 +366,7 @@ def run_vo2max_chart(
 ) -> None:
     """Render the VO2max methods comparison for all history."""
     from .analysis import (
+        VO2MAX_DISPLAY_START,
         VO2MAX_WARMUP_DAYS,
         official_by_activity,
         race_results,
@@ -375,6 +376,7 @@ def run_vo2max_chart(
 
     today = date.today()
     start = activity_start(source, today)
+    display_start = max(start, VO2MAX_DISPLAY_START)
     display_activities, activities = warmup_reviewed(
         source,
         start,
@@ -390,7 +392,7 @@ def run_vo2max_chart(
             display_activities,
             official_by_activity(source.race_results()),
         ),
-        start,
+        display_start,
         today,
     )
     print(plot_vo2max_methods(methods, output=output))

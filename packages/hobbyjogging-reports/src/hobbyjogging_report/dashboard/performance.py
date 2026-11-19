@@ -9,6 +9,8 @@ from urllib.parse import quote
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    RUNALYZE_STORED_CORRECTION,
+    VO2MAX_DISPLAY_START,
     bucket_label,
     equivalent_times,
     fit_riegel,
@@ -250,18 +252,18 @@ def build_performance_section(
             '<p class="muted">Not enough races for a Riegel estimate.</p>'
         )
 
+    chart_start = max(start, VO2MAX_DISPLAY_START)
     methods = vo2max_methods(
         activities,
         source.athlete_thresholds(),
         source.devices(),
         results,
-        start,
+        chart_start,
         today,
     )
     has_vo2max = any(
         (
             methods.all_runs,
-            methods.steady,
             methods.garmin,
             methods.runalyze,
             methods.races,
@@ -269,11 +271,12 @@ def build_performance_section(
     )
     if has_vo2max:
         vo2max_html = plot_vo2max_methods(methods, "", as_html=True) + (
-            '<p class="muted">All runs use pace and HR/max HR; the steady '
-            "40–75 min series drops quality work, recovery jogs and trail "
-            "runs. Garmin stays one series per recording device (the latest "
-            "device also gets its 42-day line), Runalyze keeps its stored "
-            "0.93 correction, and race VDOT uses official road results.</p>"
+            '<p class="muted">All runs use pace and HR/max HR. Every method '
+            "is a 42-day solid and a 182-day dash-dot EWMA; Garmin keeps its "
+            "raw readings, one series per recording device, and the latest "
+            "device (the Enduro) also carries both lines. Runalyze keeps its "
+            f"stored {RUNALYZE_STORED_CORRECTION:.2f} correction, and race "
+            "VDOT uses official road results. The chart starts in 2023.</p>"
         )
     else:
         vo2max_html = (

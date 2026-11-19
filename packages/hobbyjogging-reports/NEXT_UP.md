@@ -13,18 +13,16 @@ lab gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
   `(3.5 + 0.2 · speed_m_min) / (avg_hr / max_hr)`, using the running max-HR
   snapshot in force on the day and guarded to 1.5–6.0 m/s and an HR fraction
   of 0.5–0.95. Same-day runs are averaged, days without a run carry the last
-  value forward, and the 42/182-day EWMAs use 910 days of warm-up. All runs
-  are the primary series and the steady 40–75 min band the secondary one.
-  The overview chart's second axis now draws the 42-day (black) and 182-day
+  value forward, and the 42/182-day EWMAs use 910 days of warm-up. The
+  overview chart's second axis now draws the 42-day (black) and 182-day
   (grey) lines instead of the stored Garmin value, and the `vo2max` chart
-  became an all-history methods comparison: the two estimates, raw Garmin
-  markers per recording device (the latest device also gets its 42-day line),
-  Runalyze's stored values (its 0.93 correction already applied) with a
-  42-day mean, and Daniels VDOT stars for official road races. The Performance
-  tab gains the same chart and note; `compare-vo2max` keeps the raw
-  Garmin-by-year view. The `vo2max` command now takes only an output path,
-  like the other card charts. `docs/METRICS.md` and the architecture wording
-  are root work.
+  became an all-runs methods comparison from 2023: the effective estimate and
+  Runalyze's stored values each as 42/182-day EWMAs, raw Garmin markers per
+  recording device (the latest device, the Enduro, adds both EWMA lines), and
+  Daniels VDOT stars for official road races. The Performance tab gains the
+  same chart and note; `compare-vo2max` keeps the raw Garmin-by-year view.
+  The `vo2max` command now takes only an output path, like the other card
+  charts. `docs/METRICS.md` and the architecture wording are root work.
 
 - **Device labels.** `device_label()` gives a FIT product-only device the
   manufacturer and the product's marketing name (`garmin`/`enduro` →

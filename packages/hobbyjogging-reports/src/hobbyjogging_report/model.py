@@ -198,12 +198,13 @@ class Vo2maxPoint:
 
 @dataclass(frozen=True)
 class GarminVo2maxDevice:
-    """One recorder's Garmin readings and their 42-day carry-forward EWMA."""
+    """One recorder's Garmin readings and their 42/182-day EWMAs."""
 
     device_id: str
     label: str
     measurements: list[Vo2maxMeasurement]
     avg_42: list[tuple[date, float | None]]
+    avg_182: list[tuple[date, float | None]]
 
 
 @dataclass(frozen=True)
@@ -211,10 +212,8 @@ class Vo2maxMethods:
     """Every series the VO2max methods chart compares."""
 
     all_runs: list[Vo2maxPoint]
-    steady: list[Vo2maxPoint]
     garmin: list[GarminVo2maxDevice]
-    runalyze: list[Vo2maxMeasurement]
-    runalyze_avg_42: list[tuple[date, float | None]]
+    runalyze: list[Vo2maxPoint]
     races: list[tuple[date, float]]
 
 

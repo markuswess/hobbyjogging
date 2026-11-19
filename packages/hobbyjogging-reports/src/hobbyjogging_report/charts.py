@@ -19,7 +19,6 @@ warnings.filterwarnings(
 
 from .analysis import (
     EFFICIENCY_UNIT,
-    RUNALYZE_STORED_CORRECTION,
     DeviceStat,
     EquipmentStat,
     group_equipment,
@@ -1814,24 +1813,22 @@ def plot_vo2max_methods(
     title: str = "VO2max methods",
     as_html: bool = False,
 ) -> str:
-    """The effective estimate against Garmin, Runalyze and race VDOT.
+    """The effective estimate against Garmin and Runalyze trends.
 
-    The estimate is drawn as 42/182-day EWMA lines for all runs and for the
-    steady band. Garmin stays one marker series per recording device, with
-    the latest device's 42-day EWMA as a line; Runalyze keeps its stored
-    values (its own 0.93 correction is already applied) plus a 42-day mean.
+    Every method is drawn as 42-day solid and 182-day dash-dot EWMAs. Garmin
+    keeps its raw readings as one marker series per recording device, and the
+    latest device also carries the two EWMA lines.
     """
     _require_data(
         methods.all_runs,
-        methods.steady,
         methods.garmin,
         methods.runalyze,
         methods.races,
     )
     figure = go.Figure()
     estimates = (
-        ("all runs", methods.all_runs, "#2ca02c", "#00441b"),
-        ("steady 40–75", methods.steady, "#ff7f0e", "#b25900"),
+        ("Estimate", methods.all_runs, "#2ca02c", "#00441b"),
+        ("Runalyze", methods.runalyze, "#8c8c8c", "#4d4d4d"),
     )
 
     for label, points, short_color, long_color in estimates:
@@ -1843,7 +1840,7 @@ def plot_vo2max_methods(
                 x=[point.date for point in points],
                 y=[point.avg_42 for point in points],
                 mode="lines",
-                name=f"Estimate 42d ({label})",
+                name=f"{label} 42d",
                 line={"color": short_color, "width": LINE_WIDTHS[42]},
                 connectgaps=False,
             )
@@ -1853,7 +1850,7 @@ def plot_vo2max_methods(
                 x=[point.date for point in points],
                 y=[point.avg_182 for point in points],
                 mode="lines",
-                name=f"Estimate 182d ({label})",
+                name=f"{label} 182d",
                 line={
                     "color": long_color,
                     "width": LINE_WIDTHS[182],
@@ -1864,7 +1861,9 @@ def plot_vo2max_methods(
         )
 
     colors = {
-        device.device_id: VO2MAX_DEVICE_COLORS[index % len(VO2MAX_DEVICE_COLORS)]
+        device.device_id: VO2MAX_DEVICE_COLORS[
+            index % len(VO2MAX_DEVICE_COLORS)
+        ]
         for index, device in enumerate(methods.garmin)
     }
 
@@ -1888,50 +1887,25 @@ def plot_vo2max_methods(
             methods.garmin,
             key=lambda device: device.measurements[-1].date,
         )
-        figure.add_trace(
-            go.Scatter(
-                x=[day for day, value in latest.avg_42 if value is not None],
-                y=[value for _, value in latest.avg_42 if value is not None],
-                mode="lines",
-                name=f"{latest.label} 42d",
-                line={
-                    "color": colors[latest.device_id],
-                    "width": 2,
-                    "dash": "dot",
-                },
-            )
-        )
+        color = colors[latest.device_id]
 
-    if methods.runalyze:
-        figure.add_trace(
-            go.Scatter(
-                x=[measurement.date for measurement in methods.runalyze],
-                y=[measurement.value for measurement in methods.runalyze],
-                mode="markers",
-                name=(
-                    "Runalyze "
-                    f"(stored, {RUNALYZE_STORED_CORRECTION:.2f}-corrected)"
-                ),
-                marker={"color": "#999999", "size": 3, "opacity": 0.5},
+        for window, values, dash in (
+            (42, latest.avg_42, "dot"),
+            (182, latest.avg_182, LINE_STYLES[182]),
+        ):
+            figure.add_trace(
+                go.Scatter(
+                    x=[day for day, value in values if value is not None],
+                    y=[value for _, value in values if value is not None],
+                    mode="lines",
+                    name=f"{latest.label} {window}d",
+                    line={
+                        "color": color,
+                        "width": LINE_WIDTHS[window],
+                        "dash": dash,
+                    },
+                )
             )
-        )
-
-    runalyze_average = [
-        (day, value)
-        for day, value in methods.runalyze_avg_42
-        if value is not None
-    ]
-
-    if runalyze_average:
-        figure.add_trace(
-            go.Scatter(
-                x=[day for day, _ in runalyze_average],
-                y=[value for _, value in runalyze_average],
-                mode="lines",
-                name="Runalyze 42d mean",
-                line={"color": "#777777", "width": 2, "dash": "dot"},
-            )
-        )
 
     if methods.races:
         figure.add_trace(

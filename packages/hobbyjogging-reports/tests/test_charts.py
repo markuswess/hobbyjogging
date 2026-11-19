@@ -2540,23 +2540,26 @@ def vo2max_methods():
             Vo2maxPoint(D, 60.0, 59.5, 59.0),
             Vo2maxPoint(latest, None, 59.6, 59.1),
         ],
-        steady=[Vo2maxPoint(D, 60.0, 59.8, 59.2)],
         garmin=[
             GarminVo2maxDevice(
                 device_id="w1",
                 label="Garmin Forerunner 645",
                 measurements=[Vo2maxMeasurement(D, 58.0)],
                 avg_42=[(D, 58.0)],
+                avg_182=[(D, 58.0)],
             ),
             GarminVo2maxDevice(
                 device_id="w2",
                 label="Garmin Enduro",
                 measurements=[Vo2maxMeasurement(latest, 61.0)],
                 avg_42=[(latest, 61.0)],
+                avg_182=[(latest, 61.0)],
             ),
         ],
-        runalyze=[Vo2maxMeasurement(D, 61.0)],
-        runalyze_avg_42=[(D, 61.0)],
+        runalyze=[
+            Vo2maxPoint(D, None, 61.0, 60.5),
+            Vo2maxPoint(latest, None, 61.2, 60.6),
+        ],
         races=[(D, 62.0)],
     )
 
@@ -2573,15 +2576,14 @@ class Vo2maxChartTests(unittest.TestCase):
 
         self.assertEqual(
             [
-                "Estimate 42d (all runs)",
-                "Estimate 182d (all runs)",
-                "Estimate 42d (steady 40–75)",
-                "Estimate 182d (steady 40–75)",
+                "Estimate 42d",
+                "Estimate 182d",
+                "Runalyze 42d",
+                "Runalyze 182d",
                 "Garmin Forerunner 645",
                 "Garmin Enduro",
                 "Garmin Enduro 42d",
-                "Runalyze (stored, 0.93-corrected)",
-                "Runalyze 42d mean",
+                "Garmin Enduro 182d",
                 "Race VDOT",
             ],
             names,
@@ -2589,7 +2591,7 @@ class Vo2maxChartTests(unittest.TestCase):
         self.assertIn('"mode":"lines"', html)
         self.assertIn('"symbol":"star"', html)
 
-    def test_the_latest_device_gets_the_42_day_line(self):
+    def test_the_latest_device_gets_both_ewma_lines(self):
         html = plot_vo2max_methods(
             vo2max_methods(),
             "",
@@ -2601,6 +2603,24 @@ class Vo2maxChartTests(unittest.TestCase):
 
         self.assertNotIn("Garmin Forerunner 645 42d", names)
         self.assertIn("Garmin Enduro 42d", names)
+        self.assertIn("Garmin Enduro 182d", names)
+
+    def test_runalyze_is_lines_not_dots(self):
+        html = plot_vo2max_methods(
+            vo2max_methods(),
+            "",
+            as_html=True,
+        )
+        runalyze = [
+            trace
+            for trace in plotly_data(html)
+            if (trace.get("name") or "").startswith("Runalyze")
+        ]
+
+        self.assertEqual(2, len(runalyze))
+        self.assertTrue(
+            all(trace.get("mode") == "lines" for trace in runalyze)
+        )
 
     def test_vo2max_chart_writes_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2615,7 +2635,7 @@ class Vo2maxChartTests(unittest.TestCase):
             self.assertTrue(output.exists())
 
     def test_vo2max_chart_rejects_empty_data(self):
-        empty = Vo2maxMethods([], [], [], [], [], [])
+        empty = Vo2maxMethods([], [], [], [])
 
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
