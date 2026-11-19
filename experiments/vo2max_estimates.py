@@ -22,6 +22,7 @@ Comparisons
 - Coverage and levels of Garmin, Runalyze and both estimates.
 - Garmin/Runalyze change frequency (the smoothing check).
 - Correlations and RMSE, raw and over rolling 7/14/28/42/90/182-day windows.
+- Smoothing/lag validation against race VDOT (rolling means vs EWMAs).
 - Yearly means and plots.
 
     uv run --env-file .env python experiments/vo2max_estimates.py
@@ -35,6 +36,7 @@ from datetime import date, timedelta
 from statistics import mean, median
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from hobbyjogging_report.analysis import RUN_TYPES
 from hobbyjogging_report.analysis.efficiency import (
@@ -42,6 +44,7 @@ from hobbyjogging_report.analysis.efficiency import (
     resting_hr_baselines,
 )
 from hobbyjogging_report.shell import save, table
+from hobbyjogging_report.series import alpha_from_time_constant, date_range, ewma
 from hobbyjogging_report.sources import create_source
 
 MIN_SPEED = 1.5
@@ -58,6 +61,8 @@ QUALITY_TARGETS = {
     "marathon",
 }
 WINDOWS = (7, 14, 28, 42, 90, 182)
+SMOOTH_WINDOWS = (14, 28, 42, 63, 90, 182)
+SMOOTH_LAGS = (0, 7, 14, 21, 28, 42, 56, 90)
 
 
 def correlation(xs: list[float], ys: list[float]) -> float:
@@ -664,12 +669,240 @@ def device_smoothing(source) -> None:
     )
 
 
+def smoothing_validation(
+    race_rows: list[dict],
+    all_runs: list[dict],
+    steady: list[dict],
+) -> None:
+    """Which smoothing window and lag best follows race VDOT?"""
+    if not race_rows:
+        return
+
+    populations = (("all runs", all_runs), ("steady 40-75", steady))
+    results = []
+
+    for population, data in populations:
+        days, series = daily_estimate_series(data)
+        if not days:
+            continue
+        index = {day: position for position, day in enumerate(days)}
+        ewmas = {
+            window: ewma(
+                series,
+                alpha_from_time_constant(window),
+                initial=series[0],
+            )
+            for window in SMOOTH_WINDOWS
+        }
+
+        for method in ("rolling", "ewma"):
+            for window in SMOOTH_WINDOWS:
+                for lag in SMOOTH_LAGS:
+                    errors = []
+                    for race in race_rows:
+                        target = race["date"] - timedelta(days=lag)
+                        if method == "ewma":
+                            position = index.get(target)
+                            if position is None:
+                                continue
+                            value = ewmas[window][position]
+                        else:
+                            value = rolling_estimate(data, target, window)
+                        if value is None:
+                            continue
+                        errors.append(value - race["vdot"])
+                    if len(errors) < 10:
+                        continue
+                    results.append(
+                        {
+                            "population": population,
+                            "method": method,
+                            "window": window,
+                            "lag": lag,
+                            "n": len(errors),
+                            "mae": mean(abs(error) for error in errors),
+                            "median": median(abs(error) for error in errors),
+                            "bias": mean(errors),
+                        }
+                    )
+
+    results.sort(key=lambda result: result["median"])
+    print("\nsmoothing/lag validation against race VDOT:")
+    table(
+        [
+            (
+                result["population"],
+                result["method"],
+                f"{result['window']}d",
+                f"{result['lag']}d",
+                result["n"],
+                f"{result['mae']:.2f}",
+                f"{result['median']:.2f}",
+                f"{result['bias']:+.2f}",
+            )
+            for result in results[:16]
+        ],
+        headers=[
+            "population",
+            "smoothing",
+            "window",
+            "lag",
+            "n",
+            "mean abs",
+            "median abs",
+            "bias",
+        ],
+    )
+    print(
+        "These are in-sample choices over a small race set; the top rows are "
+        "hypotheses, not independent validation."
+    )
+
+    focused = [
+        ("ewma", 42, 0),
+        ("ewma", 182, 0),
+        ("rolling", 42, 0),
+        ("rolling", 182, 0),
+        ("rolling", 14, 7),
+        ("rolling", 63, 0),
+    ]
+    print("\nfocused comparison (all runs):")
+    table(
+        [
+            (
+                method,
+                f"{window}d",
+                f"{lag}d",
+                f"{result['mae']:.2f}",
+                f"{result['median']:.2f}",
+                f"{result['bias']:+.2f}",
+            )
+            for method, window, lag in focused
+            for result in [
+                next(
+                    (
+                        item
+                        for item in results
+                        if item["population"] == "all runs"
+                        and item["method"] == method
+                        and item["window"] == window
+                        and item["lag"] == lag
+                    ),
+                    None,
+                )
+            ]
+            if result
+        ],
+        headers=["smoothing", "window", "lag", "mean abs", "median abs", "bias"],
+    )
+
+    # Best result per population and method.
+    best = {}
+    for result in results:
+        key = (result["population"], result["method"])
+        if key not in best:
+            best[key] = result
+    print("\nbest per population/method:")
+    table(
+        [
+            (
+                population,
+                method,
+                f"{result['window']}d",
+                f"{result['lag']}d",
+                f"{result['mae']:.2f}",
+                f"{result['median']:.2f}",
+            )
+            for (population, method), result in sorted(best.items())
+        ],
+        headers=["population", "smoothing", "window", "lag", "mean abs", "median"],
+    )
+
+    # Heatmaps for the all-runs population.
+    figure = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=("rolling mean", "EWMA"),
+    )
+    for column, method in enumerate(("rolling", "ewma"), start=1):
+        matrix = []
+        for window in SMOOTH_WINDOWS:
+            row = []
+            for lag in SMOOTH_LAGS:
+                match = next(
+                    (
+                        result["median"]
+                        for result in results
+                        if result["population"] == "all runs"
+                        and result["method"] == method
+                        and result["window"] == window
+                        and result["lag"] == lag
+                    ),
+                    None,
+                )
+                row.append(match)
+            matrix.append(row)
+        if any(value is not None for row in matrix for value in row):
+            figure.add_trace(
+                go.Heatmap(
+                    z=matrix,
+                    x=[f"{lag}d" for lag in SMOOTH_LAGS],
+                    y=[f"{window}d" for window in SMOOTH_WINDOWS],
+                    colorscale="Viridis",
+                    colorbar={"title": "median error"},
+                ),
+                row=1,
+                col=column,
+            )
+    figure.update_xaxes(title_text="lag before race")
+    figure.update_yaxes(title_text="window")
+    figure.update_layout(title="VO2max smoothing vs race VDOT")
+    save(figure, "vo2max-smoothing")
+
+
+def daily_estimate_series(rows: list[dict]) -> tuple[list[date], list[float]]:
+    by_day: dict[date, list[float]] = defaultdict(list)
+    for row in rows:
+        if row["is_race"] or row["estimate_hr"] is None:
+            continue
+        by_day[row["date"]].append(row["estimate_hr"])
+    if not by_day:
+        return [], []
+
+    daily = {day: mean(values) for day, values in by_day.items()}
+    days = date_range(min(daily), max(daily))
+    series = []
+    carried = None
+    for day in days:
+        if day in daily:
+            carried = daily[day]
+        series.append(carried)
+    return days, series
+
+
+def rolling_estimate(
+    rows: list[dict],
+    target: date,
+    window: int,
+) -> float | None:
+    start = target - timedelta(days=window - 1)
+    values = [
+        row["estimate_hr"]
+        for row in rows
+        if not row["is_race"]
+        and start <= row["date"] <= target
+        and row["estimate_hr"] is not None
+    ]
+    return mean(values) if values else None
+
+
 def main() -> None:
     with create_source() as source:
         rows, _ = build_rows(source)
         all_runs, _ = build_rows(source, steady_only=False)
         race_rows = race_validation(source, all_runs)
         device_smoothing(source)
+        smoothing_validation(race_rows, all_runs, rows)
 
     print(f"{len(rows)} steady runs with RHR and max HR")
     if len(rows) < 100:

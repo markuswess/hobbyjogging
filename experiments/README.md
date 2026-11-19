@@ -137,6 +137,14 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   - Tests: formula sanity, EWMA/warm-up, missing max HR, all-vs-steady, device
     grouping, Runalyze correction label, race overlay, dashboard build.
   - `docs/METRICS.md` card is root/planning work; this note is the evidence.
+  - **Smoothing addon (34 races):** all runs mirror race VDOT better than the
+    steady band. Best mean error is all-runs rolling 63d, no shift (1.36 mean /
+    0.95 median / +0.13 bias); best median is rolling 14d shifted 7d (0.83) but
+    it is optimistic (+0.65). Among EWMAs, 182d no shift (1.42 / 1.04 / +0.30)
+    beats 42d (1.45 / 1.27 / +0.43); rolling 182d no shift is 1.41 / 1.25 /
+    +0.07. Steady variants are worse. Keep the planned 42/182 display, with
+    182 as the race-aligned line; do not add a production day shift from this
+    in-sample selection. Plot: `vo2max-smoothing.png`.
 
 - **Efficiency line shape and confounders** — promoted 2026-11-17. The
   current line through resting HR beats free linear, quadratic, log and
