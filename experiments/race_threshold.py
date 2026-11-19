@@ -1,13 +1,10 @@
 """Experiment: derive threshold pace from race results and compare the setting.
 
 Threshold is approximately one-hour all-out pace. For each run threshold
-snapshot, fit the prior official road races and predict the 60-minute pace with
-two models:
-
-- Riegel: log(time) = a + b*log(distance), solved for 60 minutes;
-- critical speed: distance = CS*time + D', evaluated at 3600 s.
-
-Compare both with the stored Intervals threshold pace and the official race
+snapshot, fit the exponent on prior official road races but anchor the level
+to current form: the mean of the best two of the last five prior road races,
+with the latest-10k anchor as a comparison. Predict the 60-minute pace and
+compare it with the stored Intervals threshold pace and the official race
 paces. This tests whether the setting behaves like a 1-hour threshold or like a
 faster 10k/ceiling reference.
 
@@ -85,34 +82,49 @@ def race_rows(source) -> list[dict]:
     return sorted(rows, key=lambda row: row["date"])
 
 
+def current_anchor(
+    rows: list[dict],
+    exponent: float,
+    mode: str,
+) -> float | None:
+    levels = [
+        math.log(row["minutes"]) - exponent * math.log(row["km"])
+        for row in rows
+    ]
+
+    if mode == "best2":
+        return mean(sorted(levels[-5:])[:2]) if levels else None
+
+    tens = [row for row in rows if 9.5 <= row["km"] <= 10.5]
+    reference = tens[-1] if tens else rows[-1]
+    return math.log(reference["minutes"]) - exponent * math.log(
+        reference["km"]
+    )
+
+
 def estimate_60(rows: list[dict]) -> dict[str, float] | None:
+    """Current-form 1-hour pace, anchored to recent race level."""
     if len(rows) < MIN_RACES:
         return None
 
-    riegel_b, riegel_a = fit_line(
+    exponent, _ = fit_line(
         [math.log(row["km"]) for row in rows],
         [math.log(row["minutes"]) for row in rows],
     )
-    if riegel_b <= 0:
-        riegel_pace = None
-    else:
-        distance = math.exp((math.log(60.0) - riegel_a) / riegel_b)
-        riegel_pace = 3600.0 / distance if distance > 0 else None
+    if exponent <= 0:
+        return None
 
-    cs, d_prime = fit_line(
-        [row["minutes"] * 60.0 for row in rows],
-        [row["km"] * 1000.0 for row in rows],
-    )
-    distance = cs * 3600.0 + d_prime
-    cs_pace = 3600.0 / (distance / 1000.0) if distance > 0 and cs > 0 else None
+    def predict(anchor: float | None) -> float | None:
+        if anchor is None:
+            return None
+        distance = math.exp((math.log(60.0) - anchor) / exponent)
+        return 3600.0 / distance if distance > 0 else None
 
     return {
         "n": len(rows),
-        "riegel_b": riegel_b,
-        "riegel": riegel_pace,
-        "cs": cs,
-        "d_prime": d_prime,
-        "cs_pace": cs_pace,
+        "exponent": exponent,
+        "best2": predict(current_anchor(rows, exponent, "best2")),
+        "latest10k": predict(current_anchor(rows, exponent, "latest10k")),
     }
 
 
@@ -157,8 +169,8 @@ def main() -> None:
         row = {
             "date": snapshot.effective_from,
             "setting": setting,
-            "riegel": estimate["riegel"],
-            "cs": estimate["cs_pace"],
+            "best2": estimate["best2"],
+            "latest10k": estimate["latest10k"],
             "n": estimate["n"],
         }
         estimates.append(row)
@@ -166,10 +178,10 @@ def main() -> None:
             (
                 snapshot.effective_from.isoformat(),
                 format_pace(setting),
-                format_pace(estimate["riegel"]),
-                format_pace(estimate["cs_pace"]),
-                f"{setting - estimate['riegel']:+.1f}"
-                if estimate["riegel"] is not None
+                format_pace(estimate["best2"]),
+                format_pace(estimate["latest10k"]),
+                f"{setting - estimate['best2']:+.1f}"
+                if estimate["best2"] is not None
                 else "-",
                 estimate["n"],
             )
@@ -180,32 +192,32 @@ def main() -> None:
         headers=[
             "snapshot",
             "setting",
-            "Riegel 60m",
-            "CS 60m",
-            "setting - Riegel s/km",
+            "current 60m",
+            "latest-10k 60m",
+            "setting - current s/km",
             "races",
         ],
     )
 
     if estimates:
         deltas = [
-            row["setting"] - row["riegel"]
+            row["setting"] - row["best2"]
             for row in estimates
-            if row["riegel"] is not None
+            if row["best2"] is not None
         ]
         print(
-            f"\nsetting vs Riegel 60m: mean {mean(deltas):+.1f}, "
+            f"\nsetting vs current-form 60m: mean {mean(deltas):+.1f}, "
             f"median {median(deltas):+.1f} s/km (negative = setting faster)"
         )
-        cs_deltas = [
-            row["setting"] - row["cs"]
+        latest_deltas = [
+            row["setting"] - row["latest10k"]
             for row in estimates
-            if row["cs"] is not None
+            if row["latest10k"] is not None
         ]
-        if cs_deltas:
+        if latest_deltas:
             print(
-                f"setting vs critical speed 60m: mean {mean(cs_deltas):+.1f}, "
-                f"median {median(cs_deltas):+.1f} s/km"
+                f"setting vs latest-10k 60m: mean {mean(latest_deltas):+.1f}, "
+                f"median {median(latest_deltas):+.1f} s/km"
             )
 
     current = estimate_60(races)
@@ -213,9 +225,9 @@ def main() -> None:
         latest = thresholds[-1]
         setting = 1000.0 / latest.threshold_pace_mps
         print(
-            f"\nlatest setting {format_pace(setting)}; full-race Riegel "
-            f"{format_pace(current['riegel'])}, CS {format_pace(current['cs_pace'])} "
-            f"(n={current['n']})"
+            f"\nlatest setting {format_pace(setting)}; current-form 60m "
+            f"{format_pace(current['best2'])}, latest-10k 60m "
+            f"{format_pace(current['latest10k'])} (n={current['n']})"
         )
 
     figure = go.Figure()
@@ -245,21 +257,21 @@ def main() -> None:
         figure.add_trace(
             go.Scatter(
                 x=[row["date"] for row in estimates],
-                y=[row["riegel"] for row in estimates],
+                y=[row["best2"] for row in estimates],
                 mode="lines+markers",
                 line={"color": "#4c78a8", "width": 2},
                 marker={"size": 6},
-                name="Riegel 60m",
+                name="current-form 60m",
             )
         )
         figure.add_trace(
             go.Scatter(
                 x=[row["date"] for row in estimates],
-                y=[row["cs"] for row in estimates],
+                y=[row["latest10k"] for row in estimates],
                 mode="lines+markers",
                 line={"color": "#f58518", "width": 2, "dash": "dash"},
                 marker={"size": 5},
-                name="critical speed 60m",
+                name="latest-10k 60m",
             )
         )
 
