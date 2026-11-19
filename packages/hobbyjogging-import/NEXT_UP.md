@@ -15,7 +15,12 @@ on.
   model keep the provider id. `fit_import.device_id_from` now requires a
   serial, so a serial-less upload is not a device. Runalyze payloads also carry
   `device_name`, but nothing maps it to `device_id` today; a mapping would have
-  to use the same resolver.
+  to use the same resolver. `device_identity_v1` (maintenance) is the stored
+  half: it re-resolves activities already on an `intervals:<slug>` row through
+  this rule — 2 moved to the Enduro serial, 1 app-name fallback cleared — and
+  `verify_canonical` derives the same claim, so the canonical row stays at 0
+  drift. The two now-unused provider rows remain until core adds
+  `devices.excluded_at` (root item 41).
 - **Source policy and settings view.** `sources.toml` sets enabled, create
   (`create | review | ignore` for Strava and Runalyze) and the text targets;
   `sources` prints the effective policy and `settings` renders the rules and
@@ -349,15 +354,6 @@ on.
   rewrites existing rows, so it belongs in a maintenance task — blank-fill the
   description from the sheet row, then exclude the sheet row — not an import
   write.
-- **`device_identity_v1`** (root item 41, maintenance). The import no longer
-  creates a provider row, but the stored ones remain: two activities point at
-  `intervals:garmin-enduro` (they should carry the Enduro serial) and one at
-  `intervals:runalyze` (it should be NULL), and both provider rows should be
-  soft-excluded, which needs `devices.excluded_at` (v24). The claim is a
-  write-time rule: `derive_value` still maps a payload's `device_name` to the
-  provider id, so until the derive check resolves the claim against the devices
-  table, `verify_canonical` reports drift on a claimed activity and
-  `recompute_canonical` would revert it.
 
 Nothing else. Runalyze phases 1–5 have landed; phase 6 (reports) has the race
 pair done and the VO2max series ready (`vo2max_runalyze` now holds 2,225
