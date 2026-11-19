@@ -57,14 +57,17 @@ package at any time and do not wait for a phase.
 
 Exit test: a computer-savvy Linux user clones the repo, runs `./demo.sh` with
 no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
-`sync` and the dashboard on their own machine — no code or SQL edits.
+`sync` (which covers every configured source) and the dashboard on their own
+machine — no code or SQL edits.
 
 - **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
   checks `uv`, the DB path, schema version, FIT dir, each credential and the
   sources file, and prints the next command.
 - **`sync.sh` skips an unconfigured source** instead of failing on an absent
-  credential — the only source-behaviour change, because a second athlete may
-  have no Intervals.
+  credential, so a missing credential is never a failed sync (item 44 covers
+  the rest).
+- **44 sync covers every configured source** — Runalyze, Strava and the
+  offline derivations join the one command.
 - **`./demo.sh` as the zero-credential first run**, documented and tested on a
   clean checkout with an empty `$HOBBYJOGGING_DB`.
 - **`sources.toml`, `.env.example` and the README first-run path** (GDPR export
@@ -230,6 +233,15 @@ reports item; 28 is the recurring cleanup.
       replaces every field including NULLs, removal soft-excludes), wellness has
       no owner tracking, and planned workouts carry methods/targets/zones but no
       step list.
+    - **Source exit checklists**: a platform is retired **per metadata type,
+      not per platform** — the type gets a DB surface first, the import keeps
+      backfilling, and the platform stays a read-only fallback until the DB is
+      at least as good for that type. Runalyze is nearly reachable: race
+      results already have the manual `race-result` CLI (about five per year),
+      comments live in Intervals, tags move with item 1, and the only missing
+      surface is equipment add/edit/retire; the lost series is
+      `vo2max_runalyze`. Intervals is the hard one (plans, wellness, events,
+      thresholds, zones), which is why it comes last.
     - **Phases**, in order: owner-tracked events (`event_field_sources`, manual
       wins, a new `AGENTS.md` rule) → planned-workout steps and authoring →
       subjective wellness ownership → thresholds/zones (item 8) → the front end
@@ -914,6 +926,37 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: the audit accounts for every stored tag, the proposals
       use the lexicon, and adding a tag meaning is a one-line change with a
       test.
+
+44. **Sync covers every configured source** (import + reports; phase 2). Today
+    `sync.sh` runs Garmin, Intervals, the FIT scan, the review scan, the
+    classifier and the dashboard; Runalyze and Strava are manual one-offs, so
+    the mirror can be weeks stale and nothing says so. The phase-2 exit test
+    says "runs `sync`", which has to mean the whole configured pipeline — also
+    for an athlete with no Intervals.
+    - **Runalyze (online, budgeted)**: one `runalyze enrich --since <last sync
+      − 14 d>` per run. Re-runs only fetch new rows (a stored, linked detail is
+      skipped); a `429` ends the step with a pending count and a warning, never
+      a failed sync, and `--wait` is never used inside a scheduled run. Then
+      the offline `runalyze gear`, `vo2max` and `races` steps run every time —
+      they read stored payloads and cost no requests.
+    - **Strava (manual drop)**: import the newest `export_*.zip` from
+      `data/strava/` when it is new, and no-op when it is absent or already
+      recorded. The download stays a human chore — no API, no scraping; the
+      deferred-API decision stands. Tags and gear keep Runalyze as their interim
+      home (item 1 moves tags to the DB later).
+    - **Order**: fetch (Garmin, Intervals, FIT, Runalyze, Strava) → offline
+      derive (gear, vo2max, races) → maintenance recomputes → review scan →
+      dashboard. A source that failed or is unconfigured prints a warning and
+      the rest still run.
+    - **Companion, any time (reports)**: a source-freshness view — last
+      successful run, last activity date, pending Runalyze rows and Strava
+      export age per source, read from `import_runs`/`source_records`, no
+      schema change. `doctor` answers "can it run"; this answers "is it
+      current".
+    - **Acceptance**: a fresh install with Garmin, Intervals, Runalyze and
+      Strava brings all four in with one command; a second run is a no-op;
+      removing one credential skips that source with a warning and leaves the
+      others working; the dashboard reflects the new metadata.
 
 ## Notes
 

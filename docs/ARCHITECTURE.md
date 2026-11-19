@@ -32,7 +32,7 @@ passed the gate may land in its owning package at any time (see
 | phase | scope | complete when |
 |---|---|---|
 | **1. Works for me** | canonical DB, review, every source, reports, dashboard and lab | done 2026-11-19: all imports are in and the reports/dashboard answer the daily questions |
-| **2. Works for someone else** | install and configuration for a second athlete: `init`/`doctor`, `sources.toml` + `.env`, first-run docs, CI, release versioning, lab detach | a computer-savvy Linux user clones the repo, builds the demo with no credentials, then configures and syncs their own database on their own machine without editing code or SQL |
+| **2. Works for someone else** | install and configuration for a second athlete: `init`/`doctor`, `sources.toml` + `.env`, first-run docs, CI, release versioning, lab detach | a computer-savvy Linux user clones the repo, builds the demo with no credentials, then configures and syncs every configured source into their own database on their own machine without editing code or SQL |
 | **3. Trustworthy data** | extraction, audit, evidence-gated suggestions, duplicate cleanup, the CLI write surface and finally a localhost UI | any activity can be audited and corrected without SQL, every suggestion has a recorded decision, a rebuild after the corrections yields an empty diff, and open items, duplicates and coverage gaps are trending down |
 | **4. Durable and more reach** | homelab, more sources, streams, platform independence, LLM coaching, performance | parked until phases 1–3 are complete |
 
@@ -42,6 +42,12 @@ metrics on demand. **Phase 2 is current;** its worklist is at the top of
 [NEXT_UP.md](NEXT_UP.md), and its exit test is installability, not another
 athlete's data. **Phase 3** then makes the stored record trustworthy and
 correctable. **Phase 4** stays parked.
+
+A platform is retired **per metadata type, never per platform**: the type gets
+a DB surface first (phase 3), the historical import keeps backfilling, and the
+platform stays a read-only fallback until the DB is at least as good for that
+type. Superseding can mean better, not identical — the DB already beats the
+platforms at race reporting and analysis; it lacks capture and editing.
 
 ## Where the data comes from
 

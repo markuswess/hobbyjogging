@@ -74,13 +74,15 @@ import, FIT scan, review scan, dashboard:
 ```
 
 The FIT files come from `garmin fetch` (Garmin Personal API) or from a Garmin
-GDPR export copied into the FIT directory; the historical spreadsheet and the
-Strava bulk export are one-off imports.
+GDPR export copied into the FIT directory. `sync.sh` covers Garmin, Intervals
+and the FIT archive; Runalyze enrichment and the Strava bulk export are
+separate commands today, and the historical spreadsheet is a one-off import.
 
 ## What you do with it
 
-- **Import.** FIT files, Intervals.icu, the Garmin API, Runalyze, Strava and
-  the historical spreadsheet; `sync.sh` keeps them current.
+- **Import.** FIT files, Intervals.icu and the Garmin API run in `sync.sh`;
+  Runalyze, the Strava bulk export and the historical spreadsheet are separate
+  imports.
 - **Review.** Conflicts and odd data land in a queue; the interactive walk
   fixes, resolves or excludes them.
 - **Look.** A static dashboard, plus the Markdown reports and charts behind

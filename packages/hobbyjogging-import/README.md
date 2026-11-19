@@ -26,6 +26,11 @@ Order is deliberate:
 3. FIT archive import (recursive, new paths only unless `--full`)
 4. quality review scan
 
+Runalyze enrichment and the Strava bulk export are separate commands today, so
+a sync can be current for the FIT/Intervals sources while the Runalyze metadata
+lags — check the last import run for the source before trusting its tags or
+gear.
+
 Useful options:
 
 - `--no-garmin`, `--no-intervals`, `--no-fit`, `--no-scan` — skip a source.
