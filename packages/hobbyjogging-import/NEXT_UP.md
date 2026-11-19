@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Declared payload mapping.** `hobbyjogging_import.derive` holds the
+  per-source `FIELD_MAPS` and per-sheet `SHEET_MAPS`, with named transforms
+  for units, sports, dates and the device id. Contract tests compare each map
+  with its importer (Intervals, FIT, Runalyze, both sheet worksheets).
 - **Triage force records an owner patch.** `(t)` still re-imports Intervals and
   takes ownership, but now writes an `activity_manual_fields` owner row for
   every field it took, so a rebuild keeps the decision (root item 17).

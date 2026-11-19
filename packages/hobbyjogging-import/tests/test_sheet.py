@@ -1,5 +1,5 @@
 import unittest
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 from hobbyjogging_import.sheet import (
     alternativtraining_values,
@@ -74,6 +74,8 @@ class MissingValueTests(unittest.TestCase):
             11,
         )
         self.assertEqual(as_clock("06:43").minute, 43)
+        self.assertEqual(as_clock("18:30:00").hour, 18)
+        self.assertEqual(time(0, 0), as_clock("10 days, 0:00:00"))
         self.assertEqual(as_clock("8;19").minute, 19)
         self.assertIsNone(as_clock("/"))
         self.assertIsNone(as_clock("25:00"))

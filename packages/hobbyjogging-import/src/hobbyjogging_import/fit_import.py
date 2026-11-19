@@ -614,20 +614,32 @@ def discover_fit_files(
     return sorted(discovered, key=lambda path: str(path))
 
 
-def _device_id(summary: FitFileSummary) -> str | None:
+def device_id_from(
+    manufacturer: object,
+    product: object,
+    serial_number: object,
+) -> str | None:
     """The recorder's stable id, or None for a non-device upload.
 
     Garmin Connect web uploads carry ``product='connect'`` and no serial; they
     are uploads, not devices.
     """
-    manufacturer = (summary.manufacturer or "").strip()
-    product = (summary.product or "").strip()
+    manufacturer = str(manufacturer or "").strip()
+    product = str(product or "").strip()
 
     if not manufacturer or not product or product == "connect":
         return None
 
-    serial = (summary.serial_number or "").strip()
+    serial = str(serial_number or "").strip()
     return f"fit:{manufacturer}:{product}:{serial}"
+
+
+def _device_id(summary: FitFileSummary) -> str | None:
+    return device_id_from(
+        summary.manufacturer,
+        summary.product,
+        summary.serial_number,
+    )
 
 
 def _activity_values(session: FitSession) -> dict[str, object]:

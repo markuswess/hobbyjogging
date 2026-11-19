@@ -4,6 +4,11 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **`verify_canonical`.** A read-only recompute that derives every owned
+  activity field from its manual value, owner patch or source pointer and
+  compares it with the stored value. On the real DB: 4,143 activities, 68,001
+  fields, **0 drift, 0 dangling, 0 unmapped**. Run it before trusting a
+  rebuild.
 - **`race_links_current`.** Matches each race event to an activity on the same
   date and sport within 5% distance, writes `event_activity_links` and derives
   the `race` method under `race_link`. A non-excluded official `race_results`

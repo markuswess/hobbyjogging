@@ -5,6 +5,7 @@ from . import (
     athlete_thresholds_current,
     race_links_current,
     training_periods_current,
+    verify_canonical,
     workout_classification_queue,
     workout_sets_current,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "athlete_thresholds_current",
     "race_links_current",
     "training_periods_current",
+    "verify_canonical",
     "workout_classification_queue",
     "workout_sets_current",
 ]

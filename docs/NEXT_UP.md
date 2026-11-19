@@ -645,8 +645,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
     on disagreement — no global source order. The ownership pointer is an
     **input** (a recorded decision); the canonical row is a **cache** rebuilt
     from inputs: payloads, pointers, manual edits, links, exclusions and review
-    answers. The manual input layer has landed; the mapping, the derive check
-    and the rebuild remain.
+    answers. The manual layer, the declared mapping and the derive check have
+    landed; the rebuild remains.
     - **Manual input layer (done Nov 2026, schema v23)**:
       `activity_manual_fields` holds one row per `(activity, field)` with
       either a `value_json` (a manual value) or an `owner_source` (a manual
@@ -657,14 +657,16 @@ editing, analysis and lab work; phase 3 is the dormant future.
       longer override it. The migration copied the 73 existing manual edits.
       Force decisions made before this change are indistinguishable from a
       normal source win and cannot be recovered.
-    - **Declared mapping**: each adapter exposes a `FIELD_MAP` (canonical field
-      → payload key) plus named transforms for units and derivations. A
-      contract test asserts every extracted payload key has a mapping entry and
-      vice versa, so a remap is a one-line, reviewable change.
-    - **`verify_canonical` (read-only)**: derive each activity's scalar fields
-      from manual patch → manual owner → stored pointer → payload, and diff
-      against the stored values. Report per field: ok, drift, dangling pointer.
-      Run it before trusting any rebuild; it is the gate.
+    - **Declared mapping (done Nov 2026)**: `hobbyjogging_import.derive`
+      declares `FIELD_MAPS` per source (Intervals, FIT, Runalyze, Strava) and
+      `SHEET_MAPS` per worksheet, with named transforms for units, sport
+      vocabulary, dates and the device id. Contract tests compare every map
+      with its importer, so a remap is a one-line, reviewable change.
+    - **`verify_canonical` (done Nov 2026, read-only)**: derives each owned
+      field from the manual patch → owner patch → stored pointer → payload and
+      diffs it against the stored value. On the real DB: 4,143 activities,
+      68,001 owned fields, **0 drift, 0 dangling, 0 unmapped**. It is the gate
+      before a rebuild; run `maintenance run verify_canonical`.
     - **`recompute_canonical` (maintenance, dry-run first)**: the same
       derivation, written back. It never re-decides ownership and never touches
       links, exclusions, review answers, child tables or entity rows; manual
@@ -678,8 +680,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Companion**: item 34 exports the overlay and proves the rebuild on a
       fresh database; item 38 consumes the mapping for `activity_metrics`;
       item 40 shows the mapping and the policy in the settings report.
-    - **Order**: manual layer → mapping → `verify_canonical`; the recompute can
-      land with item 40's policy or with item 38, whichever is ready first.
+    - **Order**: manual layer → mapping → `verify_canonical` (all done); the
+      recompute can land with item 40's policy or with item 38.
 
 20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
     priority). The payload carries `decoupling`, `efficiency_factor`,

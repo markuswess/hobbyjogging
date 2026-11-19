@@ -137,16 +137,31 @@ def as_clock(value: object) -> time | None:
         seconds = int(value.total_seconds()) % (24 * 3600)
         return time(seconds // 3600, (seconds % 3600) // 60, seconds % 60)
     text = str(value).strip().replace(";", ":")
+    if " day" in text:
+        # A serialized timedelta cell, e.g. "10 days, 0:00:00".
+        days_text, _, clock_text = text.partition(", ")
+        try:
+            days = int(days_text.split()[0])
+            hour, minute, second = (
+                int(part) for part in clock_text.split(":")
+            )
+        except ValueError:
+            return None
+        seconds = (
+            days * 86400 + hour * 3600 + minute * 60 + second
+        ) % (24 * 3600)
+        return time(seconds // 3600, (seconds % 3600) // 60, seconds % 60)
     parts = text.split(":")
-    if len(parts) != 2:
+    if len(parts) not in (2, 3):
         return None
     try:
         hour, minute = int(parts[0]), int(parts[1])
+        second = int(parts[2]) if len(parts) == 3 else 0
     except ValueError:
         return None
-    if not (0 <= hour < 24 and 0 <= minute < 60):
+    if not (0 <= hour < 24 and 0 <= minute < 60 and 0 <= second < 60):
         return None
-    return time(hour, minute)
+    return time(hour, minute, second)
 
 
 def german_date(value: object) -> date | None:
