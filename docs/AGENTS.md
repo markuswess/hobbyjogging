@@ -82,6 +82,13 @@ cleanup pass is part of the todo list, not a rewrite project.
   section is duplication that rots.
 - **Split or trim in the same change.** If a file outgrows its purpose while
   you are working in it, fix that there — do not leave it for later.
+- **Review before you extend.** Before a package grows, spend the start of the
+  session on it: dead exports, unused flags and oversized files in the area you
+  are about to touch. A pass that produces no diff is a reading session — fine
+  once, not a habit.
+- **A file has a budget.** A source file stays under 1,000 lines; going over is
+  a decision, and the known giants are an allowlist that only shrinks
+  (`tools/check_size.py`, root item 45).
 - **Leave it no worse.** A touch-up is welcome, a drive-by rewrite that mixes
   concerns with a fix is not.
 

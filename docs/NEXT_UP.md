@@ -544,24 +544,31 @@ reports item; 28 is the recurring cleanup.
 
 28. **Periodic cleanup pass** (all packages + docs; recurring). Nothing guards
     readability automatically: no linter is configured, and documentation
-    drifts toward duplication. Human review is the guard, at a slow cadence.
-    - **Docs, done once (2026-11-19)**: the root `## Done` list is now a short
+    drifts toward duplication. Human review is the guard, and the cadence is
+    event-driven rather than calendar-based.
+    - **Triggers**: a **phase boundary** (one session); **before extending a
+      package** (the cheap one — review the package you are about to grow);
+      **each release tag** once item 22 lands (today the phases are the
+      anchor); and the **boy-scout rule** in every session.
+    - **File budget**: a source file stays under 1,000 lines. A new file over
+      it is a design decision, not drift; the known giants are a short
+      allowlist that only shrinks (item 45, `tools/check_size.py`). A package
+      that grows more than a quarter in one phase gets a pass before the next
+      phase starts.
+    - **Docs, done once (2026-11-19)**: the root `## Done` list is a short
       "recently landed" list and the landed Runalyze milestone is a summary
       rather than a phase log. Package lists trim their own `## Done`
       sections; they are not root edits.
     - **Docs, every pass**: sweep for facts stated twice (the phase paragraph,
       the roadmap pointer, the schema version) and for entries that restate
       git history.
-    - **Code**: audit the ~108 names re-exported from
-      `hobbyjogging_report.analysis.__init__` for dead exports, then delete
-      unused helpers, parameters and flags. No `TODO`/`FIXME` markers exist
-      today — keep it that way.
-    - **Mechanical guard, still open**: `ruff` (lint and format check) would
-      catch unused imports and variables and enforce a line length, at the cost
-      of a first pass of violations and some config churn; decide before wiring
-      it into the test job.
-    - **Cadence**: one pass at each release tag (item 22), plus the boy-scout
-      rule in `AGENTS.md` — leave a file no worse than you found it.
+    - **Code**: dead exports (start with `analysis/__init__`), unused flags and
+      parameters, duplicated helpers, and a file that has outgrown its
+      purpose. No `TODO`/`FIXME` markers exist today — keep it that way.
+    - **Mechanical guard**: `tools/check_size.py` (item 45) fails a new
+      oversized file. `ruff` remains an open question — it would catch unused
+      imports and enforce formatting, at the cost of a first pass of violations
+      and config churn; decide after phase 2.
     - **Acceptance**: no dead exports, no duplicated doc sections, no file that
       has outgrown its purpose without being split or trimmed.
 
@@ -957,6 +964,32 @@ reports item; 28 is the recurring cleanup.
       Strava brings all four in with one command; a second run is a no-op;
       removing one credential skips that source with a warning and leaves the
       others working; the dashboard reflects the new metadata.
+
+45. **Readability baseline pass** (reports + tools; small item, before the
+    phase-2 code — item 44 and `init`/`doctor` — or in parallel). The codebase
+    is not bloated yet, but reports and import are two-thirds of it and two
+    files are doing too much. Measured 2026-11-19: reports 75 modules / 22.8k
+    lines, import 41 / 16k, core 14 / 6.3k, maintenance 33 / 4.6k;
+    `charts.py` 3,610 lines, `writer.py` 2,898, and
+    `analysis/__init__` re-exports 154 names. This item is deletions and
+    splits, not a rewrite.
+    - **Split `charts.py`** by chart family (overview, volume, load, time,
+      subt, races, compare, devices) behind the same public imports, with no
+      behaviour change; each figure builder moves with the charts it serves.
+    - **Audit `analysis/__init__`**: delete the exports nothing imports and
+      keep the renderer-facing surface explicit. This is the highest-value
+      deletion in the package.
+    - **Add `tools/check_size.py`**: fail when a source file exceeds 1,000
+      lines unless it is on a short allowlist — today `charts.py`,
+      `writer.py`, `demo.py`, `triage.py`, `runalyze_import.py`,
+      `format.py`. Wire it into the CI job beside `check_todos.py`; the
+      allowlist only shrinks, and splitting a giant removes its entry.
+    - **Not now**: splitting `writer.py` (cohesive) or `demo.py` (mechanical),
+      a linter, package renames, or extracting `hobbyjogging-app` — that waits
+      for the front end (item 1).
+    - **Acceptance**: four suites green, the demo dashboard renders
+      identically, the public import paths still resolve, and a deliberately
+      oversized new file fails CI.
 
 ## Notes
 
