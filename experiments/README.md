@@ -75,6 +75,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | parked | `threshold_pace.py` | 2026-11-17 |
+| Race-derived threshold | Compute the 1-hour all-out pace from race results and compare it with the threshold setting and work reps. | candidate | — | 2026-11-19 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (37 official results plus 28 race logs; lab verdict only for now) | parked | `race_fitness.py` | 2026-11-19 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (37 official results; still thin for a two-timescale fit) | candidate | — | 2026-11-19 |
