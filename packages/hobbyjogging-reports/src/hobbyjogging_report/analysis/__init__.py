@@ -19,6 +19,7 @@ from .baseline import (
 from .devices import (
     DeviceStat,
     device_changes,
+    device_label,
     device_usage,
 )
 from .equipment import (
@@ -256,6 +257,7 @@ __all__ = [
     "event_zone_seconds",
     "equipment_coverage",
     "device_changes",
+    "device_label",
     "device_usage",
     "equipment_usage",
     "group_equipment",

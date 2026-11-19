@@ -9,6 +9,18 @@ and 15 waits for the lab before it becomes a chart series.
 
 ## Done
 
+- **Device labels.** `device_label()` gives a FIT product-only device the
+  manufacturer and the product's marketing name (`garmin`/`enduro` →
+  **Garmin Enduro**, `fr645` → **Garmin Forerunner 645**, `edge_540` →
+  **Garmin Edge 540**) and keeps a stored provider name as-is, so the two
+  writers' shapes read alike in the session line, the Gear tab, the
+  `equipment` report and the timeline. The Product column was the same string
+  as the label and is gone; the chart hover now carries the raw device id,
+  which is what still separates the two `Garmin Enduro` rows (1,639 FIT
+  activities vs 2 Intervals-only ones). The demo writes two FIT-shaped watches
+  and one name-only bike computer, so both paths render in every build.
+  Identity is not merged — see the handoff below.
+
 - **Max HR in the reports.** The Data Health tab counts runs that carry an
   average HR but no HR-zone split, so a run without HR is reported once by the
   HR check and not twice. The per-year coverage table gains a Max HR column
@@ -438,6 +450,23 @@ this list keeps the recent decisions only.
 ## Bugs
 
 _None._
+
+## Handed off: device identity
+
+The timeline can show one watch twice because the data, not the label, has
+two records: FIT writes `fit:garmin:enduro:<serial>`, and the provider
+fallback writes `intervals:garmin-enduro` for the activities with no FIT
+source (2 rides/surf plus one `Runalyze` activity). Two further problems sit
+in the import lane: a provider `device_name` that is really an app
+(`Runalyze`, `Garmin Connect`, `Strava`) becomes a device row, and Intervals
+spells the same watch `GARMIN ENDURO` in list payloads and `Garmin Enduro` in
+detail payloads, so the stored name follows whichever refresh ran last.
+
+Reports show what the data says. The fix belongs to import/core: skip app
+names as devices, normalise the provider spelling, and decide whether a
+serial-less provider name may claim the FIT device for its activity (that is
+an identity rule for `device_id`, with a backfill for the three affected
+rows). Until then the hover id is the honest way to tell the rows apart.
 
 ## Next
 

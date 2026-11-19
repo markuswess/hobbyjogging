@@ -173,37 +173,37 @@ _DEMO_SEASONS = (
 
 
 def _write_devices(writer, start: date, today: date) -> None:
-    """Write a small Garmin device history for the story."""
+    """Write a small Garmin device history for the story.
+
+    The watches carry the FIT shape (manufacturer and product, no name) and
+    the bike computer the provider fallback shape (name only), so the demo
+    exercises both label paths.
+    """
     mid = start + timedelta(days=int(max((today - start).days, 1) * 0.45))
 
-    for device_id, name, product, acquired, retired in (
+    for device_id, shape, acquired, retired in (
         (
             "demo-fr645",
-            "Forerunner 645",
-            "Forerunner 645",
+            {"manufacturer": "garmin", "product": "fr645"},
             start - timedelta(days=100),
             mid,
         ),
         (
             "demo-enduro",
-            "Enduro",
-            "Enduro",
+            {"manufacturer": "garmin", "product": "enduro"},
             mid,
             None,
         ),
         (
             "demo-edge",
-            "Edge 540",
-            "Edge 540",
+            {"name": "Garmin Edge 540"},
             start - timedelta(days=100),
             None,
         ),
     ):
         writer.upsert_device(
             device_id,
-            manufacturer="Garmin",
-            product=product,
-            name=name,
+            **shape,
             acquired_on=acquired,
             retired_on=retired,
         )

@@ -688,7 +688,11 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Other",
                     "Coverage",
                     "Devices",
-                    "Enduro",
+                    # The watches carry the FIT shape, the bike computer the
+                    # provider shape; both read as full names.
+                    "Garmin Forerunner 645",
+                    "Garmin Enduro",
+                    "Garmin Edge 540",
                 ),
                 "docs.html": ("Reports guide", "hobbyjogging-reports"),
                 "lab.html": (

@@ -54,7 +54,6 @@ def _devices_html(device_stats) -> str:
     rows = [
         [
             esc(stat.label),
-            esc(stat.product),
             str(stat.activities),
             esc(str(stat.first_used or "-")),
             esc(str(stat.last_used or "-")),
@@ -69,11 +68,10 @@ def _devices_html(device_stats) -> str:
         as_html=True,
     ) + table(
         [
-            "Device", "Product", "Activities", "First used",
-            "Last used", "Status",
+            "Device", "Activities", "First used", "Last used", "Status",
         ],
         rows,
-        numeric=(2,),
+        numeric=(1,),
     )
 
 

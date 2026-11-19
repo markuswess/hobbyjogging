@@ -118,13 +118,13 @@ def equipment_report(
             "",
             "## Devices",
             "",
-            "| Device | Product | Activities | First used | Last used | Status |",
-            "|---|---|---:|---|---|---|",
+            "| Device | Activities | First used | Last used | Status |",
+            "|---|---:|---|---|---|",
         ])
 
         for stat in devices:
             lines.append(
-                f"| {table_text(stat.label)} | {table_text(stat.product)} | "
+                f"| {table_text(stat.label)} | "
                 f"{stat.activities} | {stat.first_used or '-'} | "
                 f"{stat.last_used or '-'} | "
                 f"{'retired' if stat.retired else 'active'} |"

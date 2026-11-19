@@ -126,7 +126,11 @@ Pages:
   (shoes, bikes, other) with target markers and faded retired bars, one table
   section per category, per-year coverage with and without gear, a device
   timeline with activity counts, and retirement candidates grouped the same
-  way.
+  way. A device is labelled from its stored name, else from the FIT
+  manufacturer and product (`garmin` + `enduro` → **Garmin Enduro**), so the
+  FIT shape and the Intervals/Runalyze name read the same. The hover carries
+  the raw device id, because two ids can still describe one watch: the label
+  makes them read alike, it does not merge them.
 - `recovery.html` — the `recovery-report` (7/42/182-day moving averages,
   the 365-day baseline column, and the last four nights), then HRV, resting
   HR, and sleep as interactive plotly panels over the last two years
@@ -329,9 +333,9 @@ stay compact (`1h02`).
   `activity_equipment` → activities: sessions, km, km/month, last used,
   target/wear and retirement candidates, split into shoes, bikes and other
   sections, plus a recording-device table with active periods and activity
-  counts. The chart groups and colours the same categories; the summary
-  keeps the overall and per-category counts. Shoes without
-  `target_distance_m` use an 800 km default.
+  counts and the same device labels as the Gear tab. The chart groups and
+  colours the same categories; the summary keeps the overall and per-category
+  counts. Shoes without `target_distance_m` use an 800 km default.
 - **health** — The Data Health tab's numbers as Markdown: activity count,
   open review items, hidden/flagged activities, missing load/pace and HR
   zones/HR/distance, the review queue (with candidate names when the item has

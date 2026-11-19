@@ -24,6 +24,7 @@ from .analysis import (
     RUN_TYPES,
     STEADY_BAND_LABEL,
     activity_efficiency,
+    device_label,
     is_lt1_activity,
     is_subt_activity,
     pace_s_per_km,
@@ -865,14 +866,7 @@ def format_session_activity(
         lines.append(f"- Weather: {conditions}")
 
     if device is not None:
-        parts = [
-            part for part in (device.name, device.product) if part
-        ]
-
-        if len(parts) == 2 and parts[0] == parts[1]:
-            parts = parts[:1]
-
-        lines.append(f"- Device: {' · '.join(parts) or device.id}")
+        lines.append(f"- Device: {device_label(device)}")
     elif activity.device_id:
         lines.append(f"- Device: {activity.device_id}")
 

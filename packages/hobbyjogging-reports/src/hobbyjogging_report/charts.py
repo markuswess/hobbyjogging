@@ -2883,8 +2883,7 @@ def plot_devices(
                 showlegend=False,
                 text=[period, period],
                 customdata=[
-                    f"{stat.activities} activities, "
-                    f"{stat.product}"
+                    f"{stat.activities} activities · {stat.device.id}"
                 ] * 2,
                 hovertemplate=(
                     "%{y}<br>%{text}<br>%{customdata}<extra></extra>"
