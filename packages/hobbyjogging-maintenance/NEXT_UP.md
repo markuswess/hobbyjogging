@@ -81,6 +81,13 @@ This file records what the package is still waiting on.
   intervals alone. Validated on a copy and applied to the real DB: 239 rows
   dropped across 235 of 2,836 activities with intervals, no activity cleared,
   and a forced rerun changed nothing.
+- **`device_identity_v1`.** Re-resolves every activity still on a provider
+  fallback through the import device rule. Applied: 3 activities — Ramsau
+  Surfing and Vienna Cycling now carry `fit:garmin:enduro:3386253273`,
+  Höchst Other is cleared, and the two 2019 Garmin Connect rows stay NULL. The
+  canonical check now resolves a provider name through the same unique-FIT
+  claim, so `verify_canonical` stays at 0 drift and `recompute_canonical` is a
+  no-op.
 
 ## Next
 
@@ -102,6 +109,12 @@ Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on
 
+- **Device-row soft exclusion** (root item 41). The two provider rows left
+  unused by `device_identity_v1` (`intervals:garmin-enduro`,
+  `intervals:runalyze`) still exist in `devices`. Hiding them needs
+  `devices.excluded_at` (schema v24) and the `TrainingRepository.devices()`
+  filter — core/root work; until then the gear report lists them with 0
+  activities.
 - **Historical refurbishment** (root item 37). The read-only evidence audit is
   the first maintenance slice; it starts after the Runalyze import settles.
 

@@ -13,6 +13,7 @@ import sqlite3
 
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS
 from hobbyjogging_import.derive import Unmapped, derive_value
+from hobbyjogging_import.devices import claimed_fit_device
 
 from .context import Scope
 
@@ -152,6 +153,14 @@ def expected(
     except Exception:
         return None, "error"
 
+    if field == "device_id" and source == "intervals":
+        value = _claimed_device(
+            connection,
+            activity["id"],
+            payload,
+            value,
+        )
+
     # The writer zeroes distance for sports where it is not meaningful.
     if field == "distance_m" and activity["sport"] in NO_DISTANCE_SPORTS:
         value = 0.0
@@ -165,6 +174,44 @@ def same(stored: object, expected: object) -> bool:
         scale = max(1.0, abs(float(expected)))
         return abs(float(stored) - float(expected)) <= 1e-6 * scale
     return stored == expected
+
+
+def _claimed_device(
+    connection: sqlite3.Connection,
+    activity_id: str,
+    payload: dict,
+    fallback: object,
+) -> object:
+    """Resolve a provider device name through the import's FIT claim rule.
+
+    A provider name may identify the watch rather than the app that uploaded
+    the activity. The importer writes the unique FIT device of that model; the
+    canonical check must derive the same value or a rebuild would undo the
+    claim. FIT already owning the recorder means no claim is made, matching
+    the write-time rule.
+    """
+    if _has_fit_source(connection, activity_id):
+        return fallback
+
+    claimed = claimed_fit_device(connection, payload.get("device_name"))
+    return claimed if claimed is not None else fallback
+
+
+def _has_fit_source(
+    connection: sqlite3.Connection,
+    activity_id: str,
+) -> bool:
+    row = connection.execute(
+        """
+        SELECT 1
+        FROM activity_sources als
+        JOIN source_records sr ON sr.id = als.source_record_id
+        WHERE als.activity_id = ? AND sr.source = 'fit'
+        LIMIT 1
+        """,
+        (activity_id,),
+    ).fetchone()
+    return row is not None
 
 
 def _linked_record(

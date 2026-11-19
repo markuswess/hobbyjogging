@@ -52,6 +52,7 @@ with `--no-classify`; backfills stay deliberate.
 | `event_zones_v1` | backfill | Re-derive planned-event zone kinds/times from the saved Intervals payloads. |
 | `remove_tempo_method_v1` | backfill | Convert the retired `tempo` method to `continuous` (targets unchanged). |
 | `drop_empty_intervals_v1` | backfill | Drop the empty 1 s / 0 m Intervals artifact from stored interval sets. |
+| `device_identity_v1` | backfill | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
 | `workout_classification_v1` | backfill | Classify activities from the reports classifier and the sheet `Trainigstyp` code; disagreements are left unclassified and listed. |
 | `workout_sets_current` | recompute | Derive methods/targets for activities that have none (classifier + sheet, disagreements left to the queue). |
 | `workout_classification_queue` | recompute | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply. Resolve them with `hobbyjogging-import review triage` (`k`). |
