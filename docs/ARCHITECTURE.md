@@ -22,29 +22,26 @@ see [NEXT_UP.md](NEXT_UP.md); for working conventions see
 
 ## Phases
 
-The work is organised in three phases. The numbered queue in
-[NEXT_UP.md](NEXT_UP.md) owns the items; the phases are direction and
-completion criteria, not a second task list.
+The work is organised in four phases. The numbered queue in
+[NEXT_UP.md](NEXT_UP.md) owns the items; the phases are direction and exit
+tests, not a second task list. They order the *structural* work only: a bug
+fix, a dashboard fix, a report over data already stored, or a lab metric that
+passed the gate may land in its owning package at any time (see
+[AGENTS.md](AGENTS.md)).
 
 | phase | scope | complete when |
 |---|---|---|
-| **1. Complete the pipeline** | canonical DB, review, every source imported (FIT archive, Intervals.icu, Garmin Personal API, Runalyze, Strava), reports, dashboard and race pages | all imports are in and the reports/dashboard answer the daily questions |
-| **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing and a rebuildable canonical layer, per-athlete import policy, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
-| **3. Beyond the database** | web editing interface, homelab migration, platform independence, LLM coaching, detailed per-second streams, vague ideas | deliberately dormant until phases 1–2 are complete |
+| **1. Works for me** | canonical DB, review, every source, reports, dashboard and lab | done 2026-11-19: all imports are in and the reports/dashboard answer the daily questions |
+| **2. Works for someone else** | install and configuration for a second athlete: `init`/`doctor`, `sources.toml` + `.env`, first-run docs, CI, release versioning, lab detach | a computer-savvy Linux user clones the repo, builds the demo with no credentials, then configures and syncs their own database on their own machine without editing code or SQL |
+| **3. Trustworthy data** | extraction, audit, evidence-gated suggestions, duplicate cleanup, the CLI write surface and finally a localhost UI | any activity can be audited and corrected without SQL, every suggestion has a recorded decision, a rebuild after the corrections yields an empty diff, and open items, duplicates and coverage gaps are trending down |
+| **4. Durable and more reach** | homelab, more sources, streams, platform independence, LLM coaching, performance | parked until phases 1–3 are complete |
 
-**Phase 1 is complete (2026-11-19).** All sources are in — the FIT archive,
-Intervals.icu, the Garmin Personal API fetch, Runalyze (activities, gear, race
-results, VO2max) and the Strava CSV — and the reports, dashboard and race pages
-answer the daily questions. The optional Strava API is deferred to phase 3, so
-it does not hold the milestone open, and the last reports follow-up (the
-Runalyze VO2max series, reports item 15) is ordinary phase-2 work. The open
-`ambiguous_match` rows are user triage, not a pipeline gap.
-
-**Phase 2 is current.** Its order is the phase-2 queue at the top of
-[NEXT_UP.md](NEXT_UP.md): the manual-overlay export and fresh-database rebuild
-proof (item 34), then the second-athlete acceptance test (item 23), then
-activity editing (item 1), then session averages (item 38), with historical
-refurbishment (item 37) alongside. Phase 3 is deliberately dormant.
+**Phase 1 is complete (2026-11-19):** all sources are imported, the reports,
+dashboard and race pages answer the daily questions, and the lab promotes
+metrics on demand. **Phase 2 is current;** its worklist is at the top of
+[NEXT_UP.md](NEXT_UP.md), and its exit test is installability, not another
+athlete's data. **Phase 3** then makes the stored record trustworthy and
+correctable. **Phase 4** stays parked.
 
 ## Where the data comes from
 
@@ -472,7 +469,7 @@ Two tracks, one rule: never edit something that has already run.
 
 **Schema migrations** are ordered, immutable SQL in
 `hobbyjogging_core.db.migrations`, tracked by `PRAGMA user_version` (currently
-23). A schema change adds a new version; `open_database()` applies pending
+24). A schema change adds a new version; `open_database()` applies pending
 ones, so there is no separate migrate step.
 
 **Data tasks** live in `hobbyjogging-maintenance` and are registered by id:
@@ -702,9 +699,9 @@ Static-first, generated on the homelab:
   partially written dashboard is never served. A marker file prevents
   replacing an unrelated directory.
 - Data health counts review-hidden activities and missing
-  load/pace-zone/HR/distance data. The individual review-item queue is
-  available through `DataSource.review_items`; rendering it is a reports
-  follow-up.
+  load/pace-zone/HR/distance data, and renders the open review queue itself
+  (severity, category, detail, and links to the activity and its candidates)
+  from `DataSource.review_items`.
 - Interactivity is limited to plotly zoom/pan; filters and server-rendered
   drill-down are the upgrade path.
 
@@ -726,14 +723,17 @@ dashboard: the view models make it cheap to add later.
 ## Status (November 2026)
 
 - **Phase 1 complete, phase 2 current.** All sources are imported and applied
-  on the real DB; the optional Strava API stays deferred.
+  on the real DB; the optional Strava API stays deferred to phase 4.
 - Canonical pipeline, review workflow, manual editing and exclusion: done.
-  Schema v23 is the manual input layer (`activity_manual_fields`); v22 added
-  per-source social text, and earlier versions added set-based workout
-  methods/targets and the maintenance bookkeeping tables.
+  Schema v24 soft-excludes retired device rows; v23 is the manual input layer
+  (`activity_manual_fields`), v22 per-source social text, and earlier versions
+  add set-based workout methods/targets and the maintenance bookkeeping.
 - Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
-  (phases 1–5: inventory, comments/tags, gear, race results, VO2max) and the
-  Strava CSV import.
+  (inventory, comments/tags, gear, race results, VO2max) and the Strava CSV.
+- Device identity is FIT-first and generic: a provider name fills `device_id`
+  only when the activity has no FIT source and claims the unique FIT device of
+  its model; app names are never devices, and an unused provider row is
+  soft-excluded.
 - The canonical row is a checked projection: `verify_canonical` reports 0
   drift, 0 dangling and 0 unmapped over 68,001 owned fields, and
   `recompute_canonical` is a no-op on the real DB.
@@ -742,13 +742,15 @@ dashboard: the view models make it cheap to add later.
 - Schema evolution is two-track: immutable SQL migrations plus registered
   backfills/recomputes in `hobbyjogging-maintenance`.
 - Reports: Markdown reports, charts, the activities table, the year/month and
-  period comparisons, the race and event pages, and the static dashboard;
-  report code is split per report, and every dashboard card has a CLI
-  equivalent.
+  period comparisons, the race and event pages, and the static dashboard. The
+  overview and the Performance "VO2max methods" card draw the promoted
+  effective VO2max estimate (all runs and the steady 40–75 band) beside Garmin
+  by device, Runalyze and race VDOT; report code is split per report, and
+  every dashboard card has a CLI equivalent.
 - The review queue holds the 19 Runalyze `ambiguous_match` rows; that is user
   triage, not a pipeline gap. Reports still hide activities with open items by
   default (`--include-review` shows them).
-- Phase 2 order and the second-athlete acceptance checklist live in
+- The phase-2 worklist and the phase-3 order live in
   [NEXT_UP.md](NEXT_UP.md).
 
 ## Deployment
@@ -777,7 +779,7 @@ dashboard: the view models make it cheap to add later.
 - No direct remote database access; clients read rendered pages.
 - Generic CSV import remains optional/deferred. Runalyze is covered by its API,
   not by CSV.
-- Per-second activity streams are phase 3 and are not stored as SQLite rows.
+- Per-second activity streams are phase 4 and are not stored as SQLite rows.
   The raw FIT archive is the stream source; a stream index and an on-demand
   reader (or Parquet materialisation) are deferred until then.
 - The Runalyze Garmin-id gap means matching stays temporal; exact linking can

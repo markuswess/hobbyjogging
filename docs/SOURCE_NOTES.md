@@ -206,13 +206,13 @@ no API app, OAuth token or Strava subscription.
   are mostly other sports (alpine ski, swim, hike) or genuine distance
   disagreements, and write nothing.
 - Social text goes to `activity_social(source='strava')` by default. A
-  per-source target (root item 40) may promote it to `activities.name`/
+  per-source target in `sources.toml` may promote it to `activities.name`/
   `description`; a promoted title reaches `classify()`, which matches `race`,
   `tempo`, `subt` and `warm up` as substrings — "Race you to the bakery"
   classifies as a race (quality). Descriptions do not feed the classifier.
-- Unmatched rows are reported and write nothing today; creation becomes a
-  per-source `create | review | ignore` policy (root item 40), and creation
-  only happens when there is nothing to review.
+- Unmatched rows follow the per-source `create | review | ignore` policy in
+  `sources.toml` (this athlete keeps Strava at `ignore`), and creation only
+  happens when there is nothing to review.
 - Gear is matched by exact normalized name. A matched equipment row is only
   linked, never rewritten; an unknown name creates
   `strava:gear:<slug>` with the CSV brand/model.

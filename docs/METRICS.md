@@ -150,6 +150,50 @@ dashboard. The dashboard is the last step, never the first.
   sport, and the analysis charts' planned-load projections. Code landed in
   `66dd91b`.
 
+### Effective VO2max (HR/economy)
+
+- **Definition**: a session-level estimate from running economy and heart-rate
+  fraction, the ACSM running oxygen cost divided by the fraction of max HR:
+  `VO2max = (3.5 + 0.2 · speed_m_min) / (avg_hr / max_hr)`. `max_hr` is the
+  running max HR from the `athlete_thresholds` snapshot in force on the
+  session's day (the earliest snapshot covers earlier days). The primary series
+  uses **all runs**; a second series restricts to the steady 40–75 min,
+  non-quality road runs.
+- **Baseline / thresholds**: a run is dropped without average HR or duration,
+  outside 1.5–6.0 m/s, or with an HR fraction outside 0.5–0.95. Same-day runs
+  are averaged, days without a run carry the last value forward, and the
+  standing value is a 42- and 182-day EWMA (`alpha = 1 − exp(−1/days)`) with
+  910 days of warm-up. Garmin and Runalyze values are comparison series and
+  never feed the estimate.
+- **Informs**: whether aerobic capacity is moving, independent of which watch
+  recorded the run. It replaces the Garmin-only overview line, which mixes
+  device generations and per-sport estimates.
+- **Validation**: `experiments/vo2max_estimates.py`, 2019–2026. All runs
+  n=2,821, mean 59.3: r +0.95 against Runalyze and 42-day r +0.76 against
+  Garmin; steady 40–75 n=1,092, mean 59.7: +0.91 / +0.67. The device split
+  explains the weaker whole-period fit — FR645 (n=888) raw r +0.26 and 42-day
+  r +0.47 (RMSE 2.41) against Enduro (n=1,338) +0.47 / +0.91 (RMSE 1.44); Garmin
+  changes 607 of 892 FR645 runs (mean |Δ| 0.449) but only 245 of 1,340 Enduro
+  (0.067), while Runalyze changes 489 of 497 (3.50). Runalyze's stored value
+  already applies a 0.93 correction (stored mean 61.3, uncorrected 65.9) and
+  the estimate aligns with the corrected value. Against Daniels race VDOT over
+  all 37 road races, VDOT − estimate is **−0.43 mean / −0.07 median**, versus
+  −1.46 / −1.11 for Garmin and −3.63 / −3.49 for Runalyze. Distance-corrected
+  pacing variants were not supported (raw pace is closest, RMSE 2.02), and the
+  HR-reserve variant overestimates (~73.5) and was rejected.
+- **Caveats**: it is an ACSM-economy approximation, not a lab VO2max, and a
+  single session value is noisy — read the 42-day EWMA, not the dot. The
+  FR645 era stays visibly noisier than the Enduro era. There is no GAP, so
+  hilly runs read low, and no streams, so pace/HR lag is unmodelled. It needs
+  an average HR and a running max-HR snapshot; a run without either is skipped.
+  Runalyze's number carries its own internal correction, so it is a reference,
+  not a second estimate to merge.
+- **Rendered**: overview's second axis (42-day black, 182-day grey) and the
+  overview report's latest 42/182 values; the Performance "VO2max methods"
+  card and `charts.sh vo2max` (all runs, steady band, Garmin by device,
+  Runalyze and 42-day mean, race VDOT). The Compare tab keeps its raw
+  Garmin-by-year chart, which is a different question.
+
 ## Reference catalogue
 
 Everything the reports compute that is **not** a promoted card. One line per
@@ -168,7 +212,7 @@ greps prose would be more fragile than the drift it prevents.
 | Session RPE and its weekly average | `analysis/rpe.py` | load chart overlay |
 | Zone-time normalization across era configs | `analysis/zones.py` | zone tables and charts |
 | Recovery bands (HRV, resting HR, sleep) from robust medians | `analysis/baseline.py`, `analysis/recovery.py` | recovery tab and report |
-| VO2max series and its 7/42-day averages | `analysis/vo2max.py` | VO2max chart, compare |
+| Effective VO2max (all runs and steady 40–75), 42/182-day EWMAs; Garmin by device, Runalyze and race VDOT beside it | `analysis/vo2max.py` | overview axis, Performance methods card, `vo2max` chart; compare keeps raw Garmin |
 | Race bucket and PB qualification (2 % of standard distance) | `analysis/races.py` | races report, Performance tab |
 | Riegel fit, reference anchoring and equivalent times | `analysis/races.py` | race chart, equivalents table |
 | Official race pair preferred over measured values | `analysis/races.py` | races report, PB tables |
@@ -179,6 +223,7 @@ greps prose would be more fragile than the drift it prevents.
 | Year/month comparison aggregates | `analysis/compare.py` | compare report and tab |
 | Per-year data coverage (activities with a weather row) | `analysis/coverage.py` | data-health tab |
 | Device usage and change dates | `analysis/devices.py` | gear tab, session line |
+| Device identity: FIT-first, provider name maps to the unique FIT model, app names are never devices | `hobbyjogging_import.devices` | imports, session and gear labels |
 | Equipment usage, coverage and retirement candidates | `analysis/equipment.py` | gear tab and report |
 | Running streaks (run days of at least 10 min) | `analysis/streaks.py` | streaks report, analysis tab |
 | Workout classifier and the stored-set display kind | `hobbyjogging_core.classify` | category tables, every report |

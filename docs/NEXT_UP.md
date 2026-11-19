@@ -47,30 +47,58 @@ _None._
 ## Next
 
 Numbers are labels, not a schedule: a completed item leaves a gap and a new
-one takes the next free number, so cross-references stay valid. Phase 1 is
-complete and phase 2 is current; the phases and their completion criteria are
-in [ARCHITECTURE.md](ARCHITECTURE.md). Work is picked by impact per unit of
-effort, bugs first.
+one takes the next free number, so cross-references stay valid. The phases and
+their exit tests are in [ARCHITECTURE.md](ARCHITECTURE.md). Work is picked by
+impact per unit of effort, bugs first; small features (a bug fix, a dashboard
+fix, a report over stored data, a promoted lab metric, docs) may land in their
+package at any time and do not wait for a phase.
 
-### Phase 2 order
+### Phase 2: works for someone else
 
-| step | item | why now | done when |
-|---|---|---|---|
-| 1 | **34** manual overlay + rebuild proof | cheap insurance, and `recompute_canonical` now exists so the claim is provable | `export-manual`/`import-manual` round-trip, then an empty rebuild diff on a copy |
-| 2 | **23** second-athlete acceptance test | the phase-2 completion criterion, and it drives out the remaining personal defaults | the checklist in the item passes on a fresh DB with no Intervals and no sheet |
-| 3 | **1** activity editing, CLI first | highest daily value; its prerequisite, the manual input layer, has landed | `activity edit` writes manual inputs and history and closes the items it touches |
-| 4 | **38** session averages (`activity_metrics`) | the largest item, and it consumes the mapping item 17 declared | Tier-1 columns backfilled with a coverage report; no stream storage |
-| alongside | **37** historical refurbishment | read-only audit first, then proposals; it feeds 38's audit | the audit is reviewed and high-confidence proposals land as review items or manual values |
+Exit test: a computer-savvy Linux user clones the repo, runs `./demo.sh` with
+no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
+`sync` and the dashboard on their own machine — no code or SQL edits.
+
+- **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
+  checks `uv`, the DB path, schema version, FIT dir, each credential and the
+  sources file, and prints the next command.
+- **`sync.sh` skips an unconfigured source** instead of failing on an absent
+  credential — the only source-behaviour change, because a second athlete may
+  have no Intervals.
+- **`./demo.sh` as the zero-credential first run**, documented and tested on a
+  clean checkout with an empty `$HOBBYJOGGING_DB`.
+- **`sources.toml`, `.env.example` and the README first-run path** (GDPR export
+  or `garmin fetch` → `sync` → dashboard).
+- **A pull-request workflow** (four suites + demo build) and a `LICENSE`.
+- **22 release versioning** — "which code built this DB" must be answerable for
+  someone else's install.
+- **29 lab detach** — a clone must not ship this athlete's findings; last,
+  after the install path works.
+- **Defaults consolidation and the Python floor** — the remaining personal
+  constants in one documented module; `requires-python` 3.12 once the suites
+  pass there.
+
+### Phase 3: trustworthy data
+
+Order: **34** (manual overlay + rebuild proof, the safety gate) → **37** audit
+(read-only, cheap, informs everything) → **1** (CLI write surface) →
+**38/35/21** extraction → **37**'s rules and proposals → **42** duplicates →
+health score → browser. Accepting a suggestion always writes a manual value and
+an `edit_log` row; nothing canonical is auto-applied except an empty,
+high-confidence classification.
+
+### Phase 4: durable and more reach
+
+Parked: 13 homelab, 14 platform independence, 25 coaching, 27 performance, the
+Strava API and the stream half of 38. Ordered only when phases 1–3 are done.
 
 Item 40 is closed (see its entry): the recording sources keep `enabled`, so
-there is no create policy to wire. Items 12, 16 and 17 are landed; 15 is a
-reports item; the hygiene group (21, 22, 24, 27, 28, 29, 32, 33, 35) runs at a
-release tag or when a file outgrows its purpose; 13, 14, 25, 26, 31 and the
-stream half of 38 are dormant or recurring as their entries say.
+there is no create policy to wire. Item 41 (device identity) landed as a bug
+fix, not as phase work. Items 12, 16, 17, 24, 32 and 39 are landed; 15 is a
+reports item; 28 is the recurring cleanup.
 
-1. **Activity editing, CLI first** (core + import; phase 2, step 3). The only
-   manual write
-   surface is `review edit`, which changes `duration_s`, `distance_m` and
+1. **Activity editing, CLI first** (core + import; phase 3). The only manual
+   write surface is `review edit`, which changes `duration_s`, `distance_m` and
    `sport`, and only with a review item attached. Name, description, RPE, feel,
    sub-sport, tags, classification and equipment have no free-form edit, no way
    to clear a value, and no history — `activity_field_sources` stores only the
@@ -127,10 +155,18 @@ stream half of 38 are dormant or recurring as their entries say.
      `quality` and `causes` already live there. When the front end starts,
      extract a `hobbyjogging-app` package and move those modules behind it, the
      same move the classifier made to core once it had a second consumer.
-   - **Front end (later, same package)**: localhost only — the database is
-     single-writer (WAL, 5 s busy timeout) and unauthenticated, so it must never
-     be exposed. The CLI stays the reference implementation: if the UI needs
-     something the CLI cannot do, the CLI is wrong.
+   - **Localhost write surface (later in phase 3, after the CLI)**:
+     server-rendered forms bound to `127.0.0.1`, one user, no auth,
+     POST-redirect-GET, reusing the existing HTML renderer and **the same write
+     functions as the CLI** — the UI never runs its own SQL and never becomes a
+     second implementation. The CLI stays the reference implementation: if the
+     UI needs something the CLI cannot do, the CLI is wrong. Start with the
+     standard library
+     (`wsgiref`/`http.server`, zero new dependencies) and escalate to a small
+     framework only if forms, uploads or sessions demand it. No SPA, no JS
+     framework, no background jobs; the static dashboard stays read-only and
+     the phone stays read-only. The database is single-writer (WAL, 5 s busy
+     timeout) and unauthenticated, so it must never be exposed beyond loopback.
    - **Tests**: a manual edit survives a reimport; `--clear` removes the value
      and its manual ownership; `--history` shows the prior value; `--dry-run`
      writes nothing; quality findings print; an empty interactive answer keeps
@@ -181,9 +217,9 @@ stream half of 38 are dormant or recurring as their entries say.
       periods, 0 wellness rows) and the gear category map (two hard-coded IDs
       that a second athlete does not share — root item 23).
 
-13. **Homelab cutover** (phase 3): DB + importer + dashboard generator + static
+13. **Homelab cutover** (phase 4): DB + importer + dashboard generator + static
     server, periodic backups, Tailscale/basic auth.
-14. **Platform independence** (long-term, dormant; ingestion unchanged). The
+14. **Platform independence** (phase 4, dormant; ingestion unchanged). The
     goal is to stop depending on Intervals.icu as the *system of record* — not
     to stop using it as transport. The trigger is a paywall or wanting out, so
     nothing here starts now: Garmin, Intervals and FIT ingestion stay exactly
@@ -296,21 +332,23 @@ stream half of 38 are dormant or recurring as their entries say.
     - **Order**: manual layer → mapping → `verify_canonical` → rebuild (all
       done). Item 34 and item 38 consume the result.
 
-20. **Intervals' own metrics as a cross-check** (lab first, then reports; low
-    priority). The payload carries `decoupling`, `efficiency_factor`,
+20. **Intervals' own metrics as a cross-check** (lab first, then reports; any
+    time). The payload carries `decoupling`, `efficiency_factor`,
     `icu_intensity` and `icu_variability_index`, computed independently of
     ours. Compare them with our efficiency and intensity on the same activities
     to catch a formula bug before adding another derived number. Follows the
     metrics gate: a lab script first, a card only if it earns one.
 
-21. **Sheet leftovers** (import + reports; low priority). `equipment.notes`
+21. **Sheet leftovers** (import + reports; phase 3, with item 38).
+    `equipment.notes`
     holds size, price and colour from the sheet and is never parsed;
     `tz_offset_min` is populated on the activities and unused. Parse the notes
     into typed equipment fields (or leave them as text) and use
     `tz_offset_min` where local time matters — chart day boundaries and session
     times. Decide per field whether it earns a place.
 
-22. **Release versioning** (repo-level; no package). Every `pyproject.toml` says
+22. **Release versioning** (repo-level; no package; phase 2). Every
+    `pyproject.toml` says
     `0.1.0` and never changes, and there are no tags, so "which code built this
     database" is unanswerable. The *data* contract already exists — `PRAGMA
     user_version`, immutable ordered migrations, and `migrate()` refusing a
@@ -331,24 +369,24 @@ stream half of 38 are dormant or recurring as their entries say.
     - **Checklist instead of tests**: suites green, changelog written, DB
       backed up before the migration, tag pushed.
 
-23. **Portability for a second user** (core + import + reports + CI; phase 2,
-    step 2 — the acceptance test for phase 2). The model is portable already:
-    canonical activity, owner-based fields with ranked exceptions, the
+23. **Portability for a second user** (core + import + reports + CI; phase 2 —
+    the acceptance checklist for the phase-2 exit test). The model is portable
+    already: canonical activity, owner-based fields with ranked exceptions, the
     migration machinery, the importers, reports over `DataSource`, the
     synthetic demo. What is personal is the defaults. **One athlete per DB**;
     the second athlete's data stays private; there is no multi-tenant schema.
     Fix the generic code, do not fork it.
 
-    **Acceptance test.** A second athlete with Garmin, Runalyze and Strava — no
-    Intervals, no sheet — runs `init`, `sync`, the reports and the dashboard
-    into their own database without editing package code.
+    **Target profile** (the real athlete's data comes later): Garmin, Runalyze
+    and Strava — no Intervals, no sheet. Phase 2 proves the path on a fresh DB;
+    the athlete's own run is the later validation.
 
     - **Setup (import + CI)**
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
             a no-op.
-      - [ ] `doctor` checks the DB path and writability, the schema version,
-            the FIT directory, the credentials and the sources file, and names
-            what is missing.
+      - [ ] `doctor` checks `uv`, the DB path and writability, the schema
+            version, the FIT directory, the credentials and the sources file,
+            and names what is missing.
       - [ ] `sources.toml` alone selects the sources: Intervals and the sheet
             disabled, Runalyze `review`, Strava `create` or `ignore`.
       - [ ] `sync.sh` skips an unconfigured source instead of failing on an
@@ -361,6 +399,9 @@ stream half of 38 are dormant or recurring as their entries say.
       - [ ] Garmin FIT is the only device source: `moving_s`/`elapsed_s` fall
             back to FIT through the existing ranked authority, with no code
             change.
+      - [ ] device identity is FIT-first: app names never become devices, a
+            provider name claims the unique FIT device of its model, and an
+            unused provider row is soft-excluded (landed).
       - [ ] Strava `create` makes a summary activity using the configured
             timezone; title and description follow the text target.
       - [ ] Runalyze honours `create|review|ignore`; unmatched rows become
@@ -381,17 +422,14 @@ stream half of 38 are dormant or recurring as their entries say.
             efficiency band, subT buckets, 5-bpm HR conflict, 10 %/20 m
             elevation) are one documented module of defaults, not laws.
       - [ ] the demo builds from the synthetic athlete and renders every tab,
-            so the second athlete's empty paths are exercised too.
+            so the second athlete's empty paths are exercised too — including
+            the effective-VO2max overview and methods card, which is the
+            zero-credential install proof.
     - **Language floor**: [ ] `requires-python` drops to 3.12 once the suites
       pass there; no 3.14-only syntax was found.
 
     **Out of scope, stated**: multi-athlete, imperial units, a hosted service,
     arbitrary platforms, a per-athlete UI.
-
-    **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, the PR
-    workflow, the README first-run path; then the end-to-end run on the second
-    athlete's database, which drives the remaining assumption fixes; then the
-    Python floor. The data-driven ceilings landed already.
 
 24. **Metric catalogue** (docs; decided 2026-11-19). The registry used to
     document only what passed the lab gate, so most computed numbers had no
@@ -415,7 +453,8 @@ stream half of 38 are dormant or recurring as their entries say.
       only names the path. Paper references belong to the card that promotes a
       number, not to a shared bibliography; coaching conventions say so.
 
-25. **LLM coaching workflow** (root + reports). The workflow exists but lives
+25. **LLM coaching workflow** (root + reports; phase 4). The workflow exists
+    but lives
     outside the repo: another model reads the Markdown reports and plans through
     a terminal agent, discusses them, and writes a coaching note as Markdown
     that could be shown in the dashboard. Nothing defines where that note lives,
@@ -447,7 +486,8 @@ stream half of 38 are dormant or recurring as their entries say.
       or per week; JSON, Markdown or both for the bundle; and whether the tab
       is "Coaching" or part of "Docs".
 
-26. **Keep the demo data current** (reports; recurring). The synthetic demo is
+26. **Keep the demo data current** (reports; recurring — the phase-2 install
+    fixture and each release). The synthetic demo is
     now both the public face and a smoke test — it builds in CI on every
     relevant push. But `demo.py` predates the newest features, so a tab or chart
     that reads a new field (max HR, elevation, weather, devices, routes, Strava
@@ -467,7 +507,7 @@ stream half of 38 are dormant or recurring as their entries say.
       build, a taper, a race, a couple of devices — versus how much to leave
       empty so the "no data" paths stay exercised.
 
-27. **Performance budget** (reports + import; watch, do not optimise
+27. **Performance budget** (reports + import; phase 4, watch, do not optimise
     blindly). Sync and dashboard run times grow with the data. They are not yet
     a nuisance, so the work is to measure, record and notice — and only
     optimise when a ceiling is crossed.
@@ -514,7 +554,7 @@ stream half of 38 are dormant or recurring as their entries say.
       has outgrown its purpose without being split or trimmed.
 
 29. **Detach the lab into `laufen_private`, keep the bench** (root + reports;
-    future). The lab's scripts and notebook carry personal research and
+    phase 2, last). The lab's scripts and notebook carry personal research and
     findings and should not live in the project repo — but the bench must stay
     so another user can run their own.
     - **Split**: the bench ships (the rules, `experiments/template.py`,
@@ -543,8 +583,8 @@ stream half of 38 are dormant or recurring as their entries say.
       item 25 — the coaching notes will live in the same private repo, so the
       dashboard reads both from there.
 
-31. **Efficiency over all activities** (lab first, then reports and the card).
-    The steady aggregate stops at 75 min (`STEADY_DURATION_BAND`), so a long run
+31. **Efficiency over all activities** (lab first, then reports and the card;
+    any time after the gate). The steady aggregate stops at 75 min (`STEADY_DURATION_BAND`), so a long run
     contributes nothing to the trend; it used to start at 45 min as well.
     - **40-minute floor (landed).** The duration model gives `+135/T` bpm, so a
       40-minute run reads about 1.5 % lower than a 60-minute one; inside the
@@ -586,7 +626,8 @@ stream half of 38 are dormant or recurring as their entries say.
       check should compare the parenthetical title with the root item's title
       (fragile — probably not).
 
-33. **Efficiency fallback when no resting-HR baseline exists** (reports + card).
+33. **Efficiency fallback when no resting-HR baseline exists** (reports + card;
+    any time, and it helps the phase-2 athlete without wellness history).
     `robust_baselines` returns `None` for a date before the first wellness
     sample, so `excess_beats` yields `None` and efficiency is `-` for the whole
     pre-Sep-2022 log — eleven years of activities.
@@ -607,8 +648,8 @@ stream half of 38 are dormant or recurring as their entries say.
       estimated flag; the compare and overview aggregates still exclude it; a
       fallback of 0 or 200 is rejected.
 
-34. **Manual-layer export and rebuild check** (maintenance + core; phase 2,
-    step 1 — cheap insurance, not a blocker). The raw layer is preserved and
+34. **Manual-layer export and rebuild check** (maintenance + core; phase 3,
+    the safety gate). The raw layer is preserved and
     SQLite stays readable, so the data does not disappear; what dies with the
     code is the *meaning*: which values were overridden, which sessions were
     deliberately excluded, which conflicts were decided. That layer is small —
@@ -639,8 +680,8 @@ stream half of 38 are dormant or recurring as their entries say.
       belongs to item 17; this item is the export and the fresh-database proof.
 
 35. **Runalyze's extra metrics: what to store, what to ignore** (core + import
-    + reports; decision). The activity payload carries more than our schema
-    holds. Coverage measured in the Intervals payloads we already keep:
+    + reports; phase 3, with item 38). The activity payload carries more than
+    our schema holds. Coverage measured in the Intervals payloads we already keep:
     `average_cadence` 2,353 of 2,851 (83%), `average_stride` 2,334, but the
     running-dynamics family (`average_vertical_oscillation`,
     `average_stance_time`, `average_vertical_ratio`) only 110 (4%). The FIT
@@ -666,14 +707,14 @@ stream half of 38 are dormant or recurring as their entries say.
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
 37. **Refurbish historical data from evidence already stored** (maintenance +
-    import + reports; phase 2, alongside steps 2–4). The log already contains
+    import + reports; phase 3, step 2). The log already contains
     facts we do not use: tags carry workout targets, illness recovery and race
     days, descriptions describe interval sessions, and big races anchor
     seasons. The point is to fill empty fields and propose corrections, never
     to invent facts.
     - **Sequence**: the Runalyze import has landed, so the tags and comments are
       complete; the audit is read-only and can start now. Proposals that need
-      the activity edit surface wait for step 3 (item 1).
+      the activity edit surface wait for item 1.
     - **Audit first** (maintenance): a read-only report per field and year —
       raw payload keys not stored, tag semantics, interval-like descriptions,
       elevation/trail evidence, race evidence, and coverage gaps. It is the
@@ -711,13 +752,17 @@ stream half of 38 are dormant or recurring as their entries say.
       activity edit CLI or `period add` and land in `edit_log` (item 1).
       Review is the default; auto-fill only for high-confidence empty
       classifications.
+    - **Health score** (reports; rides on this audit): one view of data trust —
+      open review items by category, duplicate count, and per-field/per-year
+      coverage — as a dashboard card with a CLI equivalent, so phase 3 has a
+      number that can go down. It reads existing data; no schema change.
     - **Separate**: Gmap route identity (931 rows, 528 IDs) is route coverage,
       not classification; keep it as its own item if it is taken up.
-    - **Open**: a code-level tag lexicon vs a `tag_semantics` table/CLI; the
-      audit can list unmapped tags first.
+    - **Tag meaning** lives in item 43; this audit lists the unmapped tags
+      first, and the proposals read that lexicon instead of hard-coded words.
 
 38. **Session-average metrics now, streams later** (core + import + maintenance
-    + reports; phase 2, step 4). The session-level aggregates are already in
+    + reports; phase 3, step 4). The session-level aggregates are already in
     the raw payloads and the FIT archive, but most are not stored: FIT session
     fields
     (cadence, stride, vertical oscillation, stance time/percent/balance,
@@ -749,9 +794,9 @@ stream half of 38 are dormant or recurring as their entries say.
     - **Streams later**: keep the raw FIT archive as the stream source; add a
       stream index/metadata table and parse on demand or into Parquet. Do not
       put per-second rows in the canonical SQLite database.
-    - **Sequence**: step 4 — after steps 1–3. The Tier-1 extraction audit
-      reuses item 37's raw-field audit, and both audits can start before the
-      schema lands. Streams stay phase 3.
+    - **Sequence**: step 4 — after items 34, 37 and 1. The Tier-1 extraction
+      audit reuses item 37's raw-field audit, and both audits can start before
+      the schema lands. Streams stay phase 4.
 
 39. **Running-only load card** (docs; done 2026-11-19). The card is in
     `docs/METRICS.md` under Promoted, with its load row in the reference
@@ -760,7 +805,7 @@ stream half of 38 are dormant or recurring as their entries say.
     list's handoff pointer keeps resolving.
 
 40. **Import policy, settings view and source configuration** (core + import +
-    maintenance + reports; done, phase 2). Every source that yields activity
+    maintenance + reports; done). Every source that yields activity
     rows may create; what varies per athlete is policy, not capability.
     - **Done (Nov 2026)**: `SourceProfile` declares `yields_activities` and
       `creation_fields` (no create/enrich role). `sources.toml` (or
@@ -798,7 +843,7 @@ stream half of 38 are dormant or recurring as their entries say.
     - **Sequence**: done; item 23's second-athlete test is the acceptance test.
 
 41. **Device identity for provider-derived devices** (core + import +
-    maintenance; done, phase 2). The reports handoff
+    maintenance; done — bug fix, any time). The reports handoff
     (`packages/hobbyjogging-reports/NEXT_UP.md`, "Handed off: device
     identity") is the evidence: two provider rows duplicate FIT devices, app
     names become devices, and the provider casing flips on refresh. The rules
@@ -828,6 +873,47 @@ stream half of 38 are dormant or recurring as their entries say.
       device rows, and a re-import leaves the stored ids and names unchanged.
     - **Reports**: no change; the hover id stays for a genuinely provider-only
       device.
+
+42. **Duplicate detection and cleanup** (maintenance + import + reports;
+    phase 3, after the rules). Two activities that are the same session
+    double-count every total, and the historical log has a known class of them:
+    1,272 sheet-only rows, 38 of which mirror a device (FIT/Intervals) row on
+    the same day with the duration within 5%. The sheet row often holds the
+    only description (`mit Vicky`, `Oberwolfach am Ende gas`).
+    - **Detection** (import): a dataset-wide rule for same sport, start within
+      ±15 min or the same day, distance within ~2%, and HR within 5 bpm when
+      both carry it; emit one `duplicate` review item carrying both activity
+      ids, idempotent by a fingerprint over the sorted pair.
+    - **Sheet pairs** (maintenance): a task that blank-fills the description
+      from the sheet row and then excludes it, so the session keeps its text
+      and stops counting twice. It rewrites existing rows, so it is a
+      registered task with a dry run, not an import write.
+    - **Resolution is exclusion, never merge**: "delete" stays a durable soft
+      exclude, and there stays one identity model. A true merge is not a
+      feature — the canonical row and its payloads are the record.
+    - **Surface**: triage today; the bulk review surface and the health score
+      (item 37) show the remaining count.
+    - **Acceptance**: a dry run lists the candidate pairs on a copy, the known
+      sheet duplicates drop out of the totals, and a re-run is a no-op.
+
+43. **Tag lexicon** (core + import + maintenance; phase 3, informs item 37).
+    Tags already carry facts the rules need — workout targets (`sub
+    threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`), illness
+    (`krank`, `verkühlt`, `Infekt`, `Magen-Darm`, `wieder gesund`), race days
+    (`Raceday`, `race`) and the sheet's training-area labels (`w`, `m`, `wb`,
+    `a`, `t`, `I`) — but their meaning is implicit in code or prose.
+    - **Shape**: one lexicon that maps a stored tag (normalized) to a meaning
+      and the rule it feeds, plus an audit that lists every stored tag as
+      mapped or **unmapped**. Start as a code-level module beside
+      `hobbyjogging_import.sheet_codes`; add a `tag_semantics` table only when a
+      second athlete's tags must be mapped without a release (the trigger, not
+      before).
+    - **Consumers**: item 37's classification, illness and season proposals
+      read the lexicon instead of hard-coded word lists; no rule invents a
+      meaning for an unmapped tag.
+    - **Acceptance**: the audit accounts for every stored tag, the proposals
+      use the lexicon, and adding a tag meaning is a one-line change with a
+      test.
 
 ## Notes
 

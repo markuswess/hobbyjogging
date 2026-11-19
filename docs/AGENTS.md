@@ -45,6 +45,13 @@ Rules:
   size. What already exists must be correct before more is added to it.
 - Pick by **impact per unit of effort**, not by list order: the highest-impact,
   lowest-workload item first. The numbering is not a schedule.
+- **Small features never wait for a phase.** A bug fix, a dashboard fix, a
+  report or column over data already stored, a lab metric that passed the gate,
+  or a doc change may be done in its owning package at any time. Not small, so
+  it follows the phase queue: a schema migration or backfill, a new source, a
+  new write surface, a cross-package contract, or a real-DB write beyond
+  triage. A bug fix may still ship an additive, expand-only migration in its
+  own session; **bugs first** outranks the queue.
 - **Start from your own list.** A package session works from its
   `NEXT_UP.md`; root items are dependencies, not work. Reference a root item by
   number (`root item 4`) and run `uv run python tools/check_todos.py` after any
@@ -84,8 +91,8 @@ cleanup pass is part of the todo list, not a rewrite project.
   vocabulary, `TrainingWriter`, `TrainingRepository`.
 - `packages/hobbyjogging-import` — FIT, Intervals.icu, Garmin Personal API,
   Runalyze and Strava CSV importers, review queue and triage. Runalyze phases
-  1–5 and the Strava social/gear import have landed; the reports phase is
-  item 15 there, and the per-source create policy is root item 40.
+  1–5 and the Strava social/gear import have landed; the per-source create
+  policy lives in `sources.toml`.
 - `packages/hobbyjogging-maintenance` — schema-evolution runner and registered
   backfills/recomputes.
 - `packages/hobbyjogging-reports` — analysis, Markdown reports, charts, and the
