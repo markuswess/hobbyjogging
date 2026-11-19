@@ -75,7 +75,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Work-interval efficiency | Does efficiency hold in the work reps once warm-up and recovery are excluded? (superseded: subT/LT1 work-rep efficiency already exists) | retired | — | 2026-11-17 |
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | parked | `threshold_pace.py` | 2026-11-17 |
-| Race-derived threshold | Compute the 1-hour all-out pace from race results and compare it with the threshold setting and work reps. | candidate | — | 2026-11-19 |
+| Race-derived threshold | Compute the 1-hour all-out pace from race results and compare it with the threshold setting and work reps. | parked | `race_threshold.py` | 2026-11-19 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
 | Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (37 official results plus 28 race logs; lab verdict only for now) | parked | `race_fitness.py` | 2026-11-19 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (37 official results; still thin for a two-timescale fit) | candidate | — | 2026-11-19 |
@@ -228,6 +228,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   No data change recommended; a report caveat or the smoothed line is enough.
   Evidence: `experiments/enduro_vo2max_drops.py`; the broad audit remains in
   `experiments/vo2max_jumps.py`.
+- **Race-derived threshold** — tested on 34 official road races and 14 run
+  snapshots. In 2022 the setting matched the prior-race 1-hour Riegel pace
+  (3:42.0 vs 3:42.8); after that it diverged faster. Latest: setting 3:26,
+  Riegel 60m 3:41, critical-speed 60m 3:46; mean/median setting − Riegel
+  −8.7 / −9.5 s/km, setting − CS −12.0 / −12.2. The setting now behaves like a
+  10k/ceiling reference, not a measured 1-hour threshold. No data change;
+  handoff candidate: add the race-derived 60m line to the threshold/race-pace
+  chart, or caveat the setting as a ceiling. Caveats: 1-hour threshold is
+  approximate, official road races only, and models differ by several s/km.
+  Evidence: `experiments/race_threshold.py`; plot `race-threshold.png`.
 - **Race-derived fitness bundle** — tested on 65 race logs (37 result rows +  28 sheet/race-log rows), with elevation classification. After excluding 3
   trail, 1 ultra, 1 relay and 8 hill races, 52 remain: CS 3.85 m/s
   (4:20/km), D′ 1,635 m, Riegel b 1.099, both R² 0.99; leave-one-out median
