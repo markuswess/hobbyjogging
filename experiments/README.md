@@ -76,7 +76,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Aerobic-threshold pace trend | How fast am I at a fixed HR, and is it moving? (needs efforts near threshold or streams) | parked | `aerobic_threshold.py` | 2026-11-13 |
 | Threshold pace trend (athlete_thresholds) | Does the Intervals threshold pace / LTHR series move, and how does it compare with steady-run efficiency? | parked | `threshold_pace.py` | 2026-11-17 |
 | LT1/LT2 estimation | Can LT1 and LT2 be estimated from training data (HR/pace, interval sets, efficiency) now that LTHR and threshold-pace snapshots exist? (vague) | candidate | — | 2026-11-16 |
-| Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (37 official race results now available) | candidate | — | 2026-11-19 |
+| Race-derived fitness bundle | What do races imply for VDOT, critical speed, and my Riegel exponent? (37 official results plus 28 race logs; lab verdict only for now) | parked | `race_fitness.py` | 2026-11-19 |
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (37 official results; still thin for a two-timescale fit) | candidate | — | 2026-11-19 |
 | Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (37 official results; startable, still noisy) | candidate | — | 2026-11-19 |
 | Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague; needs event links: only 2) | blocked | — | 2026-11-19 |
@@ -160,6 +160,17 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Race-derived fitness bundle** — tested on 65 race logs (37 result rows +
+  28 sheet/race-log rows), with elevation classification. After excluding 3
+  trail, 1 ultra, 1 relay and 8 hill races, 52 remain: CS 3.85 m/s
+  (4:20/km), D′ 1,635 m, Riegel b 1.099, both R² 0.99; leave-one-out median
+  errors 1.2 min (3.2%) for Riegel and 2.2 min (5.6%) for CS. Result-row-only
+  sensitivity gives CS 4.05 m/s and b 1.085, so the older race logs shift the
+  model modestly. Equivalent times from the latest five: 5k 16.4, 10k 35.0,
+  HM 1:19.6, M 2:50.6. VDOT vs Garmin: n=34, r=+0.73, median difference −1.1.
+  Coherent enough to be useful, but this is a **lab verdict only**: no card or
+  report handoff. Caveats: generic older names, 11 unknown-elevation races,
+  and elevation-based exclusions. Evidence: `experiments/race_fitness.py`.
 
 ### Retired notes
 
