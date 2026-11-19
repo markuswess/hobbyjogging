@@ -1,0 +1,446 @@
+"""Experiment: Garmin vs Runalyze VO2max and a session-level estimate.
+
+Question
+--------
+Garmin's `vo2max_garmin` looks like a smoothed, history-aware value, while
+Runalyze's effective `vo2max_runalyze` moves almost every run. Can we derive a
+comparable metric from the available session data (pace, HR, RHR, max HR)
+without streams?
+
+Definitions
+-----------
+- ACSM running oxygen cost: ``VO2 = 3.5 + 0.2 * speed_m_min``.
+- HR/HRmax fraction: ``HR / max_HR``.
+- HR-reserve fraction: ``(HR - RHR) / (max_HR - RHR)``.
+- Estimated effective VO2max = oxygen cost / fraction. Guarded to a
+  physiological fraction range.
+- Max HR is the latest running threshold snapshot (192), not the noisy
+  per-activity max; sensitivity uses the activity max HR.
+
+Comparisons
+-----------
+- Coverage and levels of Garmin, Runalyze and both estimates.
+- Garmin/Runalyze change frequency (the smoothing check).
+- Correlations and RMSE, raw and over rolling 7/14/28/42/90/182-day windows.
+- Yearly means and plots.
+
+    uv run --env-file .env python experiments/vo2max_estimates.py
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import date, timedelta
+from statistics import mean, median
+
+import plotly.graph_objects as go
+
+from hobbyjogging_report.analysis import RUN_TYPES
+from hobbyjogging_report.analysis.efficiency import (
+    MIN_EXCESS_HR,
+    resting_hr_baselines,
+)
+from hobbyjogging_report.shell import save, table
+from hobbyjogging_report.sources import create_source
+
+MIN_SPEED = 1.5
+MAX_SPEED = 6.0
+STEADY_MIN = 40.0
+STEADY_MAX = 75.0
+QUALITY_METHODS = {"intervals", "race", "progression", "long_run", "fartlek"}
+QUALITY_TARGETS = {
+    "lt1",
+    "subthreshold",
+    "threshold",
+    "vo2max",
+    "speed",
+    "marathon",
+}
+WINDOWS = (7, 14, 28, 42, 90, 182)
+
+
+def correlation(xs: list[float], ys: list[float]) -> float:
+    mx = mean(xs)
+    my = mean(ys)
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    return cov / (vx * vy) ** 0.5 if vx and vy else 0.0
+
+
+def threshold_max_hr(thresholds, day: date) -> float | None:
+    runs = [
+        threshold
+        for threshold in thresholds
+        if threshold.sport == "run" and threshold.max_hr
+    ]
+    if not runs:
+        return None
+    runs.sort(key=lambda threshold: threshold.effective_from)
+    current = None
+    for threshold in runs:
+        if threshold.effective_from <= day:
+            current = threshold.max_hr
+        else:
+            break
+    return current or runs[0].max_hr
+
+
+def effective_vo2max(
+    speed_m_min: float,
+    avg_hr: float,
+    resting_hr: float,
+    max_hr: float,
+    use_activity_max: float | None = None,
+) -> dict[str, float | None]:
+    oxygen = 3.5 + 0.2 * speed_m_min
+    fraction_hr = avg_hr / max_hr if max_hr else None
+    reserve = max_hr - resting_hr
+    fraction_reserve = (
+        (avg_hr - resting_hr) / reserve if reserve > 0 else None
+    )
+
+    def estimate(fraction):
+        if fraction is None or not (0.5 <= fraction <= 0.95):
+            return None
+        return oxygen / fraction
+
+    result = {
+        "estimate_hr": estimate(fraction_hr),
+        "estimate_reserve": estimate(fraction_reserve),
+    }
+
+    if use_activity_max and use_activity_max > 0:
+        result["estimate_activity_max"] = estimate(
+            (avg_hr - resting_hr) / (use_activity_max - resting_hr)
+            if use_activity_max > resting_hr
+            else None
+        )
+    else:
+        result["estimate_activity_max"] = None
+
+    return result
+
+
+def build_rows(source) -> tuple[list[dict], list[str]]:
+    activities = source.activities(date(2000, 1, 1), date.today())
+    wellness = source.wellness(date(1999, 1, 1), date.today())
+    thresholds = source.athlete_thresholds()
+    baseline = resting_hr_baselines(wellness)
+
+    rows = []
+    for activity in activities:
+        if activity.type not in RUN_TYPES or activity.type == "trail_run":
+            continue
+        if activity.avg_hr is None or activity.distance_m <= 0:
+            continue
+        if not activity.duration_s:
+            continue
+
+        minutes = activity.duration_s / 60.0
+        if not (STEADY_MIN <= minutes <= STEADY_MAX):
+            continue
+
+        methods = set(activity.workout_methods)
+        targets = set(activity.workout_targets)
+        if methods & QUALITY_METHODS or targets & QUALITY_TARGETS:
+            continue
+        if "recovery" in targets:
+            continue
+
+        resting_hr = baseline(activity.date)
+        if resting_hr is None:
+            continue
+
+        excess = activity.avg_hr - resting_hr
+        if excess < MIN_EXCESS_HR:
+            continue
+
+        speed = activity.distance_m / activity.duration_s
+        if not (MIN_SPEED <= speed <= MAX_SPEED):
+            continue
+
+        max_hr = threshold_max_hr(thresholds, activity.date)
+        if max_hr is None:
+            continue
+
+        estimates = effective_vo2max(
+            speed * 60.0,
+            activity.avg_hr,
+            resting_hr,
+            max_hr,
+            activity.max_hr,
+        )
+        rows.append(
+            {
+                "date": activity.date,
+                "year": activity.date.year,
+                "name": activity.name,
+                "garmin": activity.vo2max_garmin,
+                "runalyze": activity.vo2max_runalyze,
+                "speed": speed,
+                "hr": activity.avg_hr,
+                "rhr": resting_hr,
+                "max_hr": max_hr,
+                "minutes": minutes,
+                **estimates,
+            }
+        )
+
+    return sorted(rows, key=lambda row: row["date"]), []
+
+
+def rolling(rows: list[dict], key: str, window: int) -> list[float | None]:
+    values = []
+    for index, row in enumerate(rows):
+        start = row["date"] - timedelta(days=window)
+        samples = [
+            candidate[key]
+            for candidate in rows[: index + 1]
+            if candidate["date"] >= start and candidate[key] is not None
+        ]
+        values.append(mean(samples) if samples else None)
+    return values
+
+
+def change_stats(rows: list[dict], key: str) -> dict[str, float] | None:
+    values = [row[key] for row in rows if row[key] is not None]
+    if len(values) < 2:
+        return None
+    changes = [
+        abs(second - first) for first, second in zip(values, values[1:])
+    ]
+    return {
+        "n": len(values),
+        "same": sum(value == 0 for value in changes),
+        "changed": sum(value >= 0.1 for value in changes),
+        "mean_abs": mean(changes),
+    }
+
+
+def yearly(rows: list[dict]) -> None:
+    groups: dict[int, list[dict]] = defaultdict(list)
+    for row in rows:
+        groups[row["year"]].append(row)
+
+    year_rows = []
+    for year, chunk in sorted(groups.items()):
+        garmin = [row["garmin"] for row in chunk if row["garmin"] is not None]
+        runalyze = [
+            row["runalyze"] for row in chunk if row["runalyze"] is not None
+        ]
+        estimate_hr = [
+            row["estimate_hr"]
+            for row in chunk
+            if row["estimate_hr"] is not None
+        ]
+        estimate_reserve = [
+            row["estimate_reserve"]
+            for row in chunk
+            if row["estimate_reserve"] is not None
+        ]
+        year_rows.append(
+            (
+                year,
+                len(chunk),
+                f"{mean(garmin):.1f}" if garmin else "-",
+                f"{mean(runalyze):.1f}" if runalyze else "-",
+                f"{mean(estimate_hr):.1f}" if estimate_hr else "-",
+                f"{mean(estimate_reserve):.1f}" if estimate_reserve else "-",
+            )
+        )
+
+    table(
+        year_rows,
+        headers=[
+            "year",
+            "runs",
+            "Garmin",
+            "Runalyze",
+            "estimate HR/HRmax",
+            "estimate reserve",
+        ],
+    )
+
+
+def plot_series(rows: list[dict]) -> None:
+    dates = [row["date"] for row in rows]
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=dates,
+            y=[row["garmin"] for row in rows],
+            mode="markers",
+            marker={"size": 4, "color": "#4c78a8"},
+            name="Garmin",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=dates,
+            y=[row["runalyze"] for row in rows],
+            mode="markers",
+            marker={"size": 3, "color": "#999999", "opacity": 0.5},
+            name="Runalyze",
+        )
+    )
+
+    for key, label, color, dash in (
+        ("estimate_hr", "estimate HR/HRmax, 42d mean", "#54a24b", "solid"),
+        (
+            "estimate_reserve",
+            "estimate HR reserve, 42d mean",
+            "#f58518",
+            "dash",
+        ),
+    ):
+        figure.add_trace(
+            go.Scatter(
+                x=dates,
+                y=rolling(rows, key, 42),
+                mode="lines",
+                line={"color": color, "width": 2, "dash": dash},
+                name=label,
+            )
+        )
+
+    figure.update_yaxes(title_text="VO2max (ml/kg/min)")
+    figure.update_xaxes(title_text="date")
+    figure.update_layout(
+        title="Garmin, Runalyze and session-level estimates",
+        legend={"orientation": "h", "y": -0.3},
+    )
+    save(figure, "vo2max-estimates")
+
+
+def plot_scatter(rows: list[dict]) -> None:
+    points = [
+        row
+        for row in rows
+        if row["garmin"] is not None and row["estimate_hr"] is not None
+    ]
+    figure = go.Figure(
+        go.Scatter(
+            x=[row["estimate_hr"] for row in points],
+            y=[row["garmin"] for row in points],
+            mode="markers",
+            marker={"size": 5, "opacity": 0.5},
+            text=[row["date"] for row in points],
+        )
+    )
+    figure.update_xaxes(title_text="session estimate (HR reserve)")
+    figure.update_yaxes(title_text="Garmin VO2max")
+    figure.update_layout(title="Estimate vs Garmin")
+    save(figure, "vo2max-estimate-scatter")
+
+
+def main() -> None:
+    with create_source() as source:
+        rows, _ = build_rows(source)
+
+    print(f"{len(rows)} steady runs with RHR and max HR")
+    if len(rows) < 100:
+        print("not enough rows")
+        return
+
+    garmin_count = sum(row["garmin"] is not None for row in rows)
+    runalyze_count = sum(row["runalyze"] is not None for row in rows)
+    both_count = sum(
+        row["garmin"] is not None and row["runalyze"] is not None
+        for row in rows
+    )
+    print(
+        f"Garmin {garmin_count}, Runalyze {runalyze_count}, both {both_count}"
+    )
+
+    table(
+        [
+            (
+                key,
+                sum(row[key] is not None for row in rows),
+                f"{mean(row[key] for row in rows if row[key] is not None):.2f}",
+                f"{median(row[key] for row in rows if row[key] is not None):.2f}",
+            )
+            for key in (
+                "garmin",
+                "runalyze",
+                "estimate_hr",
+                "estimate_reserve",
+            )
+        ],
+        headers=["series", "n", "mean", "median"],
+    )
+
+    def paired_correlation(first: str, second: str) -> str:
+        paired = [
+            row
+            for row in rows
+            if row[first] is not None and row[second] is not None
+        ]
+        if len(paired) < 10:
+            return "-"
+        xs = [row[first] for row in paired]
+        ys = [row[second] for row in paired]
+        return f"{correlation(xs, ys):+.2f}"
+
+    table(
+        [
+            ("Garmin vs Runalyze", paired_correlation("garmin", "runalyze")),
+            (
+                "Garmin vs estimate HR/HRmax",
+                paired_correlation("garmin", "estimate_hr"),
+            ),
+            (
+                "Garmin vs estimate reserve",
+                paired_correlation("garmin", "estimate_reserve"),
+            ),
+            (
+                "Runalyze vs estimate HR/HRmax",
+                paired_correlation("runalyze", "estimate_hr"),
+            ),
+        ],
+        headers=["pair", "r"],
+    )
+
+    print("\nsmoothing check (consecutive run changes):")
+    for key in ("garmin", "runalyze"):
+        stats = change_stats(rows, key)
+        if stats:
+            print(
+                f"{key}: n={stats['n']}, same={stats['same']:.0f}, "
+                f"changed>=0.1={stats['changed']:.0f}, "
+                f"mean |change|={stats['mean_abs']:.2f}"
+            )
+
+    print("\nrolling estimate vs Garmin:")
+    rolling_rows = []
+    for window in WINDOWS:
+        estimates = rolling(rows, "estimate_hr", window)
+        paired = [
+            (row["garmin"], estimate)
+            for row, estimate in zip(rows, estimates)
+            if row["garmin"] is not None and estimate is not None
+        ]
+        if not paired:
+            rolling_rows.append((f"{window}d", "-", "-"))
+            continue
+        errors = [estimate - garmin for garmin, estimate in paired]
+        corr = correlation(
+            [pair[0] for pair in paired], [pair[1] for pair in paired]
+        )
+        rmse = (sum(error ** 2 for error in errors) / len(errors)) ** 0.5
+        rolling_rows.append((f"{window}d", f"{corr:+.2f}", f"{rmse:.2f}"))
+    table(
+        rolling_rows,
+        headers=["window", "r", "RMSE"],
+    )
+
+    yearly(rows)
+    plot_series(rows)
+    plot_scatter(rows)
+
+    print("\nverdict: inspect level, correlation, and the Garmin/Runalyze noise.")
+
+
+if __name__ == "__main__":
+    main()

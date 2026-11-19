@@ -88,12 +88,24 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Load vs RPE | Where does `training_load` disagree with perceived effort? | candidate | — | 2026-11-13 |
 | Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | promoted | `cross_training_load.py` | 2026-11-17 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
-| HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | candidate | — | 2026-11-18 |
+| HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | promoted | `vo2max_estimates.py` | 2026-11-19 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the Runalyze weather fields are still not mapped) | candidate | — | 2026-11-19 |
 | GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs a pointwise grade profile; activity gain/loss is not enough) | blocked | — | 2026-11-16 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
 ### Promoted notes
+- **HR/economy-based VO2max** — promoted 2026-11-19. Session-level effective
+  estimate: `VO2 = 3.5 + 0.2·speed_m_min`, divided by `HR / max_HR`. On 498
+  steady runs the mean is 60.9 vs Garmin 61.5 and Runalyze 61.3; it tracks
+  Runalyze per-run at r=+0.90. Garmin is clearly smoothed: 36% of consecutive
+  runs change above 0.1 vs 98% for Runalyze, mean |Δ| 0.11 vs 3.50. A 90-day
+  mean of the estimate tracks Garmin at r=+0.83, RMSE 1.44 (42d r=+0.80,
+  RMSE 1.51). The HR-reserve variant overestimates (~73.5) and is rejected.
+  Handoff: candidate for a reports metric/card using the HR/HRmax formula and a
+  42–90 day mean; it needs a max-HR source and the steady-run guard. Caveats:
+  approximate ACSM economy, Garmin’s own smoothing, no streams, and the
+  2026 level gap (estimate 61.7 vs Garmin 63.5). Evidence:
+  `experiments/vo2max_estimates.py`.
 
 - **Efficiency line shape and confounders** — promoted 2026-11-17. The
   current line through resting HR beats free linear, quadratic, log and
