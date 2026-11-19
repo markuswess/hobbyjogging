@@ -1,0 +1,34 @@
+# Per-athlete import policy. Capability lives in code; this file is the
+# athlete's choice. Credentials stay in .env.
+#
+# Path: ./sources.toml (or HOBBYJOGGING_SOURCES). A missing file means the code
+# defaults: every source enabled, and create when nothing matches.
+#
+# Keys per source:
+#   enabled      true | false
+#   create       create | review | ignore   (Strava and Runalyze)
+#   title        social | name              (where a title goes)
+#   description  social | description       (where a description goes)
+#
+# FIT, Intervals and the sheet always create when nothing matches; use
+# enabled to leave one out. Garmin yields files, not activity rows.
+
+[sources.fit]
+enabled = true
+
+[sources.intervals]
+enabled = true
+
+[sources.garmin]
+enabled = true
+
+[sources.runalyze]
+create = "review"
+
+[sources.strava]
+create = "ignore"
+title = "social"
+description = "social"
+
+[sources.sheet]
+enabled = false

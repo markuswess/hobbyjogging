@@ -500,7 +500,7 @@ def decide_match(
                 candidates=tuple(twins),
             )
 
-    if allow_create:
+    if allow_create and not matches:
         return MatchDecision(None, "create")
 
     reason = "distance_mismatch" if matches else "no_temporal_match"

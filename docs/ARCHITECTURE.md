@@ -68,11 +68,13 @@ from `started_at_utc + tz_offset_min`.
 
 Every source that yields activity rows may create. What an unmatched row does
 is policy, not capability: per source `create | review | ignore` in
-`sources.toml`, defaulting to create. A row with a rejected candidate becomes a
-review item instead of a creation, so the default cannot manufacture
-duplicates. The same file sets the text targets: a title or description stays
-in `activity_social` (default) or is promoted to `activities.name`/
-`description`; a promoted title feeds the classifier, a description does not.
+`sources.toml`, defaulting to create. Strava and Runalyze take the policy; the
+recording sources (FIT, Intervals, sheet) always create and are switched with
+`enabled`. A row with a rejected candidate becomes a review item instead of a
+creation, so the default cannot manufacture duplicates. The same file sets the
+text targets: a title or description stays in `activity_social` (default) or is
+promoted to `activities.name`/`description`; a promoted title feeds the
+classifier, a description does not.
 
 Each adapter declares its payload→field mapping (`FIELD_MAP`), so the derive
 check, the rebuild and the settings view read one table.

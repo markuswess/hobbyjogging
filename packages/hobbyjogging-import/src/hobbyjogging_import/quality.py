@@ -44,6 +44,7 @@ MOVING_EXCEEDS_RECORDING_S = 60.0
 
 AMBIGUOUS_MATCH = "ambiguous_match"
 AMBIGUOUS_EQUIPMENT = "ambiguous_equipment"
+CREATE_ACTIVITY = "create_activity"
 QUALITY = "quality"
 MANUAL_FLAG = "manual_flag"
 CONFLICT = "field_conflict"
@@ -54,6 +55,7 @@ WORKOUT_CLASSIFICATION = "workout_classification"
 REVIEW_CATEGORIES = (
     AMBIGUOUS_MATCH,
     AMBIGUOUS_EQUIPMENT,
+    CREATE_ACTIVITY,
     CONFLICT,
     QUALITY,
     DUPLICATE,

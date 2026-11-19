@@ -3,7 +3,6 @@ from dataclasses import asdict
 
 
 from hobbyjogging_import.derive import (
-    FIELD_MAPS,
     Unmapped,
     derive_value,
     derive_values,
@@ -172,13 +171,55 @@ class OtherSourceMapTests(unittest.TestCase):
             derive_value("runalyze", "vo2max_runalyze", payload),
         )
 
-    def test_strava_has_no_canonical_fields(self):
-        self.assertEqual({}, FIELD_MAPS["strava"])
-        self.assertEqual({}, derive_values("strava", {}))
+    def test_runalyze_maps_the_summary_fields(self):
+        payload = {
+            "date_time": "2024-06-27T23:13:00+02:00",
+            "timezone_offset": 120,
+            "sport": {"name": "Running"},
+            "duration": 2146.0,
+            "elapsed_time": 2193,
+            "distance": 7.08,
+            "hr_avg": 127,
+            "hr_max": 138,
+            "vo2max": 66.32,
+            "note": "felt good",
+        }
+
+        derived = derive_values("runalyze", payload)
+
+        self.assertEqual("2024-06-27", derived["local_date"])
+        self.assertEqual("2024-06-27T21:13:00Z", derived["started_at_utc"])
+        self.assertEqual("run", derived["sport"])
+        self.assertEqual(2146.0, derived["duration_s"])
+        self.assertEqual(7080.0, derived["distance_m"])
+
+    def test_strava_maps_the_create_fields(self):
+        payload = {
+            "date": "2026-10-01T08:05:00",
+            "started_at_utc": "2026-10-01T06:05:00Z",
+            "tz_offset_min": 120,
+            "sport": "Run",
+            "name": "Bakery run",
+            "description": "Race you",
+            "elapsed_s": 3600.0,
+            "moving_s": 3500.0,
+            "distance_m": 10000.0,
+            "avg_hr": 150.0,
+            "max_hr": 170.0,
+            "elevation_gain_m": 40.0,
+        }
+
+        derived = derive_values("strava", payload)
+
+        self.assertEqual("2026-10-01", derived["local_date"])
+        self.assertEqual("2026-10-01T06:05:00Z", derived["started_at_utc"])
+        self.assertEqual("run", derived["sport"])
+        self.assertEqual(3500.0, derived["duration_s"])
+        self.assertEqual(10000.0, derived["distance_m"])
 
     def test_an_unmapped_field_raises(self):
         with self.assertRaises(Unmapped):
-            derive_value("strava", "distance_m", {})
+            derive_value("strava", "training_load", {})
 
 
 if __name__ == "__main__":

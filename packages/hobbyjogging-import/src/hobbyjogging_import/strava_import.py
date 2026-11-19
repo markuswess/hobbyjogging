@@ -8,9 +8,12 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.sports import canonical_sport
 
+from .create_activity import create_activity, record_create_review
 from .matching import MatchPolicy, decide_match
 from .strava import (
     StravaActivity,
@@ -40,15 +43,37 @@ class StravaSummary:
     gear_linked: int = 0
     gear_ambiguous: int = 0
     activities_linked_to_gear: int = 0
+    activities_created: int = 0
+    reviewed: int = 0
+    reviews_recorded: int = 0
     date_zone: str = "local"
 
 
 class StravaCsvImporter:
     """Match a Strava manifest to canonical activities and write social rows."""
 
-    def __init__(self, connection: sqlite3.Connection):
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        create: str = "ignore",
+        title: str = "social",
+        description: str = "social",
+    ):
+        if create not in ("create", "review", "ignore"):
+            raise ValueError("create must be 'create', 'review' or 'ignore'")
+        if title not in ("social", "name"):
+            raise ValueError("title must be 'social' or 'name'")
+        if description not in ("social", "description"):
+            raise ValueError(
+                "description must be 'social' or 'description'"
+            )
         self.connection = connection
         self.writer = TrainingWriter(connection)
+        self.create = create
+        self.title = title
+        self.description = description
+        self.timezone = "Europe/Vienna"
 
     def import_export(
         self,
@@ -57,11 +82,13 @@ class StravaCsvImporter:
         dry_run: bool = False,
         distance_unit: str = "km",
         date_zone: str = "auto",
+        timezone: str = "Europe/Vienna",
         start: date | None = None,
         end: date | None = None,
     ) -> StravaSummary:
         if date_zone not in ("auto", "local", "utc"):
             raise ValueError("date_zone must be 'auto', 'local' or 'utc'")
+        self.timezone = timezone
 
         export = read_export(path, distance_unit=distance_unit)
         summary = StravaSummary(dry_run=dry_run)
@@ -79,6 +106,10 @@ class StravaCsvImporter:
                     "path": str(path),
                     "distance_unit": distance_unit,
                     "date_zone": summary.date_zone,
+                    "timezone": timezone,
+                    "create": self.create,
+                    "title": self.title,
+                    "description": self.description,
                     "start": start.isoformat() if start else None,
                     "end": end.isoformat() if end else None,
                 },
@@ -212,6 +243,62 @@ class StravaCsvImporter:
         decision = self._decide(activity, summary.date_zone)
 
         if decision.activity_id is None:
+            if self.create == "create":
+                values = self._create_values(activity, summary.date_zone)
+                summary.activities_created += 1
+                if not summary.dry_run:
+                    source_record_id = self._social_source_record(
+                        activity,
+                        summary,
+                    )
+                    activity_id = create_activity(
+                        self.writer,
+                        source=SOURCE,
+                        values=values,
+                        source_record_id=source_record_id,
+                    )
+                    self._write_social(
+                        activity,
+                        activity_id,
+                        source_record_id,
+                        summary,
+                    )
+                    self._link_gear(
+                        activity,
+                        activity_id,
+                        source_record_id,
+                        equipment,
+                        summary,
+                    )
+                else:
+                    summary.social_written += 1
+                    if self._resolve_gear(activity.gear, equipment) is not None:
+                        summary.activities_linked_to_gear += 1
+                return
+
+            if self.create == "review":
+                summary.reviewed += 1
+                if not summary.dry_run:
+                    source_record_id = self._social_source_record(
+                        activity,
+                        summary,
+                    )
+                    summary.reviews_recorded += record_create_review(
+                        self.writer,
+                        source=SOURCE,
+                        source_record_id=source_record_id,
+                        values=self._create_values(
+                            activity,
+                            summary.date_zone,
+                        ),
+                        detail=(
+                            f"strava {activity.local_date}: "
+                            "no matching activity"
+                        ),
+                        import_run_id=summary.run_id,
+                    )
+                return
+
             if decision.reason == "ambiguous_match":
                 summary.ambiguous += 1
             else:
@@ -220,33 +307,125 @@ class StravaCsvImporter:
 
         source_record_id = self._social_source_record(activity, summary)
         if not summary.dry_run:
-            created = self.writer.upsert_activity_social(
+            self._write_social(
+                activity,
                 decision.activity_id,
-                source=SOURCE,
-                source_record_id=source_record_id,
-                title=activity.name,
-                description=activity.description,
-                external_id=activity.external_id,
-                url=activity.url,
+                source_record_id,
+                summary,
             )
-            summary.social_created += int(created)
-        summary.social_written += 1
+        else:
+            summary.social_written += 1
+        self._link_gear(
+            activity,
+            decision.activity_id,
+            source_record_id,
+            equipment,
+            summary,
+        )
 
+    def _write_social(
+        self,
+        activity: StravaActivity,
+        activity_id: str,
+        source_record_id: int,
+        summary: StravaSummary,
+    ) -> None:
+        created = self.writer.upsert_activity_social(
+            activity_id,
+            source=SOURCE,
+            source_record_id=source_record_id,
+            title=activity.name,
+            description=activity.description,
+            external_id=activity.external_id,
+            url=activity.url,
+        )
+        summary.social_created += int(created)
+        summary.social_written += 1
+        self._apply_text_target(activity, activity_id, source_record_id)
+
+    def _apply_text_target(
+        self,
+        activity: StravaActivity,
+        activity_id: str,
+        source_record_id: int,
+    ) -> None:
+        values = {}
+        if self.title == "name" and activity.name:
+            values["name"] = activity.name
+        if self.description == "description" and activity.description:
+            values["description"] = activity.description
+        if not values:
+            return
+        self.writer.upsert_activity(
+            activity_id,
+            values,
+            source=SOURCE,
+            source_record_id=source_record_id,
+        )
+
+    def _link_gear(
+        self,
+        activity: StravaActivity,
+        activity_id: str,
+        source_record_id: int | None,
+        equipment: dict[str, str],
+        summary: StravaSummary,
+    ) -> None:
         equipment_id = self._resolve_gear(activity.gear, equipment)
         if equipment_id is None:
             return
-
-        if not summary.dry_run:
-            linked = self.writer.link_activity_equipment(
-                decision.activity_id,
-                equipment_id,
-                source=SOURCE,
-                source_record_id=source_record_id,
-                role="primary",
-            )
-            summary.activities_linked_to_gear += int(linked)
-        else:
+        if summary.dry_run:
             summary.activities_linked_to_gear += 1
+            return
+        linked = self.writer.link_activity_equipment(
+            activity_id,
+            equipment_id,
+            source=SOURCE,
+            source_record_id=source_record_id,
+            role="primary",
+        )
+        summary.activities_linked_to_gear += int(linked)
+
+    def _start_values(
+        self,
+        activity: StravaActivity,
+        zone: str,
+    ) -> tuple[str, int]:
+        started = activity.started_at_local
+        if zone == "utc":
+            moment = started.replace(tzinfo=timezone.utc)
+            offset = 0
+        else:
+            local = started.replace(tzinfo=ZoneInfo(self.timezone))
+            moment = local.astimezone(timezone.utc)
+            offset = int(local.utcoffset().total_seconds() / 60)
+        return moment.isoformat().replace("+00:00", "Z"), offset
+
+    def _create_values(
+        self,
+        activity: StravaActivity,
+        zone: str,
+    ) -> dict[str, object]:
+        started_at_utc, offset = self._start_values(activity, zone)
+        values: dict[str, object] = {
+            "local_date": activity.local_date,
+            "started_at_utc": started_at_utc,
+            "tz_offset_min": offset,
+            "sport": canonical_sport(activity.sport),
+            "duration_s": activity.moving_s or activity.elapsed_s,
+            "elapsed_s": activity.elapsed_s,
+            "moving_s": activity.moving_s or activity.elapsed_s,
+            "distance_m": activity.distance_m or 0.0,
+        }
+        for key in ("avg_hr", "max_hr", "elevation_gain_m"):
+            value = getattr(activity, key)
+            if value is not None:
+                values[key] = value
+        if self.title == "name" and activity.name:
+            values["name"] = activity.name
+        if self.description == "description" and activity.description:
+            values["description"] = activity.description
+        return values
 
     def _decide(self, activity: StravaActivity, zone: str):
         """Resolve one row under the export's date interpretation."""
@@ -315,7 +494,15 @@ class StravaCsvImporter:
     ) -> int | None:
         if summary.dry_run:
             return None
-        payload = payload_json(activity)
+        started_at_utc, offset = self._start_values(
+            activity,
+            summary.date_zone,
+        )
+        payload = payload_json(
+            activity,
+            started_at_utc=started_at_utc,
+            tz_offset_min=offset,
+        )
         return self.writer.upsert_source_record(
             source=SOURCE,
             record_type="social",
@@ -357,8 +544,10 @@ def format_strava_summary(summary: StravaSummary, path: str) -> str:
         f"  activities: {summary.activities_seen} seen, "
         f"{summary.social_written} social rows "
         f"({summary.social_created} created), "
+        f"{summary.activities_created} activities created, "
         f"{summary.unmatched} unmatched, "
         f"{summary.ambiguous} ambiguous, "
+        f"{summary.reviewed} reviewed, "
         f"{summary.no_date} without a date",
         f"  dates: {summary.date_zone}",
         f"  gear: {summary.gear_seen} seen, "

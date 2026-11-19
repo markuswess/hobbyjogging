@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_core import default_database_path, open_database
+from hobbyjogging_core.sources_config import load_sources
 
 from .config import (
     default_fit_dir,
@@ -36,8 +37,16 @@ from .runalyze_vo2max import (
     format_vo2max_summary,
 )
 from .sheet_import import SheetImporter, format_sheet_summary
+from .sources_report import format_sources, settings_report
 from .strava_import import StravaCsvImporter, format_strava_summary
 from .sync import format_sync_summary, run_sync
+
+
+def _sources(parser: argparse.ArgumentParser):
+    try:
+        return load_sources()
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
 
 
 def resolve_range(
@@ -248,6 +257,24 @@ def _run_sheet_inspect(args, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def run_sources(args, parser: argparse.ArgumentParser) -> int:
+    try:
+        config = load_sources(args.config)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    print(format_sources(config))
+    return 0
+
+
+def run_settings(args, parser: argparse.ArgumentParser) -> int:
+    try:
+        config = load_sources(args.config)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    print(settings_report(config), end="")
+    return 0
+
+
 def run_strava(args, parser: argparse.ArgumentParser) -> int:
     path = args.path
     if path is None:
@@ -257,6 +284,17 @@ def run_strava(args, parser: argparse.ArgumentParser) -> int:
     if args.start is not None and args.end is not None and args.start > args.end:
         parser.error("--from must not be after --to")
 
+    config = _sources(parser)
+    policy = config.policy("strava")
+    if not policy.enabled:
+        parser.error("strava is disabled in sources.toml")
+
+    create = policy.create
+    if getattr(args, "create", False):
+        create = "create"
+    elif getattr(args, "no_create", False):
+        create = "ignore"
+
     try:
         connection = open_database(args.database)
     except Exception as exc:
@@ -264,11 +302,17 @@ def run_strava(args, parser: argparse.ArgumentParser) -> int:
 
     try:
         try:
-            summary = StravaCsvImporter(connection).import_export(
+            summary = StravaCsvImporter(
+                connection,
+                create=create,
+                title=policy.title,
+                description=policy.description,
+            ).import_export(
                 path,
                 dry_run=args.dry_run,
                 distance_unit=args.distance_unit,
                 date_zone=args.date_zone,
+                timezone=args.timezone,
                 start=args.start,
                 end=args.end,
             )
@@ -360,10 +404,21 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
 
     try:
         try:
+            config = _sources(parser)
+            policy = config.policy("runalyze")
+            if not policy.enabled:
+                parser.error("runalyze is disabled in sources.toml")
+            create = policy.create
+            if getattr(args, "create", False):
+                create = "create"
+            elif getattr(args, "no_create", False):
+                create = "ignore"
+
             client = RunalyzeClient(base_url=args.base_url)
             summary = RunalyzeEnricher(
                 connection,
                 client=client,
+                create=create,
             ).enrich(
                 start=args.start,
                 end=args.end,
@@ -737,6 +792,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "sheet":
         return run_sheet(args, parser)
+
+    if args.command == "sources":
+        return run_sources(args, parser)
+
+    if args.command == "settings":
+        return run_settings(args, parser)
 
     if args.command == "strava":
         return run_strava(args, parser)

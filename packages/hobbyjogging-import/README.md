@@ -501,6 +501,23 @@ The API is deferred: creating a Strava app now requires a Strava
 subscription, and single-player reads are limited to 100 per 15 minutes and
 1,000 per day.
 
+## Sources and policy
+
+`sources.toml` (or `HOBBYJOGGING_SOURCES`) sets `enabled`, `create`
+(`create | review | ignore` for Strava and Runalyze) and the social text
+targets. The file is optional; without it every source is enabled and creates
+when nothing matches.
+
+```bash
+uv run --env-file .env hobbyjogging-import sources   # effective policy
+uv run --env-file .env hobbyjogging-import settings  # rules + mapping
+./reports.sh settings                                # the same, via reports
+```
+
+FIT, Intervals and the sheet always create when nothing matches; use `enabled`
+to leave one out. Garmin yields files, not activity rows. `--create` and
+`--no-create` override one Strava or Runalyze run.
+
 ## Source precedence
 
 Field rules live in `hobbyjogging_core.import_rules`; the writer applies
@@ -525,9 +542,9 @@ measurement:
 The authoritative value replaces another source's value silently and never
 opens a review item; manual values still win.
 
-Creation is currently source-specific: FIT, Intervals and the sheet create,
-while Runalyze and Strava enrich. Root item 40 replaces that with a per-source
-`create | review | ignore` policy in `sources.toml`, and creation only happens
+Creation is policy-driven: `sources.toml` sets `create`
+(`create | review | ignore`) for Strava and Runalyze, while FIT, Intervals and
+the sheet always create and are switched with `enabled`. Creation happens only
 when there is nothing to review.
 
 Conflict-tracked fields are `duration_s`, `elapsed_s`, `moving_s`,

@@ -32,6 +32,7 @@ from hobbyjogging_core.workouts import (
 
 from .causes import UNCLASSIFIED, item_cause, item_context
 from .clipboard import copy_text
+from .create_activity import create_activity
 from .editing import apply_manual_edit
 from .links import (
     GARMIN_URL,
@@ -41,7 +42,12 @@ from .links import (
     intervals_activity_id,
     intervals_url,
 )
-from .quality import CONFLICT, WORKOUT_CLASSIFICATION, refresh_activity_quality
+from .quality import (
+    CONFLICT,
+    CREATE_ACTIVITY,
+    WORKOUT_CLASSIFICATION,
+    refresh_activity_quality,
+)
 from .review_cli import _format_summary_line
 from .runalyze_import import SOURCE as RUNALYZE_SOURCE
 from .runalyze_import import apply_stored_enrichment
@@ -445,6 +451,8 @@ class TriageRunner:
             keys.append("(v) pick value")
         if item["category"] == WORKOUT_CLASSIFICATION:
             keys.append("(k) classify")
+        if item["category"] == CREATE_ACTIVITY:
+            keys.append("(c)reate activity")
         if self._candidates(item):
             keys.append(f"(1-{len(self._candidates(item))}) choose")
         keys.extend(["(i)nspect", "(o)pen"])
@@ -503,6 +511,9 @@ class TriageRunner:
 
         if answer == "k":
             return self._classify_workout(item)
+
+        if answer == "c" and item["category"] == CREATE_ACTIVITY:
+            return self._create_activity(item)
 
         if answer == "t":
             return self._force_intervals(item)
@@ -1061,6 +1072,30 @@ class TriageRunner:
             external_id,
             force=True,
         )
+
+    def _create_activity(self, item) -> bool:
+        context = item_context(item)
+        values = context.get("values") or {}
+        source = context.get("source") or ""
+        record_id = context.get("source_record_id") or item["source_record_id"]
+        if not source or not values or record_id is None:
+            self.print("  the item has no stored values")
+            return False
+        try:
+            activity_id = create_activity(
+                self.writer,
+                source=source,
+                values=values,
+                source_record_id=record_id,
+            )
+        except Exception as exc:
+            self.print(f"  create failed: {exc}")
+            return False
+        self.writer.connection.commit()
+        self._close(item, "resolved", note=f"triage: created {activity_id}")
+        self._count("created")
+        self.print(f"  created {activity_id}")
+        return True
 
     def _force_intervals(self, item) -> bool:
         """Re-import the linked Intervals activity and take field ownership."""

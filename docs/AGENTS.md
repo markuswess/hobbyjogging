@@ -141,9 +141,9 @@ Cross-package changes must leave all four suites green.
   `activities.name`/`description` (default: social only), because a promoted
   title feeds `classify()`; a description does not.
 - Every source that yields activity rows may create. The per-source
-  `create | review | ignore` policy in `sources.toml` (item 40) decides what an
-  unmatched row does, and creation happens only when there is nothing to
-  review.
+  `create | review | ignore` policy in `sources.toml` decides what an unmatched
+  row does; FIT, Intervals and the sheet always create and use `enabled`.
+  Creation happens only when there is nothing to review.
 - Inputs are never rebuilt, projections are: payloads, pointers, manual edits,
   links, exclusions and review answers are inputs; canonical activity fields
   are a cache rebuilt by `recompute_canonical` and checked by

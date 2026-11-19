@@ -181,6 +181,26 @@ def build_parser() -> argparse.ArgumentParser:
     sheet.add_argument("--dry-run", action="store_true")
     sheet.add_argument("--database", type=Path)
 
+    sources = subparsers.add_parser(
+        "sources",
+        help="show the effective source configuration",
+    )
+    sources.add_argument(
+        "--config",
+        type=Path,
+        help="sources.toml path (default: HOBBYJOGGING_SOURCES or ./sources.toml)",
+    )
+
+    settings = subparsers.add_parser(
+        "settings",
+        help="render the import rules, policy and mapping as Markdown",
+    )
+    settings.add_argument(
+        "--config",
+        type=Path,
+        help="sources.toml path (default: HOBBYJOGGING_SOURCES or ./sources.toml)",
+    )
+
     strava = subparsers.add_parser(
         "strava",
         help="import a Strava bulk export (social text and gear)",
@@ -210,6 +230,22 @@ def build_parser() -> argparse.ArgumentParser:
             "interpret Activity Date as local wall time or UTC; auto picks "
             "the one that matches more activities (default: auto)"
         ),
+    )
+    strava.add_argument(
+        "--timezone",
+        default="Europe/Vienna",
+        help="timezone used when creating from a local-date export",
+    )
+    create_group = strava.add_mutually_exclusive_group()
+    create_group.add_argument(
+        "--create",
+        action="store_true",
+        help="create an activity when nothing matches",
+    )
+    create_group.add_argument(
+        "--no-create",
+        action="store_true",
+        help="never create; use the configured review/ignore policy",
     )
     strava.add_argument("--dry-run", action="store_true")
     strava.add_argument("--database", type=Path)
@@ -271,6 +307,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="override the API base URL (default: RUNALYZE_API_BASE_URL)",
     )
     runalyze_enrich.add_argument("--database", type=Path)
+    runalyze_create = runalyze_enrich.add_mutually_exclusive_group()
+    runalyze_create.add_argument(
+        "--create",
+        action="store_true",
+        help="create an activity when no same-day candidate exists",
+    )
+    runalyze_create.add_argument(
+        "--no-create",
+        action="store_true",
+        help="never create; use the configured review/ignore policy",
+    )
     runalyze_enrich.add_argument(
         "--output",
         type=Path,

@@ -112,7 +112,7 @@ class VerifyCanonicalTests(unittest.TestCase):
         self.conn.execute(
             "UPDATE activity_field_sources "
             "SET source = 'strava', source_record_id = ? "
-            "WHERE activity_id = 'a1' AND field_name = 'distance_m'",
+            "WHERE activity_id = 'a1' AND field_name = 'training_load'",
             (strava_id,),
         )
         self.conn.commit()

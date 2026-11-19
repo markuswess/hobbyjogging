@@ -1177,69 +1177,34 @@ editing, analysis and lab work; phase 3 is the dormant future.
 40. **Import policy, settings view and source configuration** (core + import +
     maintenance + reports; phase 2). Every source that yields activity rows may
     create; what varies per athlete is policy, not capability.
-    - **Done (Nov 2026)**: `hobbyjogging_core.import_rules` owns field
-      ownership, conflict tolerances, manual fields and ranked authority;
-      `SourceProfile` records what each source can match and write;
-      `import/matching.py` owns the shared ladder (temporal → distance →
-      exact twin → review → create only when allowed), including the
-      local-wall-time path. The writer reads the registry instead of its own
-      constants.
-    - **No create/enrich role**: replace `creates_activities` with
-      `yields_activities` plus `creation_fields` (what a create can fill).
-      Garmin yields files, not activity rows; every other source may create.
-    - **Policy**: per source `create | review | ignore` for a row the ladder
-      cannot link, default `create`. `sources.toml` holds `enabled`, `create`
-      and the text targets; credentials stay in `.env`; a CLI flag overrides a
-      one-off run. `HOBBYJOGGING_SOURCES` overrides the path, and
-      `sources.toml.example` ships with `.env.example`. Unknown keys, and a
-      `create` on a source that yields no activity rows, are errors. The
-      resolved policy is printed in the import summary and recorded in the
-      import run.
-    - **Ladder guard**: create only when there is nothing to review. A row with
-      a rejected same-day candidate opens a review item instead, so
-      create-by-default cannot manufacture duplicates.
-    - **Create paths**: Runalyze and Strava gain a create path (Strava needs
-      the configured timezone for UTC; its title and description still go to
-      `activity_social`) through one shared summary-create helper. A `review`
-      outcome needs a create verb in triage and a per-source
-      `values_from_summary()` that works from the stored payload, offline.
-    - **Text targets**: per source, title and description map to `social`
-      (default) or the canonical `name`/`description`. `activity_social` is
-      always written. A promoted title feeds `classify()`, so it can flip a
-      run's category; descriptions do not. `promote_social_text` backfills a
-      later policy change.
-    - **Registry next**: extend the read-only registry with id, domain,
-      value/threshold, source, description and kind (rule, default, advisory
-      autotriage), and show the per-adapter `FIELD_MAP` from item 17. Read it
-      where practical, or assert the constants match.
-    - **Still scattered**: quality rules and pace windows in
-      `import/quality.py`; conflict causes in `import/causes.py`;
-      classification vocabulary in `core/workouts.py`/`core/classify.py`; the
-      maintenance order in `sync.sh`; analysis bands in `reports/analysis/*`;
-      and prose restatements in the docs.
-    - **Autotriage**: show what happens automatically (review-item creation,
-      agreed-conflict resolution, prune, classification queue, race links,
-      period recompute) versus what needs a human, and which causes are
-      advisory/bulk-resolvable.
-    - **Settings report**: `reports.sh settings` renders ownership and
-      authority, conflict fields/tolerances, matching, quality rules, review
-      categories and hiding, bulk-resolve causes, classification priority,
-      maintenance order, and per source: enabled, unmatched policy, text
-      targets and mapping. `hobbyjogging-import sources` prints the effective
-      configuration (variable names present/absent, never values).
-    - **Dashboard tab last**: a read-only Settings tab once the report proves
-      useful.
-    - **Read-only first**: editing rules from the UI is later; the code,
-      `sources.toml` and the CLI stay the source of truth. Analysis metric
-      thresholds stay with the metric catalogue (item 24) and `docs/METRICS.md`.
-    - **Not doing**: migrating FIT/Intervals/sheet onto `decide_match` (they
-      create, so the distance check and exact twin would change real outcomes),
-      a primary-source rank (no symptom; it would add a second priority axis),
-      and an import-order key in `sources.toml` (order stays code-owned in v1;
-      add it only if the second-athlete test needs it).
-    - **Sequence**: item 17's manual layer and mapping first, then this item;
-      the recompute may land alongside. The second-athlete test (item 23) is
-      the acceptance test.
+    - **Done (Nov 2026)**: `SourceProfile` declares `yields_activities` and
+      `creation_fields` (no create/enrich role). `sources.toml` (or
+      `HOBBYJOGGING_SOURCES`) carries `enabled`, `create`, `title` and
+      `description`; unknown keys and impossible values fail loudly. The
+      resolved policy is printed and recorded in the import run.
+    - **Policy**: `create | review | ignore` for Strava and Runalyze; the
+      recording sources (FIT, Intervals, sheet) always create and use
+      `enabled`. `--create` / `--no-create` override one run.
+    - **Ladder guard**: create only when there is nothing to review; a
+      rejected candidate becomes a review item, not a duplicate.
+    - **Create paths**: Strava and Runalyze create a summary activity when
+      configured (Strava needs the configured timezone; its title and
+      description still go to `activity_social`). A `review` outcome queues a
+      `create_activity` item; triage `(c)` creates it from the stored values.
+    - **Text targets**: Strava's title/description go to `activity_social`
+      (default) or the canonical `name`/`description`; a promoted title feeds
+      the classifier. `promote_social_text` for a later policy change remains.
+    - **Settings view**: `hobbyjogging-import sources` prints the effective
+      policy; `hobbyjogging-import settings` (also `reports.sh settings`)
+      renders sources, field rules, matching, review categories, causes,
+      classification and the payload mapping. The report delegates to the
+      import package because it owns the rules and the mapping.
+    - **Remaining**: the create policy for the recording sources (enabled only
+      for now), the dashboard Settings tab, and the registry extension for
+      quality/causes (the report already shows them from the import side).
+    - **Not doing**: migrating FIT/Intervals/sheet onto `decide_match`, a
+      primary-source rank, and an import-order key in `sources.toml`.
+    - **Sequence**: done; item 23's second-athlete test is the acceptance test.
 
 The Runalyze payload sweep and the `vo2max` fill are done
 (`vo2max_runalyze` 843 → 2,225), so reports item 15 is unblocked. The Strava

@@ -5,6 +5,11 @@ on.
 
 ## Done
 
+- **Source policy and settings view.** `sources.toml` sets enabled, create
+  (`create | review | ignore` for Strava and Runalyze) and the text targets;
+  `sources` prints the effective policy and `settings` renders the rules and
+  payload mapping. `reports.sh settings` delegates to it. A review outcome
+  queues a `create_activity` item with triage `(c)`.
 - **Declared payload mapping.** `hobbyjogging_import.derive` holds the
   per-source `FIELD_MAPS` and per-sheet `SHEET_MAPS`, with named transforms
   for units, sports, dates and the device id. Contract tests compare each map

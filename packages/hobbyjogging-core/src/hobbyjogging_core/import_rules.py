@@ -138,15 +138,16 @@ class SourceProfile:
 
     This is capability data, not a priority list. Field ownership stays with
     ``FieldRule``; the profile answers the questions an importer or a
-    settings view asks before a run: may this source create an activity, how
-    does it match, does it need detail requests, and what does it write.
+    settings view asks before a run: does this source yield activity rows, how
+    does it match, does it need detail requests, and what can a create fill.
     """
 
     name: str
     label: str
     entities: frozenset[str]
-    creates_activities: bool
+    yields_activities: bool
     match: str
+    creation_fields: frozenset[str] = frozenset()
     absence: str = "ignore"
     detail_required: bool = False
     request_budget: str | None = None
@@ -158,8 +159,28 @@ SOURCES: dict[str, SourceProfile] = {
         name="fit",
         label="FIT archive",
         entities=frozenset({"activity", "fit_file", "device"}),
-        creates_activities=True,
+        yields_activities=True,
         match="contained_fit",
+        creation_fields=frozenset(
+            {
+                "local_date",
+                "started_at_utc",
+                "tz_offset_min",
+                "sport",
+                "sub_sport",
+                "name",
+                "duration_s",
+                "elapsed_s",
+                "moving_s",
+                "distance_m",
+                "avg_hr",
+                "max_hr",
+                "elevation_gain_m",
+                "elevation_loss_m",
+                "vo2max_garmin",
+                "device_id",
+            }
+        ),
         notes="A device file may be a contained segment of a larger activity.",
     ),
     "intervals": SourceProfile(
@@ -176,8 +197,32 @@ SOURCES: dict[str, SourceProfile] = {
                 "device",
             }
         ),
-        creates_activities=True,
+        yields_activities=True,
         match="temporal",
+        creation_fields=frozenset(
+            {
+                "local_date",
+                "started_at_utc",
+                "tz_offset_min",
+                "sport",
+                "sub_sport",
+                "name",
+                "description",
+                "duration_s",
+                "elapsed_s",
+                "moving_s",
+                "distance_m",
+                "avg_hr",
+                "max_hr",
+                "elevation_gain_m",
+                "elevation_loss_m",
+                "training_load",
+                "rpe",
+                "feel",
+                "intensity",
+                "device_id",
+            }
+        ),
         absence="events",
         notes="Authoritative for planned events and moving/elapsed time.",
     ),
@@ -185,7 +230,7 @@ SOURCES: dict[str, SourceProfile] = {
         name="garmin",
         label="Garmin Personal API",
         entities=frozenset({"fit_file"}),
-        creates_activities=False,
+        yields_activities=False,
         match="none",
         request_budget="garmin",
         notes="Downloads FIT files; the FIT importer creates the activity.",
@@ -194,8 +239,24 @@ SOURCES: dict[str, SourceProfile] = {
         name="sheet",
         label="Training sheet",
         entities=frozenset({"activity", "gear"}),
-        creates_activities=True,
+        yields_activities=True,
         match="temporal",
+        creation_fields=frozenset(
+            {
+                "local_date",
+                "started_at_utc",
+                "tz_offset_min",
+                "sport",
+                "name",
+                "description",
+                "duration_s",
+                "elapsed_s",
+                "distance_m",
+                "avg_hr",
+                "max_hr",
+                "elevation_gain_m",
+            }
+        ),
         notes="Historical ODS import; the source of the early gear rows.",
     ),
     "runalyze": SourceProfile(
@@ -204,25 +265,55 @@ SOURCES: dict[str, SourceProfile] = {
         entities=frozenset(
             {"activity", "gear", "race_result", "tags", "vo2max"}
         ),
-        creates_activities=False,
+        yields_activities=True,
         match="exact_twin",
+        creation_fields=frozenset(
+            {
+                "local_date",
+                "started_at_utc",
+                "tz_offset_min",
+                "sport",
+                "duration_s",
+                "elapsed_s",
+                "distance_m",
+                "avg_hr",
+                "max_hr",
+                "description",
+                "vo2max_runalyze",
+            }
+        ),
         detail_required=True,
         request_budget="runalyze_window",
-        notes="Enrichment only: it never creates an activity.",
+        notes="Enrichment first; creation is a per-athlete policy.",
     ),
     "strava": SourceProfile(
         name="strava",
         label="Strava",
         entities=frozenset({"activity", "gear", "social"}),
-        creates_activities=False,
+        yields_activities=True,
         match="temporal",
+        creation_fields=frozenset(
+            {
+                "local_date",
+                "started_at_utc",
+                "tz_offset_min",
+                "sport",
+                "duration_s",
+                "elapsed_s",
+                "moving_s",
+                "distance_m",
+                "avg_hr",
+                "max_hr",
+                "elevation_gain_m",
+            }
+        ),
         notes="CSV bulk export first: social text and gear metadata.",
     ),
     "manual": SourceProfile(
         name="manual",
         label="Manual edit",
         entities=frozenset({"activity", "event", "gear", "race_result"}),
-        creates_activities=True,
+        yields_activities=True,
         match="none",
         absence="manual",
         notes="A human edit always outranks import sources.",

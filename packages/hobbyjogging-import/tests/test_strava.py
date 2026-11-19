@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 import zipfile
@@ -325,6 +326,83 @@ class StravaImportTests(unittest.TestCase):
                 self._export(),
                 date_zone="nope",
             )
+
+    def test_create_policy_creates_an_activity(self):
+        row = _activity_row(
+            external_id="999",
+            date="Oct 05, 2026, 8:05:00 AM",
+            name="Bakery run",
+        )
+
+        summary = StravaCsvImporter(
+            self.conn,
+            create="create",
+        ).import_export(self._export(row))
+
+        self.assertEqual(1, summary.activities_created)
+        self.assertEqual(1, summary.social_written)
+        self.assertEqual(
+            2,
+            self.conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0],
+        )
+        created = self.conn.execute(
+            "SELECT id, sport, distance_m FROM activities WHERE id != 'a1'"
+        ).fetchone()
+        self.assertEqual("run", created["sport"])
+        self.assertEqual(10000.0, created["distance_m"])
+        self.assertEqual(
+            1,
+            self.conn.execute(
+                "SELECT COUNT(*) FROM activity_sources WHERE activity_id = ?",
+                (created["id"],),
+            ).fetchone()[0],
+        )
+
+    def test_review_policy_queues_a_create_item(self):
+        row = _activity_row(
+            external_id="999",
+            date="Oct 05, 2026, 8:05:00 AM",
+            name="Bakery run",
+        )
+
+        summary = StravaCsvImporter(
+            self.conn,
+            create="review",
+        ).import_export(self._export(row))
+
+        self.assertEqual(1, summary.reviewed)
+        self.assertEqual(
+            1,
+            self.conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0],
+        )
+        item = self.conn.execute(
+            "SELECT context_json FROM review_items "
+            "WHERE category = 'create_activity'"
+        ).fetchone()
+        self.assertIsNotNone(item)
+        self.assertEqual(
+            "strava",
+            json.loads(item["context_json"])["source"],
+        )
+
+    def test_text_targets_write_the_canonical_fields(self):
+        self.conn.execute(
+            "UPDATE activities SET name = '', description = '' "
+            "WHERE id = 'a1'"
+        )
+        self.conn.commit()
+
+        StravaCsvImporter(
+            self.conn,
+            title="name",
+            description="description",
+        ).import_export(self._export())
+
+        row = self.conn.execute(
+            "SELECT name, description FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        self.assertEqual("Bakery run", row["name"])
+        self.assertEqual("Race you to the bakery", row["description"])
 
     def test_date_range_filter(self):
         summary = StravaCsvImporter(self.conn).import_export(

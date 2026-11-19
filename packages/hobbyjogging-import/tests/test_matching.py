@@ -325,6 +325,12 @@ class MatchDecisionTests(unittest.TestCase):
         self.assertEqual("distance_mismatch", decision.reason)
         self.assertEqual(["a1"], [c.activity_id for c in decision.candidates])
 
+    def test_a_rejected_candidate_is_not_created(self):
+        decision = self._decide(distance_m=20000, allow_create=True)
+
+        self.assertIsNone(decision.activity_id)
+        self.assertEqual("distance_mismatch", decision.reason)
+
     def test_missing_distance_accepts_the_window(self):
         decision = self._decide(distance_m=None)
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from hobbyjogging_core.sports import canonical_sport
 
@@ -164,6 +165,25 @@ def _sheet_alternative_sport(payload: dict, value: object) -> str:
     return _alternative_sport(value)
 
 
+def _runalyze_start(payload: dict, value: object) -> str | None:
+    try:
+        moment = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        return None
+    return moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _runalyze_sport(payload: dict, value: object) -> str:
+    name = value.get("name") if isinstance(value, dict) else value
+    return canonical_sport(name)
+
+
+def _km_to_m(payload: dict, value: object) -> float:
+    return float(value) * 1000.0
+
+
 # -- the declared maps -----------------------------------------------------
 
 
@@ -216,11 +236,39 @@ FIELD_MAPS: dict[str, dict[str, FieldSpec]] = {
         "device_id": FieldSpec((), _fit_device_id),
     },
     "runalyze": {
+        "local_date": FieldSpec(("date_time",), _date_prefix),
+        "started_at_utc": FieldSpec(("date_time",), _runalyze_start),
+        "tz_offset_min": FieldSpec(("timezone_offset",), _as_int),
+        "sport": FieldSpec(("sport",), _runalyze_sport),
+        "duration_s": FieldSpec(("duration",), _as_float),
+        "elapsed_s": FieldSpec(("elapsed_time",), _as_float),
+        "distance_m": FieldSpec(("distance",), _km_to_m, 0.0),
+        "avg_hr": FieldSpec(("hr_avg",), _as_float),
+        "max_hr": FieldSpec(("hr_max",), _as_float),
         "description": FieldSpec(("note",), _as_str, ""),
         "vo2max_runalyze": FieldSpec(("vo2max",), _as_float),
     },
-    # Strava writes social text and gear, not canonical activity fields.
-    "strava": {},
+    # Strava writes social text and gear; a create uses the manifest fields.
+    "strava": {
+        "local_date": FieldSpec(("date",), _date_prefix),
+        "started_at_utc": FieldSpec(("started_at_utc",), _as_str),
+        "tz_offset_min": FieldSpec(("tz_offset_min",), _as_int),
+        "sport": FieldSpec(("sport",), _sport),
+        "name": FieldSpec(("name",), _as_str, ""),
+        "description": FieldSpec(("description",), _as_str, ""),
+        "duration_s": FieldSpec(
+            ("moving_s", "elapsed_s"),
+            _as_float,
+            0.0,
+            skip_falsy=True,
+        ),
+        "elapsed_s": FieldSpec(("elapsed_s",), _as_float, 0.0),
+        "moving_s": FieldSpec(("moving_s",), _as_float),
+        "distance_m": FieldSpec(("distance_m",), _as_float, 0.0),
+        "avg_hr": FieldSpec(("avg_hr",), _as_float),
+        "max_hr": FieldSpec(("max_hr",), _as_float),
+        "elevation_gain_m": FieldSpec(("elevation_gain_m",), _as_float),
+    },
 }
 
 

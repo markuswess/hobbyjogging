@@ -114,19 +114,28 @@ class SourceProfileTests(unittest.TestCase):
                 {"ignore", "events", "manual"},
             )
 
-    def test_runalyze_is_enrichment_only(self):
+    def test_runalyze_yields_activities_but_needs_details(self):
         profile = source_profile("runalyze")
-        self.assertFalse(profile.creates_activities)
+        self.assertTrue(profile.yields_activities)
         self.assertTrue(profile.detail_required)
+        self.assertIn("vo2max_runalyze", profile.creation_fields)
 
-    def test_fit_and_intervals_can_create_activities(self):
-        self.assertTrue(source_profile("fit").creates_activities)
-        self.assertTrue(source_profile("intervals").creates_activities)
-        self.assertTrue(source_profile("sheet").creates_activities)
+    def test_activity_sources_yield_activities(self):
+        for name in ("fit", "intervals", "sheet", "runalyze", "strava"):
+            self.assertTrue(source_profile(name).yields_activities, name)
+        self.assertFalse(source_profile("garmin").yields_activities)
+
+    def test_creation_fields_are_declared(self):
+        self.assertIn("duration_s", source_profile("fit").creation_fields)
+        self.assertIn("distance_m", source_profile("strava").creation_fields)
+        self.assertEqual(
+            frozenset(),
+            source_profile("garmin").creation_fields,
+        )
 
     def test_strava_csv_is_social_and_gear_first(self):
         profile = source_profile("strava")
-        self.assertFalse(profile.creates_activities)
+        self.assertTrue(profile.yields_activities)
         self.assertEqual(
             {"activity", "gear", "social"},
             set(profile.entities),

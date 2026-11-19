@@ -33,6 +33,9 @@ _ACTIVITY_DESCRIPTION = (
 )
 _ELAPSED = ("Elapsed Time", "Verstrichene Zeit")
 _MOVING = ("Moving Time", "Bewegungszeit")
+_AVG_HR = ("Average Heart Rate", "Durchschnittliche Herzfrequenz")
+_MAX_HR = ("Max Heart Rate", "Maximale Herzfrequenz")
+_ELEVATION = ("Elevation Gain", "Höhenmeter")
 _GEAR = ("Activity Gear", "Gear", "Ausrüstung")
 _FILENAME = ("Filename", "Dateiname")
 _PRIVATE = ("Private", "Privat")
@@ -67,6 +70,9 @@ class StravaActivity:
     elapsed_s: float = 0
     moving_s: float = 0
     distance_m: float | None = None
+    avg_hr: float | None = None
+    max_hr: float | None = None
+    elevation_gain_m: float | None = None
     gear: str = ""
     filename: str = ""
     private: bool = False
@@ -157,6 +163,9 @@ def _parse_activities(text: str, *, distance_unit: str) -> list[StravaActivity]:
             distance_columns,
             distance_unit,
         )
+        avg_hr = _float(_pick(raw, _AVG_HR))
+        max_hr = _float(_pick(raw, _MAX_HR))
+        elevation = _float(_pick(raw, _ELEVATION))
 
         rows.append(
             StravaActivity(
@@ -168,6 +177,9 @@ def _parse_activities(text: str, *, distance_unit: str) -> list[StravaActivity]:
                 elapsed_s=elapsed,
                 moving_s=moving,
                 distance_m=distance,
+                avg_hr=avg_hr,
+                max_hr=max_hr,
+                elevation_gain_m=elevation,
                 gear=_pick(raw, _GEAR).strip(),
                 filename=_pick(raw, _FILENAME).strip(),
                 private=_bool(_pick(raw, _PRIVATE)),
@@ -343,7 +355,12 @@ def _read_optional(path: Path) -> str | None:
     return path.read_text(encoding="utf-8-sig") if path.is_file() else None
 
 
-def payload_json(activity: StravaActivity) -> str:
+def payload_json(
+    activity: StravaActivity,
+    *,
+    started_at_utc: str | None = None,
+    tz_offset_min: int | None = None,
+) -> str:
     """The source-record payload: the fields the manifest actually carries."""
     return json.dumps(
         {
@@ -353,12 +370,17 @@ def payload_json(activity: StravaActivity) -> str:
                 if activity.started_at_local
                 else None
             ),
+            "started_at_utc": started_at_utc,
+            "tz_offset_min": tz_offset_min,
             "name": activity.name,
             "sport": activity.sport,
             "description": activity.description,
             "elapsed_s": activity.elapsed_s,
             "moving_s": activity.moving_s,
             "distance_m": activity.distance_m,
+            "avg_hr": activity.avg_hr,
+            "max_hr": activity.max_hr,
+            "elevation_gain_m": activity.elevation_gain_m,
             "gear": activity.gear,
             "filename": activity.filename,
             "private": activity.private,

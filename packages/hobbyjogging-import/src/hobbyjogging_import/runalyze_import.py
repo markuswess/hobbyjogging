@@ -25,6 +25,8 @@ from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
 
+from .create_activity import create_activity
+from .derive import derive_values
 from .matching import MatchPolicy, decide_match
 from .quality import AMBIGUOUS_MATCH, review_fingerprint
 from .runalyze import RunalyzeApi, RunalyzeClient, RunalyzeRateLimitError
@@ -62,6 +64,8 @@ class RunalyzeEnrichSummary:
     already_enriched: int = 0
     unmatched: int = 0
     ambiguous: int = 0
+    created: int = 0
+    ignored: int = 0
     reviews_recorded: int = 0
     already_reviewed: int = 0
     detail_fetches: int = 0
@@ -124,10 +128,15 @@ class RunalyzeEnricher:
         self,
         connection: sqlite3.Connection,
         client: RunalyzeApi | None = None,
+        *,
+        create: str = "review",
     ):
+        if create not in ("create", "review", "ignore"):
+            raise ValueError("create must be 'create', 'review' or 'ignore'")
         self.connection = connection
         self.client = client or RunalyzeClient()
         self.writer = TrainingWriter(connection)
+        self.create = create
 
     def enrich(
         self,
@@ -512,6 +521,44 @@ class RunalyzeEnricher:
                 summary.refreshed += 1
 
             if outcome.reviewed:
+                if not outcome.candidates and self.create == "create":
+                    if not summary.dry_run:
+                        source_record_id = self._store_detail(
+                            external_id,
+                            payload,
+                            summary,
+                        )
+                        values = {
+                            key: value
+                            for key, value in derive_values(
+                                SOURCE,
+                                payload,
+                            ).items()
+                            if value not in (None, "")
+                        }
+                        create_activity(
+                            self.writer,
+                            source=SOURCE,
+                            values=values,
+                            source_record_id=source_record_id,
+                        )
+                        apply_stored_enrichment(
+                            self.connection,
+                            source_record_id,
+                        )
+                    summary.created += 1
+                    continue
+
+                if not outcome.candidates and self.create == "ignore":
+                    if not summary.dry_run:
+                        self._store_detail(
+                            external_id,
+                            payload,
+                            summary,
+                        )
+                    summary.ignored += 1
+                    continue
+
                 if outcome.reason == "several_exact":
                     summary.ambiguous += 1
                 else:
@@ -747,6 +794,22 @@ class RunalyzeEnricher:
         for review in reviews:
             self._record_review(review, summary)
 
+    def _store_detail(
+        self,
+        external_id: str,
+        payload: dict,
+        summary: RunalyzeEnrichSummary,
+    ) -> int:
+        payload_json = _payload_json(payload)
+        return self.writer.upsert_source_record(
+            source=SOURCE,
+            record_type="activity",
+            external_id=external_id,
+            checksum=_checksum(payload_json),
+            payload_json=payload_json,
+            import_run_id=summary.run_id,
+        )
+
     def _record_review(
         self,
         review: _Review,
@@ -758,14 +821,10 @@ class RunalyzeEnricher:
         another API call, and the record stays unlinked until a human picks an
         activity.
         """
-        payload_json = _payload_json(review.payload)
-        source_record_id = self.writer.upsert_source_record(
-            source=SOURCE,
-            record_type="activity",
-            external_id=review.external_id,
-            checksum=_checksum(payload_json),
-            payload_json=payload_json,
-            import_run_id=summary.run_id,
+        source_record_id = self._store_detail(
+            review.external_id,
+            review.payload,
+            summary,
         )
 
         outcome = review.outcome
@@ -938,6 +997,8 @@ def format_enrich_summary(summary: RunalyzeEnrichSummary) -> str:
         f"  processed: {summary.processed}",
         f"  not processed: {summary.not_processed}",
         f"  matched: {summary.matched}",
+        f"  created: {summary.created}",
+        f"  ignored: {summary.ignored}",
         f"  refreshed: {summary.refreshed}",
         f"  already enriched: {summary.already_enriched}",
         f"  unmatched: {summary.unmatched}",

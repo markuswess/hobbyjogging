@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|overview|recovery-report|equipment|races|race|streaks|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities] [args...]
+  ./reports.sh [daily|overview|recovery-report|equipment|races|race|streaks|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities|settings] [args...]
   ./reports.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the daily report. The generated Markdown is copied to
@@ -53,6 +53,14 @@ args=("$@")
 mode="daily"
 explicit_mode=0
 index=0
+
+# The settings view is owned by the import package (it holds the rules and
+# the payload mapping); delegate before the report dispatch.
+if [[ "${1:-}" == "settings" ]]; then
+    shift
+    uv run --env-file .env python -m hobbyjogging_import settings "$@"
+    exit $?
+fi
 
 while (( index < ${#args[@]} )); do
     case "${args[$index]}" in
