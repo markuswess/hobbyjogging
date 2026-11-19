@@ -524,5 +524,18 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual([], self.repository.activity_social("a2"))
 
 
+    def test_devices_hide_excluded_rows(self):
+        self.conn.executemany(
+            "INSERT INTO devices (id, name, excluded_at) VALUES (?, ?, ?)",
+            [("d1", "Active", None), ("d2", "Retired", "2026-01-01")],
+        )
+        self.conn.commit()
+
+        self.assertEqual(
+            ["d1"],
+            [device.id for device in self.repository.devices()],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

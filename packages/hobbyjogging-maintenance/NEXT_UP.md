@@ -87,7 +87,13 @@ This file records what the package is still waiting on.
   Höchst Other is cleared, and the two 2019 Garmin Connect rows stay NULL. The
   canonical check now resolves a provider name through the same unique-FIT
   claim, so `verify_canonical` stays at 0 drift and `recompute_canonical` is a
-  no-op.
+  no-op. The two provider rows it left unused were soft-excluded by
+  `device_identity_orphans_v1`.
+- **`device_identity_orphans_v1`.** Soft-excluded the two provider device rows
+  no activity uses (`intervals:garmin-enduro`, `intervals:runalyze`) after the
+  FIT claim moved their last activities. `devices.excluded_at` (v24) and the
+  `TrainingRepository.devices()` filter hide them; applied: 2 excluded, the
+  four FIT devices remain.
 
 ## Next
 
@@ -109,12 +115,6 @@ Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on
 
-- **Device-row soft exclusion** (root item 41). The two provider rows left
-  unused by `device_identity_v1` (`intervals:garmin-enduro`,
-  `intervals:runalyze`) still exist in `devices`. Hiding them needs
-  `devices.excluded_at` (schema v24) and the `TrainingRepository.devices()`
-  filter — core/root work; until then the gear report lists them with 0
-  activities.
 - **Historical refurbishment** (root item 37). The read-only evidence audit is
   the first maintenance slice; it starts after the Runalyze import settles.
 

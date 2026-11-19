@@ -138,6 +138,12 @@ class SchemaMigrationTests(unittest.TestCase):
             manual_columns,
         )
 
+        device_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(devices)")
+        }
+        self.assertIn("excluded_at", device_columns)
+
     def test_migrates_v1_activity_rows_to_elapsed_time(self):
         self.conn.executescript(INITIAL_SCHEMA_SQL)
         self.conn.execute(

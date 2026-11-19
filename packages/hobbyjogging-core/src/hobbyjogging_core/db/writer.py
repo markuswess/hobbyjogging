@@ -1957,6 +1957,32 @@ class TrainingWriter:
         )
         return cursor.rowcount > 0
 
+    def exclude_device(self, device_id: str) -> bool:
+        """Soft-exclude a device row; the repository lists only active ones.
+
+        Used for a provider alias that no activity points at after the FIT
+        claim. The row stays for audit; a reimport cannot resurrect it.
+        """
+        row = self.connection.execute(
+            "SELECT excluded_at FROM devices WHERE id = ?",
+            (device_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"unknown device: {device_id}")
+        if row["excluded_at"]:
+            return False
+
+        self.connection.execute(
+            """
+            UPDATE devices
+            SET excluded_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (device_id,),
+        )
+        return True
+
     def set_event_zone_times(
         self,
         event_id: str,

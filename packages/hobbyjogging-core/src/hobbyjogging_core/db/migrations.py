@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -488,6 +488,14 @@ WHERE is_manual = 1 AND value_json IS NOT NULL;
 """
 
 
+MIGRATION_24_SQL = """
+-- A device row can be retired as an identity without deleting it: a provider
+-- alias that no activity uses after the FIT claim, or a device the athlete
+-- replaced. The repository lists only the active rows.
+ALTER TABLE devices ADD COLUMN excluded_at TEXT;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -512,6 +520,7 @@ MIGRATIONS: dict[int, str] = {
     21: MIGRATION_21_SQL,
     22: MIGRATION_22_SQL,
     23: MIGRATION_23_SQL,
+    24: MIGRATION_24_SQL,
 }
 
 

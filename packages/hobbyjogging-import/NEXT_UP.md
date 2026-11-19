@@ -19,8 +19,8 @@ on.
   half: it re-resolves activities already on an `intervals:<slug>` row through
   this rule — 2 moved to the Enduro serial, 1 app-name fallback cleared — and
   `verify_canonical` derives the same claim, so the canonical row stays at 0
-  drift. The two now-unused provider rows remain until core adds
-  `devices.excluded_at` (root item 41).
+  drift. The two now-unused provider rows were soft-excluded by
+  `device_identity_orphans_v1` (v24).
 - **Source policy and settings view.** `sources.toml` sets enabled, create
   (`create | review | ignore` for Strava and Runalyze) and the text targets;
   `sources` prints the effective policy and `settings` renders the rules and
@@ -336,12 +336,6 @@ on.
   fresh database explicitly (today the first import does it implicitly), and
   `doctor` checks the DB path and writability, the schema version, the FIT
   directory and the credentials, printing what is missing. See root item 23.
-- **Declared payload mapping and the create policy** (root items 17 and 40).
-  Each adapter gets a `FIELD_MAP` (canonical field → payload key) plus a
-  contract test; `verify_canonical`/`recompute_canonical` read it. The
-  per-source `create | review | ignore` policy and the text targets then change
-  the Runalyze and Strava adapters, including a summary-create path and a
-  create-from-review action.
 
 ## Waiting on
 

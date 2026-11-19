@@ -195,7 +195,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 23).
+  (`SCHEMA_VERSION`, currently 24).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
@@ -291,7 +291,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 23.
+SQLite, forward-only migrations. Schema version 24.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -337,6 +337,7 @@ SQLite, forward-only migrations. Schema version 23.
   the provider id stays and nothing is guessed. A serial-less FIT upload is
   not a device. App names — `Runalyze`, `Garmin Connect`, `Strava`,
   `intervals.icu` — are never devices; the importer skips them.
+  A provider row that no activity uses is soft-excluded, never hard-deleted.
   `devices.name` is display-only and set once: the first non-empty provider
   name, whitespace-collapsed and title-cased. A FIT device keeps its
   product-derived label (the reports derive it) and a provider never writes its

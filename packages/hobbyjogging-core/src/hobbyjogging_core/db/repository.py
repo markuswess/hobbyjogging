@@ -229,6 +229,7 @@ class TrainingRepository:
             SELECT id, manufacturer, product, serial_number, name,
                    acquired_on, retired_on, notes
             FROM devices
+            WHERE excluded_at IS NULL
             ORDER BY acquired_on, product, id
             """
         ).fetchall()
