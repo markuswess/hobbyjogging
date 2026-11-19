@@ -13,23 +13,52 @@ from .format import sport_label, table_text
 from .review import exclude_review
 
 
+def _activity_label(item) -> str:
+    """The item's activity plus any review candidates, for the queue table."""
+    parts = []
+    label = " ".join(
+        part
+        for part in (
+            str(item.activity_date) if item.activity_date else "",
+            item.activity_name or item.sport or "",
+        )
+        if part
+    )
+
+    if label:
+        parts.append(label)
+
+    candidates = item.context.get("candidates")
+
+    if isinstance(candidates, list):
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+
+            text = " ".join(
+                str(part)
+                for part in (
+                    candidate.get("date") or "",
+                    candidate.get("name") or candidate.get("sport") or "",
+                )
+                if part
+            )
+
+            if text:
+                parts.append(text)
+
+    return ", ".join(parts) or "-"
+
+
 def _queue_rows(items) -> list[str]:
     rows = []
 
     for item in items:
-        activity = " ".join(
-            part
-            for part in (
-                str(item.activity_date) if item.activity_date else "",
-                item.activity_name or item.sport or "",
-            )
-            if part
-        ) or "-"
         rows.append(
             f"| {table_text(item.severity)} | "
             f"{table_text(item.category.replace('_', ' '))} | "
             f"{table_text(item.detail or '-')} | "
-            f"{table_text(activity)} | "
+            f"{table_text(_activity_label(item))} | "
             f"{item.reported_at[:10] if item.reported_at else '-'} |"
         )
 

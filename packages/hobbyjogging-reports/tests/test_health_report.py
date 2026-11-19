@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from hobbyjogging_core.model import ActivityWeather
+from hobbyjogging_core.model import ActivityWeather, ReviewItem
 
 from hobbyjogging_report.health_report import health_report
 from support import FakeSource, activity_factory
@@ -52,6 +52,31 @@ class HealthReportTests(unittest.TestCase):
             f"| {D.year} | 2 | 1 (50%) |",
             report,
         )
+
+    def test_review_queue_includes_candidate_labels(self):
+        source = FakeSource(
+            review_items=[
+                ReviewItem(
+                    id=1,
+                    category="ambiguous_match",
+                    detail="runalyze distance_mismatch: 1 candidate",
+                    context={
+                        "candidates": [
+                            {
+                                "activity_id": "a",
+                                "date": "2026-10-19",
+                                "name": "Candidate run",
+                                "sport": "run",
+                            }
+                        ]
+                    },
+                )
+            ]
+        )
+
+        report = health_report(source, today=D)
+
+        self.assertIn("2026-10-19 Candidate run", report)
 
     def test_hidden_review_activity_is_listed(self):
         source = FakeSource(

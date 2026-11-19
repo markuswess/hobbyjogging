@@ -141,11 +141,13 @@ Pages:
   the list of current experiment scripts with their one-line summaries, and
   the metric registry from `docs/METRICS.md`, each with a contents list.
 - `health.html` (Data Health) — the open review queue (severity, category,
-  detail, linked activity, reported date), the activities hidden by review,
-  missing-data counts, and a per-year data-coverage table (activities and how
-  many carry stored weather; max HR joins it once the model exposes it). The
-  tab's counts cover **all history**, while the banner on every other page
-  uses the short dashboard window.
+  detail, the item's activity or candidate activities as links, reported
+  date), the activities hidden by review, missing-data counts, and a per-year
+  data-coverage table (activities and how many carry stored weather; max HR
+  can join it, item 1). Review candidates outside the recent list get an
+  activity page too, so the links never dangle. The tab's counts cover **all
+  history**, while the banner on every other page uses the short dashboard
+  window.
 
 The `--reports` dashboard option is accepted as a compatibility no-op;
 those Markdown reports are already embedded on their relevant pages. The Docs
@@ -198,8 +200,9 @@ dashboard (marked with `.hobbyjogging-dashboard`).
 
 The data-health banner counts activities with open review items, missing
 load, missing pace zones, missing HR, and missing distance. The health page
-also lists the open review queue itself (severity, category, detail, linked
-activity, date) through `DataSource.review_items(status="open")`.
+also lists the open review queue itself (severity, category, detail, the
+item's activity and any review candidates, date) through
+`DataSource.review_items(status="open")`.
 
 ## Synthetic demo database
 
@@ -329,8 +332,8 @@ stay compact (`1h02`).
   `target_distance_m` use an 800 km default.
 - **health** — The Data Health tab's numbers as Markdown: activity count,
   open review items, hidden/flagged activities, missing load/zones/HR/
-  distance, the review queue and per-year weather coverage. Covers all
-  history, like the tab.
+  distance, the review queue (with candidate names when the item has no
+  activity) and per-year weather coverage. Covers all history, like the tab.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout

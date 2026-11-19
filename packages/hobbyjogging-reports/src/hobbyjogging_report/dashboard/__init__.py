@@ -318,6 +318,7 @@ def build_dashboard(
     ]
     planned_matches = match_planned_events(listed_activities, plan_events)
 
+    open_review = source.review_items(status="open")
     detail_activities = {
         activity.id: activity
         for activity in activities
@@ -325,13 +326,34 @@ def build_dashboard(
     detail_activities.update(
         {activity.id: activity for activity in listed_activities}
     )
-    detail_ids = set(detail_activities)
     coverage_start = activity_start(source, today)
     coverage_raw = source.activities(coverage_start, today)
     coverage_activities, _ = exclude_review(
         coverage_raw,
         include_review=include_review,
     )
+    review_targets = {
+        item.activity_id for item in open_review if item.activity_id
+    }
+
+    for item in open_review:
+        candidates = item.context.get("candidates")
+
+        if not isinstance(candidates, list):
+            continue
+
+        for candidate in candidates:
+            if isinstance(candidate, dict) and candidate.get("activity_id"):
+                review_targets.add(str(candidate["activity_id"]))
+
+    detail_activities.update(
+        {
+            activity.id: activity
+            for activity in coverage_raw
+            if activity.id in review_targets
+        }
+    )
+    detail_ids = set(detail_activities)
     coverage = yearly_coverage(
         coverage_activities,
         {
@@ -354,7 +376,6 @@ def build_dashboard(
         "%Y-%m-%d %H:%M %Z"
     )
 
-    open_review = source.review_items(status="open")
     gear_section = build_gear_section(
         source,
         today=today,

@@ -484,6 +484,62 @@ def analysis_page(
     )
 
 
+def _review_activity_cell(
+    item: ReviewItem,
+    detail_ids: set[str],
+) -> str:
+    """Link the item's activity and any review candidates that have pages."""
+    parts: list[str] = []
+    seen: set[str] = set()
+
+    def add(activity_id: str, label: str) -> None:
+        if not activity_id or activity_id in seen:
+            return
+
+        seen.add(activity_id)
+        parts.append(
+            link(activity_href(activity_id), label)
+            if activity_id in detail_ids
+            else esc(label)
+        )
+
+    label = " ".join(
+        part
+        for part in (
+            str(item.activity_date) if item.activity_date else "",
+            item.activity_name or item.sport,
+        )
+        if part
+    ) or "-"
+
+    if item.activity_id:
+        add(item.activity_id, label)
+
+    candidates = item.context.get("candidates")
+
+    if isinstance(candidates, list):
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+
+            activity_id = candidate.get("activity_id")
+
+            if not activity_id:
+                continue
+
+            text = " ".join(
+                str(part)
+                for part in (
+                    candidate.get("date") or "",
+                    candidate.get("name") or candidate.get("sport") or "",
+                )
+                if part
+            ) or str(activity_id)
+            add(str(activity_id), text)
+
+    return "<br>".join(parts) or esc("-")
+
+
 def health_page(
     *,
     generated_at: str,
@@ -507,24 +563,11 @@ def health_page(
     queue_rows = []
 
     for item in review_items:
-        label = " ".join(
-            part
-            for part in (
-                str(item.activity_date) if item.activity_date else "",
-                item.activity_name or item.sport,
-            )
-            if part
-        ) or "-"
-        activity_html = (
-            link(activity_href(item.activity_id), label)
-            if item.activity_id and item.activity_id in detail_ids
-            else esc(label)
-        )
         queue_rows.append([
             esc(item.severity),
             esc(item.category.replace("_", " ")),
             esc(item.detail or "-"),
-            activity_html,
+            _review_activity_cell(item, detail_ids),
             esc(item.reported_at[:10] if item.reported_at else "-"),
         ])
 

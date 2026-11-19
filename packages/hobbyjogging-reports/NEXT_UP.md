@@ -9,6 +9,12 @@ VO2max series ready now that the import filled the column.
 
 ## Done
 
+- **Clickable review queue.** The Data Health table links the item's activity
+  and any `context.candidates`; a candidate outside the recent list gets its
+  activity page written too, so the links do not dangle. The CLI `health`
+  report prints the same candidate names, and the dashboard dead-link check
+  covers the new pages.
+
 - **Detail-page links.** `race/*.html` was rendered without the `../` root, so
   its nav, Performance back-link and health-banner link pointed inside
   `/race/`. The race page now uses the same root as the activity and event

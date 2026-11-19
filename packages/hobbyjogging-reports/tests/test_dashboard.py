@@ -276,6 +276,55 @@ class DashboardBuildTests(unittest.TestCase):
                     f"{page.relative_to(target)} -> {value}",
                 )
 
+    def test_review_candidates_get_pages_and_links(self):
+        old = TODAY - timedelta(days=400)
+        source = FakeSource(
+            [
+                activity(
+                    id="old",
+                    date=old,
+                    name="Old run",
+                    duration_s=1800,
+                    distance_m=5000,
+                )
+            ],
+            review_items=[
+                ReviewItem(
+                    id=1,
+                    category="ambiguous_match",
+                    severity="warn",
+                    detail="runalyze distance_mismatch: 1 candidate",
+                    reported_at="2026-11-18T10:00:00Z",
+                    context={
+                        "candidates": [
+                            {
+                                "activity_id": "old",
+                                "date": str(old),
+                                "name": "Old run",
+                                "sport": "run",
+                            }
+                        ]
+                    },
+                )
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                source,
+                target,
+                days=14,
+                activity_limit=10,
+                today=TODAY,
+            )
+
+            self.assertTrue((target / "activity" / "old.html").exists())
+            health = (target / "health.html").read_text()
+            self.assertIn('href="activity/old.html"', health)
+            self.assertIn("Old run", health)
+
     def test_builds_pages_and_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "site"
