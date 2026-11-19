@@ -112,15 +112,16 @@ Pages:
   links wait on `event_activity_links`. Untyped notes have no page.
 - `performance.html` (Performance) — upcoming races, race results with
   separate Session and Race columns (the activity title and the official
-  race title) plus overall and age-group placement, personal bests, a
-  per-bucket PB progression chart in pace (5k/10k/HM/M only, with the races
-  that missed the line as hollow dots in the bucket's colour and slow ones
-  above the axis marked), a log-log race chart whose dashed Riegel line
-  passes through the reference race, and an equivalent-times table for 5k,
-  7k, 10k, 15k, HM, 30k and the marathon with the predicted and PB pace for
-  each. The official race result supplies the distance and time when it has
-  both; the measured activity is the fallback. Results and PBs link to
-  per-race pages with splits and execution details.
+  race title), overall and age-group placement (no HR or load columns), and
+  personal bests, a per-bucket PB progression chart in pace (5k/10k/HM/M
+  only, with the races that missed the line as hollow dots in the bucket's
+  colour and slow ones above the axis marked), a log-log race chart whose
+  dashed Riegel line passes through the reference race, and an
+  equivalent-times table for 5k, 7k, 10k, 15k, HM, 30k and the marathon with
+  the predicted and PB pace for each. The official race result supplies the
+  distance and time when it has both; the measured activity is the fallback
+  and is italicised with a note. Results and PBs link to per-race pages with
+  splits and execution details.
 - `gear.html` (Gear) — gear mileage bars grouped and coloured by category
   (shoes, bikes, other) with target markers and faded retired bars, one table
   section per category, per-year coverage with and without gear, a device
@@ -278,11 +279,13 @@ stay compact (`1h02`).
 - **races** — Race results with separate Session and Race columns (the
   activity title and `race_results.name`; `-` when there is no official
   result), overall and age-group placement (`3rd/340`; the field size only
-  when known), personal bests per distance bucket (5k, 10k, HM, M, trail,
-  other with short-course tolerance), upcoming races, a Riegel exponent fit
-  over every race, and equivalent-time predictions at 5k, 7k, 10k, 15k, HM,
-  30k and the marathon, each with the predicted pace and the PB pace. The
-  official race result supplies the distance and time when it has both, so
+  when known), and no HR or load columns. A distance or time without an
+  official pair is italicised, with a note below the table; personal bests
+  use the same marking. Buckets are 5k, 10k, HM, M, trail and other with
+  short-course tolerance; upcoming races, a Riegel exponent fit over every
+  race, and equivalent-time predictions at 5k, 7k, 10k, 15k, HM, 30k and the
+  marathon, each with the predicted pace and the PB pace. The official race
+  result supplies the distance and time when it has both, so
   the bucket, PB, fit and tables all rank the same values; the measured
   activity is the fallback. The predictions scale from the reference race
   (the newest road 10k, else the newest road race), which the Performance
@@ -297,9 +300,9 @@ stay compact (`1h02`).
   while `--bucket` and `--limit` leave them unfiltered.
 - **race <activity-id>** — One race-day report: the official race title,
   distance, time and placement when the race result has them (measured
-  values in parentheses when they differ), then splits, first/second-half
-  pace, planned-vs-actual zones and duration/distance when a race event
-  exists on the same date.
+  values in parentheses when they differ, or `(measured)` when there is no
+  official pair), then splits, first/second-half pace, planned-vs-actual
+  zones and duration/distance when a race event exists on the same date.
 - **streaks** — The current running streak (days, span, km, time, and
   whether today is already run) and the numbered longest streaks (1 is the
   best) with the same fields, cut by `--limit N` (default 10). A streak day

@@ -45,6 +45,11 @@ def _load(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f}"
 
 
+def _measured(value: str, *, official: bool) -> str:
+    """Italicise a measured value; an official value stays plain."""
+    return value if official else f"*{value}*"
+
+
 def races_report(
     source: DataSource,
     *,
@@ -142,11 +147,12 @@ def races_report(
             "## Results",
             "",
             "| Date | Session | Race | Bucket | Distance | Time | Pace | "
-            "Place | AG | HR | Load |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            "Place | AG |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|",
         ])
         for result in shown:
             activity = result.activity
+            official = result.official_used
             overall = format_place(
                 result.place_overall,
                 result.participants_overall,
@@ -159,19 +165,18 @@ def races_report(
                 f"| {activity.date} | "
                 f"{table_text(activity.name) or '-'} | "
                 f"{table_text(result.official_name) or '-'} | "
-                f"{result.bucket} | {_distance(result.distance_m)} | "
-                f"{fmt_clock(result.time_s)} | "
+                f"{result.bucket} | "
+                f"{_measured(_distance(result.distance_m), official=official)} | "
+                f"{_measured(fmt_clock(result.time_s), official=official)} | "
                 f"{_pace(result.pace_s_per_km)} | "
-                f"{overall} | {ageclass} | "
-                f"{'-' if activity.avg_hr is None else f'{activity.avg_hr:.0f}'} | "
-                f"{_load(activity.training_load)} |"
+                f"{overall} | {ageclass} |"
             )
 
-        if any(result.official_used for result in shown):
+        if any(not result.official_used for result in shown):
             lines.extend([
                 "",
-                "Official distance and time replace the measured activity "
-                "where the race result provides them.",
+                "Values in italics are measured, not official; the rest use "
+                "the official race result.",
             ])
 
         if len(shown) < len(results):
@@ -190,15 +195,22 @@ def races_report(
             "|---|---|---|---|---:|---:|---:|",
         ])
         for result in groups:
+            official = result.official_used
             lines.append(
                 f"| {bucket_label(result.bucket)} | "
                 f"{result.activity.date} | "
                 f"{table_text(result.activity.name) or '-'} | "
                 f"{table_text(result.official_name) or '-'} | "
-                f"{_distance(result.distance_m)} | "
-                f"{fmt_clock(result.time_s)} | "
+                f"{_measured(_distance(result.distance_m), official=official)} | "
+                f"{_measured(fmt_clock(result.time_s), official=official)} | "
                 f"{_pace(result.pace_s_per_km)} |"
             )
+
+        if any(not result.official_used for result in groups):
+            lines.extend([
+                "",
+                "Values in italics are measured, not official.",
+            ])
     else:
         lines.extend([
             "",
@@ -391,8 +403,8 @@ def race_report(
         ])
     else:
         lines.extend([
-            f"- Time: {fmt_clock(activity.duration_s)}",
-            f"- Distance: {_distance(activity.distance_m)}",
+            f"- Time: {fmt_clock(activity.duration_s)} (measured)",
+            f"- Distance: {_distance(activity.distance_m)} (measured)",
             f"- Pace: {_pace(pace_s_per_km(activity.duration_s, activity.distance_m))}",
         ])
 

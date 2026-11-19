@@ -671,7 +671,8 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("| Spring 5k | Official 5k |", report)
         self.assertIn("| 12th/340 | 3rd/54 |", report)
         self.assertIn("| 5.00 km | 20:00 |", report)
-        self.assertIn("Official distance and time replace", report)
+        self.assertNotIn("*5.00 km*", report)
+        self.assertNotIn("Values in italics", report)
         self.assertIn("| 5k | 2026-10-01 | Spring 5k | Official 5k |", report)
 
     def test_dashboard_performance_shows_official_pair_and_placements(self):
@@ -711,7 +712,27 @@ class RaceReportTests(unittest.TestCase):
         self.assertIn("5.00 km", section.results_html)
         self.assertIn("20:00", section.pbs_html)
         self.assertIn("Official 5k", section.pbs_html)
-        self.assertIn("Official distance and time replace", section.results_html)
+        self.assertNotIn("<em>5.00 km</em>", section.results_html)
+        self.assertNotIn("Values in italics", section.results_html)
+
+    def test_measured_values_are_italic_with_a_note(self):
+        from hobbyjogging_report.dashboard.performance import (
+            build_performance_section,
+        )
+
+        report = races_report(self._source(), today=D)
+        section = build_performance_section(self._source(), today=D)
+
+        self.assertIn("| *5.00 km* | *20:00* |", report)
+        self.assertIn("Values in italics are measured, not official", report)
+        self.assertIn(
+            "| Date | Session | Race | Bucket | Distance | Time | Pace | "
+            "Place | AG |",
+            report,
+        )
+        self.assertIn("<em>5.00 km</em>", section.results_html)
+        self.assertIn("<em>5.00 km</em>", section.pbs_html)
+        self.assertIn("Values in italics are measured", section.results_html)
 
     def test_race_report_header_uses_official_result(self):
         source = FakeSource(

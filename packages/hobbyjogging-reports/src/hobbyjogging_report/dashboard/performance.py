@@ -55,6 +55,11 @@ def _time(value: float | None) -> str:
     return "-" if not value else fmt_clock(value)
 
 
+def _measured(value: str, *, official: bool) -> str:
+    """Italicise a measured value; an official value stays plain."""
+    return value if official else f"<em>{value}</em>"
+
+
 def build_performance_section(
     source: DataSource,
     *,
@@ -118,8 +123,6 @@ def build_performance_section(
             "Pace",
             "Place",
             "AG",
-            "HR",
-            "Load",
         ],
         [
             [
@@ -129,8 +132,14 @@ def build_performance_section(
                 f"{esc(result.activity.name or '-')}</a>",
                 esc(result.official_name or "-"),
                 esc(result.bucket),
-                _distance(result.distance_m),
-                _time(result.time_s),
+                _measured(
+                    _distance(result.distance_m),
+                    official=result.official_used,
+                ),
+                _measured(
+                    _time(result.time_s),
+                    official=result.official_used,
+                ),
                 _pace(result.pace_s_per_km),
                 format_place(
                     result.place_overall,
@@ -140,22 +149,18 @@ def build_performance_section(
                     result.place_ageclass,
                     result.participants_ageclass,
                 ),
-                "-" if result.activity.avg_hr is None
-                else f"{result.activity.avg_hr:.0f}",
-                "-" if result.activity.training_load is None
-                else f"{result.activity.training_load:.0f}",
             ]
             for result in results
         ],
-        numeric=(4, 5, 6, 7, 8, 9, 10),
+        numeric=(4, 5, 6, 7, 8),
         empty="No race results.",
         collapse="races",
     )
 
-    if any(result.official_used for result in results):
+    if any(not result.official_used for result in results):
         results_html += (
-            '<p class="muted">Official distance and time replace the '
-            "measured activity where the race result provides them.</p>"
+            '<p class="muted">Values in italics are measured, not official; '
+            "the rest use the official race result.</p>"
         )
 
     pbs_html = table(
@@ -176,8 +181,14 @@ def build_performance_section(
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.name or '-')}</a>",
                 esc(result.official_name or "-"),
-                _distance(result.distance_m),
-                _time(result.time_s),
+                _measured(
+                    _distance(result.distance_m),
+                    official=result.official_used,
+                ),
+                _measured(
+                    _time(result.time_s),
+                    official=result.official_used,
+                ),
                 _pace(result.pace_s_per_km),
             ]
             for result in pbs
@@ -186,6 +197,12 @@ def build_performance_section(
         empty="No personal bests yet.",
         collapse="pbs",
     )
+
+    if any(not result.official_used for result in pbs):
+        pbs_html += (
+            '<p class="muted">Values in italics are measured, not '
+            "official.</p>"
+        )
 
     chart_html = (
         plot_races(results, fit, "", as_html=True)

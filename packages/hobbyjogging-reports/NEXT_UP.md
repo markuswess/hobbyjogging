@@ -17,8 +17,11 @@ on the import payload.
   they agree with the threshold chart that already preferred them. The
   Performance tab and the `races` report split the activity title
   (`Session`) from the race's own title (`Race`) and add Place and AG columns
-  (`3rd/340`, participants only when known); the race-day report shows the
-  official title, pair (measured in parentheses when they differ) and
+  (`3rd/340`, participants only when known), and drop the HR/load columns
+  from the results table. A distance or time without an official pair is
+  italic with a note below the table (the PB table uses the same marking);
+  the race-day report shows the official title, pair (measured in
+  parentheses when they differ, `(measured)` when there is none) and
   placement lines, and the races/PB chart hovers add the official title when
   it differs. The demo's last three races carry distinct official titles and
   placements.

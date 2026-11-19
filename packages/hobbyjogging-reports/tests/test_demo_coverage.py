@@ -61,7 +61,7 @@ class DemoCoverageTests(unittest.TestCase):
                     "Lakeside 5k",
                     "12th/340",
                     "3rd/54",
-                    "Official distance and time replace",
+                    "Values in italics are measured",
                 ):
                     self.assertIn(marker, races)
 
