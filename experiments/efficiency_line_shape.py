@@ -130,23 +130,7 @@ def percentile(values: list[float], q: float) -> float:
     return ordered[lower] * (1 - weight) + ordered[upper] * weight
 
 
-def load_elevation(connection) -> dict[str, tuple]:
-    if connection is None:
-        return {}
-    return {
-        row["id"]: (row["gain"], row["loss"])
-        for row in connection.execute(
-            """
-            SELECT id, elevation_gain_m AS gain, elevation_loss_m AS loss
-            FROM activities
-            WHERE excluded_at IS NULL
-            """
-        )
-    }
-
-
 def build_rows(source, activities, baseline) -> list[dict]:
-    elevation = load_elevation(getattr(source, "connection", None))
     rows = []
 
     for activity in activities:
@@ -171,7 +155,8 @@ def build_rows(source, activities, baseline) -> list[dict]:
 
         minutes = activity.duration_s / 60.0
         km = activity.distance_m / 1000.0
-        gain, loss = elevation.get(activity.id, (None, None))
+        gain = activity.elevation_gain_m
+        loss = activity.elevation_loss_m
         weather = source.activity_weather(activity.id)
         temp = weather.temp_c if weather is not None else None
 
@@ -498,6 +483,143 @@ def offset_predictor(features):
     return predict
 
 
+def features_offset_elevation(row: dict) -> list[float]:
+    return [row["speed"], row["gain_per_km"], row["loss_per_km"]]
+
+
+def features_offset_curv_elevation(row: dict) -> list[float]:
+    return [
+        row["speed"],
+        row["speed"] ** 2,
+        row["gain_per_km"],
+        row["loss_per_km"],
+    ]
+
+
+def terrain_class(row: dict) -> str:
+    gain = row["gain_per_km"]
+    if gain is None:
+        return "unknown"
+    if gain < 5:
+        return "flat"
+    if gain < 10:
+        return "rolling"
+    return "hilly"
+
+
+def show_elevation_models(rows: list[dict]) -> None:
+    complete = [
+        row
+        for row in rows
+        if row["gain_per_km"] is not None
+        and row["loss_per_km"] is not None
+    ]
+    if len(complete) < 50:
+        print("not enough steady rows with elevation")
+        return
+
+    models = [
+        ("current (speed)", lambda row: [row["speed"]]),
+        (
+            "current + elevation",
+            features_offset_elevation,
+        ),
+        (
+            "current + v²",
+            lambda row: [row["speed"], row["speed"] ** 2],
+        ),
+        (
+            "current + v² + elevation",
+            features_offset_curv_elevation,
+        ),
+    ]
+
+    print(f"\nsteady elevation models (complete cases n={len(complete)}):")
+    table(
+        [
+            (
+                label,
+                result["n"],
+                f"{result['r2']:.3f}",
+                f"{result['rmse']:.2f}",
+                f"{cv_rmse(complete, offset_predictor(features)):.2f}",
+            )
+            for label, features in models
+            for result, _ in [fit_offset(complete, features)]
+        ],
+        headers=["model", "n", "R²", "RMSE bpm", "time-CV RMSE"],
+    )
+
+
+def show_terrain(rows: list[dict]) -> None:
+    complete = [
+        row
+        for row in rows
+        if row["gain_per_km"] is not None
+        and row["loss_per_km"] is not None
+    ]
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for row in complete:
+        groups[terrain_class(row)].append(row)
+
+    print("\ncurrent line by terrain class:")
+    table(
+        [
+            (
+                name,
+                len(chunk),
+                f"{median(row['gain_per_km'] for row in chunk):.1f}",
+                f"{median(row['loss_per_km'] for row in chunk):.1f}",
+                f"{fit_offset(chunk, lambda row: [row['speed']])[1][0]:.2f}",
+                f"{fit_offset(chunk, lambda row: [row['speed']])[0]['rmse']:.2f}",
+            )
+            for name, chunk in sorted(groups.items())
+        ],
+        headers=["terrain", "runs", "gain/km", "loss/km", "slope b", "RMSE"],
+    )
+
+
+def plot_terrain(rows: list[dict]) -> None:
+    complete = [
+        row
+        for row in rows
+        if row["gain_per_km"] is not None
+        and row["loss_per_km"] is not None
+    ]
+    if len(complete) < 50:
+        return
+
+    _, beta = fit_offset(complete, lambda row: [row["speed"]])
+    slope = beta[0]
+    for row in complete:
+        row["residual"] = row["hr"] - (row["rhr"] + slope * row["speed"])
+
+    colors = {"flat": "#4c78a8", "rolling": "#f58518", "hilly": "#e45756"}
+    figure = go.Figure()
+    for name, color in colors.items():
+        chunk = [row for row in complete if terrain_class(row) == name]
+        if not chunk:
+            continue
+        figure.add_trace(
+            go.Scatter(
+                x=[row["gain_per_km"] for row in chunk],
+                y=[row["residual"] for row in chunk],
+                mode="markers",
+                marker={"size": 6, "opacity": 0.6, "color": color},
+                name=name,
+            )
+        )
+
+    figure.add_hline(y=0, line={"color": "#999999", "width": 1})
+    figure.update_xaxes(title_text="elevation gain (m/km)")
+    figure.update_yaxes(title_text="HR residual from the current line (bpm)")
+    figure.update_layout(
+        title="Does elevation explain the remaining HR scatter?",
+        legend={"orientation": "h", "y": -0.2},
+    )
+    save(figure, "efficiency-line-terrain")
+
+
 def show_controls(rows: list[dict]) -> None:
     complete = [
         row
@@ -719,9 +841,12 @@ def main() -> None:
 
     show_controls(rows)
     collinearity(rows)
+    show_elevation_models(steady)
+    show_terrain(steady)
 
     plot_curves(steady)
     plot_controls(rows)
+    plot_terrain(steady)
 
 
 if __name__ == "__main__":

@@ -103,6 +103,13 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   nothing incremental and year only overfits. Handoff: document the small
   session/elevation caveat in the efficiency/HR-speed card; no curved line and
   no reports code change. Evidence: `experiments/efficiency_line_shape.py`.
+  Revisited 2026-11-19 with the canonical Activity elevation fields: 502 steady
+  rows with elevation. `current+v²` still adds nothing (time-CV 6.08 vs 6.03);
+  `+elevation` improves in-sample RMSE 5.94 → 5.89 but worsens time-CV to 6.07,
+  and `+v²+elevation` is 6.12. Terrain slopes are close (flat 24.55, rolling
+  24.63, hilly 25.37 bpm per m/s) with RMSE 6.33/5.91/5.02. The conclusion is
+  unchanged: elevation does not justify a curved or controlled line. Plot:
+  `efficiency-line-terrain.png`.
 - **Cross-training load transfer** — promoted 2026-11-17. Cross load is 9–26%
   of annual load, but 42-day running and cross loads correlate weakly with
   steady efficiency (raw +0.04 / −0.06; year-adjusted +0.05 / −0.04). Adding
