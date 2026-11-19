@@ -385,6 +385,13 @@ class TriageTests(unittest.TestCase):
             "SELECT duration_s FROM activities WHERE id = 'a1'"
         ).fetchone()
         self.assertEqual(3600, row["duration_s"])
+        patch = self.conn.execute(
+            """
+            SELECT owner_source FROM activity_manual_fields
+            WHERE activity_id = 'a1' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual("intervals", patch["owner_source"])
         joined = "\n".join(lines)
         self.assertIn("re-imported i104800507", joined)
         self.assertIn("quality: ok", joined)
@@ -569,7 +576,7 @@ class TriageTests(unittest.TestCase):
             WHERE activity_id = 'a1' AND field_name = 'duration_s'
             """
         ).fetchone()
-        self.assertEqual("manual", source["source"])
+        self.assertEqual("fit", source["source"])
         self.assertEqual(1, source["is_manual"])
 
         item = self.writer.review_item(item_id)

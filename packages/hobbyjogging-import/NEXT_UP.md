@@ -5,6 +5,9 @@ on.
 
 ## Done
 
+- **Triage force records an owner patch.** `(t)` still re-imports Intervals and
+  takes ownership, but now writes an `activity_manual_fields` owner row for
+  every field it took, so a rebuild keeps the decision (root item 17).
 - **Sync timing and a real FIT fixture.** `sync` records wall-clock seconds
   per phase (`garmin`, `intervals`, `fit`, `review`, `total`) and prints one
   `timing:` line; `sync.sh` adds `classify` and `dashboard` to it. CI parses

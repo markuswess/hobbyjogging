@@ -1096,6 +1096,10 @@ class TriageRunner:
             return False
 
         after = self._field_sources(activity_id)
+        # Record the forced ownership so a rebuild keeps the decision.
+        for field, (source, _value, is_manual) in after.items():
+            if source == "intervals" and not is_manual:
+                self.writer.set_manual_owner(activity_id, field, "intervals")
         changed = []
         owned = 0
         for field in sorted(after):

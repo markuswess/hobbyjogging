@@ -181,7 +181,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 22).
+  (`SCHEMA_VERSION`, currently 23).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
@@ -274,7 +274,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 22.
+SQLite, forward-only migrations. Schema version 23.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -400,14 +400,17 @@ added only if per-note timestamps ever become a need.
 
 Two invariants are enforced by the writer:
 
-- A manual field (`is_manual = 1`) is never overwritten by an import.
+- A manual field is an input row in `activity_manual_fields` (a value or an
+  owner patch); a manual value is never overwritten by an import, and a manual
+  owner keeps its chosen source.
 - An excluded activity cannot be written to or linked to.
 
-Beyond the fixed Intervals authority for `moving_s` and `elapsed_s`, the only
-exception to owner-based precedence is an explicit human decision:
-`upsert_activity(..., force=True)` lets one trusted source take ownership of
-every non-manual field. Triage `(t)` uses it to re-import a single Intervals
-activity; normal imports never force.
+Beyond the ranked authority, the only exception to owner-based precedence is
+an explicit human decision: `upsert_activity(..., force=True)` lets one trusted
+source take ownership of every non-manual field, and the force flow records a
+manual owner patch for the fields it took so a rebuild keeps the decision.
+Triage `(t)` uses it to re-import a single Intervals activity; normal imports
+never force.
 
 VO2max has two independent owners: Garmin FIT writes `vo2max_garmin` and
 Runalyze writes `vo2max_runalyze`. Runalyze may fill an empty
@@ -685,8 +688,8 @@ dashboard: the view models make it cheap to add later.
 - Canonical pipeline, review workflow, manual editing, and exclusion: done.
 - Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
   and the Strava CSV import are implemented; schema v22 adds per-source social
-  text, and earlier versions add set-based workout methods/targets and the
-  maintenance bookkeeping tables.
+  text, v23 the manual input layer, and earlier versions add set-based workout
+  methods/targets and the maintenance bookkeeping tables.
 - Schema evolution is two-track: immutable SQL migrations plus registered
   backfills/recomputes in `hobbyjogging-maintenance`.
 - Reports: Markdown reports, charts, the activities table, the year/month

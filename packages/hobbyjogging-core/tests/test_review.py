@@ -472,9 +472,16 @@ class ManualFieldTests(unittest.TestCase):
 
         self.assertEqual(2780, self._activity_value("duration_s"))
         row = self._field_row("duration_s")
-        self.assertEqual("manual", row["source"])
+        self.assertEqual("fit", row["source"])
         self.assertEqual(1, row["is_manual"])
-        self.assertEqual("2780", str(row["value_json"]).strip('"'))
+        self.assertEqual("3600", str(row["value_json"]).strip('"'))
+        manual = self.conn.execute(
+            """
+            SELECT value_json FROM activity_manual_fields
+            WHERE activity_id = 'a1' AND field_name = 'duration_s'
+            """
+        ).fetchone()
+        self.assertEqual("2780", str(manual["value_json"]).strip('"'))
 
     def test_manual_value_survives_reimport(self):
         self.writer.set_manual_field("a1", "duration_s", 2780)
@@ -483,7 +490,7 @@ class ManualFieldTests(unittest.TestCase):
 
         self.assertEqual(2780, self._activity_value("duration_s"))
         self.assertEqual(
-            "manual",
+            "fit",
             self._field_row("duration_s")["source"],
         )
 

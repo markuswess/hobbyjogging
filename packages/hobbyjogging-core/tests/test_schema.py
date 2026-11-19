@@ -13,6 +13,7 @@ EXPECTED_TABLES = {
     "activity_field_sources",
     "activity_intervals",
     "activity_laps",
+    "activity_manual_fields",
     "activity_sources",
     "activity_social",
     "activity_tags",
@@ -117,6 +118,24 @@ class SchemaMigrationTests(unittest.TestCase):
                 "updated_at",
             },
             social_columns,
+        )
+
+        manual_columns = {
+            row["name"]
+            for row in self.conn.execute(
+                "PRAGMA table_info(activity_manual_fields)"
+            )
+        }
+        self.assertEqual(
+            {
+                "activity_id",
+                "field_name",
+                "value_json",
+                "owner_source",
+                "note",
+                "edited_at",
+            },
+            manual_columns,
         )
 
     def test_migrates_v1_activity_rows_to_elapsed_time(self):

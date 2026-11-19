@@ -4,7 +4,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -465,6 +465,29 @@ ON activity_social(source, external_id);
 """
 
 
+MIGRATION_23_SQL = """
+-- Manual edits are inputs, not just the materialized value: a rebuild has to
+-- reproduce them. One row per activity and field holds either a manual value
+-- or a manual owner decision (a forced source), never both. The legacy copy
+-- keeps only the value; the pre-manual source was not recorded.
+CREATE TABLE activity_manual_fields (
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    field_name TEXT NOT NULL,
+    value_json TEXT,
+    owner_source TEXT,
+    note TEXT NOT NULL DEFAULT '',
+    edited_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (activity_id, field_name),
+    CHECK ((value_json IS NULL) <> (owner_source IS NULL))
+);
+
+INSERT INTO activity_manual_fields (activity_id, field_name, value_json)
+SELECT activity_id, field_name, value_json
+FROM activity_field_sources
+WHERE is_manual = 1 AND value_json IS NOT NULL;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -488,6 +511,7 @@ MIGRATIONS: dict[int, str] = {
     20: MIGRATION_20_SQL,
     21: MIGRATION_21_SQL,
     22: MIGRATION_22_SQL,
+    23: MIGRATION_23_SQL,
 }
 
 

@@ -1383,7 +1383,7 @@ class ForcedActivityUpsertTests(unittest.TestCase):
         self.assertEqual(145, row["avg_hr"])
 
         sources = self._field_sources()
-        self.assertEqual("manual", sources["duration_s"])
+        self.assertEqual("fit", sources["duration_s"])
         self.assertEqual("intervals", sources["avg_hr"])
 
 
@@ -1589,7 +1589,7 @@ class DistancePolicyTests(unittest.TestCase):
             WHERE activity_id = 'a1' AND field_name = 'distance_m'
             """
         ).fetchone()
-        self.assertEqual("manual", source["source"])
+        self.assertEqual("intervals", source["source"])
         self.assertEqual(1, source["is_manual"])
 
     def test_sport_update_to_no_distance_sport_zeroes_existing_distance(self):
@@ -2053,6 +2053,126 @@ class ActivitySocialTests(unittest.TestCase):
         self.writer.exclude_activity("a1")
         with self.assertRaises(ValueError):
             self.writer.upsert_activity_social("a1", source="strava")
+
+
+class ManualFieldTests(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.fit_id = self.writer.upsert_source_record(
+            source="fit",
+            record_type="activity",
+            external_id="f1",
+            checksum="c-f1",
+            import_run_id=self.run_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "distance_m": 10000.0,
+                "duration_s": 3600.0,
+            },
+            source="fit",
+            source_record_id=self.fit_id,
+        )
+        self.conn.commit()
+
+    def _field(self, field="distance_m"):
+        return self.conn.execute(
+            f"SELECT {field} FROM activities WHERE id = 'a1'"
+        ).fetchone()[0]
+
+    def _pointer(self, field="distance_m"):
+        return self.conn.execute(
+            """
+            SELECT source, is_manual FROM activity_field_sources
+            WHERE activity_id = 'a1' AND field_name = ?
+            """,
+            (field,),
+        ).fetchone()
+
+    def _input(self, field="distance_m"):
+        return self.conn.execute(
+            """
+            SELECT value_json, owner_source FROM activity_manual_fields
+            WHERE activity_id = 'a1' AND field_name = ?
+            """,
+            (field,),
+        ).fetchone()
+
+    def test_set_records_the_input_and_keeps_the_source_pointer(self):
+        self.writer.set_manual_field("a1", "distance_m", 8000.0)
+
+        self.assertEqual(8000.0, self._field())
+        row = self._input()
+        self.assertEqual("8000.0", row["value_json"])
+        self.assertIsNone(row["owner_source"])
+
+        pointer = self._pointer()
+        self.assertEqual("fit", pointer["source"])
+        self.assertEqual(1, pointer["is_manual"])
+
+    def test_clear_restores_the_source_snapshot(self):
+        self.writer.set_manual_field("a1", "distance_m", 8000.0)
+
+        self.writer.clear_manual_field("a1", "distance_m")
+
+        self.assertEqual(10000.0, self._field())
+        self.assertIsNone(self._input())
+        pointer = self._pointer()
+        self.assertEqual("fit", pointer["source"])
+        self.assertEqual(0, pointer["is_manual"])
+
+    def test_clear_without_a_source_uses_the_column_default(self):
+        self.conn.execute(
+            "DELETE FROM activity_field_sources "
+            "WHERE activity_id = 'a1' AND field_name = 'distance_m'"
+        )
+        self.writer.set_manual_field("a1", "distance_m", 8000.0)
+
+        self.writer.clear_manual_field("a1", "distance_m")
+
+        self.assertEqual(0.0, self._field())
+        self.assertIsNone(self._pointer())
+
+    def test_a_manual_value_survives_a_reimport(self):
+        self.writer.set_manual_field("a1", "distance_m", 8000.0)
+
+        self.writer.upsert_activity(
+            "a1",
+            {"distance_m": 12000.0},
+            source="intervals",
+            source_record_id=self.fit_id,
+        )
+
+        self.assertEqual(8000.0, self._field())
+
+    def test_an_owner_patch_blocks_another_source(self):
+        self.writer.set_manual_owner("a1", "distance_m", "fit")
+
+        self.writer.upsert_activity(
+            "a1",
+            {"distance_m": 12000.0},
+            source="intervals",
+            source_record_id=self.fit_id,
+        )
+
+        self.assertEqual(10000.0, self._field())
+        self.assertEqual("fit", self._pointer()["source"])
+
+    def test_clearing_an_owner_patch_keeps_the_value(self):
+        self.writer.set_manual_owner("a1", "distance_m", "fit")
+
+        self.assertTrue(self.writer.clear_manual_field("a1", "distance_m"))
+
+        self.assertEqual(10000.0, self._field())
+        self.assertIsNone(self._input())
 
 
 if __name__ == "__main__":

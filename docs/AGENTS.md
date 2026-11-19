@@ -121,8 +121,9 @@ Cross-package changes must leave all four suites green.
   removed events are soft-excluded, and manual/other-source events are left
   alone.
 - Manual values outrank every import source and survive reimports; they are
-  stored as inputs (the `activity_manual_fields` layer, item 17), so a rebuild
-  reproduces them.
+  stored as inputs in `activity_manual_fields`, so a rebuild reproduces them.
+  The same table holds an owner patch (triage `(t)`), which keeps the chosen
+  source owning the field.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
   `elapsed_s` is elapsed time. `duration_s` is owner-tracked; `moving_s` and
   `elapsed_s` have a ranked authority (Intervals, then FIT) and never produce

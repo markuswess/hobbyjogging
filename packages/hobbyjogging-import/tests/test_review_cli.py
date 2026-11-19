@@ -187,7 +187,7 @@ class ReviewCliTests(unittest.TestCase):
             WHERE activity_id = 'a1' AND field_name = 'distance_m'
             """
         ).fetchone()
-        self.assertEqual("manual", source["source"])
+        self.assertEqual("fit", source["source"])
         self.assertEqual(1, source["is_manual"])
 
         item = self.seed_writer.review_item(self.quality_id)

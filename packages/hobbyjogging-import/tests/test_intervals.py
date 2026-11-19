@@ -659,7 +659,7 @@ class IntervalsImporterTests(unittest.TestCase):
             WHERE activity_id = 'fit-uuid' AND field_name = 'duration_s'
             """
         ).fetchone()
-        self.assertEqual("manual", row["source"])
+        self.assertEqual("fit", row["source"])
         self.assertEqual(1, row["is_manual"])
 
     def test_treadmill_distance_is_canonical_zero(self):

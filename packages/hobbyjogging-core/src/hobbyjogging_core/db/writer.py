@@ -414,6 +414,30 @@ class TrainingWriter:
         ).fetchone()
         return bool(row is not None and row["is_manual"])
 
+    def _manual_owner(
+        self,
+        activity_id: str,
+        field_name: str,
+    ) -> str | None:
+        row = self.connection.execute(
+            """
+            SELECT owner_source FROM activity_manual_fields
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+        return row["owner_source"] if row is not None else None
+
+    def _require_editable_activity(self, activity_id: str) -> None:
+        row = self.connection.execute(
+            "SELECT excluded_at FROM activities WHERE id = ?",
+            (activity_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"unknown activity: {activity_id}")
+        if row["excluded_at"]:
+            raise ValueError(f"activity {activity_id} is excluded")
+
     def _plan_forced_update(
         self,
         activity_id: str,
@@ -471,6 +495,10 @@ class TrainingWriter:
 
         if value is None:
             return "agree", current_source  # incoming source has no value
+
+        owner = self._manual_owner(activity_id, field_name)
+        if owner is not None and source != owner:
+            return "agree", current_source  # explicit ownership decision
 
         rule = FIELD_RULES.get(field_name)
 
@@ -666,22 +694,15 @@ class TrainingWriter:
     ) -> None:
         """Write one activity value as a manual override.
 
-        The value outranks every import source and is protected from being
-        overwritten by reimports. Use clear_manual_field to hand the field
-        back to importers.
+        The value is stored as an input row (``activity_manual_fields``) and
+        projected into the activity. The field-source pointer keeps the
+        derived owner and its snapshot, marked ``is_manual`` so imports leave
+        it alone; ``clear_manual_field`` restores the snapshot.
         """
         if field_name not in MANUAL_FIELDS:
             raise ValueError(f"field cannot be edited: {field_name}")
 
-        row = self.connection.execute(
-            "SELECT excluded_at FROM activities WHERE id = ?",
-            (activity_id,),
-        ).fetchone()
-
-        if row is None:
-            raise ValueError(f"unknown activity: {activity_id}")
-        if row["excluded_at"]:
-            raise ValueError(f"activity {activity_id} is excluded")
+        self._require_editable_activity(activity_id)
 
         self.connection.execute(
             f"UPDATE activities SET {field_name} = ?, "
@@ -690,18 +711,80 @@ class TrainingWriter:
         )
         self.connection.execute(
             """
-            INSERT INTO activity_field_sources (
-                activity_id, field_name, source, source_record_id,
-                value_json, is_manual
-            ) VALUES (?, ?, 'manual', NULL, ?, 1)
+            INSERT INTO activity_manual_fields (
+                activity_id, field_name, value_json, owner_source
+            ) VALUES (?, ?, ?, NULL)
             ON CONFLICT(activity_id, field_name) DO UPDATE SET
-                source = 'manual',
-                source_record_id = NULL,
                 value_json = excluded.value_json,
-                is_manual = 1,
-                updated_at = CURRENT_TIMESTAMP
+                owner_source = NULL,
+                edited_at = CURRENT_TIMESTAMP
             """,
             (activity_id, field_name, json.dumps(value, default=str)),
+        )
+
+        row = self.connection.execute(
+            """
+            SELECT source FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+
+        if row is None or row["source"] == "manual":
+            self.connection.execute(
+                """
+                INSERT INTO activity_field_sources (
+                    activity_id, field_name, source, source_record_id,
+                    value_json, is_manual
+                ) VALUES (?, ?, 'manual', NULL, ?, 1)
+                ON CONFLICT(activity_id, field_name) DO UPDATE SET
+                    source = 'manual',
+                    source_record_id = NULL,
+                    value_json = excluded.value_json,
+                    is_manual = 1,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (activity_id, field_name, json.dumps(value, default=str)),
+            )
+        else:
+            self.connection.execute(
+                """
+                UPDATE activity_field_sources
+                SET is_manual = 1, updated_at = CURRENT_TIMESTAMP
+                WHERE activity_id = ? AND field_name = ?
+                """,
+                (activity_id, field_name),
+            )
+
+    def set_manual_owner(
+        self,
+        activity_id: str,
+        field_name: str,
+        source: str,
+    ) -> None:
+        """Record an explicit ownership decision for one field.
+
+        The value is not changed: the forced import already wrote it. The
+        patch keeps the chosen source owning the field, so a rebuild and a
+        ranked source cannot silently override the decision.
+        """
+        if field_name not in ACTIVITY_COLUMNS:
+            raise ValueError(f"unknown activity field: {field_name}")
+        if not str(source).strip():
+            raise ValueError("source must not be empty")
+
+        self._require_editable_activity(activity_id)
+        self.connection.execute(
+            """
+            INSERT INTO activity_manual_fields (
+                activity_id, field_name, owner_source, value_json
+            ) VALUES (?, ?, ?, NULL)
+            ON CONFLICT(activity_id, field_name) DO UPDATE SET
+                owner_source = excluded.owner_source,
+                value_json = NULL,
+                edited_at = CURRENT_TIMESTAMP
+            """,
+            (activity_id, field_name, source),
         )
 
     def clear_manual_field(
@@ -709,18 +792,111 @@ class TrainingWriter:
         activity_id: str,
         field_name: str,
     ) -> bool:
-        """Remove a manual override so imports can own the field again."""
+        """Remove a manual input and re-project the field.
+
+        A manual value is restored from the field-source snapshot; a field
+        with no derived owner falls back to the column default (zero, or the
+        ``other`` sport). A required field with no source and no fallback
+        cannot be cleared. An owner patch is removed without changing the
+        current projection.
+        """
         if field_name not in MANUAL_FIELDS:
             raise ValueError(f"field cannot be edited: {field_name}")
 
-        cursor = self.connection.execute(
+        self._require_editable_activity(activity_id)
+
+        row = self.connection.execute(
             """
-            DELETE FROM activity_field_sources
-            WHERE activity_id = ? AND field_name = ? AND is_manual = 1
+            SELECT owner_source FROM activity_manual_fields
+            WHERE activity_id = ? AND field_name = ?
             """,
             (activity_id, field_name),
+        ).fetchone()
+        if row is None:
+            return False
+
+        if row["owner_source"] is not None:
+            self._delete_manual_input(activity_id, field_name)
+            return True
+
+        pointer = self.connection.execute(
+            """
+            SELECT source, value_json FROM activity_field_sources
+            WHERE activity_id = ? AND field_name = ?
+            """,
+            (activity_id, field_name),
+        ).fetchone()
+
+        if pointer is not None and pointer["source"] != "manual":
+            try:
+                value = json.loads(pointer["value_json"])
+            except (TypeError, ValueError):
+                value = pointer["value_json"]
+            self._delete_manual_input(activity_id, field_name)
+            self._write_activity_field(activity_id, field_name, value)
+            self.connection.execute(
+                """
+                UPDATE activity_field_sources
+                SET is_manual = 0, updated_at = CURRENT_TIMESTAMP
+                WHERE activity_id = ? AND field_name = ?
+                """,
+                (activity_id, field_name),
+            )
+            return True
+
+        clearable, fallback = self._cleared_value(field_name)
+        if not clearable:
+            return False
+
+        self._delete_manual_input(activity_id, field_name)
+        if pointer is not None:
+            self.connection.execute(
+                "DELETE FROM activity_field_sources "
+                "WHERE activity_id = ? AND field_name = ?",
+                (activity_id, field_name),
+            )
+        self._write_activity_field(activity_id, field_name, fallback)
+        return True
+
+    def _delete_manual_input(
+        self,
+        activity_id: str,
+        field_name: str,
+    ) -> None:
+        self.connection.execute(
+            "DELETE FROM activity_manual_fields "
+            "WHERE activity_id = ? AND field_name = ?",
+            (activity_id, field_name),
         )
-        return cursor.rowcount > 0
+
+    def _write_activity_field(
+        self,
+        activity_id: str,
+        field_name: str,
+        value: object,
+    ) -> None:
+        self.connection.execute(
+            f"UPDATE activities SET {field_name} = ?, "
+            f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (value, activity_id),
+        )
+
+    def _cleared_value(self, field_name: str) -> tuple[bool, object]:
+        """The value a field falls back to when no source owns it."""
+        columns = {
+            row["name"]: row
+            for row in self.connection.execute("PRAGMA table_info(activities)")
+        }
+        column = columns.get(field_name)
+        if column is None:
+            return False, None
+        if not column["notnull"]:
+            return True, None
+        if str(column["type"]).upper().startswith(("INT", "REAL", "NUM")):
+            return True, 0
+        if field_name == "sport":
+            return True, "other"
+        return False, None
 
     def is_source_record_excluded(
         self,
@@ -2534,16 +2710,6 @@ class TrainingWriter:
             entries,
         )
         return cursor.rowcount
-
-    def _is_manual_field(self, activity_id: str, field_name: str) -> bool:
-        row = self.connection.execute(
-            """
-            SELECT is_manual FROM activity_field_sources
-            WHERE activity_id = ? AND field_name = ?
-            """,
-            (activity_id, field_name),
-        ).fetchone()
-        return bool(row and row["is_manual"])
 
     def _record_field_source(
         self,

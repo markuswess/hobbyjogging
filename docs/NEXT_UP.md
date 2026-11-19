@@ -260,14 +260,7 @@ Updated 2026-11-18.
 
 ## Bugs
 
-- **Clearing a manual field leaves the old value.** `clear_manual_field`
-  deletes the pointer but leaves `activities.<field>` at the manual value until
-  the next import; there is no derived value to restore. Fixed by the manual
-  input layer (item 17).
-- **A forced ownership decision is invisible.** Triage `(t)` writes the pointer
-  as if the source had won (`is_manual=0`), so nothing records that a human
-  chose it and a rebuild cannot reproduce it. Fixed by the manual owner patch
-  (item 17).
+_None._
 
 ## Next
 
@@ -652,17 +645,18 @@ editing, analysis and lab work; phase 3 is the dormant future.
     on disagreement — no global source order. The ownership pointer is an
     **input** (a recorded decision); the canonical row is a **cache** rebuilt
     from inputs: payloads, pointers, manual edits, links, exclusions and review
-    answers. This item builds the rebuild and its check, and fixes the two bugs
-    above.
-    - **Manual input layer (schema v23)**: `activity_manual_fields` holds one
-      row per `(activity, field)` with either a `value_json` (a manual value)
-      or an `owner_source` (a manual ownership decision), never both.
-      `set_manual_field` and triage `(t)` write here; `clear_manual_field`
-      deletes the row and re-projects the field, so it no longer leaves the
-      stale value. The migration copies the existing
-      `activity_field_sources.is_manual=1` rows and asserts the count; past
-      force decisions are indistinguishable from a normal source win and cannot
-      be recovered.
+    answers. The manual input layer has landed; the mapping, the derive check
+    and the rebuild remain.
+    - **Manual input layer (done Nov 2026, schema v23)**:
+      `activity_manual_fields` holds one row per `(activity, field)` with
+      either a `value_json` (a manual value) or an `owner_source` (a manual
+      ownership decision), never both. `set_manual_field` keeps the derived
+      pointer and its snapshot; `clear_manual_field` restores it (or the
+      column default), so the stale-value bug is gone. Triage `(t)` records an
+      owner patch for every field the force took, and another source can no
+      longer override it. The migration copied the 73 existing manual edits.
+      Force decisions made before this change are indistinguishable from a
+      normal source win and cannot be recovered.
     - **Declared mapping**: each adapter exposes a `FIELD_MAP` (canonical field
       → payload key) plus named transforms for units and derivations. A
       contract test asserts every extracted payload key has a mapping entry and
