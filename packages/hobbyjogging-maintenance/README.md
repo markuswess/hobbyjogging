@@ -39,23 +39,47 @@ uv run --env-file .env hobbyjogging-maintenance run --all
 | `--output PATH` | write the task's findings (e.g. conflicts) to a file |
 | `--database PATH` | use a database other than `HOBBYJOGGING_DB` |
 
-`run --all` runs every backfill that is not applied yet. `sync.sh` runs the
-two idempotent classification recomputes after a successful sync
-(`workout_sets_current`, then `workout_classification_queue`) and skips them
-with `--no-classify`; backfills stay deliberate.
+`run --all` runs every backfill that is not applied yet. `sync.sh` runs the six
+idempotent recomputes after a successful sync — `workout_sets_current`,
+`workout_classification_queue`, `athlete_thresholds_current`,
+`activity_zone_configs_current`, `training_periods_current` and
+`race_links_current` — and skips them with `--no-classify`; backfills stay
+deliberate.
 
 ## Shipped tasks
 
-| id | kind | what |
-|---|---|---|
-| `event_race_method_v1` | backfill | Re-derive the `race` method for existing Intervals events from their payload category. |
-| `event_zones_v1` | backfill | Re-derive planned-event zone kinds/times from the saved Intervals payloads. |
-| `remove_tempo_method_v1` | backfill | Convert the retired `tempo` method to `continuous` (targets unchanged). |
-| `drop_empty_intervals_v1` | backfill | Drop the empty 1 s / 0 m Intervals artifact from stored interval sets. |
-| `device_identity_v1` | backfill | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
-| `workout_classification_v1` | backfill | Classify activities from the reports classifier and the sheet `Trainigstyp` code; disagreements are left unclassified and listed. |
-| `workout_sets_current` | recompute | Derive methods/targets for activities that have none (classifier + sheet, disagreements left to the queue). |
-| `workout_classification_queue` | recompute | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply. Resolve them with `hobbyjogging-import review triage` (`k`). |
+Backfills (one-time, recorded, skipped once applied):
+
+| id | what |
+|---|---|
+| `activity_device_v1` | Create the devices from FIT and fill `activities.device_id`. |
+| `activity_elevation_v1` | Fill elevation gain/loss from the stored payloads. |
+| `activity_max_hr_v1` | Fill `max_hr` from the stored payloads. |
+| `activity_routes_v1` | Resolve the sheet's `Strecke`/`Streckennummer` into routes and link the activity. |
+| `activity_weather_v1` | Create `activity_weather` rows from the stored payloads. |
+| `device_identity_v1` | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
+| `device_identity_orphans_v1` | Soft-exclude the provider device rows left unused after the FIT claim (never delete). |
+| `drop_classification_tags_v1` | Remove the sheet's `Trainigstyp` codes from `activity_tags`, keeping area labels and manual tags. |
+| `drop_empty_intervals_v1` | Drop the empty 1 s / 0 m Intervals artifact from stored interval sets. |
+| `event_race_method_v1` | Re-derive the `race` method for existing Intervals events from their payload category. |
+| `event_zones_v1` | Re-derive planned-event zone kinds/times from the saved Intervals payloads. |
+| `fartlek_from_fs_v1` | Convert sheet `fs` activities from `intervals` to `fartlek`. |
+| `remove_tempo_method_v1` | Convert the retired `tempo` method to `continuous` (targets unchanged). |
+| `wellness_extras_v1` | Fill weight, sleep score/quality, SpO2, steps, floors and CTL/ATL. |
+| `workout_classification_v1` | Classify activities from the reports classifier and the sheet code; disagreements are left unclassified and listed. |
+
+Recomputes (idempotent, run every time):
+
+| id | what |
+|---|---|
+| `athlete_thresholds_current` | Derive the dated, per-sport max HR/LTHR/threshold-pace snapshots from the Intervals payloads. |
+| `activity_zone_configs_current` | Derive the zone configs and point each activity at the config of its era. |
+| `training_periods_current` | Derive seasons, illness ranges and notes from the Intervals event notes. |
+| `race_links_current` | Match race events (and official results) to activities and derive the `race` method. |
+| `workout_sets_current` | Derive methods/targets for activities that have none (classifier + sheet, disagreements left to the queue). |
+| `workout_classification_queue` | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply (`k` in triage). |
+| `verify_canonical` | Diff every owned canonical field against its manual value, owner patch or pointer without writing. |
+| `recompute_canonical` | Re-project every owned canonical field from its inputs; never re-decides ownership. |
 
 ## Adding a task
 

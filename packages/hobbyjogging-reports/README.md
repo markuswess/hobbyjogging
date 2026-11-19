@@ -270,7 +270,8 @@ stay compact (`1h02`).
 - **overview** — 7/42/182-day EWMAs for runs, cross sessions, run time,
   km, running load, and Z3+4, plus the planned weekly average for the next 14
   days, plus an Efficiency row in the same table using the trailing
-  7/42/182-day weighted steady efficiency (40–75 min, no planned value).
+  7/42/182-day weighted steady efficiency (40–75 min, no planned value), plus
+  the latest effective-VO2max 42/182-day values.
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days, including weighted
   steady efficiency (40–75 min) in the running block and category table.
@@ -890,10 +891,11 @@ quality
 │   ├── subt-long    (avg rep > 7:00)
 │   ├── lt1
 │   └── other
+├── fartlek          (unstructured quality)
 ├── longrun          (> 90 min)
 ├── race
 ├── race-support     (warmup / cooldown)
-└── tempo
+└── tempo            (continuous + threshold; there is no `tempo` method)
 non-quality
 ├── easy
 └── recovery
@@ -944,9 +946,11 @@ analysis or chart code:
 - `debug.py` — raw stored payload dump (reads `source_records`).
 - `sources/__init__.py` — the data-source factory.
 - `sources/database.py` — canonical SQLite database adapter.
-- `analysis/` — pure metrics over model objects (no API, no plotting),
-  split into `common`, `averages`, `load`, `zones`, `subt`, `planned`, and
-  `recovery` modules.
+- `analysis/` — pure metrics over model objects (no API, no plotting): one
+  module per area (`averages`, `baseline`, `common`, `compare`, `coverage`,
+  `devices`, `efficiency`, `equipment`, `load`, `pace_hr`, `planned`, `races`,
+  `recovery`, `rpe`, `streaks`, `subt`, `subt_ewma`, `thresholds`, `vo2max`,
+  `zones`).
 - `series.py` — pure daily-series, moving-average, and EWMA helpers.
 - `summary.py` — period totals, quality-session lists, and recovery averages.
 - `classify.py` — category aggregation for display (`CategoryStat`,
@@ -958,8 +962,10 @@ analysis or chart code:
 - `format.py` — model-based report formatting helpers.
 - `links.py` — Intervals and Garmin Connect URLs for canonical activities.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
-- `daily.py`, `period_report.py`, `subt_report.py` — the Markdown reports;
-  one file per report, obtaining model objects through a `DataSource`.
+- `daily.py`, `period_report.py`, `subt_report.py`, `subt_ewma_report.py`,
+  `overview.py`, `recovery_report.py`, `race_report.py`, `sickness_report.py`,
+  `streak_report.py`, `equipment_report.py`, `health_report.py` — one Markdown
+  report per file, obtaining model objects through a `DataSource`.
 - `activity_list.py` — the recent-activities table (selection, columns,
   rendering).
 

@@ -9,16 +9,20 @@ Canonical training model, SQLite schema, migrations, and shared helpers.
 
 Canonical types live in `hobbyjogging_core.model`:
 
-- `Activity` (including both VO2max values and tags)
+- `Activity` (including both VO2max values, tags and the device id)
 - `WellnessDay`
-- `Event`
-- `Interval`
-- `Equipment`
-- `ActivityEquipment`
+- `Event` and `EventZoneTime`
+- `Interval` and `Lap`
+- `Equipment`, `ActivityEquipment`, `EquipmentSourceLink`
+- `Route`, `ActivityRoute`
+- `ActivitySocial` (per-source social text)
+- `Device`
+- `ReviewItem`
 
 `DataSource` lives in `hobbyjogging_core.datasource`. The shared sport
 vocabulary lives in `hobbyjogging_core.sports` (canonical names, labels, sport
-groups, and one alias table for FIT/Intervals/manual entry).
+groups, and one alias table for FIT/Intervals/manual entry). The import policy
+(`sources.toml`) is parsed in `hobbyjogging_core.sources_config`.
 
 ## Database
 
@@ -33,7 +37,7 @@ conn = open_database()  # data/hobbyjogging.db
 Set `HOBBYJOGGING_DB` to use a different path.
 
 Migrations are ordered SQL scripts tracked with SQLite's `PRAGMA user_version`.
-`SCHEMA_VERSION` is the current target version (9).
+`SCHEMA_VERSION` is the current target version (24).
 
 Read canonical data through the repository:
 
@@ -91,9 +95,15 @@ writer.replace_activity_tags(
 ### Field ownership
 
 - Manual values (`is_manual = 1`) are never overwritten.
+- A manual value or a manual owner decision is stored as an **input** in
+  `activity_manual_fields`: one row per `(activity, field)` with either a value
+  or an owner patch. The canonical column is a projection that
+  `recompute_canonical` rebuilds and `verify_canonical` checks; ownership is a
+  recorded decision, never re-derived.
 - The first source to write a field keeps it; re-importing from the same
   source refreshes its own fields. The exception is a ranked authority:
-  `moving_s` and `elapsed_s` prefer Intervals, then FIT. The ranked value
+  `moving_s` and `elapsed_s` prefer Intervals, then FIT; `device_id` and
+  `vo2max_garmin` prefer FIT. The ranked value
   replaces another source's value silently, and an unranked value never
   overrides it or opens a conflict.
 - Agreement within tolerance is a no-op; a meaningful disagreement on any
@@ -121,9 +131,29 @@ an event's planned zone distribution.
   the Garmin fetch manifest (`source = "garmin"`, `record_type =
   "activity-file"`).
 - `activities`, `wellness_days`, `events` — canonical merged data, including
-  recording/elapsed/moving time, `vo2max_garmin`, `vo2max_runalyze`, and
-  event `training_load`. Events carry `excluded_at`; the repository hides
-  excluded events.
+  recording/elapsed/moving time, elevation and max HR (v12), `vo2max_garmin`,
+  `vo2max_runalyze`, `device_id` (v17), and event `training_load`. Events carry
+  `excluded_at`; the repository hides excluded events.
+- `activity_manual_fields` (v23) — the manual input layer: manual values and
+  owner patches, the inputs a rebuild replays.
+- `activity_social` (v22) — social text per source (`source` is data), with a
+  manual row that survives imports.
+- `activity_weather` (v13) — one row per activity: temperature, feels-like,
+  humidity, wind, pressure, UV, clouds, condition, night flag.
+- `devices` (v17, `excluded_at` in v24) — recording devices by serial; one
+  recorder per activity. A retired provider row is soft-excluded, never
+  deleted.
+- `routes` (v20) + `activity_routes` — named loops/courses and the activities
+  that covered them; the sheet keys by `Streckennummer`, Runalyze's
+  `recurring_route` is a different identity.
+- `race_results` (v16) — official race distance/time, placement, participants,
+  priority and status, kept apart from the measured GPS values.
+- `event_activity_links` (v21) — a planned race and the activity that ran it.
+- `training_periods` (v18) — dated seasons, plans, illness, travel and
+  recovery ranges; manual rows survive the recompute.
+- `athlete_thresholds` (v14/v15) — dated, per-sport max HR, LTHR and threshold
+  pace snapshots; `zone_configs` holds the zone boundaries and each activity
+  points at the config of its era.
 - `event_zone_times` — planned event zone distribution (`zone_label`,
   `zone_index`, `seconds`); `events.zone_kind` names the zone system
   (`pace`, `hr`, `power`, or `unknown`).
@@ -139,6 +169,8 @@ an event's planned zone distribution.
 - `activity_zone_times`, `zone_configs` — zone times and their definitions.
 - `equipment`, `activity_equipment`, `equipment_source_links` — gear and
   activity assignments.
+- `fit_scan_files` (v11) — the FIT archive scan manifest.
+- `data_migrations`, `maintenance_runs` (v10) — registered data work.
 - `import_runs` — import history and counters.
 
 Equipment mileage is derived through the `equipment_usage` view rather than

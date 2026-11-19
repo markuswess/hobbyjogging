@@ -208,9 +208,8 @@ carries message 140, so the FIT is the VO2max source. The separate type-44
 
 ## Runalyze
 
-Phase 1 is a read-only inventory: it proves what the personal API exposes
-before comments, tags, gear, or race results are imported. Set the personal
-token:
+The read-only inventory proves what the personal API exposes before comments,
+tags, gear or race results are imported. Set the personal token:
 
 ```bash
 export RUNALYZE_API_KEY=<your-personal-token>
@@ -260,10 +259,10 @@ expected; the nested activity payload carries the route and device name. Tests
 use recorded JSON fixtures under `tests/fixtures/runalyze/` and never call the
 live API.
 
-### Enrichment (phase 2)
+### Enrichment (comments and tags)
 
-Phase 2 imports the two fields Runalyze holds that the canonical record has no
-better source for. Both live in the activity **detail** payload:
+The enrichment imports the two fields Runalyze holds that the canonical record
+has no better source for. Both live in the activity **detail** payload:
 
 - `note` fills `activities.description` **only when it is blank** (Intervals,
   the sheet, and manual edits keep their text);
@@ -286,9 +285,9 @@ An unresolved row is not discarded: its detail is stored (unlinked) and an
 `ambiguous_match` review item lists the same-day candidates. Triage links one
 with `(1-N)`, and the stored note and tags are applied on the spot — the
 matcher is not re-run, because it would reject the distance again. Runalyze
-never writes `name`, timing, or distance, and this path never creates an
-activity. The per-source create policy (root item 40) will make creation
-configurable.
+never writes `name`, timing, or distance. A row that matches nothing follows
+the per-source create policy; this athlete keeps Runalyze at `review`, so it
+opens a review item instead of creating a duplicate.
 `--output PATH` still writes the unresolved rows with their reason and
 suggestion.
 
@@ -357,7 +356,7 @@ window, 2,841 activities take roughly a dozen windows, so run it in
 `--dry-run` or a bare `--refresh` (both defeat the stored-detail resume); use
 `--refresh-before` for a sweep.
 
-### Gear (phase 3)
+### Gear
 
 Gear is resolved **offline** from the stored detail payloads — no API request:
 
@@ -408,7 +407,7 @@ Runalyze gear: 2823 payloads, 26 gear records
   activity links: 491 (442 primary, 49 secondary, 966 already present)
 ```
 
-### VO2max (phase 5)
+### VO2max
 
 Runalyze writes the **second** VO2max owner, offline from the stored details:
 
@@ -420,16 +419,22 @@ uv run --env-file .env hobbyjogging-import runalyze vo2max --dry-run
 `vo2max_with_elevation` sit beside it and are not stored. `vo2max_garmin` is
 never touched, an activity the import has no Runalyze link for is skipped, and
 a re-run reports `unchanged` instead of rewriting. On the real data the
-payloads carry 843 values, all from 2019–2022.
+payloads carry **2,225 values (2019-01-22 → 2026-11-16)** after the detail
+refresh repaired the stale snapshots; before it they carried 843, all from
+2019–2022.
 
 ```text
-Runalyze VO2max: 2823 payloads, 843 with a value
-  written: 843
+Runalyze VO2max: 2823 payloads, 2225 with a value
+  written: 2225
   unchanged: 0
   skipped excluded: 0
 ```
 
-### Race results (phase 4)
+The reports use these values only as a comparison series; the promoted
+effective VO2max estimate is computed from HR and pace in the reports package
+(see [`docs/METRICS.md`](../../docs/METRICS.md)).
+
+### Race results
 
 Official race metadata comes from `/api/v1/raceresult`, one row per activity
 Runalyze marks as a race:
@@ -482,8 +487,8 @@ local time; this account is UTC. `--date-zone auto` matches each export under
 both readings and uses the one that matches more activities (the choice is
 printed and recorded in the run); `local` and `utc` force one. Matching then
 uses the canonical window or the exact-twin rule. A row that matches nothing
-is reported and writes nothing today; creation becomes a per-source policy
-(root item 40).
+follows the per-source create policy: this athlete keeps Strava at `ignore`, so
+it writes nothing and the row is reported.
 
 On the real 2026 export: 2,554 of 2,590 activities matched, 35 unmatched
 (mostly other sports — alpine ski, swim, hike — or genuine distance
@@ -491,8 +496,8 @@ disagreements) and 1 ambiguous. Gear: 5 bikes, 0 shoes, 3 new equipment rows,
 2 linked to sheet rows, 64 activity links.
 
 Social text goes to `activity_social(source='strava')`; the default target is
-social only, and a per-source setting may promote it to `name`/`description`
-(root item 40). Gear is matched by exact normalized name; an existing
+social only, and a per-source setting may promote it to `name`/`description`.
+Gear is matched by exact normalized name; an existing
 equipment row is only linked, never rewritten, and an unknown name creates
 `strava:gear:<slug>` with the CSV brand/model. A re-run refreshes the same
 rows instead of duplicating them.
@@ -517,6 +522,19 @@ uv run --env-file .env hobbyjogging-import settings  # rules + mapping
 FIT, Intervals and the sheet always create when nothing matches; use `enabled`
 to leave one out. Garmin yields files, not activity rows. `--create` and
 `--no-create` override one Strava or Runalyze run.
+
+### Device identity
+
+`device_id` is FIT-first. A FIT file's `manufacturer/product/serial_number` is
+its identity, and a serial-less FIT upload is not a device. A provider name
+may create a serial-less device row when no FIT device matches. It fills
+`device_id` only when the activity has no FIT source, and it maps onto the
+single FIT device of the same manufacturer and product instead of creating an
+alias. Two devices of the same model stay ambiguous and keep the provider id.
+App names (`Runalyze`, `Garmin Connect`, `Strava`, `intervals.icu`) are never
+devices. `devices.name` is display-only, set once and title-cased; a FIT device
+keeps its product-derived label, and a provider never overwrites an existing
+name. A provider row that no activity uses is soft-excluded, never deleted.
 
 ## Source precedence
 
@@ -679,8 +697,8 @@ range, so it cannot leave stale plans behind.
 
 Import conflicts and questionable activities are recorded as *review items*
 in the canonical `review_items` table. Categories are `ambiguous_match`,
-`field_conflict`, `quality`, `duplicate`, `manual_flag`, and
-`workout_classification`. Every importer
+`ambiguous_race`, `ambiguous_equipment`, `create_activity`, `field_conflict`,
+`quality`, `duplicate`, `manual_flag`, and `workout_classification`. Every importer
 runs a small canonical quality rule set (zero duration, missing distance for
 run/ride sports, implied pace outside a plausible per-sport window, and
 moving time differing from recording time by more than

@@ -18,12 +18,15 @@ weekly: <https://markuswess.github.io/hobbyjogging/>.
 
 ## The ideas
 
-- **One canonical record.** FIT files, Intervals.icu, the Garmin Personal API
-  and a historical spreadsheet merge into one activity, with the raw source
-  records kept beside it. Sources are interchangeable.
+- **One canonical record.** FIT files, Intervals.icu, the Garmin Personal API,
+  Runalyze, a Strava bulk export and a historical spreadsheet merge into one
+  activity, with the raw source records kept beside it. Sources are
+  interchangeable.
 - **No automatic priority.** The first source to fill a field keeps it; a
-  meaningful disagreement becomes a review item instead of a silent overwrite.
-  Manual values outrank everything and survive reimports.
+  ranked exception exists only where one source is a better measurement
+  (moving/elapsed time, the device id, Garmin VO2max). A meaningful
+  disagreement becomes a review item instead of a silent overwrite. Manual
+  values outrank everything and survive reimports.
 - **Three roles.** Importers write facts, maintenance derives stored values,
   reports compute on read and never write. Delete means durable exclusion,
   never a hard delete.
@@ -41,11 +44,16 @@ weekly: <https://markuswess.github.io/hobbyjogging/>.
 
 ## Quick start
 
+With no credentials at all, build the synthetic athlete's database and
+dashboard — that proves the install before any account is connected:
+
 ```bash
 uv sync
+./demo.sh          # -> build/demo.db and build/site
 ```
 
-`.env` at the repository root holds the credentials and optional paths:
+Then point it at your own data. `.env` at the repository root holds the
+credentials and optional paths:
 
 ```bash
 export HOBBYJOGGING_DB=<your/path/databasefile.db>
@@ -53,19 +61,26 @@ export HOBBYJOGGING_FIT_DIR=<your/path/fit-directory>
 export INTERVALS_ATHLETE_ID=<your-athlete-id>
 export INTERVALS_API_KEY=<your-api-key>
 export GARMIN_PERSONAL_API_KEY=<your-personal-api-key>
+export RUNALYZE_API_KEY=<your-personal-token>
 ```
 
-Then run the whole loop — Garmin fetch, Intervals import, FIT scan, review
-scan, dashboard:
+`sources.toml` (optional) selects which sources are enabled, what an unmatched
+row does (create, review or ignore) and where a social title goes; without it
+every source is enabled. Then run the whole loop — Garmin fetch, Intervals
+import, FIT scan, review scan, dashboard:
 
 ```bash
 ./sync.sh
 ```
 
+The FIT files come from `garmin fetch` (Garmin Personal API) or from a Garmin
+GDPR export copied into the FIT directory; the historical spreadsheet and the
+Strava bulk export are one-off imports.
+
 ## What you do with it
 
-- **Import.** FIT files, Intervals.icu, the Garmin API and the spreadsheet;
-  `sync.sh` keeps them current.
+- **Import.** FIT files, Intervals.icu, the Garmin API, Runalyze, Strava and
+  the historical spreadsheet; `sync.sh` keeps them current.
 - **Review.** Conflicts and odd data land in a queue; the interactive walk
   fixes, resolves or excludes them.
 - **Look.** A static dashboard, plus the Markdown reports and charts behind
@@ -78,12 +93,22 @@ Importing and reviewing are documented in
 Peek into the database directly with `./db.sh` — a SQLite shell with headers
 and columns enabled.
 
+## Where it is going
+
+Four phases, each with an exit test: **works for me** (done), **works for
+someone else** (install and configure on a fresh machine), **trustworthy
+data** (extract, audit, correct — CLI first, then a localhost UI) and
+**durable and more reach** (homelab, more sources, streams). The phase table
+and the structural rules are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); small features and promoted
+lab metrics land whenever they are ready.
+
 ## Layout
 
 - `hobbyjogging-core` — canonical model, schema and migrations, sport
   vocabulary, `TrainingWriter` and `TrainingRepository`.
-- `hobbyjogging-import` — FIT, Intervals.icu, Garmin and spreadsheet importers,
-  the review queue and triage.
+- `hobbyjogging-import` — FIT, Intervals.icu, Garmin, Runalyze, Strava and
+  spreadsheet importers, the review queue and triage.
 - `hobbyjogging-maintenance` — the schema-evolution runner and registered
   backfills/recomputes.
 - `hobbyjogging-reports` — analysis, Markdown reports, charts, the dashboard.
