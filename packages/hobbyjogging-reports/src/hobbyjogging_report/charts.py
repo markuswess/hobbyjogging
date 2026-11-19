@@ -19,6 +19,7 @@ warnings.filterwarnings(
 
 from .analysis import (
     EFFICIENCY_UNIT,
+    RUNALYZE_STORED_CORRECTION,
     DeviceStat,
     EquipmentStat,
     group_equipment,
@@ -49,6 +50,7 @@ from .model import (
     TimePoint,
     TimeZoneWeek,
     Vo2maxMeasurement,
+    Vo2maxMethods,
     Vo2maxPoint,
     ZoneAveragePoint,
 )
@@ -1797,71 +1799,149 @@ def plot_load(
     )
 
 
-def plot_vo2max(
-    points: list[Vo2maxPoint],
+VO2MAX_DEVICE_COLORS = (
+    "#e45756",
+    "#4c78a8",
+    "#9467bd",
+    "#8c564b",
+    "#bcbd22",
+)
+
+
+def plot_vo2max_methods(
+    methods: Vo2maxMethods,
     output: str,
-    title: str = "Garmin running VO2max",
+    title: str = "VO2max methods",
     as_html: bool = False,
-    device_changes: list[tuple[date, str]] | None = None,
 ) -> str:
-    """Daily Garmin VO2max dots with 7- and 42-day EWMA lines.
+    """The effective estimate against Garmin, Runalyze and race VDOT.
 
-    ``device_changes`` marks the dates where a recording device started, so a
-    step can be attributed to the watch.
+    The estimate is drawn as 42/182-day EWMA lines for all runs and for the
+    steady band. Garmin stays one marker series per recording device, with
+    the latest device's 42-day EWMA as a line; Runalyze keeps its stored
+    values (its own 0.93 correction is already applied) plus a 42-day mean.
     """
-    _require_data(points)
-    measured = [point for point in points if point.value is not None]
+    _require_data(
+        methods.all_runs,
+        methods.steady,
+        methods.garmin,
+        methods.runalyze,
+        methods.races,
+    )
     figure = go.Figure()
-    figure.add_trace(
-        go.Scatter(
-            x=[point.date for point in measured],
-            y=[point.value for point in measured],
-            mode="markers",
-            marker={"color": "#1f77b4", "size": 6, "opacity": 0.55},
-            name="Running VO2max",
-        )
+    estimates = (
+        ("all runs", methods.all_runs, "#2ca02c", "#00441b"),
+        ("steady 40–75", methods.steady, "#ff7f0e", "#b25900"),
     )
-    figure.add_trace(
-        go.Scatter(
-            x=[point.date for point in points],
-            y=[point.avg_7 for point in points],
-            mode="lines",
-            line={"color": "#ff7f0e", "width": 2},
-            name="7-day avg",
-        )
-    )
-    figure.add_trace(
-        go.Scatter(
-            x=[point.date for point in points],
-            y=[point.avg_42 for point in points],
-            mode="lines",
-            line={"color": "#d62728", "width": 2},
-            name="42-day avg",
-        )
-    )
-    first_day = min(point.date for point in points)
-    last_day = max(point.date for point in points)
 
-    for day, label in device_changes or []:
-        if not (first_day <= day <= last_day):
+    for label, points, short_color, long_color in estimates:
+        if not points:
             continue
 
-        figure.add_vline(
-            x=day,
-            line_width=1,
-            line_dash="dot",
-            line_color="#7f7f7f",
+        figure.add_trace(
+            go.Scatter(
+                x=[point.date for point in points],
+                y=[point.avg_42 for point in points],
+                mode="lines",
+                name=f"Estimate 42d ({label})",
+                line={"color": short_color, "width": LINE_WIDTHS[42]},
+                connectgaps=False,
+            )
         )
-        # Plotly's vline annotation cannot average a date axis here.
-        figure.add_annotation(
-            x=day,
-            yref="paper",
-            y=1.0,
-            text=label,
-            showarrow=False,
-            xanchor="left",
-            yanchor="bottom",
-            font={"size": 10, "color": "#6b7280"},
+        figure.add_trace(
+            go.Scatter(
+                x=[point.date for point in points],
+                y=[point.avg_182 for point in points],
+                mode="lines",
+                name=f"Estimate 182d ({label})",
+                line={
+                    "color": long_color,
+                    "width": LINE_WIDTHS[182],
+                    "dash": LINE_STYLES[182],
+                },
+                connectgaps=False,
+            )
+        )
+
+    colors = {
+        device.device_id: VO2MAX_DEVICE_COLORS[index % len(VO2MAX_DEVICE_COLORS)]
+        for index, device in enumerate(methods.garmin)
+    }
+
+    for device in methods.garmin:
+        figure.add_trace(
+            go.Scatter(
+                x=[measurement.date for measurement in device.measurements],
+                y=[measurement.value for measurement in device.measurements],
+                mode="markers",
+                name=device.label,
+                marker={
+                    "color": colors[device.device_id],
+                    "size": 4,
+                    "opacity": 0.55,
+                },
+            )
+        )
+
+    if methods.garmin:
+        latest = max(
+            methods.garmin,
+            key=lambda device: device.measurements[-1].date,
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=[day for day, value in latest.avg_42 if value is not None],
+                y=[value for _, value in latest.avg_42 if value is not None],
+                mode="lines",
+                name=f"{latest.label} 42d",
+                line={
+                    "color": colors[latest.device_id],
+                    "width": 2,
+                    "dash": "dot",
+                },
+            )
+        )
+
+    if methods.runalyze:
+        figure.add_trace(
+            go.Scatter(
+                x=[measurement.date for measurement in methods.runalyze],
+                y=[measurement.value for measurement in methods.runalyze],
+                mode="markers",
+                name=(
+                    "Runalyze "
+                    f"(stored, {RUNALYZE_STORED_CORRECTION:.2f}-corrected)"
+                ),
+                marker={"color": "#999999", "size": 3, "opacity": 0.5},
+            )
+        )
+
+    runalyze_average = [
+        (day, value)
+        for day, value in methods.runalyze_avg_42
+        if value is not None
+    ]
+
+    if runalyze_average:
+        figure.add_trace(
+            go.Scatter(
+                x=[day for day, _ in runalyze_average],
+                y=[value for _, value in runalyze_average],
+                mode="lines",
+                name="Runalyze 42d mean",
+                line={"color": "#777777", "width": 2, "dash": "dot"},
+            )
+        )
+
+    if methods.races:
+        figure.add_trace(
+            go.Scatter(
+                x=[day for day, _ in methods.races],
+                y=[value for _, value in methods.races],
+                mode="markers",
+                name="Race VDOT",
+                marker={"color": "#d62728", "size": 10, "symbol": "star"},
+            )
         )
 
     _base_layout(
@@ -1870,6 +1950,10 @@ def plot_vo2max(
         xlabel="date",
         ylabel="VO2max (mL/kg/min)",
     )
+    figure.update_layout(
+        height=850,
+        legend=_legend_below(font_size=10, columns=4),
+    )
     _crosshair(figure)
 
     return _render(
@@ -1877,7 +1961,7 @@ def plot_vo2max(
         output,
         as_html=as_html,
         width=1800,
-        height=1500,
+        height=1000,
     )
 
 
@@ -3470,20 +3554,25 @@ def plot_overview(
     vo2max = [
         point
         for point in vo2max_points or []
-        if start <= point.date <= end and point.value is not None
+        if start <= point.date <= end
+        and (point.avg_42 is not None or point.avg_182 is not None)
     ]
 
     if vo2max:
-        figure.add_trace(
-            go.Scatter(
-                x=[point.date.isoformat() for point in vo2max],
-                y=[point.value for point in vo2max],
-                mode="lines",
-                name="VO2max",
-                yaxis="y2",
-                line={"color": "black", "width": 2},
+        for label, attribute, color, dash in (
+            ("VO2max 42d", "avg_42", "black", "solid"),
+            ("VO2max 182d", "avg_182", "#7f7f7f", "dashdot"),
+        ):
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date.isoformat() for point in vo2max],
+                    y=[getattr(point, attribute) for point in vo2max],
+                    mode="lines",
+                    name=label,
+                    yaxis="y2",
+                    line={"color": color, "width": 2, "dash": dash},
+                )
             )
-        )
 
     figure.add_vline(
         x=today.isoformat(),
@@ -3515,7 +3604,12 @@ def plot_overview(
     }
 
     if vo2max:
-        values = [point.value for point in vo2max]
+        values = [
+            value
+            for point in vo2max
+            for value in (point.avg_42, point.avg_182)
+            if value is not None
+        ]
         low = min(values)
         high = max(values)
         pad = max(0.25, (high - low) * 0.15)

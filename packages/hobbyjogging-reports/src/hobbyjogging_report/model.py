@@ -172,7 +172,15 @@ class ComparePeriod:
 
 @dataclass(frozen=True)
 class Vo2maxMeasurement:
-    """One raw Garmin VO2max reading from one activity."""
+    """One raw VO2max reading (Garmin or Runalyze) from one activity."""
+
+    date: date
+    value: float
+
+
+@dataclass(frozen=True)
+class Vo2maxSample:
+    """One activity's effective VO2max, before daily averaging."""
 
     date: date
     value: float
@@ -180,12 +188,34 @@ class Vo2maxMeasurement:
 
 @dataclass
 class Vo2maxPoint:
-    """Daily Garmin VO2max value plus its 7- and 42-day EWMAs."""
+    """Daily effective VO2max plus its 42- and 182-day EWMAs."""
 
     date: date
     value: float | None = None
-    avg_7: float | None = None
     avg_42: float | None = None
+    avg_182: float | None = None
+
+
+@dataclass(frozen=True)
+class GarminVo2maxDevice:
+    """One recorder's Garmin readings and their 42-day carry-forward EWMA."""
+
+    device_id: str
+    label: str
+    measurements: list[Vo2maxMeasurement]
+    avg_42: list[tuple[date, float | None]]
+
+
+@dataclass(frozen=True)
+class Vo2maxMethods:
+    """Every series the VO2max methods chart compares."""
+
+    all_runs: list[Vo2maxPoint]
+    steady: list[Vo2maxPoint]
+    garmin: list[GarminVo2maxDevice]
+    runalyze: list[Vo2maxMeasurement]
+    runalyze_avg_42: list[tuple[date, float | None]]
+    races: list[tuple[date, float]]
 
 
 @dataclass(frozen=True)

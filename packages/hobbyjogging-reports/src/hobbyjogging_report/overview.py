@@ -25,6 +25,8 @@ from .analysis import (
     daily_zone_time,
     event_zone_time,
     resting_hr_baselines,
+    vo2max_points,
+    vo2max_samples,
 )
 from .format import fmt_time
 from .model import AverageWindows
@@ -258,6 +260,12 @@ def overview_report(
         )
     )
     efficiency = efficiency_averages(activities, today, baseline)
+    vo2max = vo2max_points(
+        vo2max_samples(activities, source.athlete_thresholds()),
+        warm_start,
+        today,
+    )
+    latest_vo2max = vo2max[-1] if vo2max else None
 
     if any(value is not None for value in efficiency.values()):
         rows.append(
@@ -323,5 +331,13 @@ def overview_report(
         f"sum(excess beats), in {EFFICIENCY_UNIT}, for non-quality runs "
         f"in the {STEADY_BAND_LABEL} band; it has no planned value.",
     ])
+
+    if latest_vo2max is not None and latest_vo2max.avg_42 is not None:
+        lines.extend([
+            "",
+            "Effective VO2max (pace × HR/HRmax, all runs): "
+            f"42-day EWMA {latest_vo2max.avg_42:.1f}, "
+            f"182-day EWMA {latest_vo2max.avg_182:.1f}.",
+        ])
 
     return "\n".join(lines)

@@ -25,7 +25,7 @@ from hobbyjogging_report.charts import (
     plot_subt,
     plot_thresholds,
     plot_time,
-    plot_vo2max,
+    plot_vo2max_methods,
     plot_volume,
 )
 from hobbyjogging_report.analysis import (
@@ -57,8 +57,10 @@ from hobbyjogging_report.model import (
     RpePoint,
     SubtPoint,
     TimePoint,
-    Vo2maxMeasurement,
+    GarminVo2maxDevice,
     TimeZoneWeek,
+    Vo2maxMeasurement,
+    Vo2maxMethods,
     Vo2maxPoint,
     ZoneAveragePoint,
 )
@@ -2531,48 +2533,93 @@ class RecoveryChartTests(unittest.TestCase):
         self.assertIn("alert", html)
 
 
+def vo2max_methods():
+    latest = date(2026, 1, 2)
+    return Vo2maxMethods(
+        all_runs=[
+            Vo2maxPoint(D, 60.0, 59.5, 59.0),
+            Vo2maxPoint(latest, None, 59.6, 59.1),
+        ],
+        steady=[Vo2maxPoint(D, 60.0, 59.8, 59.2)],
+        garmin=[
+            GarminVo2maxDevice(
+                device_id="w1",
+                label="Garmin Forerunner 645",
+                measurements=[Vo2maxMeasurement(D, 58.0)],
+                avg_42=[(D, 58.0)],
+            ),
+            GarminVo2maxDevice(
+                device_id="w2",
+                label="Garmin Enduro",
+                measurements=[Vo2maxMeasurement(latest, 61.0)],
+                avg_42=[(latest, 61.0)],
+            ),
+        ],
+        runalyze=[Vo2maxMeasurement(D, 61.0)],
+        runalyze_avg_42=[(D, 61.0)],
+        races=[(D, 62.0)],
+    )
+
+
 class Vo2maxChartTests(unittest.TestCase):
 
-    def test_device_changes_are_marked_on_the_chart(self):
-        points = [
-            Vo2maxPoint(D, 48.0, 48.0, 48.0),
-            Vo2maxPoint(date(2026, 1, 1), 50.0, 49.0, 49.0),
-        ]
-
-        html = plot_vo2max(
-            points,
+    def test_the_methods_chart_labels_every_series(self):
+        html = plot_vo2max_methods(
+            vo2max_methods(),
             "",
             as_html=True,
-            device_changes=[
-                (D, "Forerunner 645"),
-                (date(2027, 1, 1), "Outside"),
-            ],
         )
+        names = [trace.get("name") for trace in plotly_data(html)]
 
-        self.assertIn("Forerunner 645", html)
-        self.assertNotIn("Outside", html)
-        self.assertIn('"type":"line"', html)
+        self.assertEqual(
+            [
+                "Estimate 42d (all runs)",
+                "Estimate 182d (all runs)",
+                "Estimate 42d (steady 40–75)",
+                "Estimate 182d (steady 40–75)",
+                "Garmin Forerunner 645",
+                "Garmin Enduro",
+                "Garmin Enduro 42d",
+                "Runalyze (stored, 0.93-corrected)",
+                "Runalyze 42d mean",
+                "Race VDOT",
+            ],
+            names,
+        )
+        self.assertIn('"mode":"lines"', html)
+        self.assertIn('"symbol":"star"', html)
 
+    def test_the_latest_device_gets_the_42_day_line(self):
+        html = plot_vo2max_methods(
+            vo2max_methods(),
+            "",
+            as_html=True,
+        )
+        data = plotly_data(html)
+
+        names = [trace.get("name") for trace in data]
+
+        self.assertNotIn("Garmin Forerunner 645 42d", names)
+        self.assertIn("Garmin Enduro 42d", names)
 
     def test_vo2max_chart_writes_file(self):
-        points = [
-            Vo2maxPoint(D, 60.0, 59.5, 59.0),
-            Vo2maxPoint(date(2026, 1, 2), None, 59.6, 59.1),
-            Vo2maxPoint(date(2026, 1, 3), 61.0, 60.0, 59.3),
-        ]
-
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "vo2max.png"
 
-            result = plot_vo2max(points, str(output))
+            result = plot_vo2max_methods(
+                vo2max_methods(),
+                str(output),
+            )
 
             self.assertEqual(str(output), result)
             self.assertTrue(output.exists())
 
     def test_vo2max_chart_rejects_empty_data(self):
+        empty = Vo2maxMethods([], [], [], [], [], [])
+
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
-                plot_vo2max([], str(Path(tmp) / "vo2max.png"))
+                plot_vo2max_methods(empty, str(Path(tmp) / "vo2max.png"))
 
 
 if __name__ == "__main__":

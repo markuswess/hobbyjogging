@@ -2,12 +2,29 @@
 
 Updated 2026-11-19.
 
-Current focus: max HR is complete (session line, HR-zone check, coverage
-column) and the CLI/dashboard pages share one renderer; 10 is parked, 12 is
-behind the lab gate, 13 is the last CLI-parity follow-up, 14 is an open idea,
-and 15 waits for the lab before it becomes a chart series.
+Current focus: the promoted effective-VO2max metric replaced the Garmin-only
+series on the overview and the Performance tab; 10 is parked, 12 is behind the
+lab gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
+
+- **Effective VO2max and its methods chart.** The lab's promoted HR/economy
+  metric retires item 15. `effective_vo2max()` is
+  `(3.5 + 0.2 · speed_m_min) / (avg_hr / max_hr)`, using the running max-HR
+  snapshot in force on the day and guarded to 1.5–6.0 m/s and an HR fraction
+  of 0.5–0.95. Same-day runs are averaged, days without a run carry the last
+  value forward, and the 42/182-day EWMAs use 910 days of warm-up. All runs
+  are the primary series and the steady 40–75 min band the secondary one.
+  The overview chart's second axis now draws the 42-day (black) and 182-day
+  (grey) lines instead of the stored Garmin value, and the `vo2max` chart
+  became an all-history methods comparison: the two estimates, raw Garmin
+  markers per recording device (the latest device also gets its 42-day line),
+  Runalyze's stored values (its 0.93 correction already applied) with a
+  42-day mean, and Daniels VDOT stars for official road races. The Performance
+  tab gains the same chart and note; `compare-vo2max` keeps the raw
+  Garmin-by-year view. The `vo2max` command now takes only an output path,
+  like the other card charts. `docs/METRICS.md` and the architecture wording
+  are root work.
 
 - **Device labels.** `device_label()` gives a FIT product-only device the
   manufacturer and the product's marketing name (`garmin`/`enduro` →
@@ -427,8 +444,8 @@ this list keeps the recent decisions only.
 - **Device timeline.** The Gear tab and equipment report list every
   recording device with its active period and activity count, plus a
   timeline chart. `DatabaseSource.devices()` is exposed, the session report
-  adds a `- Device:` line, and the `vo2max` chart marks the first activity of
-  each device so a step is attributable. The demo writes three devices and
+  adds a `- Device:` line, and the `vo2max` chart reads Garmin values per
+  device so a step is attributable. The demo writes three devices and
   assigns every activity (rides to the Edge).
 
 - **Threshold trend.** The Compare tab gains a threshold chart from the run
@@ -477,13 +494,13 @@ wellness are reports-only; the only remaining core prerequisite is the
 per-activity zone config ids (item 4). Item 11 has its data
 (`event_activity_links`, schema v21); 12's series needs the lab gate in root
 item 31. Item 10 stays parked on its page-coverage cost, 9 is recurring
-upkeep, 13 is the event-page parity follow-up, 14 is an open idea, and 15 is
-with the lab.
+upkeep, 13 is the event-page parity follow-up, and 14 is an open idea. Item
+15 is retired by the effective-VO2max metric.
 
 Numbers are stable identifiers and are not reused:
 `docs/ARCHITECTURE.md` and the import queue point at "reports item 15", so a
 finished item leaves its number empty instead of shifting every later
-pointer. Item 1 is the first such gap.
+pointer. Items 1 and 15 are such gaps.
 
 2. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. The
@@ -617,28 +634,6 @@ pointer. Item 1 is the first such gap.
     category symbols, steady outlines and efficiency lines, so the extra
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
-
-15. **Runalyze VO2max second owner** (lab handoff).
-    The race pair and the gear coverage landed; this item is now only the
-    second VO2max owner, and it goes to the lab before any chart changes.
-    - **Why the lab first (2026-11-19)**: the second series is a data question
-      before it is a drawing question — how far the two owners disagree on the
-      2,210 activities that carry both, whether the estimate adds information
-      in 2019–2022 where Garmin is thin, and whether an open-marker series
-      reads quietly beside the watch steps. The lab promotes a shape (or
-      rejects the series); this item then only implements it.
-    - **Unblocked (Nov 2026)**: the import's `--refresh-before` sweep re-read
-      the stale payloads and `runalyze vo2max` filled the column. It now holds
-      2,225 values (2019-01-22 → 2026-11-16), 2,210 of them alongside a Garmin
-      value. Before the repair it held 843 values ending 2022-06-22 (mean −2.1
-      against Garmin on the 829 activities that carried both).
-    - The early ceiling was a stale payload snapshot, not a missing estimate:
-      the detail endpoint began returning `hr_avg`/`vo2max` for FIT-backed
-      activities at 2026-11-17 22:00 UTC, and the refresh closed the gap.
-    - Add a labeled Runalyze series to `vo2max` and `compare-vo2max` (open
-      muted markers, no EWMA, no blend with `vo2max_garmin`). Computing an
-      effective estimate ourselves is a lab candidate
-      (`HR/economy-based VO2max`), not this item.
 
 ## Tests and docs
 

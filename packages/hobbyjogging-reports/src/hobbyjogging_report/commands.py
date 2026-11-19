@@ -507,13 +507,12 @@ COMMANDS = {
     ),
     "vo2max": Command(
         "vo2max",
-        "Garmin running VO2max with 7- and 42-day averages",
-        "vo2max [output.png] [--days N] [--from DATE] [--to DATE]",
-        ("charts.sh vo2max --days 365",),
+        "Effective VO2max against Garmin, Runalyze and race VDOT",
+        "vo2max [output.png]",
+        ("charts.sh vo2max",),
         parse=partial(
-            parse_chart_args,
+            parse_output_arg,
             default_output="vo2max.png",
-            default_days=365,
         ),
         run=run_vo2max_command,
     ),

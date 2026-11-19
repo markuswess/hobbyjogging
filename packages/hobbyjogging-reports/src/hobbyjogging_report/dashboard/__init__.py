@@ -17,6 +17,7 @@ from ..analysis import (
     average_warmup_days,
     recovery_trends,
     vo2max_points,
+    vo2max_samples,
     yearly_coverage,
 )
 from ..command_support import activity_start, resting_hr_lookup
@@ -191,7 +192,7 @@ def build_dashboard(
     )
 
     vo2max = vo2max_points(
-        chart_activities,
+        vo2max_samples(chart_activities, source.athlete_thresholds()),
         chart_start - timedelta(days=warmup_days),
         chart_end,
     )

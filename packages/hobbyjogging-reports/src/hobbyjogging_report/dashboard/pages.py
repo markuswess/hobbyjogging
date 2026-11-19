@@ -104,9 +104,10 @@ def overview_page(
     volume_html += (
         f'<p class="muted">Running minutes over {range_text}, stacked '
         "hard → easy → unzoned; lines are 7/42/182-day EWMAs for hard and "
-        "total running, plus the black Garmin VO2max line on the right "
-        "axis. Planned workouts appear as hatched bars on days "
-        "without a recorded run; lighter line segments are projected.</p>"
+        "total running, plus the effective VO2max 42-day (black) and "
+        "182-day (grey) lines on the right axis. Planned workouts appear as "
+        "hatched bars on days without a recorded run; lighter line segments "
+        "are projected.</p>"
     )
 
     body = (
@@ -676,6 +677,7 @@ def performance_page(
         + card("PB progression", section.pb_html)
         + card("Race performance", section.chart_html)
         + card("Equivalent times", section.equivalent_html)
+        + card("VO2max methods", section.vo2max_html)
     )
 
     return page(

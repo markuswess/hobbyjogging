@@ -17,8 +17,9 @@ from ..analysis import (
     personal_bests,
     race_results,
     upcoming_races,
+    vo2max_methods,
 )
-from ..charts import plot_pb_progressions, plot_races
+from ..charts import plot_pb_progressions, plot_races, plot_vo2max_methods
 from ..command_support import activity_start
 from ..format import fmt_clock, format_pace, format_place
 from ..html import esc, table
@@ -36,6 +37,7 @@ class PerformanceSection:
     pb_html: str
     chart_html: str
     equivalent_html: str
+    vo2max_html: str
     race_ids: tuple[str, ...] = ()
 
 
@@ -67,9 +69,10 @@ def build_performance_section(
     include_review: bool = False,
     future_days: int = 180,
 ) -> PerformanceSection:
-    """Build race results, personal bests, upcoming races, and the chart."""
+    """Build race results, personal bests, upcoming races, and the charts."""
+    start = activity_start(source, today)
     activities, excluded = exclude_review(
-        source.activities(activity_start(source, today), today),
+        source.activities(start, today),
         include_review=include_review,
     )
     results = race_results(
@@ -247,6 +250,37 @@ def build_performance_section(
             '<p class="muted">Not enough races for a Riegel estimate.</p>'
         )
 
+    methods = vo2max_methods(
+        activities,
+        source.athlete_thresholds(),
+        source.devices(),
+        results,
+        start,
+        today,
+    )
+    has_vo2max = any(
+        (
+            methods.all_runs,
+            methods.steady,
+            methods.garmin,
+            methods.runalyze,
+            methods.races,
+        )
+    )
+    if has_vo2max:
+        vo2max_html = plot_vo2max_methods(methods, "", as_html=True) + (
+            '<p class="muted">All runs use pace and HR/max HR; the steady '
+            "40–75 min series drops quality work, recovery jogs and trail "
+            "runs. Garmin stays one series per recording device (the latest "
+            "device also gets its 42-day line), Runalyze keeps its stored "
+            "0.93 correction, and race VDOT uses official road results.</p>"
+        )
+    else:
+        vo2max_html = (
+            '<p class="muted">No pace and heart-rate data for the '
+            "estimate.</p>"
+        )
+
     return PerformanceSection(
         summary_html=summary,
         upcoming_html=upcoming_html,
@@ -255,5 +289,6 @@ def build_performance_section(
         pb_html=pb_html,
         chart_html=chart_html,
         equivalent_html=equivalent_html,
+        vo2max_html=vo2max_html,
         race_ids=tuple(result.activity.id for result in results),
     )

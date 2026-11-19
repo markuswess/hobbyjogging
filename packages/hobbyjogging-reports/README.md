@@ -116,12 +116,12 @@ Pages:
   personal bests, a per-bucket PB progression chart in pace (5k/10k/HM/M
   only, with the races that missed the line as hollow dots in the bucket's
   colour and slow ones above the axis marked), a log-log race chart whose
-  dashed Riegel line passes through the reference race, and an
+  dashed Riegel line passes through the reference race, an
   equivalent-times table for 5k, 7k, 10k, 15k, HM, 30k and the marathon with
-  the predicted and PB pace for each. The official race result supplies the
-  distance and time when it has both; the measured activity is the fallback
-  and is italicised with a note. Results and PBs link to per-race pages with
-  splits and execution details.
+  the predicted and PB pace for each, and the VO2max methods chart (below).
+  The official race result supplies the distance and time when it has both;
+  the measured activity is the fallback and is italicised with a note.
+  Results and PBs link to per-race pages with splits and execution details.
 - `gear.html` (Gear) — gear mileage bars grouped and coloured by category
   (shoes, bikes, other) with target markers and faded retired bars, one table
   section per category, per-year coverage with and without gear, a device
@@ -165,9 +165,10 @@ typical day (see *Chart axes* below),
 stacked as **hard (Z3+Z4)** at the base, **easy (Z1+Z2)** above it, and
 **unzoned** on top. It draws 7/42/182-day EWMAs for **hard** and **total**
 running, with the hard lines in reds at the base and the total lines in blues
-above them, and the Garmin VO2max standing value as a black line on a second
-axis on the right. It defaults to **182 days back and 14 days forward**;
-`--chart-days` and `--future-days` change those. Planned workouts appear as
+above them, and the effective VO2max as a black 42-day and a grey 182-day
+line on a second axis on the right. It defaults to **182 days back and 14
+days forward**; `--chart-days` and `--future-days` change those. Planned
+workouts appear as
 hatched bars on days without a recorded run, including today, so an
 uncompleted planned session is visible; once a run is recorded, the actual bar
 replaces the plan bar. Events without pace zones count as unzoned.
@@ -367,8 +368,8 @@ stay compact (`1h02`).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
   daily running minutes, stacked hard (Z3+Z4) / easy (Z1+Z2) / unzoned,
   with hard and total 7/42/182-day EWMAs and hatched planned days, plus the
-  Garmin VO2max standing value as a black line on a second axis on the
-  right. Long days above the axis are marked and clipped.
+  effective VO2max 42-day (black) and 182-day (grey) lines on a second axis
+  on the right. Long days above the axis are marked and clipped.
 - **volume** — Weekly running volume chart with 182/42/7-day
   distance averages and the planned weekly distance; last 90 days by
   default. Bigger weeks above the axis are marked and clipped.
@@ -417,10 +418,10 @@ stay compact (`1h02`).
   the official race title when it differs from the activity title.
 - **compare-vo2max / compare-pace-hr** — the Compare tab's raw VO2max by year
   and the year-coloured pace/HR scatter.
-- **vo2max** — Garmin running VO2max values as daily dots with 7- and
-  42-day exponentially weighted averages; last 365 days by default. Device
-  changes are marked with their start date, so a step is attributable to the
-  watch.
+- **vo2max** — the Performance tab's VO2max methods chart over all history:
+  the effective estimate (all runs and the steady 40–75 min band) as 42- and
+  182-day EWMAs against raw Garmin readings per recording device, Runalyze's
+  stored values with their 42-day mean, and official race VDOT.
 - **pace-hr** — Scatter of average speed vs average heart rate, one point
   per run, for aerobic-efficiency analysis. The x axis is linear speed
   (m/s) labelled in min/km ticks; the point colour runs from blue (oldest)
@@ -562,11 +563,12 @@ so a PNG and a dashboard panel always show the same thing.
     ./charts.sh subt --days 365
     ./charts.sh subt --output subt.png
     ./charts.sh subt --from 2026-01-01 --to 2026-06-30 --output subt.png
-    ./charts.sh vo2max --days 365
+    ./charts.sh vo2max
 
 Charts accept the same `--days` / `--from` / `--to` / `--output` options
 as the direct CLI. The all-history cards (`equipment`, `devices`, `threshold`,
-`races`, `pb`, `compare-vo2max`, `compare-pace-hr`) take only an output path.
+`races`, `pb`, `vo2max`, `compare-vo2max`, `compare-pace-hr`) take only an
+output path.
 
 ### Load chart
 
@@ -641,22 +643,44 @@ wellness data does not pull an average down.
 
 ### VO2max chart
 
-`vo2max` plots Garmin's running VO2max as one dot per day, with 7-day
-and 42-day exponentially weighted averages. The Compare tab has a separate
-raw version: one line per year through the activity readings, no daily
-averaging or EWMA. Both use
-running activities only and ignore Runalyze estimates and cycling/swimming
-VO2max values.
+`vo2max` compares every VO2max method over all history rather than plotting
+Garmin's stored estimate alone. The primary series is the lab's effective
+estimate, the ACSM running oxygen cost divided by the heart-rate fraction:
 
-Same-day Garmin values are averaged. Days without a measurement carry
-the last value forward, so the averages track the metric's standing
-value rather than dropping to zero. The averages use
-`alpha = 1 - exp(-1 / days)` and 210 days of history before the display
-range. The chart defaults to the last 365 days.
+    VO2max = (3.5 + 0.2 * speed_m_min) / (avg_hr / max_hr)
+
+`max_hr` is the running max HR from the latest `athlete_thresholds` snapshot
+on or before the run's day (the earliest snapshot covers days before it).
+A run is dropped when it has no average HR or duration, when its speed falls
+outside 1.5–6.0 m/s, or when the HR fraction falls outside 0.5–0.95.
+
+Same-day runs are averaged, and days without a run carry the last value
+forward, so the 42- and 182-day EWMAs (`alpha = 1 - exp(-1 / days)`) describe
+the metric's standing value. The chart keeps 910 days (five long windows) of
+history before the first plotted run.
+
+Four series are drawn:
+
+- **all runs** — the primary effective estimate, 42-day solid and 182-day
+  dash-dot.
+- **steady 40–75** — the same estimate on non-quality, non-recovery road runs
+  in the steady band, the lower-noise secondary series.
+- **Garmin** — raw readings as one marker series per recording device (a
+  stored device name wins, else manufacturer + product, so the FIT and
+  provider shapes read alike), with the latest device's 42-day carry-forward
+  EWMA as a dotted line.
+- **Runalyze and race VDOT** — Runalyze's stored value as grey markers with
+  its 42-day calendar mean (days without a reading skipped), and Daniels'
+  VDOT as red stars for official road-race results.
+
+Runalyze stores its effective VO2max with an internal 0.93 correction already
+applied, so the plotted value is not divided again. Garmin readings and
+Runalyze values are comparison series and never feed the estimate.
+Individual values are not reliably comparable across devices or formulas;
+the EWMAs are the point.
 
     ./charts.sh vo2max
-    ./charts.sh vo2max --days 365
-    ./charts.sh vo2max --from 2026-01-01 --to 2026-06-30
+    ./charts.sh vo2max vo2max.png
 
 ### Planned workouts
 

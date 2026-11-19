@@ -1,23 +1,227 @@
-"""Garmin VO2max trend with short and long EWMAs."""
+"""Effective VO2max from pace and heart rate, and the methods comparison.
+
+The estimate is the lab's promoted HR/economy metric: the ACSM running
+oxygen cost ``3.5 + 0.2 * speed_m_min`` divided by the fraction of maximum
+heart rate the session was run at. It needs no streams, uses the running
+max-HR snapshot in force on the day, and is guarded to a physiological
+fraction and a running speed.
+
+The daily value is the mean of that day's runs, carried forward between run
+days so the 42- and 182-day EWMAs describe the metric's standing value. The
+all-runs series is the primary series; the steady 40–75 min series is the
+lower-noise secondary one (``is_steady_run`` minus recovery jogs and trail).
+Garmin and Runalyze values are comparison series, never blended in.
+
+Runalyze stores its effective VO2max with a 0.93 correction already applied;
+its stored values are plotted as they are, and the label says so. Race VDOT
+uses Daniels' formula on an official road-race pair.
+"""
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import date
 
-from hobbyjogging_core.model import Activity
+from hobbyjogging_core.model import Activity, AthleteThreshold, Device
 
-from ..model import Vo2maxMeasurement, Vo2maxPoint
-from ..series import alpha_from_time_constant, date_range, ewma
+from ..model import (
+    GarminVo2maxDevice,
+    Vo2maxMeasurement,
+    Vo2maxMethods,
+    Vo2maxPoint,
+    Vo2maxSample,
+)
+from ..series import (
+    alpha_from_time_constant,
+    date_range,
+    ewma,
+    rolling_mean_by_date,
+)
 from .common import RUN_TYPES
+from .devices import device_label
+from .efficiency import is_steady_run
+from .races import RaceResult, official_pair
 
-VO2MAX_SHORT_DAYS = 7
-VO2MAX_LONG_DAYS = 42
+VO2MAX_SHORT_DAYS = 42
+VO2MAX_LONG_DAYS = 182
 VO2MAX_WARMUP_DAYS = 5 * VO2MAX_LONG_DAYS
+VO2MAX_MIN_FRACTION = 0.5
+VO2MAX_MAX_FRACTION = 0.95
+VO2MAX_MIN_SPEED_M_S = 1.5
+VO2MAX_MAX_SPEED_M_S = 6.0
+# Runalyze stores its effective VO2max with this correction applied.
+RUNALYZE_STORED_CORRECTION = 0.93
+
+
+def threshold_max_hr(
+    thresholds: Iterable[AthleteThreshold],
+    day: date,
+) -> float | None:
+    """Running max HR in force on ``day``.
+
+    The latest snapshot on or before the day wins; a day before the first
+    running snapshot uses that first one, because the athlete's maximum does
+    not move much and the early log has no other value.
+    """
+    runs = sorted(
+        (
+            threshold
+            for threshold in thresholds
+            if threshold.sport == "run" and threshold.max_hr
+        ),
+        key=lambda threshold: threshold.effective_from,
+    )
+
+    if not runs:
+        return None
+
+    current = None
+
+    for threshold in runs:
+        if threshold.effective_from <= day:
+            current = threshold.max_hr
+        else:
+            break
+
+    return current or runs[0].max_hr
+
+
+def effective_vo2max(
+    activity: Activity,
+    max_hr: float | None,
+) -> float | None:
+    """Effective VO2max for one activity, or ``None`` when it cannot."""
+    if activity.type not in RUN_TYPES or not max_hr or max_hr <= 0:
+        return None
+    if not activity.duration_s or not activity.distance_m:
+        return None
+    if activity.avg_hr is None:
+        return None
+
+    speed = activity.distance_m / activity.duration_s
+
+    if not (VO2MAX_MIN_SPEED_M_S <= speed <= VO2MAX_MAX_SPEED_M_S):
+        return None
+
+    fraction = activity.avg_hr / max_hr
+
+    if not (VO2MAX_MIN_FRACTION <= fraction <= VO2MAX_MAX_FRACTION):
+        return None
+
+    return (3.5 + 0.2 * speed * 60) / fraction
+
+
+def _is_steady_sample(activity: Activity) -> bool:
+    """A road run in the steady band, not quality and not a recovery jog."""
+    return (
+        activity.type == "run"
+        and "recovery" not in set(activity.workout_targets)
+        and is_steady_run(activity)
+    )
+
+
+def vo2max_samples(
+    activities: Iterable[Activity],
+    thresholds: Iterable[AthleteThreshold],
+    *,
+    steady_only: bool = False,
+) -> list[Vo2maxSample]:
+    """One effective estimate per qualifying run."""
+    thresholds = list(thresholds)
+    samples = []
+
+    for activity in activities:
+        if steady_only and not _is_steady_sample(activity):
+            continue
+
+        value = effective_vo2max(
+            activity,
+            threshold_max_hr(thresholds, activity.date),
+        )
+
+        if value is not None:
+            samples.append(Vo2maxSample(date=activity.date, value=value))
+
+    return samples
+
+
+def _carried_series(
+    values_by_day: dict[date, list[float]],
+    end: date,
+) -> tuple[dict[date, float], list[date], list[float]] | None:
+    """Daily mean plus the last value carried forward to ``end``."""
+    if not values_by_day:
+        return None
+
+    daily = {
+        day: sum(values) / len(values)
+        for day, values in values_by_day.items()
+    }
+    days = date_range(min(daily), end)
+    carried = []
+    state = None
+
+    for day in days:
+        if day in daily:
+            state = daily[day]
+
+        carried.append(state)
+
+    return daily, days, carried
+
+
+def vo2max_points(
+    samples: Iterable[Vo2maxSample],
+    start: date,
+    end: date,
+) -> list[Vo2maxPoint]:
+    """Daily estimate with its 42- and 182-day EWMAs from ``start`` to ``end``.
+
+    Days without a run carry the previous value forward, so the averages
+    describe the metric's standing value rather than a zero-filled gap.
+    """
+    if start > end:
+        return []
+
+    by_day: dict[date, list[float]] = defaultdict(list)
+
+    for sample in samples:
+        if sample.date <= end:
+            by_day[sample.date].append(sample.value)
+
+    series = _carried_series(by_day, end)
+
+    if series is None:
+        return []
+
+    daily, days, carried = series
+    short = ewma(
+        carried,
+        alpha_from_time_constant(VO2MAX_SHORT_DAYS),
+        initial=carried[0],
+    )
+    long = ewma(
+        carried,
+        alpha_from_time_constant(VO2MAX_LONG_DAYS),
+        initial=carried[0],
+    )
+
+    return [
+        Vo2maxPoint(
+            date=day,
+            value=daily.get(day),
+            avg_42=short[index],
+            avg_182=long[index],
+        )
+        for index, day in enumerate(days)
+        if day >= start
+    ]
 
 
 def vo2max_measurements(
-    activities: list[Activity],
+    activities: Iterable[Activity],
     start: date,
     end: date,
 ) -> list[Vo2maxMeasurement]:
@@ -38,28 +242,99 @@ def vo2max_measurements(
     )
 
 
-def vo2max_points(
-    activities: list[Activity],
+def garmin_vo2max_devices(
+    activities: Iterable[Activity],
+    devices: Iterable[Device],
     start: date,
     end: date,
-) -> list[Vo2maxPoint]:
-    """Return daily running Garmin VO2max with its two EWMAs.
-
-    Values are averaged per day. Only running activities with a positive
-    Garmin VO2max are used; Runalyze estimates and other sports are ignored.
-    Days without a measurement carry the previous value forward so the
-    averages describe the metric's standing value, not a zero-filled gap.
-    """
-    if start > end:
-        return []
-
-    by_day: dict[date, list[float]] = defaultdict(list)
+) -> list[GarminVo2maxDevice]:
+    """Garmin readings grouped by recording device, oldest device first."""
+    labels = {device.id: device_label(device) for device in devices}
+    grouped: dict[str, list[Vo2maxMeasurement]] = defaultdict(list)
 
     for activity in activities:
         if activity.type not in RUN_TYPES:
             continue
 
         value = activity.vo2max_garmin
+
+        if value is None or value <= 0 or activity.date > end:
+            continue
+
+        grouped[activity.device_id].append(
+            Vo2maxMeasurement(date=activity.date, value=value)
+        )
+
+    series = []
+
+    for device_id, measurements in grouped.items():
+        measurements.sort(key=lambda measurement: measurement.date)
+        by_day: dict[date, list[float]] = defaultdict(list)
+
+        for measurement in measurements:
+            by_day[measurement.date].append(measurement.value)
+
+        _, days, carried = _carried_series(by_day, end)
+        average = ewma(
+            carried,
+            alpha_from_time_constant(VO2MAX_SHORT_DAYS),
+            initial=carried[0],
+        )
+        series.append(
+            GarminVo2maxDevice(
+                device_id=device_id,
+                label=labels.get(device_id, device_id or "Unknown device"),
+                measurements=[
+                    measurement
+                    for measurement in measurements
+                    if measurement.date >= start
+                ],
+                avg_42=[
+                    (day, average[index])
+                    for index, day in enumerate(days)
+                    if day >= start
+                ],
+            )
+        )
+
+    return sorted(series, key=lambda item: item.measurements[0].date)
+
+
+def runalyze_vo2max(
+    activities: Iterable[Activity],
+    start: date,
+    end: date,
+) -> list[Vo2maxMeasurement]:
+    """Runalyze's stored effective VO2max, one raw value per activity."""
+    return sorted(
+        (
+            Vo2maxMeasurement(
+                date=activity.date,
+                value=activity.vo2max_runalyze,
+            )
+            for activity in activities
+            if activity.type in RUN_TYPES
+            and activity.vo2max_runalyze is not None
+            and activity.vo2max_runalyze > 0
+            and start <= activity.date <= end
+        ),
+        key=lambda measurement: (measurement.date, measurement.value),
+    )
+
+
+def runalyze_vo2max_average(
+    activities: Iterable[Activity],
+    start: date,
+    end: date,
+) -> list[tuple[date, float | None]]:
+    """Runalyze's 42-day calendar mean, skipping days without a reading."""
+    by_day: dict[date, list[float]] = defaultdict(list)
+
+    for activity in activities:
+        if activity.type not in RUN_TYPES:
+            continue
+
+        value = activity.vo2max_runalyze
 
         if value is None or value <= 0 or activity.date > end:
             continue
@@ -73,35 +348,78 @@ def vo2max_points(
         day: sum(values) / len(values)
         for day, values in by_day.items()
     }
-    first = min(daily)
-    days = date_range(first, end)
-    series = []
-    carried = None
-
-    for day in days:
-        if day in daily:
-            carried = daily[day]
-
-        series.append(carried)
-
-    short = ewma(
-        series,
-        alpha_from_time_constant(VO2MAX_SHORT_DAYS),
-        initial=series[0],
-    )
-    long = ewma(
-        series,
-        alpha_from_time_constant(VO2MAX_LONG_DAYS),
-        initial=series[0],
-    )
+    points = [
+        (day, daily.get(day))
+        for day in date_range(min(daily), end)
+    ]
+    averages = rolling_mean_by_date(points, VO2MAX_SHORT_DAYS)
 
     return [
-        Vo2maxPoint(
-            date=day,
-            value=daily.get(day),
-            avg_7=short[index],
-            avg_42=long[index],
-        )
-        for index, day in enumerate(days)
+        (day, value)
+        for (day, _), value in zip(points, averages)
         if day >= start
     ]
+
+
+def race_vdot(distance_m: float, time_s: float) -> float | None:
+    """Daniels' VDOT for one road-race performance."""
+    if distance_m <= 0 or time_s <= 0:
+        return None
+
+    velocity = distance_m / (time_s / 60.0)
+    oxygen = -4.60 + 0.182258 * velocity + 0.000104 * velocity ** 2
+    minutes = time_s / 60.0
+    fraction = (
+        0.8
+        + 0.1894393 * math.exp(-0.012778 * minutes)
+        + 0.2989558 * math.exp(-0.1932605 * minutes)
+    )
+
+    return oxygen / fraction if fraction else None
+
+
+def race_vdots(
+    results: Iterable[RaceResult],
+) -> list[tuple[date, float]]:
+    """Race VDOT from official road results, oldest first."""
+    points = []
+
+    for result in results:
+        if result.activity.type != "run":
+            continue
+        if not official_pair(result.official):
+            continue
+
+        value = race_vdot(
+            result.official.official_distance_m or 0,
+            result.official.official_time_s or 0,
+        )
+
+        if value is not None:
+            points.append((result.activity.date, value))
+
+    return sorted(points)
+
+
+def vo2max_methods(
+    activities: Iterable[Activity],
+    thresholds: Iterable[AthleteThreshold],
+    devices: Iterable[Device],
+    results: Iterable[RaceResult],
+    start: date,
+    end: date,
+) -> Vo2maxMethods:
+    """Assemble every series the methods chart compares."""
+    thresholds = list(thresholds)
+    activities = list(activities)
+    all_runs = vo2max_samples(activities, thresholds)
+    steady = vo2max_samples(activities, thresholds, steady_only=True)
+
+    return Vo2maxMethods(
+        all_runs=vo2max_points(all_runs, start, end),
+        steady=vo2max_points(steady, start, end),
+        garmin=garmin_vo2max_devices(activities, devices, start, end),
+        runalyze=runalyze_vo2max(activities, start, end),
+        runalyze_avg_42=runalyze_vo2max_average(activities, start, end),
+        races=race_vdots(results),
+    )

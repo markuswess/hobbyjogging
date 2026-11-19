@@ -360,51 +360,40 @@ def run_load_chart(
 
 def run_vo2max_chart(
     output: str,
-    start: date,
-    end: date,
     source: DataSource,
     *,
     include_review: bool = False,
 ) -> None:
-    """Render Garmin running VO2max with 7- and 42-day EWMA lines."""
+    """Render the VO2max methods comparison for all history."""
     from .analysis import (
-        RUN_TYPES,
         VO2MAX_WARMUP_DAYS,
-        device_changes,
-        device_usage,
-        vo2max_points,
+        official_by_activity,
+        race_results,
+        vo2max_methods,
     )
-    from .charts import plot_vo2max
+    from .charts import plot_vo2max_methods
 
+    today = date.today()
+    start = activity_start(source, today)
     display_activities, activities = warmup_reviewed(
         source,
         start,
-        end,
+        today,
         VO2MAX_WARMUP_DAYS,
         include_review,
     )
-
-    non_running = sum(
-        1
-        for activity in display_activities
-        if activity.type not in RUN_TYPES and activity.vo2max_garmin
+    methods = vo2max_methods(
+        activities,
+        source.athlete_thresholds(),
+        source.devices(),
+        race_results(
+            display_activities,
+            official_by_activity(source.race_results()),
+        ),
+        start,
+        today,
     )
-    print_count_note(
-        non_running,
-        "activity",
-        "activities",
-        "non-running Garmin VO2max (ignored)",
-    )
-
-    points = vo2max_points(activities, start, end)
-    changes = device_changes(device_usage(source.devices(), activities))
-
-    path = plot_vo2max(
-        points,
-        output=output,
-        device_changes=changes,
-    )
-    print(path)
+    print(plot_vo2max_methods(methods, output=output))
 
 
 def run_overview_chart(
@@ -417,7 +406,11 @@ def run_overview_chart(
     include_review: bool = False,
 ) -> None:
     """Render the main overview chart as a PNG."""
-    from .analysis import average_warmup_days, vo2max_points
+    from .analysis import (
+        average_warmup_days,
+        vo2max_points,
+        vo2max_samples,
+    )
     from .charts import plot_overview
     from .zone_groups import (
         daily_zone_groups,
@@ -458,7 +451,7 @@ def run_overview_chart(
         windows=windows,
     )
     vo2max = vo2max_points(
-        activities,
+        vo2max_samples(activities, source.athlete_thresholds()),
         chart_start - timedelta(days=warmup_days),
         chart_end,
     )
@@ -696,11 +689,8 @@ def run_overview_chart_command(parsed, source, include_review):
 
 
 def run_vo2max_command(parsed, source, include_review):
-    output, start, end = parsed
     run_vo2max_chart(
-        output,
-        start,
-        end,
+        parsed,
         source,
         include_review=include_review,
     )

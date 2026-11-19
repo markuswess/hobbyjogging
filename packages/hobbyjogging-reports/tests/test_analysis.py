@@ -20,8 +20,18 @@ from hobbyjogging_report.analysis import (
     subt_session_point,
     subt_work_points,
     time_averages,
-    vo2max_measurements,
+    effective_vo2max,
+    garmin_vo2max_devices,
+    official_by_activity,
+    race_results,
+    race_vdot,
+    race_vdots,
+    runalyze_vo2max,
+    runalyze_vo2max_average,
+    threshold_max_hr,
+    vo2max_methods,
     vo2max_points,
+    vo2max_samples,
     week_bounds,
     week_start,
     weekly_planned_distance,
@@ -32,12 +42,21 @@ from hobbyjogging_report.analysis import (
     work_intervals,
     zone_time_averages,
 )
-from hobbyjogging_report.model import AverageWindows
-from hobbyjogging_core.model import Activity, Event, EventZoneTime, WellnessDay
-from support import make_interval
+from hobbyjogging_report.model import AverageWindows, Vo2maxSample
+from hobbyjogging_core.model import (
+    Activity,
+    AthleteThreshold,
+    Device,
+    Event,
+    EventZoneTime,
+    RaceResult as OfficialRaceResult,
+    WellnessDay,
+)
+from support import activity_factory, make_interval
 
 D = date(2026, 10, 1)
 iv = partial(make_interval, group_id="reps")
+run = activity_factory()
 
 
 class WorkIntervalsTests(unittest.TestCase):
@@ -1279,127 +1298,203 @@ class RecoveryTrendTests(unittest.TestCase):
             recovery_trends(self.wellness, D, D, window_days=0)
 
 
-class Vo2maxTests(unittest.TestCase):
+class EffectiveVo2maxTests(unittest.TestCase):
 
-    def test_raw_measurements_are_not_averaged(self):
-        activities = [
-            Activity(id="a", date=D, type="run", vo2max_garmin=60),
-            Activity(id="b", date=D, type="run", vo2max_garmin=58),
-            Activity(
-                id="c",
-                date=D,
-                type="ride",
-                vo2max_garmin=50,
+    def test_oxygen_cost_over_the_hr_fraction(self):
+        # 10 km in 60 min is 2.7778 m/s -> 166.67 m/min.
+        activity = Activity(
+            id="a",
+            date=D,
+            type="run",
+            distance_m=10000,
+            duration_s=3600,
+            avg_hr=150,
+        )
+
+        value = effective_vo2max(activity, 192)
+
+        self.assertAlmostEqual(47.15, value, places=2)
+
+    def test_guards_the_fraction_and_the_speed(self):
+        base = {
+            "id": "a",
+            "date": D,
+            "type": "run",
+            "distance_m": 10000,
+            "duration_s": 3600,
+        }
+
+        self.assertIsNone(
+            effective_vo2max(Activity(**base, avg_hr=200), 192)
+        )
+        self.assertIsNone(
+            effective_vo2max(Activity(**base, avg_hr=80), 192)
+        )
+        self.assertIsNone(
+            effective_vo2max(
+                Activity(**{**base, "duration_s": 1400}, avg_hr=150),
+                192,
+            )
+        )
+        self.assertIsNone(
+            effective_vo2max(
+                Activity(**{**base, "duration_s": 7200}, avg_hr=150),
+                192,
+            )
+        )
+
+    def test_needs_a_heart_rate_and_a_running_max(self):
+        activity = Activity(
+            id="a",
+            date=D,
+            type="run",
+            distance_m=10000,
+            duration_s=3600,
+        )
+
+        self.assertIsNone(effective_vo2max(activity, 192))
+        self.assertIsNone(
+            effective_vo2max(
+                Activity(**{**vars(activity), "avg_hr": 150}),
+                None,
+            )
+        )
+        self.assertIsNone(
+            effective_vo2max(
+                Activity(
+                    id="b",
+                    date=D,
+                    type="ride",
+                    distance_m=10000,
+                    duration_s=3600,
+                    avg_hr=150,
+                ),
+                192,
+            )
+        )
+
+    def test_the_running_snapshot_in_force_wins(self):
+        thresholds = [
+            AthleteThreshold(
+                effective_from=date(2024, 1, 1),
+                sport="ride",
+                max_hr=200,
             ),
-            Activity(
-                id="d",
-                date=D + timedelta(days=1),
-                type="trail_run",
-                vo2max_garmin=62,
+            AthleteThreshold(
+                effective_from=date(2024, 6, 1),
+                sport="run",
+                max_hr=198,
+            ),
+            AthleteThreshold(
+                effective_from=date(2025, 1, 1),
+                sport="run",
+                max_hr=192,
             ),
         ]
-
-        measurements = vo2max_measurements(
-            activities,
-            D,
-            D + timedelta(days=1),
-        )
 
         self.assertEqual(
-            [58, 60, 62],
-            [measurement.value for measurement in measurements],
+            198,
+            threshold_max_hr(thresholds, date(2024, 7, 1)),
         )
         self.assertEqual(
-            [D, D, D + timedelta(days=1)],
-            [measurement.date for measurement in measurements],
+            192,
+            threshold_max_hr(thresholds, date(2026, 1, 1)),
         )
+        # A day before the first running snapshot uses that first one.
+        self.assertEqual(
+            198,
+            threshold_max_hr(thresholds, date(2020, 1, 1)),
+        )
+        self.assertIsNone(threshold_max_hr([], D))
 
-    def test_uses_running_garmin_values_and_daily_mean(self):
+    def test_samples_split_all_runs_from_the_steady_band(self):
         activities = [
-            Activity(id="a", date=D, type="run", vo2max_garmin=60),
-            Activity(id="b", date=D, type="run", vo2max_garmin=58),
-            Activity(
-                id="c",
+            run(
+                id="steady",
                 date=D,
-                type="ride",
-                vo2max_garmin=50,
+                distance_m=9000,
+                duration_s=45 * 60,
+                avg_hr=145,
             ),
-            Activity(
-                id="d",
+            run(
+                id="recovery",
                 date=D,
-                type="run",
-                vo2max_runalyze=55,
+                distance_m=6000,
+                duration_s=45 * 60,
+                avg_hr=130,
+                workout_targets=["recovery"],
             ),
-            Activity(
-                id="e",
-                date=D + timedelta(days=1),
+            run(
+                id="long",
+                date=D,
+                distance_m=20000,
+                duration_s=95 * 60,
+                avg_hr=150,
+            ),
+            run(
+                id="trail",
+                date=D,
                 type="trail_run",
-                vo2max_garmin=62,
+                distance_m=9000,
+                duration_s=45 * 60,
+                avg_hr=150,
+            ),
+            run(
+                id="no-hr",
+                date=D,
+                distance_m=9000,
+                duration_s=45 * 60,
             ),
         ]
-
-        points = vo2max_points(
-            activities,
-            D,
-            D + timedelta(days=1),
-        )
-
-        self.assertEqual(2, len(points))
-        self.assertEqual(59, points[0].value)
-        self.assertEqual(62, points[1].value)
-        self.assertIsNotNone(points[0].avg_7)
-        self.assertIsNotNone(points[0].avg_42)
-
-    def test_carries_the_last_value_forward(self):
-        activities = [
-            Activity(id="a", date=D, type="run", vo2max_garmin=60),
+        thresholds = [
+            AthleteThreshold(effective_from=D, sport="run", max_hr=192)
         ]
 
+        all_runs = vo2max_samples(activities, thresholds)
+        steady_runs = vo2max_samples(activities, thresholds, steady_only=True)
+
+        self.assertEqual(4, len(all_runs))
+        self.assertEqual(1, len(steady_runs))
+        self.assertAlmostEqual(
+            all_runs[0].value,
+            steady_runs[0].value,
+        )
+
+
+class Vo2maxPointTests(unittest.TestCase):
+
+    def test_daily_mean_and_carry_forward(self):
         points = vo2max_points(
-            activities,
+            [
+                Vo2maxSample(D, 40),
+                Vo2maxSample(D, 60),
+            ],
             D,
             D + timedelta(days=1),
         )
 
-        self.assertEqual(2, len(points))
+        self.assertEqual([D, D + timedelta(days=1)], [p.date for p in points])
+        self.assertEqual(50, points[0].value)
+        self.assertEqual(50, points[0].avg_42)
         self.assertIsNone(points[1].value)
-        self.assertEqual(60, points[1].avg_7)
-        self.assertEqual(60, points[1].avg_42)
+        self.assertEqual(50, points[1].avg_42)
+        self.assertEqual(50, points[1].avg_182)
 
-    def test_short_average_moves_faster_than_long(self):
-        activities = [
-            Activity(id="a", date=D, type="run", vo2max_garmin=50),
-            Activity(
-                id="b",
-                date=D + timedelta(days=30),
-                type="run",
-                vo2max_garmin=60,
-            ),
-        ]
-
+    def test_the_short_average_moves_faster_than_the_long(self):
         points = vo2max_points(
-            activities,
+            [
+                Vo2maxSample(D, 50),
+                Vo2maxSample(D + timedelta(days=30), 70),
+            ],
             D,
             D + timedelta(days=30),
         )
 
-        self.assertGreater(points[-1].avg_7, points[-1].avg_42)
-
-    def test_returns_nothing_without_garmin_running_values(self):
-        activities = [
-            Activity(id="a", date=D, type="ride", vo2max_garmin=50),
-            Activity(id="b", date=D, type="run", vo2max_runalyze=55),
-        ]
-
-        self.assertEqual([], vo2max_points(activities, D, D))
+        self.assertGreater(points[-1].avg_42, points[-1].avg_182)
 
     def test_starts_at_start_when_history_exists(self):
-        activities = [
-            Activity(id="a", date=D, type="run", vo2max_garmin=60),
-        ]
-
         points = vo2max_points(
-            activities,
+            [Vo2maxSample(D, 60)],
             D + timedelta(days=2),
             D + timedelta(days=3),
         )
@@ -1408,8 +1503,147 @@ class Vo2maxTests(unittest.TestCase):
             [D + timedelta(days=2), D + timedelta(days=3)],
             [point.date for point in points],
         )
-        self.assertEqual(60, points[0].avg_7)
         self.assertEqual(60, points[0].avg_42)
+
+    def test_no_samples_returns_nothing(self):
+        self.assertEqual([], vo2max_points([], D, D))
+
+
+class Vo2maxComparisonTests(unittest.TestCase):
+
+    def test_garmin_is_grouped_by_device_and_labels_both_shapes(self):
+        fit = Device(id="w1", manufacturer="garmin", product="fr645")
+        enduro = Device(id="w2", manufacturer="garmin", product="enduro")
+        unused = Device(id="w3", manufacturer="garmin", product="fr945")
+        activities = [
+            run(
+                id="a",
+                date=D,
+                device_id="w1",
+                vo2max_garmin=60,
+            ),
+            run(
+                id="b",
+                date=D + timedelta(days=10),
+                device_id="w2",
+                vo2max_garmin=61,
+            ),
+            run(
+                id="ride",
+                date=D,
+                type="ride",
+                device_id="w1",
+                vo2max_garmin=99,
+            ),
+        ]
+
+        series = garmin_vo2max_devices(
+            activities,
+            [fit, enduro, unused],
+            D,
+            D + timedelta(days=10),
+        )
+
+        self.assertEqual(
+            ["Garmin Forerunner 645", "Garmin Enduro"],
+            [item.label for item in series],
+        )
+        self.assertEqual([60], [m.value for m in series[0].measurements])
+        self.assertEqual((D, 60.0), series[0].avg_42[0])
+        self.assertEqual(11, len(series[0].avg_42))
+
+    def test_runalyze_keeps_its_stored_values_and_42_day_mean(self):
+        activities = [
+            run(
+                id="a",
+                date=D,
+                vo2max_runalyze=60,
+            ),
+            run(
+                id="b",
+                date=D + timedelta(days=2),
+                vo2max_runalyze=66,
+            ),
+        ]
+
+        measurements = runalyze_vo2max(
+            activities,
+            D,
+            D + timedelta(days=2),
+        )
+        average = runalyze_vo2max_average(
+            activities,
+            D,
+            D + timedelta(days=2),
+        )
+
+        self.assertEqual([60, 66], [m.value for m in measurements])
+        self.assertEqual(
+            [(D, 60.0), (D + timedelta(days=1), 60.0),
+             (D + timedelta(days=2), 63.0)],
+            average,
+        )
+
+    def test_race_vdot_uses_official_road_results_only(self):
+        self.assertIsNone(race_vdot(0, 0))
+        self.assertAlmostEqual(49.8, race_vdot(5000, 1200), places=1)
+
+        race = run(
+            id="race",
+            date=D,
+            workout_methods=["race"],
+        )
+        trail = run(
+            id="trail",
+            date=D,
+            type="trail_run",
+            workout_methods=["race"],
+        )
+        official = {
+            "race": OfficialRaceResult(
+                activity_id="race",
+                official_distance_m=5000,
+                official_time_s=1200,
+            ),
+            "trail": OfficialRaceResult(
+                activity_id="trail",
+                official_distance_m=5000,
+                official_time_s=1200,
+            ),
+        }
+        results = race_results(
+            [race, trail],
+            official_by_activity(official.values()),
+        )
+
+        self.assertEqual(1, len(race_vdots(results)))
+
+    def test_methods_assembles_every_series(self):
+        methods = vo2max_methods(
+            [
+                run(
+                    id="a",
+                    date=D,
+                    distance_m=10000,
+                    duration_s=3600,
+                    avg_hr=150,
+                    vo2max_garmin=58,
+                    vo2max_runalyze=61,
+                )
+            ],
+            [AthleteThreshold(effective_from=D, sport="run", max_hr=192)],
+            [],
+            [],
+            D,
+            D,
+        )
+
+        self.assertTrue(methods.all_runs)
+        self.assertTrue(methods.steady)
+        self.assertEqual(1, len(methods.garmin))
+        self.assertEqual(1, len(methods.runalyze))
+        self.assertTrue(methods.runalyze_avg_42)
+        self.assertEqual([], methods.races)
 
 
 if __name__ == "__main__":
