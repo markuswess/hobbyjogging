@@ -95,28 +95,28 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 
 ### Promoted notes
 - **HR/economy-based VO2max** — promoted 2026-11-19. Session-level effective
-  estimate: `VO2 = 3.5 + 0.2·speed_m_min`, divided by `HR / max_HR`. On 498
-  steady runs the mean is 60.9 vs Garmin 61.5 and Runalyze 61.3 (stored with
-  its 0.93 correction; the uncorrected mean is 65.9, so the estimate aligns
-  with the corrected value). Garmin smoothing is device-specific: FR645 changed
-  607 of 892 runs (mean |Δ| 0.449), Enduro 245 of 1,340 (0.067); Runalyze
-  changed 489 of 497 (3.50) because it uses all runs. Smoothed vs Garmin:
-  estimate 42d r=+0.80 / RMSE 1.51 and 90d +0.83 / 1.44; Runalyze 42d +0.75 /
-  1.79 and 90d +0.78 / 1.63. All-runs sensitivity (closer to Runalyze's
-  all-run input, but still raw pace): n=1,350, mean 60.4, r Runalyze +0.95,
-  42d r Garmin +0.90; steady-only is +0.90 / +0.80. Runalyze's GAP is not
-  reproduced, so hilly and interval runs are not like-for-like.
-  The HR-reserve variant overestimates (~73.5) and is rejected.
-  Against Daniels race VDOT on 19 road races since 2024: race VDOT mean 61.5 /
-  median 61.8; Garmin 62.5 / 62.2; Runalyze 66.8 / 66.3; the nearest-run
-  estimate 61.5. VDOT − Garmin is −1.0 / −1.1, VDOT − Runalyze −5.3 / −4.9,
-  VDOT − estimate −0.2 / −0.1. The estimate is therefore in line with race
-  fitness overall and much closer than Runalyze, though Garmin and the estimate
-  run 2–3 units high on the sharp 2026 10k efforts.
-  Handoff: candidate for a reports metric/card using the HR/HRmax formula and a
-  42–90 day mean; it needs a max-HR source and the steady-run guard. Caveats:
-  approximate ACSM economy, Garmin’s own smoothing, no streams, and the
-  2026 level gap (estimate 61.7 vs Garmin 63.5). Evidence:
+  estimate: `VO2 = 3.5 + 0.2·speed_m_min`, divided by `HR / max_HR`. Whole
+  period 2019–2026, all runs: n=2,821, mean 59.3, r Runalyze +0.95, 42d r
+  Garmin +0.76; steady 40–75: n=1,092, mean 59.7, +0.91 / +0.67. The lower
+  whole-period Garmin fit is the device change: FR645 n=888 has raw r +0.26 and
+  42d r +0.47 / RMSE 2.41; Enduro n=1,338 has raw +0.47 and 42d +0.91 / 1.44.
+  Garmin changes 607 of 892 FR645 runs (mean |Δ| 0.449) versus 245 of 1,340
+  Enduro (0.067); Runalyze changes 489 of 497 (3.50).
+  Runalyze stores its value with a 0.93 correction: stored mean 61.3,
+  uncorrected 65.9; the estimate aligns with the corrected value.
+  Distance-correction candidates against stored Runalyze: raw pace r +0.95 /
+  RMSE 2.02 / bias +0.03; `d+5·gain−loss` +0.90 / 3.16 / +1.65;
+  `d+5·gain−5·loss` +0.91 / 2.49; `d+gain−loss` +0.95 / 2.07. The simple 5/1
+  formula is not supported; raw pace is closest, and GAP remains unreplicated.
+  Smoothed Runalyze vs Garmin: 42d +0.75 / 1.79 and 90d +0.78 / 1.63; the
+  steady estimate gives +0.80 / 1.51 and +0.83 / 1.44.
+  Against Daniels race VDOT over all 37 road races 2019–2026: VDOT − Garmin
+  −1.46 / −1.11, VDOT − Runalyze −3.63 / −3.49, VDOT − estimate **−0.43 /
+  −0.07**. The HR-reserve variant overestimates (~73.5) and is rejected.
+  Handoff: best candidate is the **all-runs HR/HRmax estimate with a 42-day
+  mean**, validated against race VDOT; the Enduro era fits it best, while the
+  FR645 era remains noisy. Caveats: approximate ACSM economy, Garmin’s device
+  and smoothing differences, no GAP, and no streams. Evidence:
   `experiments/vo2max_estimates.py`; plots `vo2max-estimates.png`,
   `vo2max-estimate-scatter.png`, `vo2max-race-validation.png`.
 
