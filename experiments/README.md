@@ -171,10 +171,15 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   anchored to the latest road 10k. That gives 5k 16.3, 10k 34.4, HM 1:17.0,
   M 2:42.7. Against the latest actual race in each bucket it has **1.4 min mean
   / 0.2 min median error**, versus 2.9/0.9 for the filtered exponent (b=1.099),
-  4.1/1.8 for the latest-five level and 6.6/3.7 for the free global fit. The
-  dashboard's all-race exponent plus anchoring is the correct current-form
-  method; the filtered shape/CS stay descriptive. VDOT vs Garmin: n=34,
-  r=+0.73, median difference −1.1.
+  4.1/1.8 for the latest-five level and 6.6/3.7 for the free global fit.
+  Walk-forward over 19 races since 2024: dashboard all-b/latest-10k **1.0 mean /
+  0.4 median**; 2y b/latest-10k 2.6/0.4 with +2.4 min bias (too slow);
+  2y b/best-two 1.5/0.6; all-b/best-two 0.8/0.4, 89% within 1 min. The
+  **two-year exponent is not supported**; all-history exponent plus a best-two
+  anchor is marginally the best tested, but it is selection-biased and the
+  sample is small. Keep the dashboard's all-history exponent and latest-10k
+  anchor.
+  VDOT vs Garmin: n=34, r=+0.73, median difference −1.1.
   Coherent enough to be useful, but this is a **lab verdict only**: no card or
   report handoff. Caveats: generic older names, 11 unknown-elevation races,
   and elevation-based exclusions. Evidence: `experiments/race_fitness.py`.

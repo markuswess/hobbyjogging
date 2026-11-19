@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from statistics import mean, median
 
 import plotly.graph_objects as go
@@ -440,6 +440,151 @@ def anchored_time(reference: dict, exponent: float, km: float) -> float:
     return reference["time_min"] * (km / reference["km"]) ** exponent
 
 
+def level(row: dict, exponent: float) -> float:
+    return math.log(row["time_min"]) - exponent * math.log(row["km"])
+
+
+def anchor_level(
+    history: list[dict],
+    exponent: float,
+    kind: str,
+) -> float | None:
+    road = sorted(
+        [row for row in history if not row["excluded"]],
+        key=lambda row: row["date"],
+    )
+    if not road:
+        return None
+
+    if kind == "latest-10k":
+        tens = [
+            row for row in road if 9.5 <= row["km"] <= 10.5
+        ]
+        reference = (
+            max(tens, key=lambda row: row["date"])
+            if tens
+            else max(road, key=lambda row: row["date"])
+        )
+        return level(reference, exponent)
+
+    recent = road[-5:]
+    levels = [level(row, exponent) for row in recent]
+
+    if kind == "median-5":
+        return median(levels)
+    if kind == "best-2":
+        return mean(sorted(levels)[:2])
+    return None
+
+
+def policy_backtest(rows: list[dict]) -> None:
+    """Walk-forward prediction errors for exponent/anchor policies."""
+    policies = [
+        ("dashboard: all b, latest 10k", "all", "latest-10k"),
+        ("2y b, latest 10k", "2y", "latest-10k"),
+        ("2y b, median last 5", "2y", "median-5"),
+        ("2y b, best 2 of last 5", "2y", "best-2"),
+        ("all b, best 2 of last 5", "all", "best-2"),
+    ]
+    evaluation_start = date(2024, 1, 1)
+    errors = {name: [] for name, _, _ in policies}
+
+    for target in rows:
+        if target["excluded"] or target["date"] < evaluation_start:
+            continue
+        history = [row for row in rows if row["date"] < target["date"]]
+        if len(history) < 8:
+            continue
+
+        for name, exponent_kind, anchor_kind in policies:
+            if exponent_kind == "all":
+                fit = fit_riegel_rows(history)
+            else:
+                window = [
+                    row
+                    for row in history
+                    if row["date"] >= target["date"] - timedelta(days=730)
+                ]
+                fit = fit_riegel_rows(window) if len(window) >= 8 else None
+                if fit is None:
+                    fit = fit_riegel_rows(history)
+
+            if fit is None or not (0.8 <= fit[0] <= 1.4):
+                continue
+
+            exponent = fit[0]
+            anchor = anchor_level(history, exponent, anchor_kind)
+            if anchor is None:
+                continue
+
+            predicted = math.exp(anchor + exponent * math.log(target["km"]))
+            errors[name].append(predicted - target["time_min"])
+
+    print("\nwalk-forward prediction errors (races since 2024):")
+    table(
+        [
+            (
+                name,
+                len(values),
+                f"{mean(abs(value) for value in values):.1f} min"
+                if values
+                else "-",
+                f"{median(abs(value) for value in values):.1f} min"
+                if values
+                else "-",
+                f"{mean(values):+.1f} min" if values else "-",
+                f"{100 * sum(abs(value) <= 1 for value in values) / len(values):.0f}%"
+                if values
+                else "-",
+            )
+            for name, values in errors.items()
+        ],
+        headers=[
+            "policy",
+            "predictions",
+            "mean abs",
+            "median abs",
+            "bias",
+            "within 1 min",
+        ],
+    )
+
+    labels = list(errors)
+    means = [
+        mean(abs(value) for value in errors[name]) if errors[name] else 0.0
+        for name in labels
+    ]
+    medians = [
+        median(abs(value) for value in errors[name]) if errors[name] else 0.0
+        for name in labels
+    ]
+    figure = go.Figure()
+    figure.add_trace(
+        go.Bar(
+            x=labels,
+            y=means,
+            name="mean absolute error",
+            marker={"color": "#4c78a8"},
+        )
+    )
+    figure.add_trace(
+        go.Bar(
+            x=labels,
+            y=medians,
+            name="median absolute error",
+            marker={"color": "#54a24b"},
+        )
+    )
+    figure.update_yaxes(title_text="absolute error (min)")
+    figure.update_xaxes(title_text="policy")
+    figure.update_layout(
+        title="Walk-forward race prediction error",
+        barmode="group",
+        legend={"orientation": "h", "y": -0.3},
+    )
+    save(figure, "race-policy-errors")
+
+
 def plot_models(rows: list[dict], cs, riegel, anchored) -> None:
     figure = go.Figure()
     usable = [row for row in rows if not row["excluded"]]
@@ -798,6 +943,8 @@ def main() -> None:
 
     print("\nsensitivity:")
     sensitivity(rows)
+
+    policy_backtest(rows)
 
     # Validation against Garmin VO2max.
     paired = [
