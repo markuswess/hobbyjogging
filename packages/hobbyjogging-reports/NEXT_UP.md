@@ -2,12 +2,22 @@
 
 Updated 2026-11-19.
 
-Current focus: max HR and elevation are exposed and in the session report, and
-the CLI/dashboard pages share one renderer; 10 is parked, 12 is behind the lab
-gate, 13 is the last CLI-parity follow-up, 14 is an open idea, and 15 is the
-VO2max series ready now that the import filled the column.
+Current focus: max HR is complete (session line, HR-zone check, coverage
+column) and the CLI/dashboard pages share one renderer; 10 is parked, 12 is
+behind the lab gate, 13 is the last CLI-parity follow-up, 14 is an open idea,
+and 15 waits for the lab before it becomes a chart series.
 
 ## Done
+
+- **Max HR in the reports.** The Data Health tab counts runs that carry an
+  average HR but no HR-zone split, so a run without HR is reported once by the
+  HR check and not twice. The per-year coverage table gains a Max HR column
+  beside weather; it is counted from the activity itself, while weather still
+  needs the caller's lookup. On the real log that is 595 runs with HR but no
+  HR zones (none in the last year) and 2,803 of 3,405 runs with a session max
+  HR; the 2016–2018 gap shows in the coverage column. The demo writes a
+  session max HR under its threshold maximum, and the CLI `health` report
+  prints the same line and column.
 
 - **Clickable review queue.** The Data Health table links the item's activity
   and any `context.candidates`; a candidate outside the recent list gets its
@@ -432,20 +442,19 @@ _None._
 ## Next
 
 Schema v12-v21 moved the data under several items, so the picture changed:
-the threshold trend, the season/illness bands, the device timeline, max HR and
-elevation (items 1 and 5, now exposed and in the session report), routes (v20)
-and the wellness extras (v19) landed. Routes and wellness are reports-only;
-the only remaining core prerequisite is the per-activity zone config ids
-(item 4). Item 11 has its data (`event_activity_links`, schema v21); 12's
-series needs the lab gate in root item 31. Item 10 stays parked on its
-page-coverage cost, 9 is recurring upkeep, 13 is the event-page parity
-follow-up, and 14 is an open idea. The dashboard polish pass is finished. The
-efficiency floor, the planned-event page, the streaks report, the collapsible
-lists, the season/illness bands and the threshold trend landed here.
+the threshold trend, the season/illness bands, the device timeline, max HR,
+elevation and routes (v20) and the wellness extras (v19) landed. Routes and
+wellness are reports-only; the only remaining core prerequisite is the
+per-activity zone config ids (item 4). Item 11 has its data
+(`event_activity_links`, schema v21); 12's series needs the lab gate in root
+item 31. Item 10 stays parked on its page-coverage cost, 9 is recurring
+upkeep, 13 is the event-page parity follow-up, 14 is an open idea, and 15 is
+with the lab.
 
-1. **Max HR in the reports.** The model/repository exposure and the session
-   line landed. Remaining: the HR-zone checks and the Max HR column beside
-   weather in the coverage table.
+Numbers are stable identifiers and are not reused:
+`docs/ARCHITECTURE.md` and the import queue point at "reports item 15", so a
+finished item leaves its number empty instead of shifting every later
+pointer. Item 1 is the first such gap.
 
 2. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. The
@@ -580,9 +589,15 @@ lists, the season/illness bands and the threshold trend landed here.
     layer must stay quiet. The time-axis charts are shaded by the landed
     season/illness bands.
 
-15. **Runalyze VO2max second owner** (ready).
+15. **Runalyze VO2max second owner** (lab handoff).
     The race pair and the gear coverage landed; this item is now only the
-    second VO2max owner.
+    second VO2max owner, and it goes to the lab before any chart changes.
+    - **Why the lab first (2026-11-19)**: the second series is a data question
+      before it is a drawing question — how far the two owners disagree on the
+      2,210 activities that carry both, whether the estimate adds information
+      in 2019–2022 where Garmin is thin, and whether an open-marker series
+      reads quietly beside the watch steps. The lab promotes a shape (or
+      rejects the series); this item then only implements it.
     - **Unblocked (Nov 2026)**: the import's `--refresh-before` sweep re-read
       the stale payloads and `runalyze vo2max` filled the column. It now holds
       2,225 values (2019-01-22 → 2026-11-16), 2,210 of them alongside a Garmin
@@ -648,8 +663,8 @@ Covered now:
   and official race markers, the subT `Δ threshold` column, and the demo's
   snapshots and official results;
 - devices: usage counts and periods, change dates, the session `- Device:`
-  line, the VO2max markers, the timeline chart and the demo's devices.
+  line, the VO2max markers, the timeline chart and the demo's devices;
+- data health: a run with HR but no HR-zone split is counted, a run without HR
+  is not, and the coverage table counts a session max HR per year.
 
-New work should add:
-
-- device-timeline coverage, once the field lands.
+New work adds its tests in the same change; no coverage gap is open.

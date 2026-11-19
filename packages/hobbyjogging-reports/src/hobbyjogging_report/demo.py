@@ -36,6 +36,8 @@ DEMO_SOURCE = "demo"
 DEFAULT_MONTHS = 48
 DEFAULT_SEED = 7
 ZONE_KIND = "pace"
+# The invented athlete's measured maximum; session max HR stays below it.
+_ATHLETE_MAX_HR = 192.0
 
 _RUN_SPORTS = {"run", "trail_run"}
 _ILLNESS_DAYS = 5
@@ -223,7 +225,7 @@ def _write_thresholds(writer, start: date, today: date) -> None:
         rows.append({
             "effective_from": day.isoformat(),
             "sport": "run",
-            "max_hr": 192.0,
+            "max_hr": _ATHLETE_MAX_HR,
             "lthr": 174.0,
             "threshold_pace_mps": pace,
         })
@@ -689,6 +691,7 @@ def _make_race(
             "moving_s": duration_s,
             "distance_m": distance_m,
             "avg_hr": 176,
+            "max_hr": 188,
             "training_load": load,
             "rpe": 5,
             "feel": 1,
@@ -954,6 +957,10 @@ def _make_session(
             "moving_s": duration,
             "distance_m": round(distance_m, 1),
             "avg_hr": avg_hr,
+            "max_hr": min(
+                _ATHLETE_MAX_HR,
+                round(avg_hr + rng.randint(6, 14)),
+            ),
             "training_load": round(load, 1),
             "rpe": rpe,
             "feel": feel,

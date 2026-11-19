@@ -21,8 +21,10 @@ class HealthReportTests(unittest.TestCase):
                     type="run",
                     distance_m=10000,
                     avg_hr=140,
+                    max_hr=178,
                     training_load=50,
                     pace_zone_times=[600, 600, 300, 300],
+                    hr_zone_times=[600, 600, 300, 300],
                 ),
                 activity(id="empty", date=D, type="run"),
             ],
@@ -40,6 +42,10 @@ class HealthReportTests(unittest.TestCase):
             report,
         )
         self.assertIn(
+            "| Runs without HR zones | 0 |",
+            report,
+        )
+        self.assertIn(
             "| Runs without average HR | 1 |",
             report,
         )
@@ -49,9 +55,22 @@ class HealthReportTests(unittest.TestCase):
         )
         self.assertIn("The review queue is empty.", report)
         self.assertIn(
-            f"| {D.year} | 2 | 1 (50%) |",
+            f"| {D.year} | 2 | 1 (50%) | 1 (50%) |",
             report,
         )
+
+    def test_runs_with_hr_but_no_hr_zones_are_flagged(self):
+        source = FakeSource(
+            [
+                activity(id="split", date=D, avg_hr=140),
+                activity(id="no-hr", date=D, distance_m=5000),
+            ]
+        )
+
+        report = health_report(source, today=D)
+
+        self.assertIn("- Runs without HR zones: 1", report)
+        self.assertIn("| Runs without HR zones | 1 |", report)
 
     def test_review_queue_includes_candidate_labels(self):
         source = FakeSource(

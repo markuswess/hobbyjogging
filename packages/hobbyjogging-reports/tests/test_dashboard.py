@@ -549,6 +549,8 @@ class DashboardBuildTests(unittest.TestCase):
             health = (target / "health.html").read_text()
             self.assertIn("Data coverage", health)
             self.assertIn("Weather", health)
+            self.assertIn("Max HR", health)
+            self.assertIn("Runs without HR zones", health)
             self.assertIn("2026", health)
             self.assertIn("Review queue", health)
             self.assertIn("field conflict", health)

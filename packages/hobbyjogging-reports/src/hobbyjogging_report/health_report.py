@@ -113,6 +113,7 @@ def health_report(
         f"- Hidden by review: {health.review_hidden}",
         f"- Missing load: {health.activities_without_load}",
         f"- Runs without pace zones: {health.runs_without_pace_zones}",
+        f"- Runs without HR zones: {health.runs_without_hr_zones}",
         f"- Runs without average HR: {health.runs_without_hr}",
         f"- Runs without distance: {health.runs_without_distance}",
         "",
@@ -122,6 +123,7 @@ def health_report(
         "|---|---:|",
         f"| Activities without load | {health.activities_without_load} |",
         f"| Runs without pace zones | {health.runs_without_pace_zones} |",
+        f"| Runs without HR zones | {health.runs_without_hr_zones} |",
         f"| Runs without average HR | {health.runs_without_hr} |",
         f"| Runs without distance | {health.runs_without_distance} |",
     ])
@@ -162,14 +164,15 @@ def health_report(
             "",
             "## Data coverage",
             "",
-            "| Year | Activities | Weather |",
-            "|---|---:|---:|",
+            "| Year | Activities | Weather | Max HR |",
+            "|---|---:|---:|---:|",
         ])
 
         for row in coverage:
             lines.append(
                 f"| {row.year} | {row.activities} | "
-                f"{row.weather} ({row.weather_share:.0%}) |"
+                f"{row.weather} ({row.weather_share:.0%}) | "
+                f"{row.max_hr} ({row.max_hr_share:.0%}) |"
             )
 
     return "\n".join(lines)

@@ -556,6 +556,7 @@ def health_page(
         ("Hidden by review", str(health.review_hidden), ""),
         ("Missing load", str(health.activities_without_load), ""),
         ("Runs without pace zones", str(health.runs_without_pace_zones), ""),
+        ("Runs without HR zones", str(health.runs_without_hr_zones), ""),
         ("Runs without HR", str(health.runs_without_hr), ""),
         ("Runs without distance", str(health.runs_without_distance), ""),
     ]
@@ -605,6 +606,7 @@ def health_page(
     missing_rows = [
         ["Activities without load", str(health.activities_without_load)],
         ["Runs without pace zones", str(health.runs_without_pace_zones)],
+        ["Runs without HR zones", str(health.runs_without_hr_zones)],
         ["Runs without average HR", str(health.runs_without_hr)],
         ["Runs without distance", str(health.runs_without_distance)],
     ]
@@ -620,19 +622,20 @@ def health_page(
         coverage_html = card(
             "Data coverage",
             table(
-                ["Year", "Activities", "Weather"],
+                ["Year", "Activities", "Weather", "Max HR"],
                 [
                     [
                         str(row.year),
                         str(row.activities),
                         f"{row.weather} ({row.weather_share:.0%})",
+                        f"{row.max_hr} ({row.max_hr_share:.0%})",
                     ]
                     for row in coverage
                 ],
-                numeric=(1, 2,),
+                numeric=(1, 2, 3,),
             )
-            + '<p class="muted">Activities with stored weather, by year. '
-            "Max HR joins the table once the model exposes it.</p>",
+            + '<p class="muted">Activities with stored weather or a session '
+            "max HR, by year.</p>",
         )
 
     body = (

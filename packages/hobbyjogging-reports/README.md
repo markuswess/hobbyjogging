@@ -143,9 +143,9 @@ Pages:
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, the item's activity or candidate activities as links, reported
   date), the activities hidden by review, missing-data counts, and a per-year
-  data-coverage table (activities and how many carry stored weather; max HR
-  can join it, item 1). Review candidates outside the recent list get an
-  activity page too, so the links never dangle. The tab's counts cover **all
+  data-coverage table (activities and how many carry stored weather or a
+  session max HR). Review candidates outside the recent list get an activity
+  page too, so the links never dangle. The tab's counts cover **all
   history**, while the banner on every other page uses the short dashboard
   window.
 
@@ -199,9 +199,11 @@ It refuses to replace a non-empty directory unless it is a previous
 dashboard (marked with `.hobbyjogging-dashboard`).
 
 The data-health banner counts activities with open review items, missing
-load, missing pace zones, missing HR, and missing distance. The health page
-also lists the open review queue itself (severity, category, detail, the
-item's activity and any review candidates, date) through
+load, missing pace zones, missing HR zones, missing HR, and missing distance.
+A run without an average HR is reported by the HR check rather than the HR
+zone check, so the two counts do not double-report. The health page also
+lists the open review queue itself (severity, category, detail, the item's
+activity and any review candidates, date) through
 `DataSource.review_items(status="open")`.
 
 ## Synthetic demo database
@@ -331,9 +333,10 @@ stay compact (`1h02`).
   keeps the overall and per-category counts. Shoes without
   `target_distance_m` use an 800 km default.
 - **health** — The Data Health tab's numbers as Markdown: activity count,
-  open review items, hidden/flagged activities, missing load/zones/HR/
-  distance, the review queue (with candidate names when the item has no
-  activity) and per-year weather coverage. Covers all history, like the tab.
+  open review items, hidden/flagged activities, missing load/pace and HR
+  zones/HR/distance, the review queue (with candidate names when the item has
+  no activity) and per-year weather and max-HR coverage. Covers all history,
+  like the tab.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout

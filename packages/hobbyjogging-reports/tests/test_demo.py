@@ -215,7 +215,8 @@ class DemoGeneratorTests(unittest.TestCase):
             try:
                 runs = connection.execute(
                     """
-                    SELECT id, duration_s, distance_m, avg_hr, training_load
+                    SELECT id, duration_s, distance_m, avg_hr, max_hr,
+                           training_load
                     FROM activities
                     WHERE sport IN ('run', 'trail_run')
                     """
@@ -227,20 +228,25 @@ class DemoGeneratorTests(unittest.TestCase):
                     self.assertGreater(run["distance_m"], 0)
                     self.assertIsNotNone(run["avg_hr"])
                     self.assertIsNotNone(run["training_load"])
+                    # A session max sits above the average and below the
+                    # threshold series' athlete maximum.
+                    self.assertGreaterEqual(run["max_hr"], run["avg_hr"])
+                    self.assertLessEqual(run["max_hr"], 192)
 
-                    zone_total = connection.execute(
-                        """
-                        SELECT COALESCE(SUM(seconds), 0)
-                        FROM activity_zone_times
-                        WHERE activity_id = ? AND kind = 'pace'
-                        """,
-                        (run["id"],),
-                    ).fetchone()[0]
-                    self.assertAlmostEqual(
-                        run["duration_s"],
-                        zone_total,
-                        delta=1.0,
-                    )
+                    for kind in ("pace", "hr"):
+                        zone_total = connection.execute(
+                            """
+                            SELECT COALESCE(SUM(seconds), 0)
+                            FROM activity_zone_times
+                            WHERE activity_id = ? AND kind = ?
+                            """,
+                            (run["id"], kind),
+                        ).fetchone()[0]
+                        self.assertAlmostEqual(
+                            run["duration_s"],
+                            zone_total,
+                            delta=1.0,
+                        )
             finally:
                 connection.close()
 
@@ -689,7 +695,12 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Lab session ground rules",
                     "bench rules only",
                 ),
-                "health.html": ("Data Health", "Open review items"),
+                "health.html": (
+                    "Data Health",
+                    "Open review items",
+                    "Max HR",
+                    "Runs without HR zones",
+                ),
             }
 
             for name, required in markers.items():

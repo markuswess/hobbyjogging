@@ -18,6 +18,7 @@ class DataHealth:
     review_hidden: int
     review_flagged: list[Activity]
     runs_without_pace_zones: int
+    runs_without_hr_zones: int
     runs_without_distance: int
     runs_without_hr: int
     activities_without_load: int
@@ -26,6 +27,7 @@ class DataHealth:
     def missing_total(self) -> int:
         return (
             self.runs_without_pace_zones
+            + self.runs_without_hr_zones
             + self.runs_without_distance
             + self.runs_without_hr
             + self.activities_without_load
@@ -62,6 +64,12 @@ def collect_health(
         review_flagged=review_flagged,
         runs_without_pace_zones=sum(
             1 for activity in runs if not activity.pace_zone_times
+        ),
+        # A run without HR has no HR split to miss; the HR check reports it.
+        runs_without_hr_zones=sum(
+            1
+            for activity in runs
+            if activity.avg_hr is not None and not activity.hr_zone_times
         ),
         runs_without_distance=sum(
             1 for activity in runs if not activity.distance_m
@@ -102,6 +110,10 @@ def banner(
     if health.runs_without_pace_zones:
         missing.append(
             f"{health.runs_without_pace_zones} runs without pace zones"
+        )
+    if health.runs_without_hr_zones:
+        missing.append(
+            f"{health.runs_without_hr_zones} runs without HR zones"
         )
     if health.activities_without_load:
         missing.append(

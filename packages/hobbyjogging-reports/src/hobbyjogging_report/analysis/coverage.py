@@ -10,15 +10,20 @@ from hobbyjogging_core.model import Activity
 
 @dataclass(frozen=True)
 class YearCoverage:
-    """Activities and how many of them carry weather, for one year."""
+    """Activities and how many carry weather or a session max HR."""
 
     year: int
     activities: int
     weather: int
+    max_hr: int
 
     @property
     def weather_share(self) -> float:
         return self.weather / self.activities if self.activities else 0.0
+
+    @property
+    def max_hr_share(self) -> float:
+        return self.max_hr / self.activities if self.activities else 0.0
 
 
 def yearly_coverage(
@@ -29,18 +34,27 @@ def yearly_coverage(
 
     ``weather_ids`` is the set of activities with a stored weather row; the
     caller owns the lookup, because only it knows whether an extra query is
-    affordable.
+    affordable. Max HR is stored on the activity itself, so it is counted
+    here.
     """
     totals: dict[int, list[int]] = {}
 
     for activity in activities:
-        row = totals.setdefault(activity.date.year, [0, 0])
+        row = totals.setdefault(activity.date.year, [0, 0, 0])
         row[0] += 1
 
         if activity.id in weather_ids:
             row[1] += 1
 
+        if activity.max_hr is not None:
+            row[2] += 1
+
     return [
-        YearCoverage(year=year, activities=row[0], weather=row[1])
+        YearCoverage(
+            year=year,
+            activities=row[0],
+            weather=row[1],
+            max_hr=row[2],
+        )
         for year, row in sorted(totals.items(), reverse=True)
     ]
