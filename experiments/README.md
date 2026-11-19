@@ -101,11 +101,17 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   runs change above 0.1 vs 98% for Runalyze, mean |Δ| 0.11 vs 3.50. A 90-day
   mean of the estimate tracks Garmin at r=+0.83, RMSE 1.44 (42d r=+0.80,
   RMSE 1.51). The HR-reserve variant overestimates (~73.5) and is rejected.
+  Against Daniels race VDOT on 19 road races since 2024: race VDOT mean 61.5 /
+  median 61.8; Garmin 62.5 / 62.2; Runalyze 66.8 / 66.3; the nearest-run
+  estimate 61.5. VDOT − Garmin is −1.0 / −1.1, VDOT − Runalyze −5.3 / −4.9,
+  VDOT − estimate −0.2 / −0.1. The estimate is therefore in line with race
+  fitness overall and much closer than Runalyze, though Garmin and the estimate
+  run 2–3 units high on the sharp 2026 10k efforts.
   Handoff: candidate for a reports metric/card using the HR/HRmax formula and a
   42–90 day mean; it needs a max-HR source and the steady-run guard. Caveats:
   approximate ACSM economy, Garmin’s own smoothing, no streams, and the
   2026 level gap (estimate 61.7 vs Garmin 63.5). Evidence:
-  `experiments/vo2max_estimates.py`.
+  `experiments/vo2max_estimates.py`; plot `vo2max-race-validation.png`.
 
 - **Efficiency line shape and confounders** — promoted 2026-11-17. The
   current line through resting HR beats free linear, quadratic, log and

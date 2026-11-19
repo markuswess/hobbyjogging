@@ -29,6 +29,7 @@ Comparisons
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from datetime import date, timedelta
 from statistics import mean, median
@@ -218,6 +219,168 @@ def change_stats(rows: list[dict], key: str) -> dict[str, float] | None:
     }
 
 
+def race_vdot(distance_m: float, time_s: float) -> float | None:
+    if distance_m <= 0 or time_s <= 0:
+        return None
+    velocity = distance_m / (time_s / 60.0)
+    oxygen = -4.60 + 0.182258 * velocity + 0.000104 * velocity ** 2
+    minutes = time_s / 60.0
+    fraction = (
+        0.8
+        + 0.1894393 * math.exp(-0.012778 * minutes)
+        + 0.2989558 * math.exp(-0.1932605 * minutes)
+    )
+    return oxygen / fraction if fraction else None
+
+
+def race_validation(source, steady: list[dict]) -> None:
+    activities = {
+        activity.id: activity
+        for activity in source.activities(date(2000, 1, 1), date.today())
+    }
+    global_estimate = mean(
+        row["estimate_hr"]
+        for row in steady
+        if row["estimate_hr"] is not None
+    )
+    rows = []
+
+    for result in source.race_results():
+        activity = activities.get(result.activity_id)
+        if activity is None or activity.type != "run":
+            continue
+        if activity.date < date(2024, 1, 1):
+            continue
+        if not result.official_distance_m or not result.official_time_s:
+            continue
+
+        km = result.official_distance_m / 1000.0
+        gain = activity.elevation_gain_m
+        gain_per_km = gain / km if gain is not None and km else None
+        if km > 50 or gain_per_km is not None and gain_per_km > 20:
+            continue
+        name = result.name.lower()
+        if "relay" in name or "staffel" in name:
+            continue
+
+        nearest = [
+            row["estimate_hr"]
+            for row in steady
+            if row["estimate_hr"] is not None
+            and abs((row["date"] - activity.date).days) <= 14
+        ]
+        estimate = mean(nearest) if nearest else global_estimate
+        vdot = race_vdot(result.official_distance_m, result.official_time_s)
+        if vdot is None:
+            continue
+
+        rows.append(
+            {
+                "date": activity.date,
+                "name": result.name or activity.name,
+                "km": km,
+                "vdot": vdot,
+                "garmin": activity.vo2max_garmin,
+                "runalyze": activity.vo2max_runalyze,
+                "estimate": estimate,
+            }
+        )
+
+    if len(rows) < 6:
+        print("not enough recent road races for validation")
+        return
+
+    print("\nDaniels VDOT vs the VO2max series (recent road races):")
+    table(
+        [
+            (
+                row["date"].isoformat(),
+                row["name"][:28],
+                f"{row['km']:.2f}",
+                f"{row['vdot']:.1f}",
+                f"{row['garmin']:.1f}"
+                if row["garmin"] is not None
+                else "-",
+                f"{row['runalyze']:.1f}"
+                if row["runalyze"] is not None
+                else "-",
+                f"{row['estimate']:.1f}",
+            )
+            for row in rows
+        ],
+        headers=["date", "race", "km", "VDOT", "Garmin", "Runalyze", "estimate"],
+    )
+
+    def difference(key: str) -> str:
+        values = [
+            row["vdot"] - row[key]
+            for row in rows
+            if row[key] is not None
+        ]
+        if not values:
+            return "-"
+        return f"{mean(values):+.2f} / {median(values):+.2f}"
+
+    table(
+        [
+            ("VDOT mean / median", f"{mean(row['vdot'] for row in rows):.2f} / {median(row['vdot'] for row in rows):.2f}"),
+            ("VDOT - Garmin", difference("garmin")),
+            ("VDOT - Runalyze", difference("runalyze")),
+            ("VDOT - estimate", difference("estimate")),
+        ],
+        headers=["comparison", "mean / median"],
+    )
+
+    figure = go.Figure()
+    garmin_rows = [row for row in rows if row["garmin"] is not None]
+    figure.add_trace(
+        go.Scatter(
+            x=[row["vdot"] for row in garmin_rows],
+            y=[row["garmin"] for row in garmin_rows],
+            mode="markers",
+            name="Garmin",
+            marker={"size": 7, "color": "#4c78a8"},
+        )
+    )
+    runalyze_rows = [row for row in rows if row["runalyze"] is not None]
+    figure.add_trace(
+        go.Scatter(
+            x=[row["vdot"] for row in runalyze_rows],
+            y=[row["runalyze"] for row in runalyze_rows],
+            mode="markers",
+            name="Runalyze",
+            marker={"size": 6, "color": "#999999"},
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=[row["vdot"] for row in rows],
+            y=[row["estimate"] for row in rows],
+            mode="markers",
+            name="session estimate",
+            marker={"size": 7, "color": "#54a24b", "symbol": "diamond"},
+        )
+    )
+    low = 55
+    high = 70
+    figure.add_trace(
+        go.Scatter(
+            x=[low, high],
+            y=[low, high],
+            mode="lines",
+            line={"color": "#333333", "width": 1, "dash": "dot"},
+            name="y = x",
+        )
+    )
+    figure.update_xaxes(title_text="Daniels race VDOT")
+    figure.update_yaxes(title_text="VO2max estimate")
+    figure.update_layout(
+        title="Race VDOT vs Garmin, Runalyze and the session estimate",
+        legend={"orientation": "h", "y": -0.2},
+    )
+    save(figure, "vo2max-race-validation")
+
+
 def yearly(rows: list[dict]) -> None:
     groups: dict[int, list[dict]] = defaultdict(list)
     for row in rows:
@@ -337,6 +500,7 @@ def plot_scatter(rows: list[dict]) -> None:
 def main() -> None:
     with create_source() as source:
         rows, _ = build_rows(source)
+        race_validation(source, rows)
 
     print(f"{len(rows)} steady runs with RHR and max HR")
     if len(rows) < 100:
