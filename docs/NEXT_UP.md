@@ -61,8 +61,9 @@ no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 machine — no code or SQL edits.
 
 - **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
-  checks `uv`, the DB path, schema version, FIT dir, each credential and the
-  sources file, and prints the next command.
+  checks `uv`, the DB path, schema version, FIT dir, each credential and its
+  age, pending data migrations, source staleness and the sources file, and
+  prints the next command.
 - **`sync.sh` skips an unconfigured source** instead of failing on an absent
   credential, so a missing credential is never a failed sync (item 44 covers
   the rest).
@@ -170,6 +171,8 @@ reports item; 28 is the recurring cleanup.
      framework, no background jobs; the static dashboard stays read-only and
      the phone stays read-only. The database is single-writer (WAL, 5 s busy
      timeout) and unauthenticated, so it must never be exposed beyond loopback.
+     No long write transaction, and never overlap with `sync.sh`: a lock is a
+     bug to fix, not a retry to hide.
    - **Tests**: a manual edit survives a reimport; `--clear` removes the value
      and its manual ownership; `--history` shows the prior value; `--dry-run`
      writes nothing; quality findings print; an empty interactive answer keeps
@@ -221,7 +224,9 @@ reports item; 28 is the recurring cleanup.
       that a second athlete does not share — root item 23).
 
 13. **Homelab cutover** (phase 4): DB + importer + dashboard generator + static
-    server, periodic backups, Tailscale/basic auth.
+    server, periodic backups of the database **and the FIT archive**, Tailscale
+    or basic auth. The archive is the only irreplaceable raw data (per-second
+    streams), so it is backed up beside the database, not instead of it.
 14. **Platform independence** (phase 4, dormant; ingestion unchanged). The
     goal is to stop depending on Intervals.icu as the *system of record* — not
     to stop using it as transport. The trigger is a paywall or wanting out, so
@@ -397,8 +402,9 @@ reports item; 28 is the recurring cleanup.
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
             a no-op.
       - [ ] `doctor` checks `uv`, the DB path and writability, the schema
-            version, the FIT directory, the credentials and the sources file,
-            and names what is missing.
+            version, the FIT directory, the credentials (including the Garmin
+            key's age), pending data migrations, whether a configured source
+            has gone stale, and the sources file, and names what is missing.
       - [ ] `sources.toml` alone selects the sources: Intervals and the sheet
             disabled, Runalyze `review`, Strava `create` or `ignore`.
       - [ ] `sync.sh` skips an unconfigured source instead of failing on an
@@ -990,6 +996,70 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: four suites green, the demo dashboard renders
       identically, the public import paths still resolve, and a deliberately
       oversized new file fails CI.
+
+46. **Snapshot before a write task** (maintenance; small, before the phase-3
+    mass edits). `--dry-run` protects the decision, but a real run — a
+    backfill, the bulk duplicate cleanup (item 42) or a `--force` rerun — has
+    no automatic restore point; the backup is a manual `sqlite3 .backup`
+    habit.
+    - **Runner**: before any non-dry run, `VACUUM INTO` a timestamped snapshot
+      beside the database (`<db>.bak-YYYYmmddTHHMMSSZ`), keep the last five,
+      and print the path. A dry run writes nothing, not even a snapshot.
+    - **Not a backup replacement**: the snapshot protects the minutes around a
+      task; the periodic backup still protects the machine. A following
+      `verify_canonical` run is the check for a task that touched canonical
+      fields.
+    - **Acceptance**: a real run creates exactly one snapshot, a dry run none,
+      retention keeps five, and the printed path opens as a valid database.
+
+47. **Date and time-zone integrity** (core + import + reports; small, any
+    time). `tz_offset_min` is stored but unused, and nothing checks that
+    `started_at_utc + tz_offset_min` lands on `local_date`. A bad offset or a
+    midnight/DST edge moves a session to the wrong day, and streaks, illness
+    periods and race matches all read dates.
+    - **Rule**: a quality check against the invariant plus a plausible range
+      (−12..+14 h); it opens a `quality` item instead of rewriting, because the
+      date stays owner-tracked.
+    - **Import**: FIT, Intervals and the sheet offsets feed the same check;
+      the Strava export's account timezone stays a per-import choice, and the
+      chosen reading is already recorded.
+    - **Reports**: use the offset wherever a day boundary matters (item 21) —
+      no new column.
+    - **Acceptance**: a synthetic midnight/DST case and a bad offset each
+      produce one item, a correct activity produces none, and a re-run is a
+      no-op.
+
+48. **Field provenance in the session report** (reports; small, any time).
+    `activity_field_sources` records who owns each value and what it wrote, but
+    the session page shows only review status. The obvious question — "why is
+    distance 42.45 and not 42.19?" — needs SQL today.
+    - **Block**: per owned field (distance, duration, avg/max HR, elevation,
+      sport, load, VO2max, device), the owner source, its value, and whether a
+      later source agrees within tolerance; a conflict links to its review
+      item.
+    - **Placement**: after the metrics block, collapsed on the dashboard (the
+      same native toggle as the long tables); the CLI prints the same lines,
+      per the parity rule.
+    - **No schema change**; it reads the existing provenance rows.
+    - **Acceptance**: a disputed activity names the winning source and the
+      losing value, a single-source activity stays short, and the CLI and the
+      dashboard print the same list.
+
+## Parked ideas
+
+Not queued and not scheduled; recorded so they are not re-invented. The lab
+owns experimentation, and items 13/14/25 own the eventual home.
+
+- **What-if load sandbox** — add or remove a hypothetical session and read the
+  42/182-day load impact from the existing load model (lab, no schema).
+- **Race execution scorecard** — pacing vs plan, split consistency, HR drift
+  and heat for a race day, from data already stored (lab first, then a card if
+  it earns one).
+- **Corrections export** — a "to fix in Intervals/Runalyze" list built from
+  conflicts and their causes, applied by hand; closes the loop without
+  write-back (phase 4, with item 14).
+- **"As-of" reports** — render the log as it looked at a past date; possible
+  because inputs are preserved, expensive, so phase 4 at the earliest.
 
 ## Notes
 
