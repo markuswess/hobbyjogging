@@ -797,6 +797,36 @@ stream half of 38 are dormant or recurring as their entries say.
       primary-source rank, and an import-order key in `sources.toml`.
     - **Sequence**: done; item 23's second-athlete test is the acceptance test.
 
+41. **Device identity for provider-derived devices** (core + import +
+    maintenance; phase 2). The reports handoff
+    (`packages/hobbyjogging-reports/NEXT_UP.md`, "Handed off: device
+    identity") is the evidence: two provider rows duplicate FIT devices, app
+    names become devices, and the provider casing flips on refresh. The rules
+    are in ARCHITECTURE ("Device identity"); this item carries the import fix
+    and the backfill.
+    - **Import package**: skip app names (`Runalyze`, `Garmin Connect`,
+      `Strava`, `intervals.icu`) in `intervals._device_id`; require a serial in
+      `fit_import.device_id_from` (a serial-less FIT upload is not a device);
+      normalise the provider name to title case and never overwrite an
+      existing `devices.name`; map a provider name onto the unique FIT device
+      (same manufacturer and product) instead of creating an `intervals:` row.
+      Ambiguous models keep the provider id.
+    - **Backfill `device_identity_v1`** (maintenance): reassign the two
+      `intervals:garmin-enduro` activities — Ramsau am Dachstein Surfing
+      (`31bdd2f2-949a-5971-874e-c6a2b4a810a7`, 2024-08-04) and Vienna Cycling
+      (`37a1b0a9-4316-52f7-b725-1bf55883ff3b`, 2025-09-04) — to
+      `fit:garmin:enduro:3386253273`; set `device_id = NULL` on Höchst Other
+      (`2e7411a6-2be1-581d-b15a-7608948d4129`, 2025-07-08,
+      `intervals:runalyze`). The two 2019 "Garmin Connect" activities stay
+      NULL. Soft-exclude the two now-unused device rows
+      (`intervals:garmin-enduro`, `intervals:runalyze`): add
+      `devices.excluded_at` (v24) and filter it in
+      `TrainingRepository.devices()`; never hard delete.
+    - **Acceptance**: the device report shows one Enduro row, no app-name
+      device rows, and a re-import leaves the stored ids and names unchanged.
+    - **Reports**: no change; the hover id stays for a genuinely provider-only
+      device.
+
 ## Notes
 
 - Reports hide activities with open review items by default

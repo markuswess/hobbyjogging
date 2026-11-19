@@ -330,6 +330,17 @@ SQLite, forward-only migrations. Schema version 23.
   is a single nullable foreign key; the serial is what a text column could not
   give. FIT owns the field (it carries the serial) and a manual assignment
   wins.
+- **Device identity.** `device_id` stays FIT-first; a provider name fills it
+  only when the activity has no FIT source. A serial-less provider name that
+  normalises onto exactly one FIT device (same manufacturer and product, serial
+  present) claims that device; two devices of the same model are ambiguous, so
+  the provider id stays and nothing is guessed. A serial-less FIT upload is
+  not a device. App names — `Runalyze`, `Garmin Connect`, `Strava`,
+  `intervals.icu` — are never devices; the importer skips them.
+  `devices.name` is display-only and set once: the first non-empty provider
+  name, whitespace-collapsed and title-cased. A FIT device keeps its
+  product-derived label (the reports derive it) and a provider never writes its
+  name; a re-import never updates an existing name.
 - `race_results` (v16) — official race metadata, one row per activity:
   official distance and time, `officially_measured`, places and participants
   by total/gender/age class, `priority_level`, `status` (a PB counts only
