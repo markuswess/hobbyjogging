@@ -7,6 +7,7 @@ from hobbyjogging_core.model import (
     Interval,
     Lap,
     ReviewItem,
+    Route,
     WellnessDay,
 )
 from hobbyjogging_report.links import ActivityLinks
@@ -47,6 +48,39 @@ def _lap(index):
         avg_hr=150,
         max_hr=160,
     )
+
+
+class SessionDetailTests(unittest.TestCase):
+
+    def test_detail_lines_cover_elevation_hr_moving_time_and_route(self):
+        source = FakeSource([
+            activity(
+                id="a",
+                date=D1,
+                name="Hill run",
+                sub_sport="treadmill",
+                duration_s=2400,
+                moving_s=2340,
+                elapsed_s=2500,
+                distance_m=8000,
+                avg_hr=150,
+                max_hr=178,
+                elevation_gain_m=320,
+                elevation_loss_m=315,
+                device_id="dev-1",
+                routes=[Route(id="r1", name="Hill loop")],
+            )
+        ])
+
+        report = session_report("a", source)
+
+        self.assertIn("- Moving: 39:00", report)
+        self.assertIn("- Elapsed: 41:40", report)
+        self.assertIn("- Elevation: 320 m up, 315 m down", report)
+        self.assertIn("- Max HR: 178 bpm", report)
+        self.assertIn("- Sub-sport: Treadmill", report)
+        self.assertIn("- Device: dev-1", report)
+        self.assertIn("- Route: Hill loop", report)
 
 
 class SegmentTableRuleTests(unittest.TestCase):

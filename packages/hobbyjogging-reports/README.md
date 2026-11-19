@@ -346,7 +346,7 @@ stay compact (`1h02`).
   date, activity id, or `last` (the default): category, workout methods and
   targets, tags, VO2max (qualified with the sport on a non-run, because
   Garmin keeps one estimate per sport), review status and open items, totals
-  including
+  including moving and elapsed time, elevation, average and max HR,
   efficiency (m/excess beat), zones, description, the day's planned workout
   and wellness, one raw segment table (typed intervals when there is more
   than one, otherwise device laps when there is more than one), subT/LT1 work
@@ -684,10 +684,11 @@ stay actual-only.
     ./reports.sh session <activity-id>   # one exact activity
 
 The report includes the activity id and date, category, review status,
-duration/elapsed time, distance and pace, efficiency, HR/load/RPE/feel/
-intensity, tags, VO2max, equipment, pace and HR zones, a fenced description
-block, the day's planned workout and wellness, a table of every recorded
-one raw segment table, and the subT/LT1 work-rep summary when applicable.
+duration/moving/elapsed time, distance, elevation and pace, average/max HR,
+sub-sport when it is meaningful, load/RPE/feel/intensity, efficiency, tags,
+VO2max, equipment, device and route when known, pace and HR zones, a fenced
+description block, the day's planned workout and wellness, one raw segment
+table, and the subT/LT1 work-rep summary when applicable.
 The segment table shows typed intervals when there is more than one; otherwise
 it falls back to device laps when there is more than one; a single segment on
 either side is skipped because it only restates the activity. Open review

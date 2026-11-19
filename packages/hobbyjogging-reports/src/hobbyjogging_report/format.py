@@ -394,6 +394,25 @@ def _vo2max_line(activity: Activity) -> str | None:
     return "- VO2max: " + ", ".join(parts)
 
 
+def _sub_sport_label(activity: Activity) -> str:
+    """A meaningful sub-sport; road and race are already obvious."""
+    label = (activity.sub_sport or "").strip().replace("_", " ").title()
+
+    return "" if label.lower() in ("", "road", "race") else label
+
+
+def _elevation_line(activity: Activity) -> str | None:
+    """Elevation gain and loss in metres, when either is stored."""
+    parts = []
+
+    if activity.elevation_gain_m is not None:
+        parts.append(f"{activity.elevation_gain_m:.0f} m up")
+    if activity.elevation_loss_m is not None:
+        parts.append(f"{activity.elevation_loss_m:.0f} m down")
+
+    return f"- Elevation: {', '.join(parts)}" if parts else None
+
+
 def _activity_metric_lines(
     activity: Activity,
     *,
@@ -406,6 +425,13 @@ def _activity_metric_lines(
 
     if (
         detailed
+        and activity.moving_s
+        and activity.moving_s != activity.duration_s
+    ):
+        lines.append(f"- Moving: {fmt_clock(activity.moving_s)}")
+
+    if (
+        detailed
         and activity.elapsed_s
         and activity.elapsed_s != activity.duration_s
     ):
@@ -413,6 +439,11 @@ def _activity_metric_lines(
 
     if activity.distance_m:
         lines.append(f"- Distance: {activity.distance_m / 1000:.1f} km")
+
+    elevation = _elevation_line(activity)
+
+    if elevation:
+        lines.append(elevation)
 
     if activity.type in RUN_TYPES:
         lines.append(f"- Pace: {pace(activity)}")
@@ -422,6 +453,9 @@ def _activity_metric_lines(
             lines.append(f"- Avg HR: {activity.avg_hr:.0f} bpm")
         else:
             lines.append(f"- HR: {activity.avg_hr:.0f} avg")
+
+    if detailed and activity.max_hr:
+        lines.append(f"- Max HR: {activity.max_hr:.0f} bpm")
 
     efficiency = activity_efficiency(activity, resting_hr)
 
@@ -839,6 +873,15 @@ def format_session_activity(
             parts = parts[:1]
 
         lines.append(f"- Device: {' · '.join(parts) or device.id}")
+    elif activity.device_id:
+        lines.append(f"- Device: {activity.device_id}")
+
+    if activity.routes:
+        names = ", ".join(
+            route.name or route.external_ref or route.id
+            for route in activity.routes
+        )
+        lines.append(f"- Route: {names}")
 
     if links is not None:
         if links.intervals:
@@ -862,6 +905,11 @@ def format_session_activity(
 
     if category:
         lines.append(f"- Category: {category}")
+
+    sub_sport = _sub_sport_label(activity)
+
+    if sub_sport:
+        lines.append(f"- Sub-sport: {sub_sport}")
 
     if review_items is not None:
         lines.append(

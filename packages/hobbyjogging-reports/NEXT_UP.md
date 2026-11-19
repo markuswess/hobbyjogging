@@ -1,13 +1,21 @@
 # Next up: reports package
 
-Updated 2026-11-18.
+Updated 2026-11-19.
 
-Current focus: the Runalyze race pair landed; max HR and elevation still need
-core exposure, 10 is parked, 12 is behind the lab gate, 13 is the last
-CLI-parity follow-up, 14 is an open idea, and 15 is the VO2max series blocked
-on the import payload.
+Current focus: max HR and elevation are exposed and in the session report;
+10 is parked, 12 is behind the lab gate, 13 is the last CLI-parity follow-up,
+14 is an open idea, and 15 is the VO2max series blocked on the import payload.
 
 ## Done
+
+- **Session elevation and data audit.** `Activity` now exposes `max_hr`,
+  `elevation_gain_m` and `elevation_loss_m` from the existing columns, and
+  the session report adds moving time, max HR, elevation (up/down), a
+  meaningful sub-sport, route names and a device-id fallback; the compact
+  report shows elevation too. The audit leaves `tz_offset_min` out because
+  it is not on `Activity`, the weather extras because the payloads carry only
+  temperature, and the wellness extras because the one-line wellness summary
+  stays compact (item 3 owns the readiness/weight views).
 
 - **Runalyze official race pair.** `race_results()` now takes the official
   results keyed by activity id and ranks on the official distance/time when
@@ -417,11 +425,9 @@ dashboard polish pass is finished. The efficiency floor, the planned-event
 page, the streaks report, the collapsible lists, the season/illness bands and
 the threshold trend landed here.
 
-1. **Max HR in the reports.** Weather landed: the session report, both
-   pace/HR scatters and the health coverage table use it. Max HR is stored
-   (schema v12) but the repository's activity query and the `Activity` model
-   drop it, so that exposure comes first; then the session line, the HR-zone
-   checks, and the Max HR column beside weather in the coverage table.
+1. **Max HR in the reports.** The model/repository exposure and the session
+   line landed. Remaining: the HR-zone checks and the Max HR column beside
+   weather in the coverage table.
 
 2. **Route grouping.** Group activities by route so pace, HR and efficiency
    compare like-for-like, with a route page listing its best efforts. The
@@ -440,13 +446,11 @@ the threshold trend landed here.
    The threshold trend (LTHR/max-HR/threshold-pace chart, subT comparison and
    official race paces) has landed.
 
-5. **Elevation in the reports.** The columns landed (schema v12) but the
-   repository's activity query and the `Activity` model drop
-   `elevation_gain_m`/`elevation_loss_m`, so that exposure comes first. Then:
-   climb per km in the session report and the activities list, a coarse
-   grade-adjusted pace from per-lap gain (the FIT payload has no altitude
-   stream, so this is lap-level), trail suggestions from the ≥40 m/km
-   evidence, and route difficulty on the dashboard.
+5. **Elevation in the reports.** The model/repository exposure and the
+   session/compact lines landed. Remaining: climb per km in the activities
+   list, a coarse grade-adjusted pace from per-lap gain (the FIT payload has
+   no altitude stream, so this is lap-level), trail suggestions from the
+   ≥40 m/km evidence, and route difficulty on the dashboard.
 
 6. **Strava in the session report.** A `Strava: …` line with the title, the
    description as an annotation, and a link to the activity. Depends on the

@@ -43,8 +43,9 @@ class TrainingRepository:
         rows = self.connection.execute(
             """
             SELECT
-                id, local_date, started_at_utc, sport, name, description,
-                duration_s, elapsed_s, distance_m, avg_hr, training_load,
+                id, local_date, started_at_utc, sport, sub_sport, name,
+                description, duration_s, elapsed_s, distance_m, avg_hr, max_hr,
+                elevation_gain_m, elevation_loss_m, training_load,
                 rpe, feel, intensity, vo2max_garmin, vo2max_runalyze,
                 moving_s, device_id
             FROM activities
@@ -72,6 +73,7 @@ class TrainingRepository:
                 date=date.fromisoformat(row["local_date"]),
                 started_at_utc=row["started_at_utc"] or "",
                 type=row["sport"],
+                sub_sport=row["sub_sport"] or "",
                 name=row["name"],
                 description=row["description"],
                 duration_s=row["duration_s"],
@@ -79,6 +81,9 @@ class TrainingRepository:
                 moving_s=row["moving_s"],
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
+                max_hr=row["max_hr"],
+                elevation_gain_m=row["elevation_gain_m"],
+                elevation_loss_m=row["elevation_loss_m"],
                 training_load=row["training_load"],
                 rpe=row["rpe"],
                 feel=row["feel"],

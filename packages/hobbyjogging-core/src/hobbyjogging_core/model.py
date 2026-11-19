@@ -77,6 +77,7 @@ class Activity:
     date: date
     started_at_utc: str = ""  # ISO timestamp, used for same-day ordering
     type: str = ""  # canonical: "run", "trail_run", "ride", ...
+    sub_sport: str = ""
     name: str = ""
     description: str = ""
     duration_s: float = 0
@@ -84,6 +85,9 @@ class Activity:
     moving_s: float | None = None
     distance_m: float = 0
     avg_hr: float | None = None
+    max_hr: float | None = None
+    elevation_gain_m: float | None = None
+    elevation_loss_m: float | None = None
     training_load: float | None = None
     rpe: float | None = None
     feel: int | None = None  # 1 = strong, 2 = good, 3 = normal, 4 = poor, 5 = weak
