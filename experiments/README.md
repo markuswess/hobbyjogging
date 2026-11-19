@@ -120,6 +120,24 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   `experiments/vo2max_estimates.py`; plots `vo2max-estimates.png`,
   `vo2max-estimate-scatter.png`, `vo2max-race-validation.png`.
 
+  **Handoff to reports (primary metric):**
+  - Implement `effective_vo2max` over **all runs**, with steady 40–75 as a
+    secondary series: `VO2 = 3.5 + 0.2·speed_m_min` / `(HR/max_HR)`; max HR
+    from the running `athlete_thresholds` snapshot; fraction guard 0.5–0.95.
+  - Daily mean, carry forward, **42- and 182-day EWMAs**, warm-up 910 days.
+  - Overview: replace the Garmin VO2max line with the derived 42/182 lines and
+    add the latest 42-day stat.
+  - Performance tab: methods card with all-runs and steady 42/182, Garmin by
+    device (FR645 points, Enduro line), Runalyze stored 0.93-corrected plus its
+    42-day mean, and race VDOT stars.
+  - Replace the existing `vo2max` chart command with the methods chart; keep
+    the command name.
+  - Label devices by product; ignore unused placeholder device rows. No
+    schema change.
+  - Tests: formula sanity, EWMA/warm-up, missing max HR, all-vs-steady, device
+    grouping, Runalyze correction label, race overlay, dashboard build.
+  - `docs/METRICS.md` card is root/planning work; this note is the evidence.
+
 - **Efficiency line shape and confounders** — promoted 2026-11-17. The
   current line through resting HR beats free linear, quadratic, log and
   piecewise forms in time-CV; the offset-quadratic term is not supported
