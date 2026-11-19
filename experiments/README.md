@@ -80,7 +80,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Riegel shape vs level | Can a two-timescale fit beat the free fit for current-form predictions? (37 official results; still thin for a two-timescale fit) | candidate | — | 2026-11-19 |
 | Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (37 official results; startable, still noisy) | candidate | — | 2026-11-19 |
 | Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague; needs event links: only 2) | blocked | — | 2026-11-19 |
-| Garmin VO2max jumps | Why do the readings jump — terrain or device history? (sport-specific values are handled; canonical elevation and max HR are available) | candidate | `vo2max_jumps.py` | 2026-11-16 |
+| Garmin VO2max jumps | Why do the readings jump — terrain or device history? (Enduro drops explained by terrain; transient) | parked | `enduro_vo2max_drops.py` | 2026-11-19 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? (superseded: elevation is canonical since v12) | retired | — | 2026-11-16 |
 | Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (2022+ gear is now linked: 26 shoes, 3,365 links) | candidate | — | 2026-11-19 |
@@ -218,8 +218,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
-- **Race-derived fitness bundle** — tested on 65 race logs (37 result rows +
-  28 sheet/race-log rows), with elevation classification. After excluding 3
+- **Garmin VO2max jumps (Enduro era)** — 1,341 Enduro running readings,
+  8 drops ≥1. Drop sessions have median gain/loss 30.9/30.6 m/km versus
+  5.9/5.5 for other runs; trail share 50% vs 1%, long-run 38% vs 8%. Terrain
+  drop rates: flat 0.1%, hilly 9%, downhill 13%, uphill 20%; 7 of 8 revert
+  within three readings. These are transient terrain/hard-session effects,
+  not a new fitness level; per-run Garmin should not be read as fitness.
+  No data change recommended; a report caveat or the smoothed line is enough.
+  Evidence: `experiments/enduro_vo2max_drops.py`; the broad audit remains in
+  `experiments/vo2max_jumps.py`.
+- **Race-derived fitness bundle** — tested on 65 race logs (37 result rows +  28 sheet/race-log rows), with elevation classification. After excluding 3
   trail, 1 ultra, 1 relay and 8 hill races, 52 remain: CS 3.85 m/s
   (4:20/km), D′ 1,635 m, Riegel b 1.099, both R² 0.99; leave-one-out median
   errors 1.2 min (3.2%) for Riegel and 2.2 min (5.6%) for CS. Result-row-only
