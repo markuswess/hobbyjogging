@@ -32,10 +32,19 @@ completion criteria, not a second task list.
 | **2. Deepen the data** | more data and backfills (session averages, historical refurbishment, routes, extra metrics), manual editing and a rebuildable canonical layer, per-athlete import policy, stronger analysis and lab work, and a second-athlete portability test | the canonical record is as complete as the sources allow, the lab has proved the metrics worth keeping, and a second athlete can run the pipeline without code changes |
 | **3. Beyond the database** | web editing interface, homelab migration, platform independence, LLM coaching, detailed per-second streams, vague ideas | deliberately dormant until phases 1–2 are complete |
 
-Phase 1 is current: Runalyze and the Strava CSV import are landed, the
-reports/dashboard are in daily use, and the optional Strava API is the only
-source left. Phase 2 starts once phase 1 is complete; the data-depth and
-refurbishment items are already queued. Phase 3 is deliberately dormant.
+**Phase 1 is complete (2026-11-19).** All sources are in — the FIT archive,
+Intervals.icu, the Garmin Personal API fetch, Runalyze (activities, gear, race
+results, VO2max) and the Strava CSV — and the reports, dashboard and race pages
+answer the daily questions. The optional Strava API is deferred to phase 3, so
+it does not hold the milestone open, and the last reports follow-up (the
+Runalyze VO2max series, reports item 15) is ordinary phase-2 work. The open
+`ambiguous_match` rows are user triage, not a pipeline gap.
+
+**Phase 2 is current.** Its order is the phase-2 queue at the top of
+[NEXT_UP.md](NEXT_UP.md): the manual-overlay export and fresh-database rebuild
+proof (item 34), then the second-athlete acceptance test (item 23), then
+activity editing (item 1), then session averages (item 38), with historical
+refurbishment (item 37) alongside. Phase 3 is deliberately dormant.
 
 ## Where the data comes from
 
@@ -230,19 +239,22 @@ Analysis, views, and rendering.
 
 - `sources/` — the `DataSource` implementation: the canonical database. Raw
   payloads stay in `source_records`, so reports need no live API client.
-- `analysis/` (`common`, `averages`, `load`, `zones`, `subt`, `planned`,
-  `recovery`), `series.py` — pure functions over canonical activities,
-  intervals, and wellness; derived metrics such as load, zone distribution,
-  pace/HR trends, recovery.
+- `analysis/` (`averages`, `baseline`, `common`, `compare`, `coverage`,
+  `devices`, `efficiency`, `equipment`, `load`, `pace_hr`, `planned`, `races`,
+  `recovery`, `rpe`, `streaks`, `subt`, `subt_ewma`, `thresholds`, `vo2max`,
+  `zones`), `series.py` — pure functions over canonical activities, intervals,
+  and wellness; derived metrics such as load, zone distribution, efficiency,
+  race predictions, and recovery.
 - `model.py` — typed view models and analysis result types.
 - `classify.py` — category aggregation for display (`CategoryStat`,
   `category_breakdown`). The heuristic itself lives in
   `hobbyjogging_core.classify`.
-- `daily.py`, `period_report.py`, `subt_report.py`, `overview.py`,
-  `recovery_report.py` — one Markdown report per file; `report_commands.py`
-  dispatches them.
-- `sessions.py`, `recent.py`, `debug.py` — session detail, shared lookback
-  search, and a dump of the stored raw payloads.
+- `daily.py`, `period_report.py`, `subt_report.py`, `subt_ewma_report.py`,
+  `overview.py`, `recovery_report.py`, `race_report.py`, `sickness_report.py`,
+  `streak_report.py`, `equipment_report.py`, `health_report.py` — one Markdown
+  report per file; `report_commands.py` dispatches them.
+- `sessions.py`, `recent.py`, `review.py`, `debug.py` — session detail, shared
+  lookback search, the review view, and a dump of the stored raw payloads.
 - `activity_list.py` — the activities table (selection, columns, rendering).
 - `summary.py` — period totals, quality-session lists, recovery averages.
 - `charts.py`, `chart_commands.py` — plotly figures over prepared series.
@@ -396,9 +408,12 @@ Text fields have fixed roles:
 - `description` — the training notes: how the session went, the feeling, the
   intervals and paces. Intervals and the historical sheet fill it, Runalyze may
   only fill a blank, and a manual edit outranks both.
-- `activity_social` (planned) — the social text: the pun title and its
+- `activity_social` (v22) — the social text: the pun title and its
   continuation, one row per source (`source` is data, so any social import can
-  map into it). It never enters `description` and never reaches `classify()`.
+  map into it). A source refreshes only its own row and a manual row survives
+  imports. The default target keeps it social; a per-source target
+  (`sources.toml`) may promote a title to `name` or a description to
+  `description`, and a promoted title feeds `classify()`.
 
 There is one training-notes text per activity, not a list; a notes table is
 added only if per-note timestamps ever become a need.
@@ -445,7 +460,7 @@ Two tracks, one rule: never edit something that has already run.
 
 **Schema migrations** are ordered, immutable SQL in
 `hobbyjogging_core.db.migrations`, tracked by `PRAGMA user_version` (currently
-10). A schema change adds a new version; `open_database()` applies pending
+23). A schema change adds a new version; `open_database()` applies pending
 ones, so there is no separate migrate step.
 
 **Data tasks** live in `hobbyjogging-maintenance` and are registered by id:
@@ -571,36 +586,44 @@ is implemented in `hobbyjogging-import` as `garmin fetch`.
 
 ### Runalyze enrichment
 
-Runalyze is an enrichment source, not an activity source. The API provides
-comments, tags, gear, and the Runalyze VO2max estimate:
+Runalyze is an enrichment source by default: comments, tags, gear and the
+Runalyze VO2max estimate. It yields activity rows, so the per-source policy
+decides what an unmatched row does (`create | review | ignore`); this athlete
+keeps it at `review`, so an unmatched row becomes an `ambiguous_match` item
+instead of a duplicate.
 
 - Rows are matched to existing activities temporally (Runalyze exposes no
   Garmin activity id) and stored as `source_records` with
-  `external_id = runalyze:<id>`; unmatched rows create a canonical activity
-  (decision: keep the history complete).
+  `external_id = runalyze:<id>`; unmatched rows follow the create policy.
 - Comments fill `activities.description` only when it is blank, idempotently
   and without taking ownership of the field.
-- Tags land in `activity_tags`; gear is upserted into `equipment` and linked via
-  `activity_equipment` (first shoe/bike item primary, rest secondary). The
-  equipment payload has a name and category but no brand/model, so identity
-  uses the name and co-occurrence with the sheet shoes.
+- Tags land in `activity_tags`; a new gear record creates an `equipment` row and
+  links activities via `activity_equipment` (first shoe/bike item primary, rest
+  secondary). A record that matches an existing item only adds a source link
+  and never rewrites its name, brand, model or dates. The equipment payload has
+  a name and category but no brand/model, so identity uses the name
+  (colour-stripped, acquisition date as the tiebreak) and co-occurrence with
+  the sheet shoes.
 - `activities.vo2max_runalyze` stores the effective estimate; `0` /
   `use_vo2max=false` means missing. Runalyze never writes `vo2max_garmin`; the
   raw payload keeps the variants.
 - Race results land in `race_results` and the linked event in
   `event_activity_links`; weight and illness ranges fill `wellness_days` and
-  `training_periods`. Phases 1–2 (read-only inventory, comments and tags)
-  landed; gear identity is next.
+  `training_periods`. Phases 1–5 (inventory, comments/tags, gear, race
+  results, `vo2max_runalyze`) are landed and applied; the reports phase is
+  reports item 15.
 
 ## Review workflow
 
-Review categories: `ambiguous_match`, `field_conflict`, `quality`,
-`duplicate`, `manual_flag`, `workout_classification`, `ambiguous_equipment`.
+Review categories: `ambiguous_match`, `ambiguous_race`,
+`ambiguous_equipment`, `create_activity`, `field_conflict`, `quality`,
+`duplicate`, `manual_flag`, `workout_classification`.
 
-`workout_classification` items are `info`-level: the activity's data is fine,
-it just has no decided workout method/target. `ambiguous_equipment` items are
-also `info`-level: the activity is fine, only the gear identity is uncertain.
-Neither hides an activity from reports (unlike the other categories). Triage
+`workout_classification` and `ambiguous_equipment` items are `info`-level: the
+activity's data is fine, it just has no decided workout method/target or an
+uncertain gear identity. Neither hides an activity from reports (unlike the
+other categories). `create_activity` holds a summary row the policy chose to
+review rather than create. Triage
 `(k)` shows the classifier and sheet proposals and writes the chosen sets as
 manual values (`1` classifier, `2` sheet, `m` merge, `n` leave unclassified).
 A resolved decision is not reopened; changed proposals supersede the old item.
@@ -690,19 +713,31 @@ dashboard: the view models make it cheap to add later.
 
 ## Status (November 2026)
 
-- Canonical pipeline, review workflow, manual editing, and exclusion: done.
-- Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
-  and the Strava CSV import are implemented; schema v22 adds per-source social
-  text, v23 the manual input layer, and earlier versions add set-based workout
+- **Phase 1 complete, phase 2 current.** All sources are imported and applied
+  on the real DB; the optional Strava API stays deferred.
+- Canonical pipeline, review workflow, manual editing and exclusion: done.
+  Schema v23 is the manual input layer (`activity_manual_fields`); v22 added
+  per-source social text, and earlier versions added set-based workout
   methods/targets and the maintenance bookkeeping tables.
+- Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
+  (phases 1–5: inventory, comments/tags, gear, race results, VO2max) and the
+  Strava CSV import.
+- The canonical row is a checked projection: `verify_canonical` reports 0
+  drift, 0 dangling and 0 unmapped over 68,001 owned fields, and
+  `recompute_canonical` is a no-op on the real DB.
+- Import policy is per athlete: `sources.toml` plus `.env`; this athlete keeps
+  Runalyze at `review`, Strava at `ignore` and the sheet disabled.
 - Schema evolution is two-track: immutable SQL migrations plus registered
   backfills/recomputes in `hobbyjogging-maintenance`.
-- Reports: Markdown reports, charts, the activities table, the year/month
-  comparison, and the static dashboard; report code is split per report.
-- The review queue holds the open Runalyze ambiguous-match rows; reports still
-  hide activities with open items by default (`--include-review` shows them).
-- Phase 1 remaining: the optional Strava API and the reports/dashboard
-  follow-ups; phases 2–3 are defined above.
+- Reports: Markdown reports, charts, the activities table, the year/month and
+  period comparisons, the race and event pages, and the static dashboard;
+  report code is split per report, and every dashboard card has a CLI
+  equivalent.
+- The review queue holds the 19 Runalyze `ambiguous_match` rows; that is user
+  triage, not a pipeline gap. Reports still hide activities with open items by
+  default (`--include-review` shows them).
+- Phase 2 order and the second-athlete acceptance checklist live in
+  [NEXT_UP.md](NEXT_UP.md).
 
 ## Deployment
 
@@ -738,9 +773,9 @@ dashboard: the view models make it cheap to add later.
 
 ## Working conventions
 
-- Package-scoped changes happen in package sessions; cross-package contracts,
-  schema, and architecture happen at the repo root. Details in
-  [AGENTS.md](AGENTS.md).
+- Package-scoped changes happen in package sessions (core is handled at the
+  root); cross-package contracts, schema, and architecture happen at the repo
+  root. Details in [AGENTS.md](AGENTS.md).
 - Tests are `unittest` (pytest is not installed) and run per package from its
   tests directory. All four suites must stay green for cross-package changes.
 - Commits follow session scope; the user pushes manually.

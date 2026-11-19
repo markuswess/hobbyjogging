@@ -1,262 +1,44 @@
 # Status and next steps
 
-Updated 2026-11-18.
+Updated 2026-11-19.
 
 ## Done
 
-- **Illness and note periods keep their source ranges.** `training_periods_current`
-  now reads Intervals' `end_date_local` (inclusive) and falls back to the start
-  only when it is absent; a range never ends before it starts. Applied: all 25
-  illness and 4 note periods are multi-day, including the 2026-02-08 → 2026-03-09
-  thyroid episode (30 days). The reports' season and illness bands can resume
-  from the stored ranges. Runalyze's Injury & Sickness entries will map to the
-  same ranges, never markers.
-- **Routes are stored and linked (schema v20).** `routes` holds a named loop
-  with a source-scoped `external_ref`, and `activity_routes` links an activity
-  to the routes it covered (a table, since one run can cover several). The
-  sheet importer maps `Strecke`/`Streckennummer` and `activity_routes_v1`
-  backfilled 384 links over 36 routes: 29 numbered (`Wienerberg inkl
-  Unterführungen` 16 with 149 runs, `Wienerberg 8er` 25 with 57) and 7
-  name-only variants. A name-only row reuses the number seen for the same name
-  (`Kaserne` → 6); a name with no single number, or several, keeps its own key,
-  and a Gmap URL is not a route. Runalyze's `recurring_route` id is a different
-  identity and never merges automatically. Route grouping and the route page
-  stay on the reports list.
-- **Planned races are linked to activities (schema v21).** `event_activity_links`
-  joins a race event to the activity that ran it, and `race_links_current`
-  matches date + sport + distance within 5%. It linked the 2026 Linz Marathon
-  (42.45 vs 42.19 km, confidence 0.994) and the 2025 Baden Stadtlauf (9.79 vs
-  10.0 km, 0.979); both now carry the `race` method under `race_link` and
-  classify as race instead of long run / intervals. A manual link or a manual
-  method set wins, more than one candidate opens an `ambiguous_race` review
-  item, and the 2027 Linz event is untouched. Plan vs actual is now available
-  from the event's planned distance, duration, load and zones. The race report
-  consumes the link on the reports list.
-- **Wellness extras and canonical weight are stored (schema v19).**
-  `wellness_days` gains weight, sleep score and quality, SpO2, steps, floors
-  climbed and Intervals' CTL/ATL. The backfill filled 3,167 days: weight 358
-  (Intervals 213 plus the sheet's `Gewicht nachher`), sleep score 1,493, sleep
-  quality 1,492, SpO2 155, steps 966, floors 43, CTL/ATL 3,022. **Readiness,
-  stress and respiration are present as payload keys but empty in every one of
-  the 3,022 days**, so they got no column — the item's "four best" were the
-  three that do not exist. The readiness view stays on the reports list.
-- **Training periods are stored (schema v18).** `training_periods` holds dated
-  spans — season, plan, illness, travel, recovery — and `training_periods_current`
-  derives them from the Intervals event notes: 3 seasons (VCM 23/24/25, each
-  closing the day before the next, the latest open), 25 illness periods and 4
-  travel/recovery notes. A source end date is stored inclusive; without one
-  the period stays one day. The `period add|list|remove` CLI writes a manual
-  range (an illness end, a plan) and the recompute never removes it. The
-  season/illness bands and the calendar stay on the reports list.
-- **Recording devices are stored (schema v17).** A `devices` table
-  (manufacturer, product, serial, name, active dates) and a nullable
-  `activities.device_id` — one recorder per activity, so no link table. FIT
-  owns the field (it carries the serial) and a manual assignment wins. The
-  backfill filled 2,853 activities across 6 devices: enduro 1,636, fr645
-  1,139, edge_540 74, fr945 1, plus two Intervals-only rows; 1,295 pre-2019
-  activities have no device. Garmin Connect web uploads are not devices. The
-  device timeline stays on the reports list.
-- **Official race results are stored (schema v16).** `race_results` keeps the
-  official distance and time apart from the measured GPS values, with
-  `officially_measured`, places and participants by total/gender/age class,
-  `priority_level`, `status` and notes; a manual row is never overwritten by an
-  import. `TrainingWriter.upsert_race_result`, `DataSource.race_results()` and
-  the `race-result add|list|remove` CLI are in place, so a result can be
-  entered by hand until Runalyze supplies it. The reports still have to prefer
-  the official pair over the measured one (their list).
-- **Athlete thresholds and zone configs are stored (schema v14/v15).**
-  `athlete_thresholds` holds dated snapshots of `max_hr`, `lthr` and
-  `threshold_pace_mps` — **per sport**, because Intervals stamps the settings
-  of the activity's own sport. The running series has 14 snapshots and the
-  threshold pace drifts **4.587 → 4.854 m/s (3:38 → 3:26/km)** over 2019–2026;
-  rides, swims and the rest have their own small series. `zone_configs` is
-  filled with 11 distinct boundary sets and 2,848 activities point at the HR
-  config of their era (2,230 at a pace config). Both are recomputes
-  (`athlete_thresholds_current`, `activity_zone_configs_current`) that run in
-  `sync.sh`. The threshold trend view remains on the reports list.
-- **Per-activity weather is stored (schema v13).** `activity_weather` holds the
-  union of what the sources provide — temperature, feels-like, humidity, wind
-  speed/degree/gust, wind chill, heat index, pressure, UV, clouds, condition,
-  `is_night` — in metric units, one row per activity, first source owns it and
-  a later source only fills its gaps. Intervals writes `average_temp` and the
-  sheet `Temperatur in °C`; the backfill covered 3,002 activities (2,823
-  Intervals, 179 sheet). The Runalyze fields stay `NULL` until that import
-  lands, and the lab still has to say whether adjusted pace is worth it.
-- **Elevation and max HR are stored (schema v12).** `activities` gains
-  `elevation_gain_m`, `elevation_loss_m` and `max_hr`, owner-based with a wide
-  elevation tolerance (10 % or 20 m) and 2 bpm for max HR. FIT parses
-  `total_descent` and writes ascent/descent/max HR, Intervals maps
-  `total_elevation_gain`/`_loss` and `max_heartrate`, the sheet maps
-  `m bergauf` and `max. Hf`. The backfills filled 3,287 activities with
-  elevation (2,802 with loss) and 3,394 with max HR; 62 and 29 source
-  disagreements were counted, not queued. The reports views (climb per km,
-  session line) remain on the reports list.
-- **The redundant sheet tags are gone.** The sheet import no longer writes the
-  `Trainigstyp` code as a tag — the method/target sets carry it — and
-  `drop_classification_tags_v1` removed 874 code tags from 869 activities,
-  leaving the 1,015 training-area labels (`w`, `m`, `wb`, `a`, `t`, `I`) that
-  are orthogonal to the classification. Manual tags are never touched.
-- **The display category comes from the stored sets.** `category_for_sets`
-  maps methods/targets to the display kind with a fixed priority (race,
-  long_run, fartlek, intervals/progression, continuous+threshold, recovery,
-  easy, unknown), and `classify()` uses it whenever an activity is classified;
-  the heuristic runs only for unclassified ones. Two read-time refinements
-  survive: the subT rep-length detail from the work reps and the race-support
-  label from the name. `quality/fartlek` is its own kind, so a fartlek never
-  enters the subT or rep-length buckets.
-- **`fartlek` is back for unstructured quality.** The token is in the core
-  vocabulary (quality, mutually exclusive with `intervals`, aliases
-  `fahrtspiel`/`fartlek_run`), the sheet's `fs` code maps to `fartlek` +
-  `vo2max`, and `fartlek_from_fs_v1` converted 40 activities on the real DB
-  (20 kept manual method rows and were skipped; 34 missing targets filled with
-  `vo2max`). The display kind lands with item 3 and the reports list.
-- **VO2max is per sport, and the report now says so.** Message 140 carries the
-  estimate for the activity's own sport, so `vo2max_garmin` on a ride is the
-  cycling value — the data was right and no backfill was needed. The charts
-  were already running-only; the session report now qualifies the label
-  (`VO2max: 64.6 (Garmin, cycling)`), and `docs/SOURCE_NOTES.md` records the
-  per-sport semantics. The residual 2026 dips (a trail race, an altitude easy
-  run, a 17-minute second run) are transient session artefacts and stay with
-  the lab's parked entry.
-- **FIT scan manifest (schema v11).** `fit_scan_files` records every archive
-  file the scan has classified, activity or not, so a routine sync skips
-  unchanged ones: measured on the real archive, 18.3 s → 2.7 s over 64,349
-  files, 61,470 of them non-activity. Core owns the table and the writer API;
-  the import package owns the scan, prunes deleted files, and `--full` still
-  re-imports everything.
-- **Canonical pipeline.** FIT archive, Intervals.icu, and Garmin Personal API
-  import into one SQLite database with raw-source provenance, temporal
-  matching, and owner-based field precedence (no per-source priority).
-- **Review & editing.** Interactive triage, manual field overrides, durable
-  exclusion, ambiguous-match linking, field-conflict pick value (`v`), forced
-  Intervals re-import (`t`), and Intervals/Garmin activity links (`ci`/`cg`).
-- **Sources.** Garmin `fetch` downloads original FITs into the archive;
-  API-downloaded FITs are byte-identical to the GDPR export. VO2max is read
-  from FIT message 140 into `vo2max_garmin`.
-- **Schema v5/v6.** `vo2max_garmin`/`vo2max_runalyze` owners, `activity_tags`,
-  `activities.moving_s`, and `events.training_load` (with backfill).
-- **Schema v7.** `events.excluded_at`; the repository hides excluded events.
-  `upsert_event` now replaces event fields (including NULLs) and revives an
-  excluded event; `exclude_event`/`restore_event` support the sync prune.
-- **Schema v8.** `events.zone_kind` and `event_zone_times` store the planned
-  zone distribution (`Z1`–`Z7`, `SS`); the repository exposes it on `Event`.
-- **Planned-events sync.** `events sync` (and the regular Intervals import)
-  reconciles the calendar: fields are replaced (including NULLs), events that
-  disappeared are soft-excluded, reappearing ones are revived, and only
-  Intervals-linked events are touched. `--dry-run` writes nothing.
-- **One-command sync.** `hobbyjogging-import sync` (wrapped by `./sync.sh`)
-  runs Garmin fetch → Intervals import → FIT scan (skipping known paths) →
-  quality review scan, continues past a failing source, and exits non-zero at
-  the end.
-- **Event zone times.** `workout_doc.zoneTimes` is stored in
-  `event_zone_times` with an inferred `zone_kind` (pace/HR/power); the event
-  sync replaces/clears them and the `event_zones_v1` backfill populated the
-  existing payloads (2,808 rows).
-- **Time fields.** Intervals `moving_time` → `moving_s`; FIT
-  `total_moving_time` is parsed when present; event duration comes from
-  `moving_time` and `training_load` from `icu_training_load`. The
-  `moving_time_mismatch` rule flags gaps above `max(10 min, 25%)`.
-- **Time authority.** `moving_s` and `elapsed_s` use a ranked authority
-  (Intervals, then FIT) and never produce review items; `duration_s` remains
-  owner-tracked.
-- **Quality dedupe.** Review items dedupe by
-  `(category, fingerprint, activity_id)`, not by source record.
-- **Historical spreadsheet.** `hobbyjogging-import sheet` imports the
-  hand-maintained `.ods` log (`Rohdaten`, `Alternativtraining`, `Material`)
-  through a standard-library ODS reader, with German column mapping,
-  minute-precision start matching, shoe links, tags, and the normal
-  owner/conflict review rules. Equipment upsert/link methods are in the
-  writer.
-- **Reports.** Markdown reports (daily/overview/weekly/monthly/yearly, period,
-  year/month comparison, subT, session, activities table), charts, and the
-  terminal renderer; report code is split per report.
-- **Reports: pace zones.** The time chart stacks actual and planned pace
-  zones; planned zone distributions appear as hatched weekly bars and the
-  EWMA panel continues through them as dashed projections. Extra zones fold
-  into the last displayed zone and `SS` is ignored.
-- **Reports: VO2max chart.** Garmin running VO2max appears as daily dots
-  with 7- and 42-day exponentially weighted averages.
-- **Workout classification (schema v9).** Set-based methods/targets on
-  activities and events; quality is derived from methods/targets. The
-  classifier + sheet backfill classified 2,687 activities (including 107
-  easy defaults for sheet runs with no code and HR < 140) and tagged 56;
-  216 conflicts were left unclassified for review.
-- **Duration tolerance settled.** A FIT/Intervals recording-time difference
-  now counts as the same measurement when it fits inside either source's
-  pause gap or is within 5% (the cause classifier's "small difference" bound);
-  trims, manual Intervals edits, and sheet estimates still open a review item.
-- **`tempo` retired.** A tempo run is `continuous` with a `threshold`
-  target, so the method duplicated the target. `remove_tempo_method_v1`
-  converted 185 activities; the token now normalizes to `continuous`.
-- **Workout classification in the review queue.** Disagreements between the
-  classifier and the sheet are now `workout_classification` review items
-  (`info`), synced by a `recompute` task, resolved in triage with `(k)`, and
-  never hidden from reports.
-- **Reports read the stored classification.** `classify()` prefers
-  `activity_workout_methods/targets` and falls back to the heuristic when an
-  activity is unclassified, so manual resolutions now change reports and the
-  dashboard (589 activities changed category). The backfill calls it with
-  `use_stored=False` so it never reads back its own output.
-- **Reports: one data source.** The direct Intervals.icu API source was
-  removed; reports read the canonical database only, and `debug` dumps the
-  payloads stored in `source_records`.
-- **Schema evolution workflow (schema v10).** Two tracks: immutable SQL
-  migrations in core, and registered data tasks in the new
-  `hobbyjogging-maintenance` package (`backfill` = applied once and recorded;
-  `recompute` = re-runnable re-derivation). The runner uses one transaction per
-  run, a dry run executes for real and rolls back, and `maintenance_runs`
-  records every run. `event_zones_v1` and `workout_classification_v1` are the
-  first registered tasks; the old ad-hoc scripts are gone.
-- **Static dashboard.** `dashboard.sh` writes a self-contained static site
-  (overview with 7/42/182-day hard/total EWMAs and running volume by intensity
-  group, recovery and health, activities list, activity detail, data health,
-  and selected Markdown reports converted to HTML) with embedded plotly
-  charts, bundled `plotly.min.js`, and atomic directory swaps. It opens the
-  browser; `sync.sh` regenerates the same site without opening one.
-- **Reports: planned workouts.** The `planned` report starts tomorrow and ends
-  with weekly-average total time and Z3+4 time per 7 days.
-- **Recurring workout-set derivation.** `workout_sets_current` (a maintenance
-  `recompute`) derives methods/targets for activities that have none, using
-  the same classifier/sheet helpers as the one-time backfill. It fills gaps
-  only, so manual decisions and the backfill are never touched;
-  disagreements stay empty for `workout_classification_queue`. `sync.sh` runs
-  both after a successful sync (`--no-classify` skips them); a full-DB run
-  takes about half a second. The 2026-11-10 "Easy" run is now
-  `continuous`/`recovery`.
-- **Public demo on GitHub Pages.** `./demo.sh` builds the synthetic database
-  and the site; `.github/workflows/pages.yml` rebuilds and deploys it weekly
-  and on demand. Live at
-  <https://markuswess.github.io/hobbyjogging/>, verified.
-- **Dashboard review queue.** The health page lists the open `ReviewItem`
-  rows (severity, category, detail, activity, date) through
-  `DataSource.review_items`.
-- **Session report completeness.** The session report and the dashboard detail
-  page show tags, both VO2max owners, review status and open items, the day's
-  planned workout, the day's wellness, and the lap table;
-  `DataSource.activity_laps` exposes the repository query.
-- **Efficiency (m/excess beat).** Meters per heartbeat above the 365-day
-  resting baseline: session, activities column, subT work reps/tables/panel,
-  subT EWMA, compare tab, and the Markdown reports; the pace/HR scatter draws
-  it beside the regression. See `docs/METRICS.md`.
-- **Classifier in core.** The workout-category heuristic moved to
-  `hobbyjogging_core.classify` (Category, classify, work_intervals, rep-length
-  buckets); the reports package keeps only the display aggregation
-  (`category_breakdown`). `hobbyjogging-maintenance` now depends on core and
-  the importers, not on the renderer.
-- **Race method backfill.** `event_race_method_v1` applied the
-  `RACE_A/B/C → race` mapping to existing events: 2 gained the method (Baden
-  Stadtlauf, Linz Marathon 2026), 648 unchanged, manual rows untouched.
-- **Empty interval artifact.** The Intervals importer no longer stores the
-  1 s / 0 m trailing `RECOVERY` interval, and `drop_empty_intervals_v1` removed
-  the rows left by earlier imports: 239 rows across 235 of 2,836 activities
-  with intervals, none cleared; the set's interval source record is kept and a
-  forced rerun is a no-op.
-- **Real data.** Full FIT archive import and Garmin VO2max backfill have run
-  against the real database (4,143 activities, 2,805 with a Garmin VO2max;
-  650 events with 2,812 planned zone rows). The historical spreadsheet import
-  added the 2009–2021 log (1,292 activities, 10 equipment items, 1,842 shoe
-  links). The review queue was empty at that point; the Runalyze
-  ambiguous-match items came later.
+Recently landed; git history is the changelog. Structure and settled rules
+live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
+[METRICS.md](METRICS.md), and each package's own list in
+`packages/*/NEXT_UP.md`.
+
+- **The canonical pipeline and all sources (phase 1).** FIT archive,
+  Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
+  comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
+  imported and applied on the real DB: 4,143 non-excluded activities, schema
+  v23.
+- **Inputs vs projections (item 17).** `activity_manual_fields` (v23) holds
+  manual values and owner patches; `derive.py` declares the per-source mapping;
+  `verify_canonical` reports 68,001 owned fields with 0 drift, 0 dangling and 0
+  unmapped, and `recompute_canonical` is a no-op on the real DB.
+- **Import policy and settings (item 40).** `sources.toml` carries enabled,
+  create and text targets; the ladder creates only when nothing is left to
+  review; `hobbyjogging-import sources|settings` and `reports.sh settings`
+  render it.
+- **Strava CSV (item 16).** 2,554 of 2,590 rows matched, 35 unmatched, 1
+  ambiguous; 5 bikes, 3 equipment rows and 64 activity links. Social text is
+  per source in `activity_social` (v22).
+- **Runalyze payload repair.** All 2,843 payloads were re-read (the `hr_avg`
+  gap fell from 1,752 to 5) and `vo2max_runalyze` went from 843 to 2,225
+  values (2019-01-22 → 2026-11-16).
+- **Race evidence.** `race_links_current` treats a non-excluded `race_results`
+  row as evidence, so all 37 official results carry the `race` method.
+- **Stored detail (v12–v21).** Routes, race results and race links, devices,
+  training periods, wellness extras, weather, elevation and max HR, thresholds
+  and zone configs.
+- **Reports and lab.** One session renderer for CLI and dashboard, a clickable
+  review queue, max HR/elevation lines, data-driven chart ceilings, official
+  race pairs and Riegel anchoring; the lab promoted the efficiency line shape
+  and running-only load, and parked the duration correction and the
+  race-fitness bundle.
+- **Four suites green**, and the demo deploys weekly from GitHub Actions.
 
 ## Bugs
 
@@ -265,12 +47,29 @@ _None._
 ## Next
 
 Numbers are labels, not a schedule: a completed item leaves a gap and a new
-one takes the next free number, so cross-references stay valid. The phases are
-defined in [ARCHITECTURE.md](ARCHITECTURE.md): phase 1 completes with all
-imports and the reports/dashboard; phase 2 is data depth, backfills, manual
-editing, analysis and lab work; phase 3 is the dormant future.
+one takes the next free number, so cross-references stay valid. Phase 1 is
+complete and phase 2 is current; the phases and their completion criteria are
+in [ARCHITECTURE.md](ARCHITECTURE.md). Work is picked by impact per unit of
+effort, bugs first.
 
-1. **Activity editing, CLI first** (core + import; phase 2). The only manual write
+### Phase 2 order
+
+| step | item | why now | done when |
+|---|---|---|---|
+| 1 | **34** manual overlay + rebuild proof | cheap insurance, and `recompute_canonical` now exists so the claim is provable | `export-manual`/`import-manual` round-trip, then an empty rebuild diff on a copy |
+| 2 | **23** second-athlete acceptance test | the phase-2 completion criterion, and it drives out the remaining personal defaults | the checklist in the item passes on a fresh DB with no Intervals and no sheet |
+| 3 | **1** activity editing, CLI first | highest daily value; its prerequisite, the manual input layer, has landed | `activity edit` writes manual inputs and history and closes the items it touches |
+| 4 | **38** session averages (`activity_metrics`) | the largest item, and it consumes the mapping item 17 declared | Tier-1 columns backfilled with a coverage report; no stream storage |
+| alongside | **37** historical refurbishment | read-only audit first, then proposals; it feeds 38's audit | the audit is reviewed and high-confidence proposals land as review items or manual values |
+
+Item 40 is closed (see its entry): the recording sources keep `enabled`, so
+there is no create policy to wire. Items 12, 16 and 17 are landed; 15 is a
+reports item; the hygiene group (21, 22, 24, 27, 28, 29, 32, 33, 35) runs at a
+release tag or when a file outgrows its purpose; 13, 14, 25, 26, 31 and the
+stream half of 38 are dormant or recurring as their entries say.
+
+1. **Activity editing, CLI first** (core + import; phase 2, step 3). The only
+   manual write
    surface is `review edit`, which changes `duration_s`, `distance_m` and
    `sport`, and only with a review item attached. Name, description, RPE, feel,
    sub-sport, tags, classification and equipment have no free-form edit, no way
@@ -342,235 +141,46 @@ editing, analysis and lab work; phase 3 is the dormant future.
    - **Docs**: the ARCHITECTURE role list gains the human write surface, and
      the import README documents the command.
 
-12. **Runalyze enrichment** (core + import + maintenance + reports; phase 1
-    milestone).
-    Runalyze is the source that closes the 2022+ gap: gear identity (the sheet
-    ends in 2021, so 2022–2026 has no gear at all), comments, tags, race
-    results and `vo2max_runalyze`. It is not one import but a milestone with
-    its own dependencies.
-    - **Access (Nov 2026)**: the header is **`token: <key>`**, not
-      `Authorization: Bearer` (that one is for the MCP server). The regenerated
-      key has read scopes: `/api/v1/ping` answers and every data endpoint
-      returns 200, except `sport`, `recurring-route`, `planned-race` and
-      `device-profile`, which still answer **403** with rate-limit headers.
-      The budget is **240 requests per window**; the reset is in
-      `X-RateLimit-Reset`/`Retry-After` (observed ~40 min after exhaustion),
-      so a full-history detail pass needs several windows. None of the four
-      blocks the import: the nested activity payload
-      carries the route and the device name, sport can be mapped from the
-      activity, and events are Intervals-authoritative. Docs are split per tier
-      (`/doc/api/free|supporter|premium`) and all return an empty OpenAPI
-      document, so the resource list comes from `/api` instead. The activity
-      collection is **`/api/v1/activity` (singular)** with `page` and
-      `itemsPerPage`; its `time[...]` filters are ignored, so read all pages
-      and filter the range locally.
-    - **Fallback if the API regresses**: `runalyze.com/my/exports` offers a
-      CSV/JSON export from the web UI, the same pattern as the Strava bulk
-      export. It is the backstop for a bulk history load, not the starting
-      point now that the read-scoped token works.
-    - **Schema is public, only read access is gated**: the authoritative spec is
-      **`/api/docs.jsonopenapi`** (749 KB, 289 schemas) — the `/doc/api/*` pages
-      return an empty document even with a token. The open-source repository
-      (`Runalyze/Runalyze`, branch `support/4.3.x`) adds the per-activity
-      dataset keys in `inc/core/Dataset/Keys/` and the entities in
-      `src/CoreBundle/Entity/`. Design against the spec — it already shaped the
-      race-result, weather and threshold items (18, 7, 8).
-    - **Payload findings (Nov 2026, read-scoped token)**: the activity object
-      has 82 fields in the collection and 88 in the detail (measured by the
-      phase 1 inventory). `vo2max` is Runalyze's *effective*
-      estimate and sits beside `vo2max_by_time` and `vo2max_with_elevation`, so
-      `vo2max_runalyze` must name which one — take `vo2max` and note the others
-      as alternatives, never a Garmin value. **Tags are in the detail payload**
-      (`tags: [{id, tag}]`), not the collection: `?tag=<id>` on the collection
-      is ignored and `/api/v1/statistics/tags` is 403, so phase 2 reads the
-      detail per activity. `sport`, `recurring-route`, `planned-race` and
-      `device-profile` answer 403; the nested activity data covers routes and
-      the device name anyway.
-    - **Equipment finding**: gear records carry a name and a category but **no
-      brand or model**, so cross-source identity rests on the name and on
-      co-occurrence with the sheet shoes, not on a brand+model key.
-    - **Also available**: a hosted MCP server at `runalyze.com/mcp` with the
-      same personal token — relevant to the coaching workflow (item 25), not to
-      bulk import.
-    - **Dependencies**: the official race-result table and race links are in
-      (schema v16/v21), and the gear identity rule below is settled. Comments
-      need no decision — they fill `activities.description` only when it is
-      blank (item 1).
-    - **Phases**: (1) **done, import package** — a read-only client and
-      `runalyze inventory --dry-run` that reports what is available per field
-      and per year, writing nothing; (2) **done, import package** — comments
-      and tags into `activities.description` (blank-fill) and `activity_tags`;
-      (3) **done, import package** — gear identity and activity links;
-      (4) **done, import package** — race results; (5) **done, import
-      package** — `vo2max_runalyze` as the second owner; (6) the reports.
-    - **Phase 1 result (Nov 2026)**: the import package ships the read-only
-      client and the inventory. Live run: 2,841 activities (2019–2026), 82
-      collection fields, 85–88 non-null detail fields (153 in the schema),
-      `equipment` answers 200, and the four expected 403s. Comments are `note`;
-      tags are detail-only; `title` is the Garmin auto-title and never becomes
-      `activities.name`.
-    - **Phase 2 result (Nov 2026)**: `runalyze enrich` fills a blank
-      `description` from `note`, imports detail `tags` into `activity_tags`
-      under `source='runalyze'` (manual tags survive), and reports
-      unmatched/ambiguous rows (`--output` JSON). Matching is temporal plus
-      distance; `name`, timing and distance are never written. A mid-run 429
-      stops cleanly, keeps the rows already processed, reports
-      `processed`/`not processed`, and marks the import run `partial`.
-      Validated on a DB copy over one week: 9/9 matched, 5 tags on 3 activities,
-      second run a no-op. A 2025 dry run saw 472 activities, processed 211
-      before a 429 (all matched), and now reports the 261 unprocessed rows.
-      Details are stored in `source_records`, so a re-run skips any stored
-      detail already linked to the same canonical row and continues with the
-      remainder; `--refresh` re-fetches to pick up edits, and `--wait` fetches
-      the collection once and sleeps through the windows unattended until the
-      range is done. (The first skip compared `edited_at` and re-fetched a
-      growing prefix every window; the linked-detail skip fixes that
-      slowdown.) The budget is 240 requests per window (~1 hour), so a full
-      history needs a few windows. The real DB holds the 2025–2026 details;
-      the `--wait` run continues with the remaining 2019–2024 activities.
-      Phase 3 followed; the collection `fields` trick remains a possible
-      saving for the full enrichment, to test when a window is free.
-    - **Phase 3 result (Nov 2026)**: offline `runalyze gear` resolves the
-      stored payloads' `equipment` arrays with the rule below and writes gear
-      source records, equipment rows and activity links. Validated on a DB
-      copy with 807 payloads: 21 gear records (16 shoes, 4 bikes, 1 other),
-      796 activity links (774 primary, 22 secondary), no co-occurrence or name
-      matches yet, and a second run is a no-op. The real run matched that:
-      21 `runalyze:equipment:<id>` rows with empty brand/model, 21 gear source
-      records, 796 links and no review items.
-    - **Phase 3 follow-up (Nov 2026)**: the full history changed the rule.
-      Co-occurrence cannot bridge the old gear at all (680 activities carry
-      both a sheet link and a Runalyze link, but none of them carries gear —
-      Runalyze tracks gear from 2023 on), so name matching now falls back to
-      the colour-stripped form. Clothing (78698) is skipped, rows the importer
-      created for another gear record are never candidates, and an earlier
-      duplicate is reconciled onto the matched row. On a copy: 26 gear
-      records, 6 clothing skipped, 2 linked to sheet rows (`Brooks Adrenaline
-      20`, `Lunge Fis`), 1 duplicate reconciled (`Lunge Neo Run (grau)` →
-      sheet `Lunge Neo Run`), 491 new links. Applied to the real DB: 32
-      equipment rows (22 of them Runalyze-owned), 26 gear source records and
-      one open `ambiguous_equipment` item. That item is now closed: a name tie
-      is broken by the acquisition date (`date_start` = `acquired_on`), so
-      `Lunge C-Dur (rot)` links to `sheet:equipment:5` and `(schwarz)` is
-      reconciled onto `sheet:equipment:6` — 31 equipment rows, no open review
-      items.
-    - **Phase 4 result (Nov 2026)**: `runalyze races` imports
-      `/api/v1/raceresult` into `race_results` under `source='runalyze'`,
-      resolving each row through its Runalyze activity id (the stored
-      payload's `external_id`) and never guessing a match; a manual
-      `race-result` row is kept. Validated on a copy: 37 results (2019–2026),
-      33 with a placement, 21 officially measured, priorities A–D plus
-      `unknown`, and a no-op re-run. Applied to the real DB: 37
-      `race_results` rows (2019–2026). `official_ascent`/`official_descent`
-      have no column; `race_event_id` is Runalyze's own identity, so
-      `event_id` stays empty.
-    - **Phase 5 result (Nov 2026)**: offline `runalyze vo2max` writes the
-      stored payloads' effective `vo2max` into `vo2max_runalyze`; 843 values,
-      all 2019–2022 (mean −2.1 against Garmin where both exist). The 2023+
-      payloads were snapshots frozen before the
-      endpoint began serving FIT metrics (see the import list's refresh
-      sweep), so that gap is repairable. `vo2max_garmin` is untouched. The
-      alternative estimates (`vo2max_by_time`, `vo2max_with_elevation`) are
-      documented but not stored.
-    - **Gear identity (decided)**: gear records become
-      `source_records(record_type='gear', external_id='runalyze:<id>')` plus
-      `equipment` rows, linked through `activity_equipment` with
-      `source='runalyze'`. The activity detail's `equipment` array already
-      carries the full gear object, so no separate gear fetch is needed.
-      Resolve a gear record in this order:
-      1. **Co-occurrence**: among its matched activities that already have a
-         sheet equipment link, if at least 3 carry one sheet item and that item
-         covers at least 80% of them, link the gear record to it.
-      2. **Name**: otherwise normalize the name (casefold, `-`/`_` to spaces,
-         collapse whitespace) and compare with existing `equipment.name` and
-         `brand + " " + model`; exactly one match links, several are ambiguous.
-      3. **New row**: otherwise create `runalyze:equipment:<id>` with the name,
-         a category-derived type (`shoe`, `bike`, `other`), `notes`, and
-         `date_start`/`date_end` → `acquired_on`/`retired_on`; brand and model
-         stay empty because the payload has none.
-      A split co-occurrence or a name matching several rows opens a
-      non-hiding `ambiguous_equipment` review item with the candidates; the
-      colour-stripped fallback and the acquisition date narrow the candidates
-      first, and what is left is never guessed.
-      2022+ gear has no sheet counterpart and simply creates new rows. For each
-      matched activity, the first shoe/bike item is primary and the rest
-      secondary; a manual link wins.
-    - **Phase 3 contract (done)**: `ambiguous_equipment` is a non-hiding review
-      category, and `TrainingWriter.link_equipment_source` attaches a gear
-      source record to a matched equipment row without overwriting its
-      name/brand/model/dates. The offline `runalyze gear` command and the
-      identity logic live in the import package.
-    - **Health entries**: Runalyze's Injury & Sickness Tracking records start
-      and end dates; map them to `training_periods` illness ranges, never
-      markers. Weight and sleep fill `wellness_days`.
-    - **Import rules**: Runalyze never writes `name` — its title is a Garmin
-      auto-title, and an unmatched row that creates the activity would own the
-      name and block the Intervals session name the classifier reads. Its
-      description fills `description` only when blank; comments go there, not
-      into a separate table.
-    - **Matching**: temporal plus distance, since Runalyze exposes no Garmin
-      activity id. Unmatched rows were planned to create activities so the
-      history stays complete, but the measured set says most are duplicates —
-      the decision is in *Remaining* below. Enrichment only: never timing or
-      distance.
-    - **Reports**: the gear page's coverage already runs into 2026 (2022 has
-      no gear in any source), comments appear where the text home decides,
-      and `vo2max_runalyze` sits beside `vo2max_garmin` — reports item 15.
-    - **Remaining (Nov 2026)**: phases 1–5 are landed and applied, so the only
-      missing phase is 6 (reports), now item 15 of the reports list. One
-      import leftover needs a root decision: the 19 rows the enricher could
-      not place. 4 have a same-day canonical activity with the same duration
-      and distance, but that day holds two canonical rows for one session (one
-      nameless), so the matcher chose the other; 12 share the duration but
-      disagree on distance by 8–15 %; 3 have no duration twin (one is a
-      41.7 km ride with no plausible candidate, so genuinely missing).
-      **Decision (Nov 2026)**: auto-match only the perfect twins — same day,
-      duration within 2 s, distance within 10 m, exactly one candidate. Every
-      other unmatched row gets an `ambiguous_match` review item with its
-      same-day candidates. **Superseded (Nov 2026)**: creation is a per-source
-      policy (`create|review|ignore`, item 40), not a Runalyze law; this
-      athlete's config keeps Runalyze at `review`, so the 19-row behaviour is
-      unchanged. **Preference (Nov 2026)**: a sheet-only row that mirrors a
-      device (FIT/Intervals) row on the same day is a duplicate, not a second
-      session — 38 of the 1,272 sheet-only rows are, so the check stays narrow
-      — and a perfect twin on such a day does not auto-link. It opens a review
-      item listing both rows
-      and suggesting the device one, because enriching the duplicate would put
-      tags on the row that should be retired. That leaves the three remaining
-      twins (`2019-05-08`, `2019-06-03`, `2019-11-29`) in review, so a
-      regenerated run expects **0 links and 19 items**; the saved file now
-      holds exactly that (19 rows, 3 with a suggestion). Evidence:
-      `~/projects/laufen_private/data/runalyze-unmatched.json`.
-      **Implemented (Nov 2026)**: the exact-twin rule, the sheet-duplicate
-      preference, stored (unlinked) details and `ambiguous_match` items with
-      their same-day candidates. Triaging a candidate applies the stored note
-      and tags without re-running the matcher. Run over the 19 rows on the real
-      DB: 0 links, 19 items (3 suggesting the device row), 19 details stored,
-      no activity created, and a no-op re-run. Those 19 items are the open
-      queue now, so the Runalyze import itself has nothing left.
-      **Payload repair (done Nov 2026)**: the `--refresh-before` sweep re-read
-      all 2,843 payloads (3 transient 502s recovered on retry) and closed the
-      `hr_avg` gap from 1,752 linked rows to 5; `runalyze vo2max` then filled
-      `vo2max_runalyze` from 843 to 2,225 values (2019-01-22 → 2026-11-16).
-      Reports item 15 is unblocked.
-      **Race-method gap (done Nov 2026)**: 18 of the 37 official results
-      carried no `race` method (2021 ×1, 2022 ×1, 2023 ×7, 2024 ×3, 2025 ×6),
-      so they vanished from the race report, the PB table and the dashboard;
-      `race_links_current` only used Intervals planned events, and there are
-      none for those years. Fixed: a non-excluded `race_results` row is now
-      evidence, `race` is added under `race_link` and dropped when the result
-      disappears; manual methods still win. Applied 18 methods, so all 37
-      results carry `race` and the races are back in the reports.
-    - **Not scheduled**: Runalyze weather (0 rows; the payload carries
-      humidity, wind, pressure, UV, clouds and condition), routes (0; the
-      nested `recurring_route` is still unused), health entries (0 illness
-      periods and 0 wellness rows from Runalyze), and the gear category map
-      (the 78697/78699 IDs are hard-coded; a second athlete has different
-      IDs). Decide whether these join the milestone or the second-athlete
-      test.
-    - **After the import**: item 37 mines the tags and comments this import
-      lands to refurbish historical classifications, illness ranges and season
-      labels.
+12. **Runalyze enrichment** (core + import + reports). Phases 1–5 are landed
+    and applied; this entry keeps only what matters to rerun it or to explain
+    the open queue. Per-phase detail lives in the import package's list and in
+    [SOURCE_NOTES.md](SOURCE_NOTES.md).
+    - **What it supplies**: comments (fill a blank `description`), detail tags,
+      gear identity, official race results and `vo2max_runalyze`. It never
+      writes `name`, timing or distance.
+    - **Access**: the header is `token: <key>` (not `Authorization: Bearer`);
+      the collection is `/api/v1/activity` (singular) with `page` /
+      `itemsPerPage`, and its `time[...]` filters are ignored, so the range is
+      filtered locally. `sport`, `recurring-route`, `planned-race` and
+      `device-profile` answer 403; the nested activity payload covers what they
+      would have provided. The budget is 240 requests per window
+      (`X-RateLimit-Reset`), so a full-history detail pass spans several
+      windows — `runalyze enrich --wait` sleeps through them. Tags are
+      detail-only; `vo2max` is Runalyze's effective estimate (the
+      `_by_time`/`_with_elevation` variants stay in the raw payload).
+    - **No Garmin id**: matching is temporal plus distance. A row the matcher
+      rejects gets one exact-twin check (same day, duration within 2 s,
+      distance within 10 m, exactly one candidate); a twin that is a sheet
+      duplicate of a device row is treated as the duplicate. Everything else
+      keeps its detail stored and opens one `ambiguous_match` item with the
+      day's candidates; triage links a candidate and applies the stored note
+      and tags.
+    - **Gear identity** (settled): co-occurrence → normalized name
+      (colour-stripped, acquisition date to break a tie) → a new
+      `runalyze:equipment:<id>` row. A gear record only adds a source link to an
+      existing equipment row; it never rewrites that row's name, brand, model
+      or dates.
+    - **State**: 2,225 `vo2max_runalyze` values (2019-01-22 → 2026-11-16), 37
+      race results, 32 equipment rows and 3,299 activity links; the 19
+      unmatched rows are open `ambiguous_match` items (3 suggesting the device
+      row). That queue is user triage, not import code.
+    - **Backstop**: `runalyze.com/my/exports` (CSV/JSON from the web UI) if the
+      API regresses; the bulk path, not the daily one.
+    - **Not scheduled**: Runalyze weather (0 rows), routes (0; the nested
+      `recurring_route` identity stays unused), health entries (0 illness
+      periods, 0 wellness rows) and the gear category map (two hard-coded IDs
+      that a second athlete does not share — root item 23).
+
 13. **Homelab cutover** (phase 3): DB + importer + dashboard generator + static
     server, periodic backups, Tailscale/basic auth.
 14. **Platform independence** (long-term, dormant; ingestion unchanged). The
@@ -721,109 +331,89 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Checklist instead of tests**: suites green, changelog written, DB
       backed up before the migration, tag pushed.
 
-23. **Portability for a second user** (core + import + reports + CI; phase 2).
-    The model is already portable — canonical activity, owner-based fields, no
-    per-source priority, the migration machinery, the importers, reports over
-    `DataSource`, the synthetic demo. What is personal is the defaults.
-    - **Blocking**: no `init`/`doctor` (a new user must infer that the first
-      import creates and migrates the DB, and nothing checks the paths,
-      credentials or schema version up front); test CI only covers pushes to
-      `main` through the demo workflow, so there is no pull-request check;
-      `requires-python >= 3.14` with no 3.14-only syntax found, so the floor
-      can likely drop to 3.12.
-    - **Personal constants in the analysis**: fixed chart ceilings
-      (`VOLUME_Y_MAX`, `TIME_Y_MAX`, `LOAD_Y_MAX` — a 130 km/week axis for a
-      40 km/week athlete), `COMPARE_VISIBLE_YEARS = 5`, the 2009 colour anchor,
-      `RACE_DAYS = 180`. Make the ceilings a "nice max" from the data.
-    - **The sheet shapes the core (done Nov 2026)**: `SHEET_TYPE_CODES` and
-      `classification_for_sheet_code` moved from `hobbyjogging_core.workouts`
-      to `hobbyjogging_import.sheet_codes`, so the canonical vocabulary is not
-      shaped by one spreadsheet; maintenance imports the mapping from there.
-    - **Thresholds as defaults, not laws**: RPE > 3, 90-min long run, 40-min
-      recovery, subT 4/7-min buckets, 5-bpm HR conflict, 10 %/20 m elevation.
-      Document them as defaults and keep them in one module.
-    - **Missing one-file fixes**: no `LICENSE`, no `.env.example`; the README
-      starts at `data/fit` without saying how files get there (Garmin GDPR
-      export, or Intervals-only).
-    - **Second-athlete test case (after phase 1)**: a second athlete with
-      Garmin, Runalyze and Strava — no Intervals, no sheet — runs the full
-      pipeline into their own database. This is the acceptance test for
-      portability, not a multi-tenant schema: **one athlete per DB**, and the
-      second athlete's data stays private. It will expose what is still shaped
-      by this athlete's sources; fix the generic code, do not fork it.
-    - **Per-athlete profile**: one database, FIT directory, credentials and
-      timezone per athlete; `sync.sh` must skip unconfigured sources and never
-      assume Intervals. `sources.toml` carries the policy (enabled, create,
-      text targets) and `.env` the credentials (item 40). The second athlete's
-      setup is the first real profile.
-    - **Intervals-shaped assumptions**: `moving_s`/`elapsed_s` are
-      Intervals-first (now with a FIT fallback), planned events are
-      Intervals-authoritative, and the thresholds/zones/wellness import is
-      Intervals-only. The second athlete has none of those. Decide the fallback
-      owner for moving/elapsed (Garmin FIT or Runalyze), how the reports behave
-      without thresholds, zones or events, and which Runalyze/Garmin endpoint
-      supplies wellness.
-      Race results and training periods must not depend on Intervals either.
-      **Partially resolved (Nov 2026)**: `moving_s`/`elapsed_s` already use a
-      ranked authority (Intervals → FIT), so the second athlete falls back to
-      FIT with no code change; a third rank (Runalyze) is decided when its
-      payload coverage is measured.
-    - **Strava role (resolved Nov 2026)**: every source that yields activity
-      rows may create; the per-source `create|review|ignore` policy decides
-      (item 40). This athlete keeps Strava at `ignore` (social + gear) and
-      Runalyze at `review`; a Strava-only second athlete sets `create`, and the
-      text target decides whether a title becomes the name.
-    - **Gear without a sheet**: the co-occurrence rule has no sheet shoes for
-      the second athlete; the exact-name/new-row path must carry the whole
-      gear import, and the report must show the new rows.
-    - **Out of scope, state it**: multi-athlete (one athlete per DB), imperial
-      units, a hosted service, arbitrary platforms.
-    - **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, a
-      pull-request test workflow, the README first-run path; then the
-      second-athlete test case once the Runalyze and Strava imports land, as
-      the driver for the remaining assumptions; then the data-driven ceilings;
-      then the Python floor.
+23. **Portability for a second user** (core + import + reports + CI; phase 2,
+    step 2 — the acceptance test for phase 2). The model is portable already:
+    canonical activity, owner-based fields with ranked exceptions, the
+    migration machinery, the importers, reports over `DataSource`, the
+    synthetic demo. What is personal is the defaults. **One athlete per DB**;
+    the second athlete's data stays private; there is no multi-tenant schema.
+    Fix the generic code, do not fork it.
 
-24. **Catalogue every metric and analysis tool** (docs + reports; idea). The
-    registry only documents what came through the lab gate, so most of what the
-    reports actually compute is undocumented: load EWMAs, zone shares, session
-    RPE, race buckets and Riegel, the VO2max EWMAs, the robust wellness bands,
-    the classifier, the work-interval filter, the matching and tolerance rules.
-    The goal is a reference catalogue of everything in use, with a source for
-    each, distinct from the promotion gate.
-    - **Two jobs, two homes.** `docs/METRICS.md` stays the registry (gate,
-      promoted, rejected); the catalogue is a separate document (working name
-      `docs/ANALYSIS.md`) so a reader does not confuse "how a metric earns its
-      place" with "what a metric means".
-    - **Three classes with different reference styles**: *metrics* (a number:
-      efficiency, load, IF, zone share), *methods* (the classifier, the
-      work-interval filter, race matching, the owner/tolerance rules) and
-      *statistics* (EWMA, median/MAD, split-half reliability, regression). Each
-      entry: definition, formula, source or "coaching convention", where it
-      renders, and its caveats.
-    - **References**: cite the origin where one exists (Riegel 1981 for the
-      endurance formula; Foster 2001 for session RPE; Coggan/Allen for
-      CTL/ATL/TSB and IF; Seiler for polarization; Daniels for VDOT; Friel for
-      decoupling; Minetti for the grade cost model; Plews/Buchheit for HRV).
-      Mark coaching conventions explicitly rather than inventing a citation —
-      the load EWMAs and m/beat are conventions, not papers.
-    - **Anti-drift**: either generate the list from one registry in the reports
-      package and render Markdown and HTML from it, or keep it hand-written
-      with a test asserting every `analysis/` module is mentioned and every
-      named module still exists. Prefer the second unless the first proves
-      cheap; prose does not generate well.
-    - **Dashboard**: a "Metrics" tab rendering the catalogue grouped by area
-      (load, intensity, efficiency, races, wellness, tools) with anchors, next
-      to the existing Docs tab. Formulas must render without new runtime
-      dependencies — plain Unicode/code blocks, or bundle KaTeX if the site
-      stays self-contained.
-    - **Open questions**: one doc or two; catalogue at metric level or
-      report level; whether the review rules and the import tolerances belong
-      in it (they are tools, not metrics); and whether the lab's candidate
-      table should link into the catalogue.
-    - **Acceptance**: every number a report shows is either catalogued or
-      explicitly listed as plumbing; every entry names the module that
-      computes it; no entry describes code that no longer exists.
+    **Acceptance test.** A second athlete with Garmin, Runalyze and Strava — no
+    Intervals, no sheet — runs `init`, `sync`, the reports and the dashboard
+    into their own database without editing package code.
+
+    - **Setup (import + CI)**
+      - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
+            a no-op.
+      - [ ] `doctor` checks the DB path and writability, the schema version,
+            the FIT directory, the credentials and the sources file, and names
+            what is missing.
+      - [ ] `sources.toml` alone selects the sources: Intervals and the sheet
+            disabled, Runalyze `review`, Strava `create` or `ignore`.
+      - [ ] `sync.sh` skips an unconfigured source instead of failing on an
+            absent credential, and never assumes Intervals.
+      - [ ] a pull-request workflow runs the four suites plus the demo build;
+            today CI only covers pushes to `main`.
+      - [ ] `LICENSE`, `.env.example` and a README first-run path (GDPR export
+            or `garmin fetch` → `sync`).
+    - **Ingestion (core + import)**
+      - [ ] Garmin FIT is the only device source: `moving_s`/`elapsed_s` fall
+            back to FIT through the existing ranked authority, with no code
+            change.
+      - [ ] Strava `create` makes a summary activity using the configured
+            timezone; title and description follow the text target.
+      - [ ] Runalyze honours `create|review|ignore`; unmatched rows become
+            review items when set to `review`.
+      - [ ] gear works without a sheet: exact name → new row → ambiguous item,
+            with the co-occurrence branch simply never firing.
+      - [ ] race results arrive without Intervals (Runalyze); no training
+            periods and no planned events is an accepted empty state, not an
+            error.
+    - **Analysis and reports (reports)**
+      - [ ] no Intervals assumption in the read path: missing thresholds,
+            zones, events or wellness degrade to an explicit "not available",
+            never a wrong number or a crash.
+      - [ ] chart ceilings come from the data (landed); the known personal
+            constants that remain are `COMPARE_VISIBLE_YEARS`, the 2009 colour
+            anchor and `RACE_DAYS`.
+      - [ ] the analysis defaults (RPE > 3, 90-min long run, 40–75 min
+            efficiency band, subT buckets, 5-bpm HR conflict, 10 %/20 m
+            elevation) are one documented module of defaults, not laws.
+      - [ ] the demo builds from the synthetic athlete and renders every tab,
+            so the second athlete's empty paths are exercised too.
+    - **Language floor**: [ ] `requires-python` drops to 3.12 once the suites
+      pass there; no 3.14-only syntax was found.
+
+    **Out of scope, stated**: multi-athlete, imperial units, a hosted service,
+    arbitrary platforms, a per-athlete UI.
+
+    **Order**: cheap first — LICENSE, `.env.example`, `init`/`doctor`, the PR
+    workflow, the README first-run path; then the end-to-end run on the second
+    athlete's database, which drives the remaining assumption fixes; then the
+    Python floor. The data-driven ceilings landed already.
+
+24. **Metric catalogue** (docs; decided 2026-11-19). The registry used to
+    document only what passed the lab gate, so most computed numbers had no
+    reference. The decision: **one document, two jobs.**
+    - `docs/METRICS.md` stays the only home. It keeps the promotion gate, the
+      short cards for promoted metrics, the rejected list, and a
+      **`## Reference catalogue`** table: one line per number or method —
+      definition in a phrase, the module that computes it, where it renders.
+      It is written; keep it current when a number is added or removed.
+    - **No `docs/ANALYSIS.md`.** A second document would restate the same facts
+      and rot in a different place.
+    - **No dashboard Metrics tab.** The Docs tab already publishes
+      `METRICS.md`, so a tab would render the same file twice. Reports item 7
+      has no input left under this decision and should be retired there.
+    - **No generated registry and no prose-grep test.** A test that asserts
+      every `analysis/` module is named is fragile and proves only that a name
+      appears; the catalogue is hand-written and checked in the periodic
+      cleanup (item 28).
+    - **Where the detail lives**: a formula, its validation and its caveats
+      belong to the promoted card or to the module's docstring — the catalogue
+      only names the path. Paper references belong to the card that promotes a
+      number, not to a shared bibliography; coaching conventions say so.
 
 25. **LLM coaching workflow** (root + reports). The workflow exists but lives
     outside the repo: another model reads the Markdown reports and plans through
@@ -901,24 +491,25 @@ editing, analysis and lab work; phase 3 is the dormant future.
       the suite instead of the wall clock.
 
 28. **Periodic cleanup pass** (all packages + docs; recurring). Nothing guards
-    readability today: no linter is configured, and the documentation has
-    started to duplicate itself. Neither is a fire, but both drift in one
-    direction.
-    - **Docs**: the `## Done` sections are 160, 90, 25 and 232 lines in the four
-      `NEXT_UP.md` files and restate git history; trim them to a short "recently
-      landed" list or drop them, keeping only what a reader needs for context.
-      Also sweep for facts stated twice (the reports pointer, the roadmap that
-      was folded into ARCHITECTURE).
+    readability automatically: no linter is configured, and documentation
+    drifts toward duplication. Human review is the guard, at a slow cadence.
+    - **Docs, done once (2026-11-19)**: the root `## Done` list is now a short
+      "recently landed" list and the landed Runalyze milestone is a summary
+      rather than a phase log. Package lists trim their own `## Done`
+      sections; they are not root edits.
+    - **Docs, every pass**: sweep for facts stated twice (the phase paragraph,
+      the roadmap pointer, the schema version) and for entries that restate
+      git history.
     - **Code**: audit the ~108 names re-exported from
       `hobbyjogging_report.analysis.__init__` for dead exports, then delete
       unused helpers, parameters and flags. No `TODO`/`FIXME` markers exist
       today — keep it that way.
-    - **Mechanical guard**: propose `ruff` (lint and format check) in CI. It
-      would catch unused imports and variables and enforce a line length, but
-      expect a first pass of violations and some config churn; decide whether
-      that is worth it before wiring it into the test job.
+    - **Mechanical guard, still open**: `ruff` (lint and format check) would
+      catch unused imports and variables and enforce a line length, at the cost
+      of a first pass of violations and some config churn; decide before wiring
+      it into the test job.
     - **Cadence**: one pass at each release tag (item 22), plus the boy-scout
-      rule already in `AGENTS.md` — leave a file no worse than you found it.
+      rule in `AGENTS.md` — leave a file no worse than you found it.
     - **Acceptance**: no dead exports, no duplicated doc sections, no file that
       has outgrown its purpose without being split or trimmed.
 
@@ -1016,8 +607,8 @@ editing, analysis and lab work; phase 3 is the dormant future.
       estimated flag; the compare and overview aggregates still exclude it; a
       fallback of 0 or 200 is rejected.
 
-34. **Manual-layer export and rebuild check** (maintenance + core; **low
-    priority** — insurance, not a blocker). The raw layer is preserved and
+34. **Manual-layer export and rebuild check** (maintenance + core; phase 2,
+    step 1 — cheap insurance, not a blocker). The raw layer is preserved and
     SQLite stays readable, so the data does not disappear; what dies with the
     code is the *meaning*: which values were overridden, which sessions were
     deliberately excluded, which conflicts were decided. That layer is small —
@@ -1025,13 +616,13 @@ editing, analysis and lab work; phase 3 is the dormant future.
     28, …), 335 + 209 manual workout method/target rows, 29 exclusions, 33
     ignored review items — against 14,393 source records and 4,148 activities
     that are raw or recomputable.
-    - **Phase 1**: `maintenance export-manual` writes JSONL — the
+    - **Export**: `maintenance export-manual` writes JSONL — the
       `activity_manual_fields` overlay (item 17), manual sets, manual tags,
       manual equipment links, exclusions and the ignored/resolved review
       fingerprints — and `import-manual` re-applies it to a fresh database,
       idempotently. Human-readable, diffable, a few kilobytes.
-    - **Phase 2**: a `rebuild` check — fresh database, replay the raw layer
-      (`source_records` plus the FIT archive), apply the overlay, run
+    - **Rebuild proof**: a `rebuild` check — fresh database, replay the raw
+      layer (`source_records` plus the FIT archive), apply the overlay, run
       `recompute_canonical`, then diff the canonical layer against the live
       database. An empty diff is the proof that raw + overlay + code reproduce
       everything. Companion to item 17.
@@ -1040,10 +631,12 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Not doing**: a CSV/JSON export of the whole canonical database — it
       duplicates the raw layer and rots with the schema — and not treating the
       overlay as a backup; a periodic `sqlite3 .backup` remains the safety net.
-    - **Why low**: the raw sources and the database are already safe; this
-      protects the decisions and the design claim, which matters if the project
-      is ever abandoned or handed over. The input table itself belongs to item
-      17; this item is the export and the fresh-database proof.
+    - **Why first, though it is insurance**: the raw sources and the database
+      are already safe; this protects the decisions and the design claim, which
+      matters if the project is ever abandoned or handed over. It is small,
+      the rebuild it exercises just landed, and an empty diff makes every
+      later phase confident in `recompute_canonical`. The input table itself
+      belongs to item 17; this item is the export and the fresh-database proof.
 
 35. **Runalyze's extra metrics: what to store, what to ignore** (core + import
     + reports; decision). The activity payload carries more than our schema
@@ -1073,14 +666,14 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
 37. **Refurbish historical data from evidence already stored** (maintenance +
-    import + reports; after item 12). The log already contains facts we do not
-    use: tags carry workout targets, illness recovery and race days,
-    descriptions describe interval sessions, and big races anchor seasons. The
-    point is to fill empty fields and propose corrections, never to invent
-    facts.
-    - **Sequence**: phase 2, after the Runalyze import (item 12) lands, so the
-      tags and comments are complete; the audit itself is read-only and can run
-      earlier.
+    import + reports; phase 2, alongside steps 2–4). The log already contains
+    facts we do not use: tags carry workout targets, illness recovery and race
+    days, descriptions describe interval sessions, and big races anchor
+    seasons. The point is to fill empty fields and propose corrections, never
+    to invent facts.
+    - **Sequence**: the Runalyze import has landed, so the tags and comments are
+      complete; the audit is read-only and can start now. Proposals that need
+      the activity edit surface wait for step 3 (item 1).
     - **Audit first** (maintenance): a read-only report per field and year —
       raw payload keys not stored, tag semantics, interval-like descriptions,
       elevation/trail evidence, race evidence, and coverage gaps. It is the
@@ -1124,8 +717,9 @@ editing, analysis and lab work; phase 3 is the dormant future.
       audit can list unmapped tags first.
 
 38. **Session-average metrics now, streams later** (core + import + maintenance
-    + reports; later). The session-level aggregates are already in the raw
-    payloads and the FIT archive, but most are not stored: FIT session fields
+    + reports; phase 2, step 4). The session-level aggregates are already in
+    the raw payloads and the FIT archive, but most are not stored: FIT session
+    fields
     (cadence, stride, vertical oscillation, stance time/percent/balance,
     vertical ratio, respiration, power, calories, training effect, altitude),
     Intervals (cadence 83 %, stride 82 %, calories 100 %, altitude 98 %),
@@ -1155,28 +749,19 @@ editing, analysis and lab work; phase 3 is the dormant future.
     - **Streams later**: keep the raw FIT archive as the stream source; add a
       stream index/metadata table and parse on demand or into Parquet. Do not
       put per-second rows in the canonical SQLite database.
-    - **Sequence**: phase 2 for session averages, after the Runalyze import
-      and the historical refurbishment (item 37); phase 3 for streams. The
-      audit can run earlier.
+    - **Sequence**: step 4 — after steps 1–3. The Tier-1 extraction audit
+      reuses item 37's raw-field audit, and both audits can start before the
+      schema lands. Streams stay phase 3.
 
-39. **Running-only load card** (docs). Write the promoted cross-training
-    load-transfer handoff into `docs/METRICS.md`: the running-fitness load
-    series uses **running load only**, cross load is context, and no positive
-    transfer factor applies (best `k = 0`). Validation to record: cross load
-    is 9–26 % of annual load; 42-day running/cross correlations with steady
-    efficiency +0.04 / −0.06 raw and +0.05 / −0.04 year-adjusted; adding cross
-    load gives R² 0.074 with a negative coefficient and bootstrap `k`
-    −10..+25; the transfer grid is flat at R² 0.071–0.073 with best `k = 0.0`;
-    weeks ≥20 % cross read 2.409 vs 2.445 efficiency, confounded. Renderers:
-    load chart (bars split running/cross, running-only EWMAs), overview
-    `Run load / week`, compare load metric, planned load split by sport.
-    Code landed in the reports package (`66dd91b`); evidence
-    `experiments/cross_training_load.py`. Mirror the card in the metrics
-    catalogue if item 24 carries load.
+39. **Running-only load card** (docs; done 2026-11-19). The card is in
+    `docs/METRICS.md` under Promoted, with its load row in the reference
+    catalogue; the reports code landed in `66dd91b` and the evidence is
+    `experiments/cross_training_load.py`. The number stays only so the reports
+    list's handoff pointer keeps resolving.
 
 40. **Import policy, settings view and source configuration** (core + import +
-    maintenance + reports; phase 2). Every source that yields activity rows may
-    create; what varies per athlete is policy, not capability.
+    maintenance + reports; done, phase 2). Every source that yields activity
+    rows may create; what varies per athlete is policy, not capability.
     - **Done (Nov 2026)**: `SourceProfile` declares `yields_activities` and
       `creation_fields` (no create/enrich role). `sources.toml` (or
       `HOBBYJOGGING_SOURCES`) carries `enabled`, `create`, `title` and
@@ -1193,24 +778,24 @@ editing, analysis and lab work; phase 3 is the dormant future.
       `create_activity` item; triage `(c)` creates it from the stored values.
     - **Text targets**: Strava's title/description go to `activity_social`
       (default) or the canonical `name`/`description`; a promoted title feeds
-      the classifier. `promote_social_text` for a later policy change remains.
+      the classifier. `sources.toml` is the switch, so no separate promote
+      command is needed.
     - **Settings view**: `hobbyjogging-import sources` prints the effective
       policy; `hobbyjogging-import settings` (also `reports.sh settings`)
       renders sources, field rules, matching, review categories, causes,
       classification and the payload mapping. The report delegates to the
       import package because it owns the rules and the mapping.
-    - **Remaining**: the create policy for the recording sources (enabled only
-      for now), the dashboard Settings tab, and the registry extension for
-      quality/causes (the report already shows them from the import side).
+    - **Remainder, decided (2026-11-19)**: the recording sources keep `enabled`
+      only. A recording source's unmatched row is the recording itself, so
+      "do not create" would discard the only copy of the activity; there is no
+      create policy to wire. `promote_social_text` is the existing
+      `sources.toml` text target, not a command. The **dashboard Settings tab**
+      stays optional reports polish (the CLI report already covers the
+      question); the registry extension is unnecessary because the settings
+      report renders quality and causes from the import side.
     - **Not doing**: migrating FIT/Intervals/sheet onto `decide_match`, a
       primary-source rank, and an import-order key in `sources.toml`.
     - **Sequence**: done; item 23's second-athlete test is the acceptance test.
-
-The Runalyze payload sweep and the `vo2max` fill are done
-(`vo2max_runalyze` 843 → 2,225), so reports item 15 is unblocked. The Strava
-CSV import is applied (2,554 social rows, 64 gear links, 35 unmatched). The
-review queue holds the 19 ambiguous-match items, all four suites are green, and
-the demo deploys from GitHub Actions.
 
 ## Notes
 

@@ -5,13 +5,18 @@ source importers, and source-independent reports.
 
 ## Session scope convention
 
-The project runs three kinds of sessions:
+The project runs four kinds of sessions:
 
 - **Root** (this directory) — general planning and cross-package coding:
   architecture, schema or model changes, cross-package contracts, docs and
   roadmap, and real-DB strategy.
+- **Planning** (this directory, before the root coding session) — a docs-only
+  root session: it owns `docs/NEXT_UP.md`, `docs/ARCHITECTURE.md` and
+  `docs/METRICS.md`, writes no code, does not edit `packages/*/NEXT_UP.md`, and
+  runs sequentially with the root coding session on the shared tree.
 - **Package** (`packages/<pkg>`) — work confined to one package: features, bug
-  fixes, tests, and package docs. One session per package.
+  fixes, tests, and package docs. One session per package; `hobbyjogging-core`
+  has no session of its own and is handled by the root session.
 - **Lab** — exploring metrics and analysis before they enter a package:
   `./lab.sh` sessions, `experiments/` scripts, and the candidate list in
   `experiments/README.md`. The lab may read the whole repo and write

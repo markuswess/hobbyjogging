@@ -13,8 +13,9 @@ when all four hold:
 3. it beats the naive version on the real data;
 4. it will be looked at weekly.
 
-The candidate list lives in `experiments/README.md`; this file records only
-what was promoted or rejected.
+The candidate list lives in `experiments/README.md`; this file records the
+promoted and rejected cards and the reference catalogue of everything else
+the reports compute.
 
 Promotion is staged: pure function in `analysis/` with tests → cheapest
 renderer (a CLI report or one column) → live with it for a week → charts →
@@ -118,6 +119,74 @@ dashboard. The dashboard is the last step, never the first.
   efficiency lines, annotated with `E`, median RHR and the steady band; the
   scatter still shows every run, and outlined points mark the steady-band
   inputs to the lines. The CLI prints the same parameters and the band.
+
+### Running-only load
+
+- **Definition**: daily training load comes from the canonical `training_load`
+  (Intervals' `icu_training_load`). The running-fitness series sums **runs
+  only**; rides and other cross-training are drawn as a separate context stack
+  and carry **no transfer factor**.
+- **Baseline / thresholds**: 7-, 42- and 182-day EWMAs (fatigue, fitness,
+  base). The 7-day line is not used to set the chart ceiling. Planned load is
+  split by sport and projected through the calendar.
+- **Informs**: whether the running-load trend explains aerobic efficiency, and
+  whether a cycling-heavy block should count toward running fitness. It does
+  not: cross load is context, so a hard ride week must not read as a running
+  build.
+- **Validation**: `experiments/cross_training_load.py`, 2022-09..2026-11.
+  Cross load is 9–26 % of annual load. 42-day running/cross correlations with
+  steady efficiency are +0.04 / −0.06 raw and +0.05 / −0.04 year-adjusted;
+  adding cross load gives R² 0.074 with a negative coefficient and a bootstrap
+  transfer factor of −10..+25; the transfer grid is flat at R² 0.071–0.073
+  with best `k = 0.0`. Weeks with ≥20 % cross load read 2.409 vs 2.445
+  efficiency, but that is confounded.
+- **Caveats**: load starts in 2019 and efficiency in 2022, so the cycling-heavy
+  2020 phase is not covered by the comparison. The load signal itself is weak,
+  so this rejects a positive transfer factor rather than proving there is
+  none. Training load is a platform-derived session score, not a physiological
+  measurement; a source without it (FIT alone) leaves the series empty.
+- **Rendered**: load chart (running/cross stacked, running-only EWMAs),
+  overview `Run load / week`, the compare load metric, planned load split by
+  sport, and the analysis charts' planned-load projections. Code landed in
+  `66dd91b`.
+
+## Reference catalogue
+
+Everything the reports compute that is **not** a promoted card. One line per
+number or method: what it is, the module that computes it, and where it
+renders. A row earns a card above only by passing the gate; this table is the
+inverse map, so any figure on a page can be traced to its code path. It is
+hand-written and checked in the periodic cleanup (root item 28) — a test that
+greps prose would be more fragile than the drift it prevents.
+
+| number or method | computed in | rendered |
+|---|---|---|
+| Daily and weekly load, running-only vs cross | `analysis/load.py` | load chart, overview `Run load / week`, compare |
+| 7/42/182-day EWMAs of hard and total time | `analysis/zones.py`, `series.ewma` | overview, analysis charts, compare |
+| Weekly volume, time and zone shares | `analysis/averages.py`, `analysis/zones.py` | overview, period, compare |
+| Planned volume/time/load projected through the calendar | `analysis/planned.py`, `analysis/zones.py` | analysis charts, plan vs actual |
+| Session RPE and its weekly average | `analysis/rpe.py` | load chart overlay |
+| Zone-time normalization across era configs | `analysis/zones.py` | zone tables and charts |
+| Recovery bands (HRV, resting HR, sleep) from robust medians | `analysis/baseline.py`, `analysis/recovery.py` | recovery tab and report |
+| VO2max series and its 7/42-day averages | `analysis/vo2max.py` | VO2max chart, compare |
+| Race bucket and PB qualification (2 % of standard distance) | `analysis/races.py` | races report, Performance tab |
+| Riegel fit, reference anchoring and equivalent times | `analysis/races.py` | race chart, equivalents table |
+| Official race pair preferred over measured values | `analysis/races.py` | races report, PB tables |
+| subT work-rep selection and rep-level efficiency | `analysis/subt.py` | subT report and chart |
+| subT weighted-efficiency EWMA | `analysis/subt_ewma.py` | subT EWMA report and panel |
+| Per-era threshold snapshots and threshold-relative pace | `analysis/thresholds.py` | threshold chart, subT `Δ threshold` |
+| Pace/HR scatter, trends and per-year efficiency lines | `analysis/pace_hr.py` | analysis and compare charts |
+| Year/month comparison aggregates | `analysis/compare.py` | compare report and tab |
+| Per-year data coverage (activities with a weather row) | `analysis/coverage.py` | data-health tab |
+| Device usage and change dates | `analysis/devices.py` | gear tab, session line |
+| Equipment usage, coverage and retirement candidates | `analysis/equipment.py` | gear tab and report |
+| Running streaks (run days of at least 10 min) | `analysis/streaks.py` | streaks report, analysis tab |
+| Workout classifier and the stored-set display kind | `hobbyjogging_core.classify` | category tables, every report |
+| Work-interval filter and its usable-rep guards | `hobbyjogging_core.classify` | subT, intervals detail |
+| Matching ladder and the exact-twin rule | `hobbyjogging_import.matching` | imports, review queue |
+| Field ownership, ranked authority and tolerances | `hobbyjogging_core.import_rules` | imports, settings report |
+| Quality rules and review fingerprints | `hobbyjogging_import.quality` | review queue, data health |
+| Source create policy and text targets | `sources.toml`, `hobbyjogging_core.sources_config` | `sources` / `settings` |
 
 ## Rejected
 
