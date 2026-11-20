@@ -94,7 +94,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | promoted | `vo2max_estimates.py` | 2026-11-19 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (Runalyze temperature/humidity/wind ~98% available; Runalyze temperature is ~5.7 °C below canonical/Intervals, so source choice matters) | candidate | — | 2026-11-20 |
-| GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (vendor `gap` 100% available in km/h; pointwise grade still missing) | experimenting | `payload_audit.py` | 2026-11-20 |
+| GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (terrain spread shrinks ~70%; yearly trend unchanged; duration effect remains) | parked | `gap_efficiency.py` | 2026-11-20 |
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (Runalyze `recurring_route` 99% available; canonical routes are sparse) | candidate | `payload_audit.py` | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
@@ -247,6 +247,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Stored GAP efficiency** — 502 steady 40-75 runs with stored Runalyze GAP.
+  Raw vs GAP efficiency is 2.441 vs 2.487 overall (+1.5%). Terrain means
+  raw/GAP: flat 2.465/2.493, rolling 2.442/2.488, hilly 2.325/2.449; the
+  flat-hilly spread shrinks from 0.140 to 0.044 (~70%). Yearly means stay
+  parallel (2022–2026), so GAP changes the level, not the fitness trend. The
+  duration decline is similar (40–50 vs 60–75: raw −0.027, GAP −0.031), so GAP
+  does not fix the duration/drift caveat. Enduro drops: Runalyze raw values are
+  much lower on hilly/trail runs (31–51) and the elevation-corrected values
+  (42–61) reduce but do not consistently remove the drop; use as context, not
+  a fix. Evidence: `experiments/gap_efficiency.py`; plot `gap-efficiency.png`.
 - **Curated VO2max subset** — tested on 2,231 Runalyze payloads and 34 road
   races. The manual `use_vo2max` label excludes 355 runs (17–25% in 2021–2026);
   excluded runs are ~6 VO2 units lower (our estimate 55.2 vs 61.0; Runalyze
