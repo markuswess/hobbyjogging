@@ -97,7 +97,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (terrain spread shrinks ~70%; yearly trend unchanged; duration effect remains) | parked | `gap_efficiency.py` | 2026-11-20 |
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
 | Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? (mix shifted sharply, but fixed-mix VO2max is within 0.3 units from 2023; efficiency is already steady-only) | parked | `structure_mix.py` | 2026-11-20 |
-| Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? | candidate | — | 2026-11-20 |
+| Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? (vendor decoupling r 0.67 vs laps; HR recovery is intensity-driven; rep fade is not consistent) | parked | `durability_recovery.py` | 2026-11-20 |
 | Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? | candidate | — | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
@@ -114,8 +114,8 @@ notes below; this table owns the stage order.
 | 1 | Does matching the manual curation bias the VO2max comparison? | done: matching raises the estimate +1.4 and worsens race alignment | `vo2max_curated.py` |
 | 2 | Does stored GAP change the terrain or duration conclusions? | done: removes ~70% of the terrain spread, not the duration effect | `gap_efficiency.py` |
 | 3a | Does route mix drive the efficiency trend? | done: 2.5% of variance | `route_efficiency.py` |
-| 3b | Does structure mix explain fitness moves? | open | — |
-| 3c | Do durability and HR recovery add signal? | open | — |
+| 3b | Does structure mix explain fitness moves? | done: mix shifted sharply; fixed-mix VO2max within 0.3 from 2023 | `structure_mix.py` |
+| 3c | Do durability and HR recovery add signal? | done: decoupling is usable; HR recovery and rep fade are descriptors | `durability_recovery.py` |
 | 3d | Do running dynamics explain the E/VO2 ratio? | open | — |
 | 4 | Simplify or keep a small per-structure vector? | open | — |
 
@@ -268,6 +268,17 @@ notes below; this table owns the stage order.
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Durability and HR recovery** — 96 steady runs with both lap-derived and
+  Runalyze decoupling: correlation +0.67, median +4.81% vs +3.75% (bias
+  −0.57 pp). The vendor value is usable but noisy; its yearly median is 1.4%
+  in 2022, then 3.6–3.9% in 2023–2026, a level shift worth verifying. HR
+  recovery is intensity-driven: VO2max 33, subT 27, long 20, race 18, easy 17,
+  recovery 15 bpm; the yearly median is flat at 18–20. Rep-to-rep fade:
+  VO2max +0.1 s/km / +7 bpm, subT −5.5 s/km / +10 bpm, race +6.5 s/km; pace
+  fade vs HR recovery r −0.02. Decoupling is the only candidate durability
+  signal; HR recovery and rep fade are session descriptors, not fitness
+  trends. Evidence: `experiments/durability_recovery.py`; plot
+  `durability-recovery.png`.
 - **Structure-mix guard** — 2,302 runs and 2,234 Intervals payloads. The mix
   shifted sharply (2022→2026): easy/base 57→39%, recovery 0→26%, long 23→0%,
   subT/threshold 1→30%, VO2max/intervals 19→2%. The vendor effects validate
