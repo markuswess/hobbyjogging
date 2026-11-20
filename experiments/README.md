@@ -96,7 +96,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (Runalyze temperature/humidity/wind ~98% available; Runalyze temperature is ~5.7 °C below canonical/Intervals, so source choice matters) | candidate | — | 2026-11-20 |
 | GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (terrain spread shrinks ~70%; yearly trend unchanged; duration effect remains) | parked | `gap_efficiency.py` | 2026-11-20 |
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
-| Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? | candidate | — | 2026-11-20 |
+| Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? (mix shifted sharply, but fixed-mix VO2max is within 0.3 units from 2023; efficiency is already steady-only) | parked | `structure_mix.py` | 2026-11-20 |
 | Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? | candidate | — | 2026-11-20 |
 | Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? | candidate | — | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
@@ -268,6 +268,20 @@ notes below; this table owns the stage order.
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Structure-mix guard** — 2,302 runs and 2,234 Intervals payloads. The mix
+  shifted sharply (2022→2026): easy/base 57→39%, recovery 0→26%, long 23→0%,
+  subT/threshold 1→30%, VO2max/intervals 19→2%. The vendor effects validate
+  the labels: `AerobicEffect` 2.48 easy, 2.01 recovery, 3.30 long, 4.03 subT,
+  3.60 VO2max, 4.63 race; `AnaerobicEffect` 0.26 easy vs 2.27 VO2max; load 40
+  easy vs 105 long/race. Pooled vs fixed-mix standardised VO2max differs by
+  −1.56 in 2022, then +0.28 / −0.03 / −0.06 / −0.17 in 2023–2026. The recent
+  all-run trend is not a composition artefact; the 2022 point is mix-sensitive.
+  The pooled and easy/base efficiency trends are identical because the steady
+  40–75 filter already excludes quality and long runs: efficiency is
+  structure-controlled by selection, which also means it cannot test mix
+  sensitivity. Keep the pooled VO2max with a mix note; segment if the mix
+  shifts again. Evidence: `experiments/structure_mix.py`; plot
+  `structure-mix.png`.
 - **Route-conditioned efficiency** — 2,216 Runalyze route payloads. The
   `recurring_route.id` is too fragmented to use directly (2,024 ids for 2,216
   runs), so pseudo-routes use rounded start coordinates (2 decimals), a 1 km
