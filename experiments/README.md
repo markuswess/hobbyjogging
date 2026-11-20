@@ -84,7 +84,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague; needs event links: only 2) | blocked | — | 2026-11-19 |
 | Garmin VO2max jumps | Why do the readings jump — terrain or device history? (Enduro drops explained by terrain; transient) | parked | `enduro_vo2max_drops.py` | 2026-11-19 |
 | Payload field audit | Which stored payload fields are usable, and what does Runalyze's manual VO2max exclusion select? (Runalyze 2,231 / Intervals 2,234 runs; high coverage) | experimenting | `payload_audit.py` | 2026-11-20 |
-| Curated VO2max subset | How much of the VO2max validation is biased by Runalyze's manual `use_vo2max` exclusions? | experimenting | `payload_audit.py` | 2026-11-20 |
+| Curated VO2max subset | How much of the VO2max validation is biased by Runalyze's manual `use_vo2max` exclusions? (matching it raises our estimate +1.4 and worsens race alignment) | parked | `vo2max_curated.py` | 2026-11-20 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? (superseded: elevation is canonical since v12) | retired | — | 2026-11-16 |
 | Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (2022+ gear is now linked: 26 shoes, 3,365 links) | candidate | — | 2026-11-19 |
@@ -111,8 +111,9 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   `vo2max_with_elevation − vo2max` is +1.0 / +2.4 / +6.7 by flat/rolling/hilly
   gain bucket. `PaceHR` is gross speed/HR (r 0.99 with speed/HR, 0.60 with
   speed/excess HR), not m/excess beat. Runalyze temperature is ~5.7 °C below
-  canonical/Intervals, so do not mix sources. Next: curated-subset validation.
-  Evidence: `experiments/payload_audit.py`.
+  canonical/Intervals, so do not mix sources. Curated-subset validation is
+  parked: matching the label raises our estimate by +1.4 and worsens race
+  alignment (`vo2max_curated.py`). Evidence: `experiments/payload_audit.py`.
 
 ### Promoted notes
 - **HR/economy-based VO2max** — promoted 2026-11-19. Session-level effective
@@ -246,6 +247,18 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Curated VO2max subset** — tested on 2,231 Runalyze payloads and 34 road
+  races. The manual `use_vo2max` label excludes 355 runs (17–25% in 2021–2026);
+  excluded runs are ~6 VO2 units lower (our estimate 55.2 vs 61.0; Runalyze
+  53.8 vs 61.2). Per-run our estimate vs Runalyze `vo2max`: all +0.03/−0.01,
+  r 0.95; curated −0.21/−0.27, r 0.94. Against race VDOT: our all-run
+  −0.43/−0.07, MAD 1.35; our curated −1.81/−1.83, MAD 1.87; Runalyze
+  −2.39/−2.75, MAD 2.69; Runalyze + elevation −4.53/−4.52, MAD 4.53. Matching
+  the curation raises the training estimate by +1.38 and moves it away from
+  race VDOT. The all-run estimate is the better race-aligned series;
+  `use_vo2max` is a comparability label that selects high-level runs, not a
+  better calibration. `vo2max_with_elevation` is not closer to race VDOT on
+  this subset. Evidence: `experiments/vo2max_curated.py`.
 - **Garmin VO2max jumps (Enduro era)** — 1,341 Enduro running readings,
   8 drops ≥1. Drop sessions have median gain/loss 30.9/30.6 m/km versus
   5.9/5.5 for other runs; trail share 50% vs 1%, long-run 38% vs 8%. Terrain
