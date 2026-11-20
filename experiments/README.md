@@ -112,9 +112,16 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   formula is not supported; raw pace is closest, and GAP remains unreplicated.
   Smoothed Runalyze vs Garmin: 42d +0.75 / 1.79 and 90d +0.78 / 1.63; the
   steady estimate gives +0.80 / 1.51 and +0.83 / 1.44.
-  Against Daniels race VDOT over all 37 road races 2019–2026: VDOT − Garmin
-  −1.46 / −1.11, VDOT − Runalyze −3.63 / −3.49, VDOT − estimate **−0.43 /
-  −0.07**. The HR-reserve variant overestimates (~73.5) and is rejected.
+  Against Daniels race VDOT over 34 usable road races 2019–2026 (37 official
+  results, 3 excluded): VDOT − Garmin −1.46 / −1.11, VDOT − Runalyze
+  −3.63 / −3.49, VDOT − estimate **−0.43 / −0.07** (SD 1.9, RMSE 2.0,
+  r 0.67). The HR-reserve variant overestimates (~73.5) and is rejected.
+  On the race activity itself the HR estimate is ~4.7 high (median 4.3,
+  r 0.92, n=33; gap ~7 at 5k/10k, ~3 at HM/marathon), because race average
+  HR is below the duration-specific fraction and the ACSM cost differs from
+  Daniels'. The ±14-day all-run estimate is the fair comparison; the raw
+  all-runs report series will spike on races, so read race VDOT against the
+  smoothed line, not the race-day value.
   Handoff: best candidate is the **all-runs HR/HRmax estimate with a 42-day
   mean**, validated against race VDOT; the Enduro era fits it best, while the
   FR645 era remains noisy. Caveats: approximate ACSM economy, Garmin’s device
