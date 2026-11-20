@@ -98,7 +98,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
 | Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? (mix shifted sharply, but fixed-mix VO2max is within 0.3 units from 2023; efficiency is already steady-only) | parked | `structure_mix.py` | 2026-11-20 |
 | Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? (vendor decoupling r 0.67 vs laps; HR recovery is intensity-driven; rep fade is not consistent) | parked | `durability_recovery.py` | 2026-11-20 |
-| Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? | candidate | — | 2026-11-20 |
+| Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? (form correlations collapse after controlling for pace; ratio mixes pace/HR/weight; not an economy proxy) | parked | `economy_form.py` | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
 ## Active plan: payload milking
@@ -116,8 +116,19 @@ notes below; this table owns the stage order.
 | 3a | Does route mix drive the efficiency trend? | done: 2.5% of variance | `route_efficiency.py` |
 | 3b | Does structure mix explain fitness moves? | done: mix shifted sharply; fixed-mix VO2max within 0.3 from 2023 | `structure_mix.py` |
 | 3c | Do durability and HR recovery add signal? | done: decoupling is usable; HR recovery and rep fade are descriptors | `durability_recovery.py` |
-| 3d | Do running dynamics explain the E/VO2 ratio? | open | — |
-| 4 | Simplify or keep a small per-structure vector? | open | — |
+| 3d | Do running dynamics explain the E/VO2 ratio? | done: no; form collapses after pace, weight/HR remain | `economy_form.py` |
+| 4 | Simplify or keep a small per-structure vector? | done: keep the VO2max trend all-runs; efficiency steady-only; no ratio/HRR promotion | — |
+
+### Payload plan decision
+
+Stage 4 result: keep the **VO2max trend** as an all-runs, trend-only metric
+with 42/182-day smoothing; do not apply the manual `use_vo2max` filter for
+race alignment. Keep **efficiency** as a steady 40–75 trend. Use stored **GAP**
+as an optional terrain caveat, not a trend correction. Do **not** promote HR
+recovery, rep-to-rep fade or the E/VO2 ratio as fitness metrics; they are
+session descriptors or pace/weight artefacts. Under a stable structure, easy
+pace at a fixed HR remains the simple check; the mix and route results show the
+pooled trend is not a composition artefact.
 
 ### Experimenting notes
 - **Payload field audit** — 2,231 Runalyze and 2,234 Intervals payloads linked
@@ -268,6 +279,14 @@ notes below; this table owns the stage order.
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Economy / E-VO2 ratio** — 502 steady 40–75 runs. The ratio correlates with
+  pace −0.65, HR −0.77 (speed-partial −0.60), weight +0.32 (+0.31), cadence
+  −0.17 (+0.03), stride −0.64 (−0.06), ground contact +0.59 (+0.09), vertical
+  oscillation −0.40 (+0.02), Runalyze efficiency +0.19 (−0.08) and running
+  effectiveness +0.46 (+0.15). Form metrics collapse after controlling for
+  pace; weight and HR remain. The E/VO2 ratio is not a clean economy signal;
+  it mixes pace, HR, RHR and weight. Do not use it as an economy proxy.
+  Evidence: `experiments/economy_form.py`; plot `economy-form.png`.
 - **Durability and HR recovery** — 96 steady runs with both lap-derived and
   Runalyze decoupling: correlation +0.67, median +4.81% vs +3.75% (bias
   −0.57 pp). The vendor value is usable but noisy; its yearly median is 1.4%
