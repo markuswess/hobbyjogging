@@ -83,6 +83,8 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Race prediction history | How have race-time predictions at standard distances evolved over time, and do they track actual results? (37 official results; startable, still noisy) | candidate | — | 2026-11-19 |
 | Race plans | What should a race plan (pacing, zones, taper) look like from the training history, and how did past plans execute? (vague; needs event links: only 2) | blocked | — | 2026-11-19 |
 | Garmin VO2max jumps | Why do the readings jump — terrain or device history? (Enduro drops explained by terrain; transient) | parked | `enduro_vo2max_drops.py` | 2026-11-19 |
+| Payload field audit | Which stored payload fields are usable, and what does Runalyze's manual VO2max exclusion select? (Runalyze 2,231 / Intervals 2,234 runs; high coverage) | experimenting | `payload_audit.py` | 2026-11-20 |
+| Curated VO2max subset | How much of the VO2max validation is biased by Runalyze's manual `use_vo2max` exclusions? | experimenting | `payload_audit.py` | 2026-11-20 |
 | Recovery → performance | Does HRV/RHR/sleep predict the next session's pace-adjusted efficiency? | candidate | — | 2026-11-13 |
 | Elevation data check | Do summed lap ascents agree with Intervals gain/loss before v11? (superseded: elevation is canonical since v12) | retired | — | 2026-11-16 |
 | Shoe impact | Do shoes change pace at matched HR, once gear coverage and confounders are handled? (2022+ gear is now linked: 26 shoes, 3,365 links) | candidate | — | 2026-11-19 |
@@ -91,9 +93,26 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Cross-training load transfer | How much should cycling/cross load count toward running fitness, and does total load mislead during cycling-heavy phases? | promoted | `cross_training_load.py` | 2026-11-17 |
 | Monotony / strain | Do weekly monotony and strain add signal over the load EWMAs? | candidate | — | 2026-11-13 |
 | HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | promoted | `vo2max_estimates.py` | 2026-11-19 |
-| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (temperature is canonical; the Runalyze weather fields are still not mapped) | candidate | — | 2026-11-19 |
-| GAP metrics | What is grade-adjusted pace, and does it change efficiency conclusions? (needs a pointwise grade profile; activity gain/loss is not enough) | blocked | — | 2026-11-16 |
+| Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (Runalyze temperature/humidity/wind ~98% available; Runalyze temperature is ~5.7 °C below canonical/Intervals, so source choice matters) | candidate | — | 2026-11-20 |
+| GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (vendor `gap` 100% available in km/h; pointwise grade still missing) | experimenting | `payload_audit.py` | 2026-11-20 |
+| Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (Runalyze `recurring_route` 99% available; canonical routes are sparse) | candidate | `payload_audit.py` | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
+
+### Experimenting notes
+- **Payload field audit** — 2,231 Runalyze and 2,234 Intervals payloads linked
+  to run activities. Coverage is high: `gap` 100%, `vo2max_with_elevation`
+  100%, `aerobic_decoupling_pace` 99%, `recurring_route` 99%, running dynamics
+  92–100% by device, `icu_hrr` 93%, `icu_weight` 100%. Runalyze `use_vo2max` is
+  a **manual comparability label**, not data availability: 355 of 2,231 runs
+  are excluded (17–25% in 2021–2026), the excluded rows still carry `vo2max`
+  values, and a simple recovery/warm/family/trail/hilly/short rule reproduces
+  only precision 0.33 / recall 0.40. Runalyze `gap` is km/h (median
+  `gap/speed_kmh` 1.01); payload `vo2max` equals the canonical stored value;
+  `vo2max_with_elevation − vo2max` is +1.0 / +2.4 / +6.7 by flat/rolling/hilly
+  gain bucket. `PaceHR` is gross speed/HR (r 0.99 with speed/HR, 0.60 with
+  speed/excess HR), not m/excess beat. Runalyze temperature is ~5.7 °C below
+  canonical/Intervals, so do not mix sources. Next: curated-subset validation.
+  Evidence: `experiments/payload_audit.py`.
 
 ### Promoted notes
 - **HR/economy-based VO2max** — promoted 2026-11-19. Session-level effective
