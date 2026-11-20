@@ -95,7 +95,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | HR/economy-based VO2max | Can HR and running economy derive a Runalyze-style effective VO2max for 2023+ (where the Runalyze payload omits it) to compare with Garmin? (weight exists for 2024–2026, max HR is canonical) | promoted | `vo2max_estimates.py` | 2026-11-19 |
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (Runalyze temperature/humidity/wind ~98% available; Runalyze temperature is ~5.7 °C below canonical/Intervals, so source choice matters) | candidate | — | 2026-11-20 |
 | GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (terrain spread shrinks ~70%; yearly trend unchanged; duration effect remains) | parked | `gap_efficiency.py` | 2026-11-20 |
-| Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (Runalyze `recurring_route` 99% available; canonical routes are sparse) | candidate | `payload_audit.py` | 2026-11-20 |
+| Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
 ### Experimenting notes
@@ -247,6 +247,17 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
   but not tightly, and the setting behaves more like a reference/ceiling than a
   precise target. Revisit with official race results or efforts at LTHR.
   Evidence: `experiments/threshold_pace.py`.
+- **Route-conditioned efficiency** — 2,216 Runalyze route payloads. The
+  `recurring_route.id` is too fragmented to use directly (2,024 ids for 2,216
+  runs), so pseudo-routes use rounded start coordinates (2 decimals), a 1 km
+  distance bucket and the circuit flag. 143 steady 40-75 runs fall into 5
+  pseudo-routes with ≥20 runs. Route share of raw efficiency variance is only
+  **2.5%**; route-adjusted yearly means are within 0.02 of the pooled means
+  (2022–2026), and stored GAP gives the same conclusion. Individual route
+  slopes are noisy (−0.034 to +0.169 per year). Route mix is not driving the
+  pooled trend; route segmentation is not needed for the trend, though it may
+  help per-route comparisons. Evidence: `experiments/route_efficiency.py`;
+  plot `route-efficiency.png`.
 - **Stored GAP efficiency** — 502 steady 40-75 runs with stored Runalyze GAP.
   Raw vs GAP efficiency is 2.441 vs 2.487 overall (+1.5%). Terrain means
   raw/GAP: flat 2.465/2.493, rolling 2.442/2.488, hilly 2.325/2.449; the
