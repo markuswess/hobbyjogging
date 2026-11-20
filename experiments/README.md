@@ -98,6 +98,7 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
 | Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? (mix shifted sharply, but fixed-mix VO2max is within 0.3 units from 2023; efficiency is already steady-only) | parked | `structure_mix.py` | 2026-11-20 |
 | Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? (vendor decoupling r 0.67 vs laps; HR recovery is intensity-driven; rep fade is not consistent) | parked | `durability_recovery.py` | 2026-11-20 |
+| Decoupling level shift | Why is Runalyze decoupling 1.4% in 2022 and 3.6–3.9% in 2023–2026: a real durability change or a vendor/model change? | candidate | `durability_recovery.py` | 2026-11-20 |
 | Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? (form correlations collapse after controlling for pace; ratio mixes pace/HR/weight; not an economy proxy) | parked | `economy_form.py` | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
 
@@ -114,7 +115,7 @@ notes below; this table owns the stage order.
 | 1 | Does matching the manual curation bias the VO2max comparison? | done: matching raises the estimate +1.4 and worsens race alignment | `vo2max_curated.py` |
 | 2 | Does stored GAP change the terrain or duration conclusions? | done: removes ~70% of the terrain spread, not the duration effect | `gap_efficiency.py` |
 | 3a | Does route mix drive the efficiency trend? | done: 2.5% of variance | `route_efficiency.py` |
-| 3b | Does structure mix explain fitness moves? | done: mix shifted sharply; fixed-mix VO2max within 0.3 from 2023 | `structure_mix.py` |
+| 3b | Does structure mix explain fitness moves? | done: mix shifted sharply; broad-based +0.81–1.28/year; 2022 level mix-sensitive | `structure_mix.py` |
 | 3c | Do durability and HR recovery add signal? | done: decoupling is usable; HR recovery and rep fade are descriptors | `durability_recovery.py` |
 | 3d | Do running dynamics explain the E/VO2 ratio? | done: no; form collapses after pace, weight/HR remain | `economy_form.py` |
 | 4 | Simplify or keep a small per-structure vector? | done: keep the VO2max trend all-runs; efficiency steady-only; no ratio/HRR promotion | — |
@@ -128,7 +129,8 @@ as an optional terrain caveat, not a trend correction. Do **not** promote HR
 recovery, rep-to-rep fade or the E/VO2 ratio as fitness metrics; they are
 session descriptors or pace/weight artefacts. Under a stable structure, easy
 pace at a fixed HR remains the simple check; the mix and route results show the
-pooled trend is not a composition artefact.
+pooled trend is broad-based, not a composition artefact; the 2022 level is
+mix-sensitive.
 
 ### Experimenting notes
 - **Payload field audit** — 2,231 Runalyze and 2,234 Intervals payloads linked
@@ -296,7 +298,9 @@ pooled trend is not a composition artefact.
   VO2max +0.1 s/km / +7 bpm, subT −5.5 s/km / +10 bpm, race +6.5 s/km; pace
   fade vs HR recovery r −0.02. Decoupling is the only candidate durability
   signal; HR recovery and rep fade are session descriptors, not fitness
-  trends. Evidence: `experiments/durability_recovery.py`; plot
+  trends. **Open question:** the 2022→2023 level shift (1.4% → 3.6–3.9%)
+  needs a vendor/model check before the decoupling trend is read as fitness.
+  Evidence: `experiments/durability_recovery.py`; plot
   `durability-recovery.png`.
 - **Structure-mix guard** — 2,302 runs and 2,234 Intervals payloads. The mix
   shifted sharply (2022→2026): easy/base 57→39%, recovery 0→26%, long 23→0%,
@@ -306,6 +310,10 @@ pooled trend is not a composition artefact.
   easy vs 105 long/race. Pooled vs fixed-mix standardised VO2max differs by
   −1.56 in 2022, then +0.28 / −0.03 / −0.06 / −0.17 in 2023–2026. The recent
   all-run trend is not a composition artefact; the 2022 point is mix-sensitive.
+  Leave-one-group-out slopes: all +1.05/year; removing any group gives +0.81 to
+  +1.28; easy/base only +0.80, VO2max only +0.81, long only +1.55; subT only
+  +3.27 but it is ~1% of runs in 2022, so its early level is not comparable. The
+  improvement is broad-based across structures, not one group.
   The pooled and easy/base efficiency trends are identical because the steady
   40–75 filter already excludes quality and long runs: efficiency is
   structure-controlled by selection, which also means it cannot test mix

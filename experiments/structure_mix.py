@@ -125,6 +125,16 @@ def yearly_means(rows: list[dict], key: str) -> dict[int, float]:
     return {year: mean(values) for year, values in grouped.items()}
 
 
+def slope(years: list[int], values: list[float]) -> float | None:
+    if len(years) < 2:
+        return None
+    mx = mean(years)
+    my = mean(values)
+    sxx = sum((year - mx) ** 2 for year in years)
+    sxy = sum((year - mx) * (value - my) for year, value in zip(years, values))
+    return sxy / sxx if sxx else None
+
+
 def main() -> None:
     with create_source() as source:
         activities = {
@@ -310,6 +320,70 @@ def main() -> None:
             for year in years
         ],
         headers=["year", "pooled", "easy/base", "difference"],
+    )
+
+    vo2_rows = [row for row in rows if row["vo2"] is not None]
+
+    def trend(subset: list[dict]):
+        means = yearly_means(subset, "vo2")
+        keys = sorted(year for year in means if year >= 2022)
+        if len(keys) < 2:
+            return None
+        return (
+            len(subset),
+            means[keys[0]],
+            means[keys[-1]],
+            slope(keys, [means[year] for year in keys]),
+        )
+
+    full = trend(vo2_rows)
+    print("\nVO2max trend robustness (leave one structure group out):")
+    robustness = []
+    if full:
+        robustness.append(("all", *full, 0.0))
+    for group in GROUPS:
+        result = trend(
+            [row for row in vo2_rows if row["group"] != group]
+        )
+        if result:
+            robustness.append(
+                (
+                    f"without {group}",
+                    *result,
+                    result[3] - full[3] if full and full[3] is not None else 0.0,
+                )
+            )
+    for label, group in (
+        ("easy/base only", "easy/base"),
+        ("subT only", "subT/threshold"),
+        ("long only", "long"),
+        ("VO2max only", "VO2max/intervals"),
+    ):
+        subset = [row for row in vo2_rows if row["group"] == group]
+        result = trend(subset)
+        if result:
+            robustness.append(
+                (
+                    label,
+                    *result,
+                    result[3] - full[3] if full and full[3] is not None else 0.0,
+                )
+            )
+    table(
+        [
+            (
+                label,
+                n,
+                f"{first:.2f}",
+                f"{last:.2f}",
+                f"{value:+.3f}" if value is not None else "-",
+                f"{difference:+.3f}" if difference is not None else "-",
+            )
+            for label, n, first, last, value, difference in robustness
+        ],
+        headers=[
+            "subset", "n", "2022", "2026", "slope/year", "vs all",
+        ],
     )
 
     figure = make_subplots(
