@@ -96,7 +96,28 @@ Statuses: `candidate` → `experimenting` → `promoted` / `parked` / `blocked` 
 | Weather / temperature correlations | How much do temperature and season move pace, HR, efficiency, and RPE? (Runalyze temperature/humidity/wind ~98% available; Runalyze temperature is ~5.7 °C below canonical/Intervals, so source choice matters) | candidate | — | 2026-11-20 |
 | GAP metrics | Does stored Runalyze GAP change the efficiency and terrain conclusions? (terrain spread shrinks ~70%; yearly trend unchanged; duration effect remains) | parked | `gap_efficiency.py` | 2026-11-20 |
 | Route-conditioned trends | Do same-route runs give a cleaner efficiency trend than the pooled series? (start+distance pseudo-routes; route mix explains only 2.5% of variance) | parked | `route_efficiency.py` | 2026-11-20 |
+| Structure-mix guard | Does the training mix (`AerobicEffect`, `AnaerobicEffect`, load, intensity) explain efficiency/VO2max moves? | candidate | — | 2026-11-20 |
+| Durability / HR recovery | Do decoupling and HR recovery add independent signal beyond efficiency/VO2max? | candidate | — | 2026-11-20 |
+| Economy / form | Do cadence, stride, GCT and vertical oscillation explain the E/VO2 ratio? | candidate | — | 2026-11-20 |
 | Route shape classification | Can routes be categorized as loop, out-and-back, point-to-point, or other? (vague; needs route geometry/streams, the routes table has no coordinates) | blocked | — | 2026-11-16 |
+
+## Active plan: payload milking
+
+Goal: get more per-run comparability from the stored payloads without streams.
+`use_vo2max` is a manual comparability label (355 runs excluded; the values
+still exist), not a data-availability flag. The detailed evidence is in the
+notes below; this table owns the stage order.
+
+| stage | question | status | evidence |
+|---|---|---|---|
+| 0 | Which payload fields are usable, and what does the curation select? | done | `payload_audit.py` |
+| 1 | Does matching the manual curation bias the VO2max comparison? | done: matching raises the estimate +1.4 and worsens race alignment | `vo2max_curated.py` |
+| 2 | Does stored GAP change the terrain or duration conclusions? | done: removes ~70% of the terrain spread, not the duration effect | `gap_efficiency.py` |
+| 3a | Does route mix drive the efficiency trend? | done: 2.5% of variance | `route_efficiency.py` |
+| 3b | Does structure mix explain fitness moves? | open | — |
+| 3c | Do durability and HR recovery add signal? | open | — |
+| 3d | Do running dynamics explain the E/VO2 ratio? | open | — |
+| 4 | Simplify or keep a small per-structure vector? | open | — |
 
 ### Experimenting notes
 - **Payload field audit** — 2,231 Runalyze and 2,234 Intervals payloads linked
