@@ -46,6 +46,8 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
   from device laps for runs with no measured set.
 - `runalyze_load_current` fills an empty `training_load` from Runalyze's
   `fit_trimp`/`trimp`; Intervals outranks it in a mixed database.
+- `derived_zone_configs_current` builds local HR/pace zone configs and lap
+  zone times from the dated threshold snapshots; Intervals wins.
 
 ### Reports
 

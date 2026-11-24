@@ -359,10 +359,14 @@ SQLite, forward-only migrations. Schema version 25.
 - `athlete_thresholds` (v14/v15) — dated snapshots of the athlete's
   threshold settings, **per sport**: `max_hr`, `lthr`, `threshold_pace_mps`.
   Intervals stamps them on every activity; a missing value carries forward and
-  one snapshot per sport and date is kept.
-- `zone_configs` (filled by the import) — one row per distinct boundary set,
-  with `activities.hr_zone_config_id` / `pace_zone_config_id` pointing at the
-  era's config, so "Z3" means the same thing across years.
+  one snapshot per sport and date is kept. `threshold add` writes a
+  `source='manual'` snapshot that the Intervals recompute never removes.
+- `zone_configs` (filled by the import or the threshold recompute) — one row
+  per distinct boundary set, with `activities.hr_zone_config_id` /
+  `pace_zone_config_id` pointing at the era's config, so "Z3" means the same
+  thing across years. A local config derives from the manual threshold
+  snapshot (80/89/100/110 % of LTHR, 75/85/100/110 % of threshold speed) and
+  sums lap zone times; an Intervals config and its times win where present.
 - `activity_weather` (v13) — one row per activity: temperature, feels-like,
   humidity, wind speed/degree/gust, wind chill, heat index, pressure, UV,
   clouds, condition and a night flag, in metric units. The first source owns

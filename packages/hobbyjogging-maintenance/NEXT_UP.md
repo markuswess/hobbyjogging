@@ -107,6 +107,13 @@ This file records what the package is still waiting on.
   Intervals before Runalyze, so a mixed database keeps the Intervals value.
   Applied: 15 historical runs gained a load, 2,815 Intervals values were kept,
   and `verify_canonical` stayed at 0 drift.
+- **`derived_zone_configs_current`.** Builds local HR/pace configs from the
+  threshold snapshot in force on each activity's date (LTHR or max-HR shares;
+  threshold-speed shares for pace) and sums lap zone times. Applied to the
+  real DB: 242 activities gained a local config, 99 gained lap zone times,
+  2,238 kept their Intervals config and 1,201 predate the first snapshot.
+  `threshold add|list` is the manual write surface; a manual snapshot survives
+  every recompute.
 
 ## Next
 

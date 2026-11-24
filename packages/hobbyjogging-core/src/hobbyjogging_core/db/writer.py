@@ -2434,6 +2434,42 @@ class TrainingWriter:
         )
         return len(entries)
 
+    def set_manual_threshold(
+        self,
+        effective_from: date | str,
+        sport: str,
+        *,
+        max_hr: float | None = None,
+        lthr: float | None = None,
+        threshold_pace_mps: float | None = None,
+    ) -> None:
+        """Write or refresh one manual threshold snapshot.
+
+        The snapshot is dated and per sport; a re-add for the same date
+        replaces the values rather than creating a duplicate. The automatic
+        recompute only replaces its own ``intervals`` source, so a manual
+        snapshot survives every run.
+        """
+        self.connection.execute(
+            """
+            INSERT INTO athlete_thresholds (
+                effective_from, sport, max_hr, lthr, threshold_pace_mps,
+                source
+            ) VALUES (?, ?, ?, ?, ?, 'manual')
+            ON CONFLICT(source, sport, effective_from) DO UPDATE SET
+                max_hr = excluded.max_hr,
+                lthr = excluded.lthr,
+                threshold_pace_mps = excluded.threshold_pace_mps
+            """,
+            (
+                str(effective_from)[:10],
+                sport,
+                max_hr,
+                lthr,
+                threshold_pace_mps,
+            ),
+        )
+
     def upsert_device(
         self,
         device_id: str,

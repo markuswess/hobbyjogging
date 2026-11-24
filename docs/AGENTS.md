@@ -206,6 +206,10 @@ Cross-package changes must leave all four suites green.
   for measured typed reps, `derived` for reps inferred from device laps. A
   derived set never replaces a measured one, is run-only, and is labelled in
   the session report.
+- Thresholds are per sport and dated in `athlete_thresholds`. A manual
+  `threshold add` snapshot survives every recompute; `derived_zone_configs_current`
+  builds local zone configs and lap zone times from it, and an Intervals config
+  wins where present.
 - Reports use plotly for charts and never pandas.
 
 ## Metrics

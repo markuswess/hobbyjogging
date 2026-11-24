@@ -728,6 +728,23 @@ writes only rows that differ, and is idempotent.
 The regular `intervals` import runs the same reconciliation over its event
 range, so it cannot leave stale plans behind.
 
+## Manual thresholds
+
+An Intervals-less athlete enters their own dated thresholds; the automatic
+recompute never removes a manual snapshot:
+
+```bash
+uv run --env-file .env hobbyjogging-import threshold add \
+  --sport run --from 2026-01-01 --max-hr 190 --lthr 170 --threshold-pace 4:30
+uv run --env-file .env hobbyjogging-import threshold list --sport run
+```
+
+`--threshold-pace` takes minutes per kilometre (`4:30`, `4:30/km`) or a speed
+(`3.70mps`). `derived_zone_configs_current` builds local HR/pace zone configs
+and lap zone times from the snapshot in force on each activity's date; an
+Intervals config always wins, and an activity before the first snapshot stays
+unzoned.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*

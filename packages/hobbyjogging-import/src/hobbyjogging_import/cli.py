@@ -846,6 +846,11 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_period(args, parser)
 
+    if args.command == "threshold":
+        from .threshold_cli import run_threshold
+
+        return run_threshold(args, parser)
+
     if args.command == "race-result":
         from .race_result_cli import run_race_result
 

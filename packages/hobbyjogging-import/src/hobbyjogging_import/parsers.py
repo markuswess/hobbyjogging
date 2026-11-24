@@ -496,6 +496,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="list what would be fetched without writing",
     )
 
+    threshold = subparsers.add_parser(
+        "threshold",
+        help="record manual max HR, LTHR and threshold pace",
+    )
+    threshold.add_argument("--database", type=Path)
+    threshold_sub = threshold.add_subparsers(
+        dest="threshold_action",
+        required=True,
+    )
+    threshold_add = threshold_sub.add_parser(
+        "add",
+        help="save a dated threshold snapshot",
+    )
+    threshold_add.add_argument("--sport", default="run")
+    threshold_add.add_argument(
+        "--from",
+        dest="effective_from",
+        help="first day the snapshot applies (default: today)",
+    )
+    threshold_add.add_argument("--max-hr", type=float)
+    threshold_add.add_argument("--lthr", type=float)
+    threshold_add.add_argument(
+        "--threshold-pace",
+        help="threshold pace as 4:30 (min/km) or 3.70mps",
+    )
+    threshold_list = threshold_sub.add_parser(
+        "list",
+        help="list stored threshold snapshots",
+    )
+    threshold_list.add_argument("--sport")
+    threshold_list.add_argument("--limit", type=int)
+
     period = subparsers.add_parser(
         "period",
         help="record manual training periods (illness, travel, plan)",

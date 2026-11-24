@@ -83,6 +83,7 @@ Recomputes (idempotent, run every time):
 |---|---|
 | `athlete_thresholds_current` | Derive the dated, per-sport max HR/LTHR/threshold-pace snapshots from the Intervals payloads. |
 | `activity_zone_configs_current` | Derive the zone configs and point each activity at the config of its era. |
+| `derived_zone_configs_current` | Build local HR/pace zone configs and lap zone times from manual threshold snapshots; Intervals wins. |
 | `training_periods_current` | Derive seasons, illness ranges and notes from the Intervals event notes. |
 | `race_links_current` | Match race events (and official results) to activities and derive the `race` method. |
 | `workout_sets_current` | Derive methods/targets for activities that have none (classifier + sheet + Runalyze type, disagreements left to the queue). |

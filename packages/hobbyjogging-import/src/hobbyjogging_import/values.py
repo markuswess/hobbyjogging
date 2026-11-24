@@ -75,6 +75,39 @@ def parse_distance_m(text: str) -> float:
     return value
 
 
+def parse_pace_mps(text: str) -> float:
+    """Parse a threshold pace as speed in m/s.
+
+    ``4:30`` or ``4:30/km`` is minutes per kilometre; ``3.70mps`` or
+    ``3.70m/s`` is a speed. A bare decimal is m/s. The value must be positive.
+    """
+    raw = text.strip().lower()
+    if not raw:
+        raise ValueError("pace is empty")
+
+    if raw.endswith("mps"):
+        raw = raw[:-3].strip()
+    elif raw.endswith("m/s"):
+        raw = raw[:-3].strip()
+    elif "/km" in raw:
+        raw = raw.replace("/km", "").strip()
+        seconds = parse_duration_s(raw)
+        return 1000.0 / seconds
+
+    if ":" in raw:
+        seconds = parse_duration_s(raw)
+        return 1000.0 / seconds
+
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"invalid pace: {text!r}") from None
+
+    if value <= 0:
+        raise ValueError(f"pace must be positive: {text!r}")
+    return value
+
+
 def parse_sport(text: str) -> str:
     """Normalize a sport name like ``trail_running`` to ``trail_run``."""
     normalized = canonical_sport(text)

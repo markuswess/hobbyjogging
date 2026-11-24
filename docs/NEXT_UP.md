@@ -108,9 +108,10 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 - **53 a load fallback (done 2026-11-24)** — `fit_trimp`/`trimp` fills an empty
   `training_load` under `source='runalyze'`; Intervals outranks it, and the
   vendor scale is documented per athlete.
-- **50 manual thresholds and local zone configs** — `threshold add|list`,
-  derived zone configs, and the max-HR snapshot the effective-VO2max metric
-  needs.
+- **50 manual thresholds and local zone configs (done 2026-11-24)** —
+  `threshold add|list` writes dated per-sport snapshots; `derived_zone_configs_current`
+  builds local HR/pace configs and lap zone times from them, and Intervals
+  still wins where it has a config. The max-HR snapshot feeds effective VO2max.
 - **52 Garmin wellness** — daily resting HR, HRV, sleep and steps into
   `wellness_days`, so the recovery tab and the efficiency baseline exist.
 - **A name label** — when `name` is empty, render sport + distance in tables
@@ -1107,27 +1108,24 @@ reports item; 28 is the recurring cleanup.
       athlete's Intervals/sheet sets are untouched.
 
 50. **Manual thresholds and local zone configs** (core + import + maintenance +
-    reports; phase 2b, small write surface). Zones, the derived VO2max and
-    intensity all read `athlete_thresholds` and `zone_configs`, which only the
-    Intervals recomputes fill. An Intervals-less athlete therefore has no
-    zones at all, and Runalyze cannot supply the boundaries (`/api/v1/sport`
-    is 403; only percentages are in the payload).
-    - **Write surface**: `threshold add|list` per sport with `max_hr`, `lthr`
-      and `threshold_pace_mps`, written as dated snapshots with
-      `source='manual'` (the tables already carry `source`; no schema change).
-      The recompute never removes a manual snapshot.
-    - **Derivation**: build the zone configs from the manual snapshots with a
-      documented, printed model (for example %LTHR for HR and %threshold pace
-      for pace), registered as a recompute; an activity with no config stays
-      unzoned rather than borrowing a guess.
-    - **Unlocks**: HR/pace zones and zone charts for a non-Intervals athlete;
-      the max-HR snapshot the effective-VO2max metric needs; threshold-relative
-      subT comparisons where reps exist.
-    - **Not**: importing Runalyze's zone percentages as canonical zones — they
-      are shares of an unknown config. Keep them as a cross-check if wanted.
-    - **Acceptance**: athlete 2 gets zones and a VO2max series from entered
-      thresholds; a manual snapshot survives every recompute; a missing
-      threshold leaves the report explicitly empty.
+    reports; done 2026-11-24).
+    - **Write surface (done)**: `threshold add|list` writes dated, per-sport
+      `max_hr`, `lthr` and `threshold_pace_mps` snapshots with
+      `source='manual'`; a re-add for the same date replaces the values. No
+      schema change, and `athlete_thresholds_current` only replaces its own
+      `intervals` source, so a manual snapshot survives every recompute.
+    - **Derivation (done)**: `derived_zone_configs_current` builds a local
+      config from the snapshot in force on the activity's date — HR at 80/89/
+      100/110 % of LTHR (or 60–90 % of max HR), pace at 75/85/100/110 % of
+      threshold speed — and sums lap zone times from the device laps. An
+      activity with no applicable threshold, or no laps, stays without zone
+      times; an Intervals config and its times always win.
+    - **Unlocks**: HR/pace zones for a non-Intervals athlete, the max-HR
+      snapshot effective VO2max reads, and threshold-relative subT.
+    - **Not**: Runalyze's zone percentages as canonical zones.
+    - **Applied**: 242 activities gained a local config and 99 gained lap zone
+      times; 2,238 kept their Intervals config, and 1,201 predate the first
+      threshold snapshot.
 
 51. **Typed work reps without Intervals** (import + maintenance + reports;
     done 2026-11-24). Athlete 2's FIT archive gives device laps but no

@@ -286,6 +286,48 @@ class TrainingWriterTests(unittest.TestCase):
         )
         self.assertEqual(1, len(again))
 
+    def test_a_manual_threshold_survives_the_intervals_replace(self):
+        self.writer.set_manual_threshold(
+            "2026-01-01",
+            "run",
+            max_hr=190,
+            lthr=170,
+            threshold_pace_mps=3.7,
+        )
+        self.writer.replace_athlete_thresholds(
+            [
+                {
+                    "effective_from": "2026-02-01",
+                    "sport": "run",
+                    "max_hr": 192,
+                    "lthr": 172,
+                    "threshold_pace_mps": 3.8,
+                }
+            ],
+            source="intervals",
+        )
+
+        rows = self.conn.execute(
+            "SELECT effective_from, sport, max_hr, lthr, source "
+            "FROM athlete_thresholds ORDER BY source, effective_from"
+        ).fetchall()
+        by_source = {row["source"]: row for row in rows}
+        self.assertEqual(2, len(rows))
+        self.assertEqual(
+            ("2026-01-01", "run", 190, 170, "manual"),
+            tuple(by_source["manual"]),
+        )
+        self.assertEqual("2026-02-01", by_source["intervals"]["effective_from"])
+
+    def test_a_manual_threshold_upsert_replaces_the_same_date(self):
+        self.writer.set_manual_threshold("2026-01-01", "run", lthr=170)
+        self.writer.set_manual_threshold("2026-01-01", "run", lthr=172)
+
+        rows = self.conn.execute(
+            "SELECT effective_from, sport, lthr FROM athlete_thresholds"
+        ).fetchall()
+        self.assertEqual([("2026-01-01", "run", 172)], [tuple(row) for row in rows])
+
     def test_training_load_ranking_prefers_intervals(self):
         self.writer.upsert_activity(
             "a1",

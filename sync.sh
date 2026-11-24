@@ -135,6 +135,7 @@ if (( generate_maintenance )); then
         workout_classification_queue \
         athlete_thresholds_current \
         activity_zone_configs_current \
+        derived_zone_configs_current \
         training_periods_current \
         race_links_current \
         runalyze_load_current \

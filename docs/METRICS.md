@@ -161,9 +161,10 @@ dashboard. The dashboard is the last step, never the first.
   fraction, the ACSM running oxygen cost divided by the fraction of max HR:
   `VO2max = (3.5 + 0.2 · speed_m_min) / (avg_hr / max_hr)`. `max_hr` is the
   running max HR from the `athlete_thresholds` snapshot in force on the
-  session's day (the earliest snapshot covers earlier days). The primary series
-  uses **all runs**; a second series restricts to the steady 40–75 min,
-  non-quality road runs.
+  session's day (the earliest snapshot covers earlier days); a manual
+  `threshold add` snapshot supplies it for an Intervals-less athlete. The
+  primary series uses **all runs**; a second series restricts to the steady
+  40–75 min, non-quality road runs.
 - **Baseline / thresholds**: a run is dropped without average HR or duration,
   outside 1.5–6.0 m/s, or with an HR fraction outside 0.5–0.95. Same-day runs
   are averaged, days without a run carry the last value forward, and the
