@@ -69,23 +69,51 @@ def _is_fartlek(activity: Activity) -> bool:
     )
 
 
-def is_subt_activity(a: Activity) -> bool:
-    """True if the name marks the session as a subT workout.
+def _targets(activity: Activity) -> set[str]:
+    """The session's stored workout targets, lower-cased."""
+    return {
+        target.strip().lower()
+        for target in activity.workout_targets
+    }
 
-    Only the name is used: descriptions often mention alternatives
-    ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in. A stored
-    fartlek wins over the name, because a fartlek has no reps to measure and
-    never belongs in the subT buckets.
+
+def is_subt_activity(a: Activity) -> bool:
+    """True if the session is a subT workout.
+
+    A stored ``subthreshold`` target wins over the name, so a Runalyze-only
+    athlete without session names still reaches the subT report and work reps.
+    A stored ``lt1`` target excludes it, and a stored fartlek never belongs in
+    the subT buckets. Without a relevant target the name is the fallback, and
+    only the name is used for that: descriptions often mention alternatives
+    ("did 3x10@LT1 instead of subT") and would pull LT1 sessions in.
     """
     if _is_fartlek(a):
         return False
+
+    targets = _targets(a)
+
+    if "lt1" in targets:
+        return False
+    if "subthreshold" in targets:
+        return True
 
     return "subt" in a.name.lower()
 
 
 def is_lt1_activity(a: Activity) -> bool:
-    """True if the name marks the session as an LT1 workout."""
+    """True if the session is an LT1 workout.
+
+    A stored ``lt1`` target wins over the name; a stored ``subthreshold``
+    target excludes it; otherwise the name is the fallback, as above.
+    """
     if _is_fartlek(a):
+        return False
+
+    targets = _targets(a)
+
+    if "lt1" in targets:
+        return True
+    if "subthreshold" in targets:
         return False
 
     text = a.name.lower()

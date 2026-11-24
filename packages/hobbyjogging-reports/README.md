@@ -745,17 +745,21 @@ week is scaled to a weekly rate.
 
 ## subT report
 
-`subt-report` collects name-marked subT and LT1 sessions in a range and
-groups their work into short, medium, long, and LT1 tables:
+`subt-report` collects subT and LT1 sessions in a range and groups their work
+into short, medium, long, and LT1 tables:
 
     ./reports.sh subt-report                 # last 90 days
     ./reports.sh subt-report --days 365
     ./reports.sh subt-report --from 2026-01-01 --to 2026-06-30
 
-A row is one work block: all same-category reps in a session are merged.
-A session with work in several categories therefore appears in each
-relevant group. LT1 sessions always go to the LT1 group, and sessions
-without usable work reps are omitted.
+Selection prefers the stored workout targets — `lt1` → LT1,
+`subthreshold` → subT — and falls back to the session name when neither is
+stored (`fartlek` always stays out). That keeps a nameless Runalyze-only log
+working. A row is one work block: all same-category reps in a session are
+merged. A session with work in several categories therefore appears in each
+relevant group; blocks whose reps were inferred from device laps are marked
+`(derived)`. LT1 sessions always go to the LT1 group, and sessions without
+usable work reps are omitted.
 
 ## subT EWMA report
 
@@ -830,7 +834,8 @@ load, RPE, feel, methods, targets. `--columns` replaces them (in the order
 given); `--add` appends. Available columns: id, date, started (UTC), sport,
 name, duration, elapsed, distance, pace, avg_hr, load, rpe, feel, intensity,
 category, methods, targets, eff (m/excess beat). The category is only computed when requested,
-and uses intervals for subT/LT1-named sessions. Methods and targets are the
+and uses intervals for subT/LT1 sessions (stored target first, name as the
+fallback). Methods and targets are the
 canonical set tokens with their display labels.
 
 ## Date ranges

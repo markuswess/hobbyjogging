@@ -165,6 +165,8 @@ def _combine_points(
     activity: Activity,
     category: str,
     points: list[SubtPoint],
+    *,
+    derived: bool = False,
 ) -> SubtBlock | None:
     """Merge same-category points from one session into one report block."""
     count = sum(point.count for point in points)
@@ -238,6 +240,7 @@ def _combine_points(
             if efficiency_beats > 0
             else None
         ),
+        derived=derived,
     )
 
 
@@ -268,7 +271,15 @@ def subt_blocks(
     blocks = []
 
     for category, category_points in grouped.items():
-        block = _combine_points(activity, category, category_points)
+        block = _combine_points(
+            activity,
+            category,
+            category_points,
+            derived=any(
+                interval.source == "derived"
+                for interval in intervals
+            ),
+        )
         if block is not None:
             blocks.append(block)
 

@@ -105,6 +105,22 @@ class SubtBlockTests(unittest.TestCase):
             subt_blocks(activity(name="Easy"), mixed_intervals()),
         )
 
+    def test_a_derived_set_marks_its_blocks(self):
+        intervals = mixed_intervals()
+        for interval in intervals:
+            interval.source = "derived"
+
+        blocks = subt_blocks(activity(name="5x5' subT"), intervals)
+
+        self.assertTrue(blocks)
+        self.assertTrue(all(block.derived for block in blocks))
+
+    def test_a_measured_set_is_not_derived(self):
+        blocks = subt_blocks(activity(name="5x5' subT"), mixed_intervals())
+
+        self.assertTrue(blocks)
+        self.assertFalse(any(block.derived for block in blocks))
+
 
 class SubtReportBlocksAndSummaryTests(unittest.TestCase):
 
@@ -212,6 +228,58 @@ class SubtReportRenderingTests(unittest.TestCase):
             report,
         )
         self.assertEqual(2, report.count("5x5' + 1x3' subT"))
+
+    def test_derived_blocks_are_labelled(self):
+        intervals = mixed_intervals()
+        for interval in intervals:
+            interval.source = "derived"
+
+        source = FakeSource(
+            [self.activity],
+            {"mixed": intervals},
+        )
+        report = subt_report(
+            D1,
+            D1,
+            "subT Report",
+            source,
+        )
+
+        self.assertIn("5x5' + 1x3' subT (derived)", report)
+        self.assertIn(
+            "Work reps marked (derived) come from device laps",
+            report,
+        )
+
+    def test_a_stored_target_selects_a_nameless_session(self):
+        item = activity(
+            id="nameless",
+            date=D1,
+            name="",
+            workout_targets=["subthreshold"],
+        )
+        intervals = mixed_intervals()
+        for interval in intervals:
+            interval.source = "derived"
+
+        source = FakeSource([item], {"nameless": intervals})
+        report = subt_report(D1, D1, "subT Report", source)
+
+        self.assertIn("## Short", report)
+        self.assertIn("## Medium", report)
+        self.assertIn("5 × 5:00", report)
+        self.assertIn("(derived)", report)
+
+    def test_measured_blocks_carry_no_derived_mark(self):
+        report = subt_report(
+            D1,
+            D1,
+            "subT Report",
+            self.source,
+        )
+
+        self.assertNotIn("(derived)", report)
+        self.assertNotIn("come from device laps", report)
 
     def test_summary_work_totals_are_per_week(self):
         end = D1 + timedelta(days=13)  # 14 days = two weeks

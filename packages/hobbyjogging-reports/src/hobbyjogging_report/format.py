@@ -960,6 +960,7 @@ def format_session_activity(
             lines.append(
                 "Derived from device laps; not an imported interval set."
             )
+            lines.append("")
         lines.extend(format_interval_table(intervals))
     elif len(laps or []) > 1:
         lines.extend(format_laps_table(laps or []))
@@ -983,6 +984,7 @@ def format_session_activity(
             lines.append(
                 "Reps are derived from device laps, not measured."
             )
+            lines.append("")
 
         for point in points:
             lines.append(f"- {format_work_result(point, label)}")
@@ -1095,6 +1097,10 @@ def format_subt_block_table(
 
     for block in blocks:
         name = table_text(block.activity_name) or "-"
+
+        if block.derived:
+            name = f"{name} (derived)"
+
         threshold = (
             threshold_lookup(block.date)
             if with_threshold

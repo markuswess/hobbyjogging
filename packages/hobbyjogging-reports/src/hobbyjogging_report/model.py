@@ -51,6 +51,7 @@ class SubtBlock:
     distance_m: float = 0
     beats: float = 0  # excess heartbeats, above the resting baseline
     efficiency: float | None = None
+    derived: bool = False  # work reps inferred from device laps
 
 
 @dataclass

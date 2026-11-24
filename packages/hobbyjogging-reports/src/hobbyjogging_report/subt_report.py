@@ -125,6 +125,14 @@ def subt_report(
             continue
 
         lines.append(f"\n## {subt_category_label(summary.category)}")
+
+        if any(block.derived for block in category_blocks):
+            lines.append(
+                "Work reps marked (derived) come from device laps, not a "
+                "measured interval set."
+            )
+            lines.append("")
+
         lines.extend(
             format_subt_block_table(
                 category_blocks,

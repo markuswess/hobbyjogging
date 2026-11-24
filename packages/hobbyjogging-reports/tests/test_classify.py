@@ -59,6 +59,52 @@ class FartlekTests(unittest.TestCase):
         self.assertFalse(is_lt1_activity(item))
 
 
+class StoredSetSelectionTests(unittest.TestCase):
+    """Stored targets select subT/LT1; the name is only the fallback."""
+
+    def test_a_stored_subthreshold_target_selects_subt(self):
+        item = activity(workout_targets=["subthreshold"])
+
+        self.assertTrue(is_subt_activity(item))
+        self.assertFalse(is_lt1_activity(item))
+
+    def test_a_stored_lt1_target_selects_lt1(self):
+        item = activity(workout_targets=["lt1"])
+
+        self.assertTrue(is_lt1_activity(item))
+        self.assertFalse(is_subt_activity(item))
+
+    def test_stored_targets_win_over_the_name(self):
+        named_lt1 = activity(
+            name="3x10' LT1",
+            workout_targets=["subthreshold"],
+        )
+        named_subt = activity(
+            name="5x5' subT",
+            workout_targets=["lt1"],
+        )
+
+        self.assertTrue(is_subt_activity(named_lt1))
+        self.assertFalse(is_lt1_activity(named_lt1))
+        self.assertTrue(is_lt1_activity(named_subt))
+        self.assertFalse(is_subt_activity(named_subt))
+
+    def test_lt1_wins_when_both_targets_are_stored(self):
+        item = activity(workout_targets=["subthreshold", "lt1"])
+
+        self.assertTrue(is_lt1_activity(item))
+        self.assertFalse(is_subt_activity(item))
+
+    def test_the_name_still_selects_without_a_relevant_target(self):
+        item = activity(
+            name="5x5' subT",
+            workout_targets=["threshold"],
+        )
+
+        self.assertTrue(is_subt_activity(item))
+        self.assertFalse(is_lt1_activity(item))
+
+
 class CategoryBreakdownTests(unittest.TestCase):
 
     def test_category_breakdown(self):

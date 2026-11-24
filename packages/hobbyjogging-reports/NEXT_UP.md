@@ -1,12 +1,25 @@
 # Next up: reports package
 
-Updated 2026-11-19.
+Updated 2026-11-24.
 
-Current focus: the promoted effective-VO2max metric replaced the Garmin-only
-series on the overview and the Performance tab; 10 is parked, 12 is behind the
-lab gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
+Current focus: root item 55's athlete-2 bugs are fixed (stored-set subT/LT1
+selection, derived table/list rendering); 10 is parked, 12 is behind the lab
+gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
+
+- **Athlete-2 subT selection and derived rendering (root item 55).**
+  `is_subt_activity`/`is_lt1_activity` now prefer the stored targets —
+  `lt1` → LT1, `subthreshold` → subT, LT1 winning when both are stored — and
+  keep the name as the fallback, with a stored fartlek still excluded. That
+  carries a nameless Runalyze-only log into the subT report, the session work
+  reps, the period report, the activities table and the `report` command,
+  which all call the two functions. `format_session_activity` now puts a
+  blank line after the derived-table and derived-reps notes, so
+  Python-Markdown renders the table and list instead of swallowing them into
+  a paragraph (the CLI renderer had tolerated it); a dashboard HTML test pins
+  `<table>` and `<ul>`. The subT report marks a derived work block
+  `(derived)` and explains the mark under the group heading.
 
 - **Nameless activity labels.** `activity_display_name()` renders sport plus
   distance ("Run 10.00 km") when `name` is empty; the activity table, race

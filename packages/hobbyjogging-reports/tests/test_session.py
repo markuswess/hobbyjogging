@@ -10,6 +10,7 @@ from hobbyjogging_core.model import (
     Route,
     WellnessDay,
 )
+from hobbyjogging_report.html import markdown_to_html
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.sessions import select_session, session_report
 from support import FakeSource, activity_factory
@@ -129,6 +130,50 @@ class SegmentTableRuleTests(unittest.TestCase):
             "Derived from device laps; not an imported interval set.",
             report,
         )
+
+
+class DerivedMarkdownRenderTests(unittest.TestCase):
+    """The notes must not swallow the table and work-rep list."""
+
+    def _html(self, name="subT", targets=None):
+        intervals = work_intervals(count=2)
+        for interval in intervals:
+            interval.source = "derived"
+
+        source = FakeSource(
+            [
+                activity(
+                    id="a",
+                    date=D1,
+                    name=name,
+                    workout_targets=targets or [],
+                )
+            ],
+            intervals={"a": intervals},
+        )
+
+        return markdown_to_html(session_report("a", source))
+
+    def test_the_derived_table_and_list_render(self):
+        html = self._html()
+
+        self.assertIn(
+            "Derived from device laps; not an imported interval set.",
+            html,
+        )
+        self.assertIn(
+            "Reps are derived from device laps, not measured.",
+            html,
+        )
+        self.assertIn("<table>", html)
+        self.assertIn("<ul>", html)
+
+    def test_a_stored_target_renders_the_list_without_a_name(self):
+        html = self._html(name="", targets=["subthreshold"])
+
+        self.assertIn("Reps are derived from device laps, not measured.",
+                      html)
+        self.assertIn("<ul>", html)
 
 
 class SessionSelectionTests(unittest.TestCase):
