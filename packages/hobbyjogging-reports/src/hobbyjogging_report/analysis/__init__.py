@@ -12,6 +12,12 @@ from .baseline import (
     RobustBaseline,
     robust_baseline,
 )
+from .builds import (
+    MARATHON_WEEKS,
+    BuildWeek,
+    MarathonBuild,
+    marathon_builds,
+)
 from .devices import (
     DeviceStat,
     device_changes,
@@ -158,6 +164,7 @@ from .zones import (
 __all__ = [
     "BASELINE_WINDOW_DAYS",
     "BUCKET_ORDER",
+    "BuildWeek",
     "COMPARE_METRICS",
     "COMPARE_MODES",
     "DEFAULT_SHOE_TARGET_M",
@@ -165,7 +172,9 @@ __all__ = [
     "DeviceStat",
     "EFFICIENCY_UNIT",
     "EquipmentStat",
+    "MARATHON_WEEKS",
     "MIN_STREAK_RUN_S",
+    "MarathonBuild",
     "PbProgression",
     "RESTING_HR_WINDOW_DAYS",
     "RUNALYZE_STORED_CORRECTION",
@@ -223,6 +232,7 @@ __all__ = [
     "is_subt_activity",
     "load_metrics",
     "m_per_excess_beat",
+    "marathon_builds",
     "official_by_activity",
     "official_pair",
     "pace_hr_efficiency_lines",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 
 from .activity_list import activities_report
+from .builds_report import marathon_builds_report
 from .command_support import reviewed_range
 from .compare import compare_report
 from .daily import daily
@@ -201,6 +202,14 @@ def run_streaks_command(parsed, source, include_review):
     return streaks_report(
         source,
         limit=parsed,
+        include_review=include_review,
+    )
+
+
+def run_marathon_builds_command(parsed, source, include_review):
+    return marathon_builds_report(
+        source,
+        weeks=parsed,
         include_review=include_review,
     )
 

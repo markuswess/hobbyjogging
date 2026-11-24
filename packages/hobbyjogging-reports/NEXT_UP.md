@@ -9,6 +9,13 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **Marathon build comparison.** `reports.sh marathon-builds` (and a
+  Performance-tab card) puts the N calendar weeks (default 18) before each
+  marathon side by side. Each cell is volume · time · fast (Z3+Z4) · quality
+  sessions; a Total row sums what is shown. The next planned marathon adds a
+  column whose future weeks come from the event calendar and are marked `*`;
+  started weeks keep their actual values. `--weeks N` changes the window.
+
 - **Season starts are marked.** The volume and load charts add a faint
   dotted vertical line at the start of each season that begins inside the
   visible range, beside the existing band and quiet label; a season already

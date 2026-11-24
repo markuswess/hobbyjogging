@@ -1306,6 +1306,12 @@ def _write_events(
             92 * 60,
             95.0,
         ),
+        today + timedelta(weeks=14): (
+            "Planned Marathon",
+            42195.0,
+            185 * 60,
+            150.0,
+        ),
     }
     race_offsets = sorted(race_days)
     templates = _plan_templates(activities, today)

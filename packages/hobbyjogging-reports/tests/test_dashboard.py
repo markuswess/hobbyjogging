@@ -581,6 +581,8 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("Autumn Marathon", performance)
             self.assertIn("42.20 km", performance)
             self.assertIn("Spring 5k", performance)
+            self.assertIn("Marathon builds", performance)
+            self.assertIn("(planned)", performance)
             self.assertIn("Personal bests", performance)
             self.assertIn("PB progression", performance)
             self.assertIn("Riegel estimate", performance)

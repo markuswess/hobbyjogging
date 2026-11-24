@@ -207,6 +207,20 @@ def parse_streaks_args(argv: list[str]) -> int:
     return args.limit
 
 
+def parse_marathon_builds_args(argv: list[str]) -> int:
+    """Parse the build length in weeks."""
+    from .analysis import MARATHON_WEEKS
+
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--weeks", type=int, default=MARATHON_WEEKS)
+    args = parser.parse_args(argv)
+
+    if args.weeks <= 0:
+        raise ValueError("--weeks must be positive")
+
+    return args.weeks
+
+
 def parse_planned_args(
     argv: list[str],
     default_days: int = DEFAULT_PLANNED_DAYS,

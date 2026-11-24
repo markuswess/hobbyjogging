@@ -119,7 +119,9 @@ Pages:
   colour and slow ones above the axis marked), a log-log race chart whose
   dashed Riegel line passes through the reference race, an
   equivalent-times table for 5k, 7k, 10k, 15k, HM, 30k and the marathon with
-  the predicted and PB pace for each, and the VO2max methods chart (below).
+  the predicted and PB pace for each, a marathon-build table (the 18 weeks
+  before each marathon, compared side by side, with the next race's planned
+  weeks), and the VO2max methods chart (below).
   The official race result supplies the distance and time when it has both;
   the measured activity is the fallback and is italicised with a note.
   Results and PBs link to per-race pages with splits and execution details.
@@ -327,6 +329,12 @@ stay compact (`1h02`).
   the numbering is visible. The Analysis card uses the same rows and
   selection logic with five longest (the CLI defaults to ten) and the same
   totals.
+- **marathon-builds** — The last N calendar weeks (default 18) of training
+  before each marathon, one column per build, so builds compare side by side.
+  Each cell is volume (km) · time · fast (Z3+Z4) · quality sessions; a Total
+  row sums what is shown. The next planned marathon adds a column whose
+  future weeks come from the event calendar and are marked `*`, with actual
+  values for weeks that have already started. `--weeks N` changes the window.
 - **sickness** — Illness episodes in a range (default the last 365 days):
   episode count, illness days and their share of the range, the longest and
   current (or last) episode, and a newest-first table of each episode with
@@ -519,6 +527,8 @@ and tables for the terminal:
     ./reports.sh report --days 90
     ./reports.sh report --from 2026-01-01 --to 2026-03-31
     ./reports.sh subt-report --days 90
+    ./reports.sh marathon-builds
+    ./reports.sh marathon-builds --weeks 12
     ./reports.sh planned
     ./reports.sh planned --days 56
     ./reports.sh session 2026-10-22
@@ -787,6 +797,32 @@ The report starts with a summary table (sessions, reps, weekly work time
 and distance, weighted pace, average/max HR) and then shows one table
 per non-empty category. Work pace, fastest/slowest rep pace, and HR are
 derived from the same work reps used by the classification and charts.
+
+## Marathon builds
+
+`marathon-builds` puts the same training window in front of every marathon
+so the builds compare column by column:
+
+    ./reports.sh marathon-builds
+    ./reports.sh marathon-builds --weeks 12
+
+The window is N calendar weeks (default 18) ending with the race week, so
+the rows run `T-17` … `T-0` and the weeks are aligned to each race rather
+than to today. Each cell holds four numbers:
+
+| part | meaning |
+|---|---|
+| volume | running km in the week |
+| time | running time in the week |
+| fast | time in Z3+Z4, the hard running |
+| quality | quality sessions, race support/warm-ups excluded |
+
+The next planned marathon is added as a column of its own. Its weeks that
+have already started show actual values; future weeks with a plan use the
+event calendar and carry a `*`. The Total row sums the values shown, so a
+column with any planned weeks is itself marked `*`. A marathon is any race
+in the `M` bucket (40–44.5 km); an upcoming race is the next event of that
+distance.
 
 ## Efficiency (m/excess beat)
 

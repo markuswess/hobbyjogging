@@ -513,7 +513,7 @@ class DemoGeneratorTests(unittest.TestCase):
                     """
                 ).fetchall()
 
-                self.assertEqual(2, len(races))
+                self.assertEqual(3, len(races))
 
                 for race in races:
                     day = date.fromisoformat(race["local_date"])
@@ -676,6 +676,7 @@ class DemoGeneratorTests(unittest.TestCase):
                 "recovery.html": ("Recovery Report", "Data completeness"),
                 "performance.html": (
                     "Upcoming races",
+                    "Marathon builds",
                     "Personal bests",
                     "PB progression",
                     "Equivalent times",

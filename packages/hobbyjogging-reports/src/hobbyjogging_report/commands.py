@@ -34,6 +34,7 @@ from .cli import (
     parse_dashboard_args,
     parse_demo_args,
     parse_load_args,
+    parse_marathon_builds_args,
     parse_overview_args,
     parse_output_arg,
     parse_overview_chart_args,
@@ -58,6 +59,7 @@ from .report_commands import (
     run_daily_command,
     run_equipment_command,
     run_health_command,
+    run_marathon_builds_command,
     run_race_command,
     run_races_command,
     run_dashboard_command,
@@ -234,6 +236,17 @@ COMMANDS = {
         ),
         parse=parse_streaks_args,
         run=run_streaks_command,
+    ),
+    "marathon-builds": Command(
+        "marathon-builds",
+        "Weekly training before each marathon, including the next plan",
+        "marathon-builds [--weeks N]",
+        (
+            "reports.sh marathon-builds",
+            "reports.sh marathon-builds --weeks 12",
+        ),
+        parse=parse_marathon_builds_args,
+        run=run_marathon_builds_command,
     ),
     "sickness": Command(
         "sickness",

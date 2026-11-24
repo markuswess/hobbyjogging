@@ -13,6 +13,7 @@ from hobbyjogging_report.cli import (
     parse_compare_chart_args,
     parse_dashboard_args,
     parse_load_args,
+    parse_marathon_builds_args,
     parse_overview_args,
     parse_overview_chart_args,
     parse_planned_args,
@@ -582,6 +583,19 @@ class StreakArgsTests(unittest.TestCase):
     def test_rejects_non_positive_limit(self):
         with self.assertRaises(ValueError):
             parse_streaks_args(["--limit", "0"])
+
+
+class MarathonBuildArgsTests(unittest.TestCase):
+
+    def test_default_window(self):
+        self.assertEqual(18, parse_marathon_builds_args([]))
+
+    def test_reads_the_window(self):
+        self.assertEqual(12, parse_marathon_builds_args(["--weeks", "12"]))
+
+    def test_rejects_a_non_positive_window(self):
+        with self.assertRaises(ValueError):
+            parse_marathon_builds_args(["--weeks", "0"])
 
 
 class DashboardArgsTests(unittest.TestCase):

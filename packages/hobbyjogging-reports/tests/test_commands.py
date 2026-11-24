@@ -24,6 +24,7 @@ EXPECTED = {
     "race",
     "races",
     "streaks",
+    "marathon-builds",
     "sickness",
     "planned",
     "session",

@@ -9,11 +9,13 @@ from urllib.parse import quote
 from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
+    MARATHON_WEEKS,
     RUNALYZE_STORED_CORRECTION,
     VO2MAX_DISPLAY_START,
     bucket_label,
     equivalent_times,
     fit_riegel,
+    marathon_builds,
     official_by_activity,
     pb_progressions,
     personal_bests,
@@ -21,6 +23,7 @@ from ..analysis import (
     upcoming_races,
     vo2max_methods,
 )
+from ..builds_report import CELL_NOTE, marathon_builds_table
 from ..charts import plot_pb_progressions, plot_races, plot_vo2max_methods
 from ..command_support import activity_start
 from ..format import (
@@ -45,6 +48,7 @@ class PerformanceSection:
     chart_html: str
     equivalent_html: str
     vo2max_html: str
+    builds_html: str
     race_ids: tuple[str, ...] = ()
 
 
@@ -289,6 +293,30 @@ def build_performance_section(
             "estimate.</p>"
         )
 
+    build_events = source.events(
+        today - timedelta(days=7 * MARATHON_WEEKS),
+        today + timedelta(days=366),
+    )
+    builds = marathon_builds(
+        activities,
+        results,
+        build_events,
+        today,
+    )
+    headers, build_rows = marathon_builds_table(builds)
+
+    if build_rows:
+        builds_html = table(
+            headers,
+            build_rows,
+            numeric=tuple(range(1, len(headers))),
+        ) + f'<p class="muted">{esc(CELL_NOTE)}</p>'
+    else:
+        builds_html = (
+            '<p class="muted">No marathon results or upcoming '
+            "marathon.</p>"
+        )
+
     return PerformanceSection(
         summary_html=summary,
         upcoming_html=upcoming_html,
@@ -298,5 +326,6 @@ def build_performance_section(
         chart_html=chart_html,
         equivalent_html=equivalent_html,
         vo2max_html=vo2max_html,
+        builds_html=builds_html,
         race_ids=tuple(result.activity.id for result in results),
     )

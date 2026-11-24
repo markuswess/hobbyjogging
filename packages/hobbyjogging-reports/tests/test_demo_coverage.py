@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from hobbyjogging_report.analysis import race_results
+from hobbyjogging_report.builds_report import marathon_builds_report
 from hobbyjogging_report.dashboard.reports import REPORT_NAMES, build_report
 from hobbyjogging_report.demo import generate_demo_database
 from hobbyjogging_report.equipment_report import equipment_report
@@ -64,6 +65,17 @@ class DemoCoverageTests(unittest.TestCase):
                     "Values in italics are measured",
                 ):
                     self.assertIn(marker, races)
+
+                builds = marathon_builds_report(source, today=TODAY)
+                for marker in (
+                    "# Marathon builds",
+                    "First Marathon",
+                    "Second Marathon",
+                    "| Week |",
+                    "| Total |",
+                    "(planned)",
+                ):
+                    self.assertIn(marker, builds)
 
                 health = health_report(source, today=TODAY)
                 for marker in (
