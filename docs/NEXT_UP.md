@@ -58,7 +58,10 @@ package at any time and do not wait for a phase.
 Exit test: a computer-savvy Linux user clones the repo, runs `./demo.sh` with
 no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 `sync` (which covers every configured source) and the dashboard on their own
-machine — no code or SQL edits.
+machine — no code or SQL edits. And a **Runalyze+Garmin athlete's dashboard is
+usable**: categories, laps/reps, zones, load, wellness and races render.
+
+**2a · Install**
 
 - **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
   checks `uv`, the DB path, schema version, FIT dir, each credential and its
@@ -82,15 +85,32 @@ machine — no code or SQL edits.
   constants in one documented module; `requires-python` 3.12 once the suites
   pass there.
 
+**2b · A usable dashboard without Intervals** (the Runalyze+Garmin profile)
+
+- **49 Runalyze workout type → canonical sets** — `Jogging`, `SubThreshold`
+  (always `intervals` + `subthreshold`), `Long Slow Distance`, with an
+  unmapped-type audit. This is what gives a name-less athlete categories.
+- **51 typed reps without Intervals** — Garmin workout steps if the FIT has
+  them, otherwise derived WORK/RECOVERY from laps, gated by the source type;
+  marked derived, never overwriting Intervals reps.
+- **53 a load fallback** — map `fit_trimp`/`trimp` when no Intervals
+  `training_load` exists, with the vendor scale documented per athlete.
+- **50 manual thresholds and local zone configs** — `threshold add|list`,
+  derived zone configs, and the max-HR snapshot the effective-VO2max metric
+  needs.
+- **52 Garmin wellness** — daily resting HR, HRV, sleep and steps into
+  `wellness_days`, so the recovery tab and the efficiency baseline exist.
+- **A name label** — when `name` is empty, render sport + distance in tables
+  and the session header instead of a blank title (small reports change).
+
 ### Phase 3: trustworthy data
 
 Order: **34** (manual overlay + rebuild proof, the safety gate) → **37** audit
-(read-only, cheap, informs everything) → **49** (Runalyze workout type, so a
-name-less athlete is readable) → **1** (CLI write surface) → **38/35/21**
-extraction → **37**'s rules and **43** tags → **50** manual thresholds →
-**42** duplicates → health score → browser. Accepting a suggestion always
-writes a manual value and an `edit_log` row; nothing canonical is auto-applied
-except an empty, high-confidence classification.
+(read-only, cheap, informs everything) → **1** (CLI write surface) →
+**38/35/21** extraction → **37**'s rules and **43** tags → **42** duplicates →
+health score → browser. Accepting a suggestion always writes a manual value and
+an `edit_log` row; nothing canonical is auto-applied except an empty,
+high-confidence classification.
 
 ### Phase 4: durable and more reach
 
@@ -400,12 +420,11 @@ reports item; 28 is the recurring cleanup.
 
     **Target profile** (the real athlete's data comes later): Garmin, Runalyze
     and Strava — no Intervals, no sheet. Phase 2 proves the path on a fresh DB;
-    the athlete's own run is the later validation. Athlete 2's first run is
-    **Runalyze-only**: no activity names, no wellness, thresholds or zones,
-    tags plus Runalyze's own workout type. That profile is the acceptance case
-    for items 49 and 50. Its payload names a Garmin watch (`device_name`), so
-    the **FIT import is its next source**: laps, device serial, max HR and
-    cadence. Runalyze alone yields no typed intervals and no device.
+    the athlete's own run is the later validation. Athlete 2's profile is
+    **Runalyze + Garmin, no Intervals**: no activity names, no thresholds or
+    zones, tags plus Runalyze's own workout type, and FIT laps for structure.
+    It is the acceptance case for 2b (items 49, 51, 50, 52 and 53), and the FIT
+    import supplies the device serial, max HR and laps.
 
     - **Setup (import + CI)**
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
@@ -452,6 +471,9 @@ reports item; 28 is the recurring cleanup.
             so the second athlete's empty paths are exercised too — including
             the effective-VO2max overview and methods card, which is the
             zero-credential install proof.
+      - [ ] the Runalyze+Garmin profile renders categories, laps/reps, zones,
+            load and wellness (items 49–53), and the demo still covers the
+            empty paths.
     - **Language floor**: [ ] `requires-python` drops to 3.12 once the suites
       pass there; no 3.14-only syntax was found.
 
@@ -737,13 +759,8 @@ reports item; 28 is the recurring cleanup.
       an entity, HRV analysis, and zone distributions as percentages. If the
       dynamics ever matter, extract the FIT session averages rather than
       storing streams.
-    - **Load fallback (decide before phase 3 ends)**: `trimp` and `fit_trimp`
-      are on every athlete-2 payload (40/40), and an Intervals-less athlete has
-      no `training_load` at all, so the load chart is empty rather than
-      sparse. Decide: map TRIMP as that athlete's load — documented as a
-      vendor scale, never mixed with Intervals load in one database — or
-      accept "no load". This is the one field where "keep Intervals' load"
-      costs a whole report.
+    - **Load**: the TRIMP fallback moved to phase 2 (item 53); this item keeps
+      the cadence, stride and GAP decision.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
@@ -1072,8 +1089,8 @@ reports item; 28 is the recurring cleanup.
       losing value, a single-source activity stays short, and the CLI and the
       dashboard print the same list.
 
-49. **Runalyze workout type → canonical sets** (import + maintenance; small,
-    first in phase 3). Runalyze's activity payload carries a `type` object
+49. **Runalyze workout type → canonical sets** (import + maintenance; phase 2b,
+    first). Runalyze's activity payload carries a `type` object
     with `name`, `abbreviation`, `quality_session` and a reference `avg_hr` —
     per activity, no parsing. Measured on the athlete-2 slice (30 runs):
     `Jogging`/`JOG` ×20 (`quality_session: false`), `SubThreshold`/`ST` ×8
@@ -1100,15 +1117,16 @@ reports item; 28 is the recurring cleanup.
       40 in the probe), but each is only `{distance, duration, intensity:
       'unknown'}` — auto splits or device laps with no WORK/RECOVERY type, HR
       or pace. Laps belong to `activity_laps` (the segment table); typed
-      intervals come from Intervals.icu, and a Runalyze interval importer is
-      not planned. If no FIT archive exists, importing those laps as
-      `activity_laps` is an acceptable fallback; it never creates work reps.
+      intervals come from Intervals.icu, or are derived from those laps by
+      item 51. A Runalyze interval importer is not planned. If no FIT archive
+      exists, importing the Runalyze laps as `activity_laps` is an acceptable
+      fallback; it never creates work reps.
     - **Acceptance**: athlete 2's Jogging runs read easy, LSD long runs and
       SubThreshold quality; a re-run is a no-op; an unmapped type is reported;
       the current athlete's Intervals/sheet sets are untouched.
 
 50. **Manual thresholds and local zone configs** (core + import + maintenance +
-    reports; phase 3, small write surface). Zones, the derived VO2max and
+    reports; phase 2b, small write surface). Zones, the derived VO2max and
     intensity all read `athlete_thresholds` and `zone_configs`, which only the
     Intervals recomputes fill. An Intervals-less athlete therefore has no
     zones at all, and Runalyze cannot supply the boundaries (`/api/v1/sport`
@@ -1130,6 +1148,68 @@ reports item; 28 is the recurring cleanup.
       thresholds; a manual snapshot survives every recompute; a missing
       threshold leaves the report explicitly empty.
 
+51. **Typed work reps without Intervals** (import + maintenance + reports;
+    phase 2b). Athlete 2's FIT archive gives device laps but no WORK/RECOVERY
+    typing, and Intervals is the only typed source today, so structured runs
+    have a segment table but no subT reps.
+    - **Check first**: inspect a structured FIT for Garmin `workout` /
+      `workout_step` messages. If the watch ran a programmed workout, the
+      steps are authoritative; map those before any heuristic.
+    - **Fallback heuristic**: when an activity has at least two laps and no
+      intervals, infer reps from lap pace and duration — a WORK lap is within a
+      small percentage of the session's fastest qualifying laps and at least
+      60 s, the rest are RECOVERY. Gate on the Runalyze type (`intervals` /
+      `subthreshold`) or on lap variance, so an easy run with 1 km auto splits
+      stays laps. Write `activity_intervals` with `source='derived'`, never
+      overwriting Intervals or manual rows, idempotent.
+    - **Reporting**: the session table already shows laps; a derived set may
+      feed the subT tables only when labelled derived, so a worked rep is
+      never mistaken for a measured one.
+    - **Calibration**: athlete 2's structured sessions show ~3 km reps with
+      150–265 m recoveries; that is the first test case. A session whose laps
+      cluster into equal fast/slow pairs is the target; a uniform easy run is
+      not.
+    - **Acceptance**: a SubThreshold session shows work reps and a subT table
+      marked derived; an easy run with auto splits stays laps; a re-run is a
+      no-op; Intervals-derived reps win where they exist.
+
+52. **Garmin wellness** (import + reports; phase 2b). Athlete 2 has no wellness
+    source, so resting HR, HRV and sleep are empty, the recovery tab is blank
+    and efficiency has no baseline. Runalyze is not the source: its API exposes
+    no daily wellness endpoints (its health entries are injury and sickness
+    ranges) and it derives wellness from Garmin.
+    - **Path**: probe the Garmin Personal API for daily summaries (sleep, HRV,
+      resting HR, steps) with the athlete's key; if the key's API does not
+      expose them, parse the wellness files in the GDPR export — the same
+      archive that already supplies the FITs.
+    - **Write**: `wellness_days` (HRV, resting HR, sleep, weight, SpO2, steps,
+      floors), fill-only: an existing day is never overwritten, so Intervals
+      stays the owner where both run. A field-level fill is a follow-up.
+    - **Sync**: joins item 44 after the activity fetch; idempotent, and a
+      missing wellness feed is a warning, not a failure.
+    - **Acceptance**: athlete 2's recovery tab and the efficiency baseline
+      render from Garmin; the current athlete's Intervals wellness is
+      untouched; a re-run is a no-op.
+
+53. **A load fallback when there is no Intervals** (import + reports; phase 2b).
+    `training_load` comes only from Intervals' `icu_training_load`, so an
+    Intervals-less athlete has an empty load chart, no fitness/fatigue and no
+    quality-load split, while the payload carries `trimp` and `fit_trimp` on
+    every activity (40/40 on the athlete-2 slice).
+    - **Mapping**: `fit_trimp` (device) first, `trimp` as fallback, written to
+      `activities.training_load` under `source='runalyze'` only when no
+      Intervals load exists. The vendor scale is documented per athlete and
+      never presented as the same number as an Intervals load.
+    - **Reports**: no change — the load chart, EWMAs and compare read
+      `training_load`; the axis is data-driven, so a TRIMP-scale series still
+      plots.
+    - **Guard**: a mixed database (Intervals plus Runalyze) keeps Intervals'
+      value and does not blend the two; provenance shows which source filled
+      it.
+    - **Acceptance**: athlete 2's overview, load chart and compare render; the
+      current athlete's numbers are unchanged; the source is visible in the
+      settings/provenance.
+
 ## Parked ideas
 
 Not queued and not scheduled; recorded so they are not re-invented. The lab
@@ -1145,11 +1225,6 @@ owns experimentation, and items 13/14/25 own the eventual home.
   write-back (phase 4, with item 14).
 - **"As-of" reports** — render the log as it looked at a past date; possible
   because inputs are preserved, expensive, so phase 4 at the earliest.
-- **Lap-based rep detection** — infer WORK/RECOVERY reps from lap
-  distance/duration when a source has laps but no typed intervals (athlete 2's
-  structured runs show 3.0 km reps with 150–265 m recoveries, all labelled
-  `intensity: 'unknown'`); lab first, calibrated on known structured sessions,
-  and never written automatically.
 
 ## Notes
 
