@@ -100,6 +100,13 @@ classification to the classifier, tags and triage.
 A new source is a profile plus a fetch/normalize adapter. It should not add a
 branch to the writer, the matcher or the quality rules.
 
+Four axes stay distinct: **capability** (the profile's record types, matching,
+creation fields, detail need and request budget), **selection**
+(`sources.toml`: enabled sources, the create policy, text targets and
+per-capability toggles), **precedence** (owner-based, per-field ranked
+authority, manual inputs) and **review** (what a disagreement does). Capability
+and selection are configurable; precedence and review are not.
+
 ## Principles
 
 1. **Three roles, one direction.** Importers write *received facts* (raw

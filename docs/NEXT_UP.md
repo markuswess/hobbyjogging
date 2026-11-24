@@ -133,6 +133,15 @@ the remaining validation.
   session header render the sport plus distance ("Run 10.00 km") instead of a
   blank title.
 
+### Immediate
+
+- **54 source capability matrix** — do it while the phase-2 source code is
+  fresh: register the new capabilities, render the matrix in `settings` and
+  use it in `doctor`, and add per-capability selection to `sources.toml`.
+  Read-only plus config; no data writes.
+- **45 readability baseline** — still open (no `tools/check_size.py` yet);
+  due after `init`/`doctor` and before the phase-3 UI.
+
 ### Phase 3: trustworthy data
 
 Order: **34** (manual overlay + rebuild proof, the safety gate) → **37** audit
@@ -1210,6 +1219,38 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: an Intervals-less database renders the overview/load/
       compare from TRIMP; a mixed database keeps Intervals; provenance shows
       the source.
+
+54. **Source capability matrix and capability selection** (core + import +
+    reports; small, immediate). The capability layer exists in code —
+    `SourceProfile.entities`, `match`, `creation_fields`, `detail_required`,
+    `request_budget` — but it is neither rendered nor used consistently: the
+    phase-2 additions are not registered (Runalyze lacks `workout_type` and
+    `trimp`, Garmin lacks `wellness`), `settings` shows the field rules and the
+    payload mapping but not what each source can supply, and `doctor` cannot
+    say "your sources cannot provide wellness, load, zones or social".
+    - **Register**: add the phase-2 capabilities to the profiles (`runalyze`:
+      `workout_type`, `trimp`; `garmin`: `wellness`) and keep the profile the
+      single declaration.
+    - **Render**: `settings` (also `reports.sh settings`) gains a capability
+      matrix — per source: record types, whether it yields activities, the
+      match, creation fields and budget — plus the inverse, the record types
+      and fields no enabled source can supply. `doctor` uses the same data to
+      warn about a missing capability, not only a stale source.
+    - **Select**: `sources.toml` gains per-capability booleans
+      (`[sources.runalyze] tags = true, gear = true, races = true, vo2max =
+      true, workout_type = true, trimp = true`; `[sources.garmin] wellness =
+      true`), defaulting to on. Unknown keys fail loudly; a disabled capability
+      skips that step in `sync` and is visible in `settings`.
+    - **Not**: field priority or an import-order key in `sources.toml`. The
+      four axes stay distinct — capability (profile), selection (TOML),
+      precedence (owner-based plus per-field ranked authority in code), review
+      (the queue and its causes). Manual and triage remain the per-athlete
+      override; a different ranked authority is a code-level field-rule change
+      with tests.
+    - **Acceptance**: `settings` prints the matrix and the uncovered
+      capabilities for a Runalyze+Garmin profile; disabling a capability skips
+      its step in `sync`; an unknown capability key fails; no ownership or
+      canonical value changes; four suites green.
 
 ## Parked ideas
 
