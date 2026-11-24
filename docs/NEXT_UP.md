@@ -138,18 +138,18 @@ passed; its two findings — **55** (subT selection and the derived table) and
 
 ### Phase 3: trustworthy data
 
-Phase 3 is current (since 2026-11-24). The **45** readability baseline is in
-the reports session; **34** (manual overlay + rebuild proof) landed early in
-the root session alongside it.
+Phase 3 is current (since 2026-11-24). **45** (readability baseline) and **34**
+(manual overlay + rebuild proof) are done; item **37**'s read-only audit is
+next.
 
-Order: **45** (readability baseline, reports session) → **34** (manual overlay
-+ rebuild proof, the safety gate, done) → **37** audit (read-only, cheap,
-informs everything) → **1** (CLI write surface) → **38/35/21** extraction →
-**37**'s rules and **43** tags → **42** duplicates → health score → browser.
-Accepting a suggestion always writes a manual value and an `edit_log` row;
-nothing canonical is auto-applied except an empty, high-confidence
-classification. The corrections export (**57**) follows 37's audit as a small
-report; it is not a gate.
+Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
+proof, the safety gate, done) → **37** audit (read-only, cheap, informs
+everything) → **1** (CLI write surface) → **38/35/21** extraction → **37**'s
+rules and **43** tags → **42** duplicates → health score → browser. Accepting
+a suggestion always writes a manual value and an `edit_log` row; nothing
+canonical is auto-applied except an empty, high-confidence classification.
+The corrections export (**57**) follows 37's audit as a small report; it is
+not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -1046,25 +1046,18 @@ reports item; 28 is the recurring cleanup.
       source in; a second run is a no-op for unchanged data; removing one
       credential skips that source and leaves the others working.
 
-45. **Readability baseline pass** (reports + tools; phase 3 first, reports
-    session). The codebase is not bloated
-    yet, but reports and import are two-thirds of it and two files are doing
-    too much. Measured 2026-11-19: reports 75 modules / 22.8k
-    lines, import 41 / 16k, core 14 / 6.3k, maintenance 33 / 4.6k;
-    `charts.py` 3,610 lines, `writer.py` 2,898, and
-    `analysis/__init__` re-exports 154 names. This item is deletions and
-    splits, not a rewrite.
-    - **Split `charts.py`** by chart family (overview, volume, load, time,
-      subt, races, compare, devices) behind the same public imports, with no
-      behaviour change; each figure builder moves with the charts it serves.
-    - **Audit `analysis/__init__`**: delete the exports nothing imports and
-      keep the renderer-facing surface explicit. This is the highest-value
-      deletion in the package.
-    - **Add `tools/check_size.py`**: fail when a source file exceeds 1,000
-      lines unless it is on a short allowlist — today `charts.py`,
-      `writer.py`, `demo.py`, `triage.py`, `runalyze_import.py`,
-      `format.py`. Wire it into the CI job beside `check_todos.py`; the
-      allowlist only shrinks, and splitting a giant removes its entry.
+45. **Readability baseline pass** (reports + tools; done 2026-11-24, phase 3
+    first, reports session). The codebase was not bloated yet, but reports and
+    import were two-thirds of it and two files were doing too much. Measured
+    2026-11-19: reports 75 modules / 22.8k lines, import 41 / 16k, core 14 /
+    6.3k, maintenance 33 / 4.6k; `charts.py` 3,610 lines, `writer.py` 2,898,
+    and `analysis/__init__` re-exported 154 names.
+    - **Done**: `charts.py` is now a `charts/` package split by family
+      (overview, volume, load, time, subt, races, compare, gear, recovery,
+      vo2max, pace/HR, common) behind the same public imports; the dead
+      `analysis/__init__` exports are gone; `tools/check_size.py` enforces the
+      1,000-line budget with a shrinking allowlist and is wired into CI beside
+      `check_todos.py`.
     - **Not now**: splitting `writer.py` (cohesive) or `demo.py` (mechanical),
       a linter, package renames, or extracting `hobbyjogging-app` — that waits
       for the front end (item 1).
