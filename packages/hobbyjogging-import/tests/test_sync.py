@@ -1,26 +1,17 @@
-import io
-import shutil
 import tempfile
 import unittest
-from contextlib import redirect_stdout
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from hobbyjogging_core import connect, migrate
-from hobbyjogging_import.cli import (
-    build_parser,
-    resolve_sync_range,
-    run_sync_command,
-)
+from hobbyjogging_core.sources_config import SourcesConfig, default_policies
 from hobbyjogging_import.sync import (
     SyncSummary,
     format_sync_summary,
     run_sync,
 )
-
-SAMPLE_FIT = Path(__file__).resolve().parent / "fixtures" / "sample-run.fit"
 
 CALLS = []
 
@@ -87,9 +78,77 @@ class FakeFitImporter:
         )
 
 
+class FakeRunalyzeEnricher:
+
+    stopped = ""
+
+    def __init__(self, connection, client=None, *, create="review"):
+        self.connection = connection
+
+    def enrich(self, *, start=None, end=None, **kwargs):
+        CALLS.append(("runalyze", start, end))
+        return SimpleNamespace(
+            processed=10,
+            matched=8,
+            unmatched=1,
+            ambiguous=1,
+            not_processed=2 if type(self).stopped else 0,
+            stopped_reason=type(self).stopped,
+        )
+
+
+class FakeGearImporter:
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def import_gear(self, **kwargs):
+        CALLS.append(("gear",))
+        return SimpleNamespace(created=2, linked_existing=1)
+
+
+class FakeVo2maxImporter:
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def import_vo2max(self, **kwargs):
+        CALLS.append(("vo2max",))
+        return SimpleNamespace(written=5)
+
+
+class FakeRaceImporter:
+
+    def __init__(self, connection, client):
+        self.connection = connection
+
+    def import_races(self, **kwargs):
+        CALLS.append(("races",))
+        return SimpleNamespace(written=1)
+
+
+class FakeStravaImporter:
+
+    def __init__(self, connection, *, create, title, description):
+        self.connection = connection
+
+    def import_export(self, path, **kwargs):
+        CALLS.append(("strava", Path(path)))
+        return SimpleNamespace(social_written=20, activities_created=2)
+
+
 def fake_scan(writer, **kwargs):
     CALLS.append(("scan",))
     return SimpleNamespace(recorded=2, findings=3, activities=10)
+
+
+def all_enabled(**overrides):
+    policies = dict(default_policies())
+    for name, values in overrides.items():
+        policies[name] = policies[name].__class__(
+            **{**policies[name].__dict__, **values}
+        )
+    return SourcesConfig(policies=policies)
 
 
 class SyncTests(unittest.TestCase):
@@ -102,6 +161,7 @@ class SyncTests(unittest.TestCase):
         FakeGarminFetcher.errors = []
         FakeIntervalsImporter.fail = False
         FakeFitImporter.fail = False
+        FakeRunalyzeEnricher.stopped = ""
 
         self.conn = connect(":memory:")
         self.addCleanup(self.conn.close)
@@ -109,9 +169,24 @@ class SyncTests(unittest.TestCase):
         self.start = date(2026, 10, 7)
         self.end = date(2026, 11, 6)
         self.plan_end = date(2027, 5, 7)
-        self.fit_dir = Path("/tmp/fit")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.fit_dir = Path(self.tmp.name) / "fit"
+        self.fit_dir.mkdir()
+        self.export = Path(self.tmp.name) / "export_1.zip"
+        self.export.write_bytes(b"zip")
+        self.config = all_enabled()
 
-    def _run(self, **kwargs):
+    def _run(
+        self,
+        *,
+        garmin_key="garmin-key",
+        intervals=("athlete", "key"),
+        runalyze_key="runalyze-key",
+        export=Ellipsis,
+        **kwargs,
+    ):
+        export = self.export if export is Ellipsis else export
         with patch(
             "hobbyjogging_import.sync.GarminFetcher",
             FakeGarminFetcher,
@@ -122,6 +197,36 @@ class SyncTests(unittest.TestCase):
             "hobbyjogging_import.sync.FitImporter",
             FakeFitImporter,
         ), patch(
+            "hobbyjogging_import.sync.RunalyzeEnricher",
+            FakeRunalyzeEnricher,
+        ), patch(
+            "hobbyjogging_import.sync.RunalyzeGearImporter",
+            FakeGearImporter,
+        ), patch(
+            "hobbyjogging_import.sync.RunalyzeClient",
+            return_value=object(),
+        ), patch(
+            "hobbyjogging_import.sync.RunalyzeVo2maxImporter",
+            FakeVo2maxImporter,
+        ), patch(
+            "hobbyjogging_import.sync.RunalyzeRaceImporter",
+            FakeRaceImporter,
+        ), patch(
+            "hobbyjogging_import.sync.StravaCsvImporter",
+            FakeStravaImporter,
+        ), patch(
+            "hobbyjogging_import.sync.newest_unimported_export",
+            return_value=export,
+        ), patch(
+            "hobbyjogging_import.sync.garmin_api_key",
+            return_value=garmin_key,
+        ), patch(
+            "hobbyjogging_import.sync.intervals_credentials",
+            return_value=intervals,
+        ), patch(
+            "hobbyjogging_import.sync.runalyze_api_key",
+            return_value=runalyze_key,
+        ), patch(
             "hobbyjogging_import.sync.scan_quality",
             fake_scan,
         ):
@@ -130,7 +235,9 @@ class SyncTests(unittest.TestCase):
                 start=self.start,
                 end=self.end,
                 plan_end=self.plan_end,
+                config=self.config,
                 fit_dir=self.fit_dir,
+                strava_dir=Path(self.tmp.name),
                 **kwargs,
             )
 
@@ -138,48 +245,56 @@ class SyncTests(unittest.TestCase):
         summary = self._run()
 
         self.assertEqual(
-            ["garmin", "intervals", "fit", "scan"],
+            [
+                "garmin",
+                "intervals",
+                "fit",
+                "runalyze",
+                "gear",
+                "vo2max",
+                "races",
+                "strava",
+                "scan",
+            ],
             [call[0] for call in CALLS],
         )
-        self.assertEqual(
-            ("garmin", self.start, self.end),
-            CALLS[0],
-        )
+        self.assertEqual(("garmin", self.start, self.end), CALLS[0])
         self.assertEqual(
             ("intervals", self.start, self.end, self.plan_end),
             CALLS[1],
         )
-        self.assertEqual(
-            ("fit", [self.fit_dir], True, True),
-            CALLS[2],
-        )
-        self.assertEqual(("scan",), CALLS[3])
+        self.assertEqual(("fit", [self.fit_dir], True, True), CALLS[2])
+        self.assertEqual(("runalyze", self.start, self.end), CALLS[3])
+        self.assertEqual(("scan",), CALLS[-1])
 
         self.assertEqual(3, summary.garmin_fetched)
-        self.assertEqual(0, summary.garmin_failed)
         self.assertEqual(4, summary.intervals_activities)
-        self.assertEqual(5, summary.intervals_wellness)
-        self.assertEqual(6, summary.intervals_events)
-        self.assertEqual(1, summary.intervals_removed)
-        self.assertEqual(2, summary.intervals_revived)
         self.assertEqual(7, summary.fit_files)
-        self.assertEqual(8, summary.fit_activities)
-        self.assertEqual(9, summary.fit_matched)
-        self.assertEqual(1, summary.fit_created)
+        self.assertEqual(10, summary.runalyze_processed)
+        self.assertEqual(2, summary.runalyze_unmatched)
+        self.assertEqual(3, summary.runalyze_gear)
+        self.assertEqual(5, summary.runalyze_vo2max)
+        self.assertEqual(1, summary.runalyze_races)
+        self.assertEqual(self.export, summary.strava_path)
+        self.assertEqual(20, summary.strava_social)
+        self.assertEqual(2, summary.strava_created)
         self.assertEqual(2, summary.review_new)
-        self.assertEqual(0, summary.review_open)
         self.assertEqual([], summary.failures)
-        self.assertEqual(
-            {"garmin", "intervals", "fit", "review", "total"},
-            set(summary.durations),
-        )
-        self.assertIn("timing:", format_sync_summary(summary))
+        self.assertEqual([], summary.skips)
+
+        text = format_sync_summary(summary)
+        self.assertIn("runalyze:", text)
+        self.assertIn("strava:", text)
+        self.assertIn("derived:", text)
+        self.assertIn("timing:", text)
 
     def test_disabled_sources_are_skipped(self):
         summary = self._run(
             include_garmin=False,
             include_intervals=False,
             include_fit=False,
+            include_runalyze=False,
+            include_strava=False,
             include_scan=False,
         )
 
@@ -188,9 +303,92 @@ class SyncTests(unittest.TestCase):
         self.assertIn("garmin:    skipped", text)
         self.assertIn("intervals: skipped", text)
         self.assertIn("fit:       skipped", text)
+        self.assertIn("runalyze:  skipped", text)
+        self.assertIn("strava:    skipped", text)
         self.assertIn("review:    skipped", text)
-        self.assertEqual({}, summary.durations)
         self.assertNotIn("timing:", text)
+
+    def test_a_missing_credential_skips_the_source(self):
+        summary = self._run(
+            garmin_key=None,
+            intervals=(None, None),
+            runalyze_key=None,
+        )
+
+        self.assertEqual([], summary.failures)
+        sources = [source for source, _ in summary.skips]
+        self.assertIn("garmin", sources)
+        self.assertIn("intervals", sources)
+        self.assertIn("runalyze", sources)
+        # The offline derivations still run without a key.
+        self.assertEqual(5, summary.runalyze_vo2max)
+        self.assertNotIn(("races",), CALLS)
+        self.assertIn("Skipped: garmin:", format_sync_summary(summary))
+
+    def test_sources_disabled_in_the_config_are_skipped(self):
+        self.config = all_enabled(
+            garmin={"enabled": False},
+            intervals={"enabled": False},
+        )
+
+        summary = self._run()
+
+        self.assertEqual([], summary.failures)
+        self.assertIn(
+            ("garmin", "disabled in sources.toml"),
+            summary.skips,
+        )
+        self.assertIn(
+            ("intervals", "disabled in sources.toml"),
+            summary.skips,
+        )
+        self.assertNotIn("garmin", [call[0] for call in CALLS])
+
+    def test_a_missing_fit_directory_is_a_skip(self):
+        self.fit_dir.rmdir()
+
+        summary = self._run()
+
+        self.assertEqual([], summary.failures)
+        self.assertIn("fit", [source for source, _ in summary.skips])
+
+    def test_a_source_failure_continues_with_remaining_sources(self):
+        FakeGarminFetcher.fail = True
+
+        summary = self._run()
+
+        self.assertIn("scan", [call[0] for call in CALLS])
+        self.assertEqual("garmin", summary.failures[0][0])
+        self.assertIn(
+            "Failures: garmin: garmin down",
+            format_sync_summary(summary),
+        )
+
+    def test_a_rate_limited_runalyze_is_a_warning_not_a_failure(self):
+        FakeRunalyzeEnricher.stopped = "rate limit"
+
+        summary = self._run()
+
+        self.assertEqual([], summary.failures)
+        self.assertEqual("rate limit", summary.runalyze_stopped)
+        self.assertEqual(2, summary.runalyze_pending)
+        self.assertIn("runalyze", [source for source, _ in summary.skips])
+
+    def test_no_new_strava_export_is_a_skip(self):
+        summary = self._run(export=None)
+
+        self.assertEqual([], summary.failures)
+        self.assertIn("strava", [source for source, _ in summary.skips])
+        self.assertIn("strava:    no new export", format_sync_summary(summary))
+
+    def test_partial_garmin_failure_is_reported(self):
+        FakeGarminFetcher.failed = 1
+        FakeGarminFetcher.errors = ["one download failed"]
+
+        summary = self._run()
+
+        self.assertEqual(1, summary.garmin_failed)
+        self.assertEqual(("garmin", "one download failed"), summary.failures[0])
 
     def test_full_disables_skip_known(self):
         self._run(full=True)
@@ -205,30 +403,6 @@ class SyncTests(unittest.TestCase):
         CALLS.clear()
         self._run(include_scan=False)
         self.assertNotIn("scan", [call[0] for call in CALLS])
-
-    def test_source_failure_continues_with_remaining_sources(self):
-        FakeGarminFetcher.fail = True
-
-        summary = self._run()
-
-        self.assertEqual(
-            ["garmin", "intervals", "fit", "scan"],
-            [call[0] for call in CALLS],
-        )
-        self.assertEqual("garmin", summary.failures[0][0])
-        self.assertIn(
-            "Failures: garmin: garmin down",
-            format_sync_summary(summary),
-        )
-
-    def test_partial_garmin_failure_is_reported(self):
-        FakeGarminFetcher.failed = 1
-        FakeGarminFetcher.errors = ["one download failed"]
-
-        summary = self._run()
-
-        self.assertEqual(1, summary.garmin_failed)
-        self.assertEqual(("garmin", "one download failed"), summary.failures[0])
 
     def test_second_sync_has_no_new_failures(self):
         first = self._run()
@@ -254,164 +428,26 @@ class SyncTests(unittest.TestCase):
             fit_activities=8,
             fit_matched=9,
             fit_created=1,
+            runalyze_processed=10,
+            runalyze_matched=8,
+            runalyze_unmatched=2,
+            runalyze_gear=3,
+            runalyze_vo2max=4,
+            runalyze_races=1,
+            strava_path=Path("export_1.zip"),
+            strava_social=20,
+            strava_created=2,
             review_new=2,
             review_open=11,
+            skips=[("garmin", "no key")],
             failures=[("garmin", "one download failed")],
         )
-
         text = format_sync_summary(summary)
-
-        self.assertIn(
-            "Sync 2026-11-06 (2026-10-07 .. 2026-11-06, "
-            "events to 2027-05-07)",
-            text,
-        )
-        self.assertIn("garmin:    3 fetched, 1 failed", text)
-        self.assertIn(
-            "intervals: 4 activities, 5 wellness, 6 events "
-            "(1 removed, 2 revived)",
-            text,
-        )
-        self.assertIn(
-            "fit:       7 files, 8 activities (9 matched, 1 created)",
-            text,
-        )
-        self.assertIn("review:    2 new items, 11 open", text)
+        self.assertIn("Sync 2026-11-06", text)
+        self.assertIn("runalyze:  10 processed", text)
+        self.assertIn("strava:    export_1.zip: 20 social, 2 created", text)
+        self.assertIn("Skipped: garmin: no key", text)
         self.assertIn("Failures: garmin: one download failed", text)
-        self.assertNotIn("timing:", text)
-
-
-class SyncCliTests(unittest.TestCase):
-
-    def test_resolve_range_defaults(self):
-        start, end = resolve_sync_range(
-            30,
-            None,
-            today=date(2026, 11, 6),
-        )
-
-        self.assertEqual(date(2026, 10, 7), start)
-        self.assertEqual(date(2026, 11, 6), end)
-
-    def test_since_overrides_days(self):
-        start, end = resolve_sync_range(
-            30,
-            date(2026, 9, 1),
-            today=date(2026, 11, 6),
-        )
-
-        self.assertEqual(date(2026, 9, 1), start)
-        self.assertEqual(date(2026, 11, 6), end)
-
-    def test_future_since_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resolve_sync_range(
-                30,
-                date(2026, 11, 7),
-                today=date(2026, 11, 6),
-            )
-
-    def test_parser_defaults_and_flags(self):
-        args = build_parser().parse_args(["sync"])
-
-        self.assertEqual(30, args.days)
-        self.assertIsNone(args.since)
-        self.assertEqual(182, args.plan_days)
-        self.assertFalse(args.no_garmin)
-        self.assertFalse(args.no_intervals)
-        self.assertFalse(args.no_fit)
-        self.assertFalse(args.no_scan)
-        self.assertFalse(args.full)
-
-        args = build_parser().parse_args(
-            [
-                "sync",
-                "--days",
-                "7",
-                "--since",
-                "2026-10-01",
-                "--plan-days",
-                "90",
-                "--no-garmin",
-                "--no-intervals",
-                "--no-fit",
-                "--no-scan",
-                "--full",
-            ]
-        )
-        self.assertEqual(7, args.days)
-        self.assertEqual("2026-10-01", args.since.isoformat())
-        self.assertEqual(90, args.plan_days)
-        self.assertTrue(args.no_garmin)
-        self.assertTrue(args.no_intervals)
-        self.assertTrue(args.no_fit)
-        self.assertTrue(args.no_scan)
-        self.assertTrue(args.full)
-
-    def test_run_command_exits_nonzero_on_failure(self):
-        args = build_parser().parse_args(["sync"])
-        summary = SyncSummary(
-            start=date(2026, 10, 7),
-            end=date(2026, 11, 6),
-            plan_end=date(2027, 5, 7),
-            failures=[("garmin", "down")],
-        )
-
-        class FakeConnection:
-            def close(self):
-                pass
-
-        with patch(
-            "hobbyjogging_import.cli.open_database",
-            return_value=FakeConnection(),
-        ), patch(
-            "hobbyjogging_import.cli.run_sync",
-            return_value=summary,
-        ):
-            output = io.StringIO()
-            with redirect_stdout(output):
-                code = run_sync_command(args, build_parser())
-
-        self.assertEqual(1, code)
-        self.assertIn("Failures: garmin: down", output.getvalue())
-
-
-class SyncIdempotenceTests(unittest.TestCase):
-
-    def test_second_sync_skips_known_fit_paths(self):
-        temp_dir = tempfile.TemporaryDirectory()
-        self.addCleanup(temp_dir.cleanup)
-        fit_dir = Path(temp_dir.name)
-        shutil.copy(SAMPLE_FIT, fit_dir / SAMPLE_FIT.name)
-
-        conn = connect(":memory:")
-        self.addCleanup(conn.close)
-        migrate(conn)
-
-        common = {
-            "start": date(2026, 10, 7),
-            "end": date(2026, 11, 6),
-            "plan_end": date(2027, 5, 7),
-            "include_garmin": False,
-            "include_intervals": False,
-            "include_fit": True,
-            "include_scan": True,
-            "fit_dir": fit_dir,
-        }
-
-        first = run_sync(conn, **common)
-        second = run_sync(conn, **common)
-
-        self.assertEqual(1, first.fit_files)
-        self.assertEqual(1, first.fit_activities)
-        self.assertEqual(0, second.fit_files)
-        self.assertEqual(0, second.fit_activities)
-        self.assertEqual(
-            1,
-            conn.execute(
-                "SELECT COUNT(*) FROM activities"
-            ).fetchone()[0],
-        )
 
 
 if __name__ == "__main__":

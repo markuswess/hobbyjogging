@@ -1,19 +1,45 @@
-"""Incremental sync job across Garmin, Intervals, FIT, and review scan."""
+"""Incremental sync job across every configured source.
+
+The order is deliberate: fetch (Garmin, Intervals, FIT, Runalyze, Strava) →
+offline derivations → quality review scan. Maintenance recomputes and the
+dashboard belong to ``sync.sh``, which owns the transaction boundaries.
+
+A missing credential is not a failed sync: an enabled source without a key is
+skipped with a warning and the rest still run. Only a source that was
+*configured* and then failed is a failure.
+"""
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.sources_config import SourcesConfig, load_sources
 
-from .config import default_fit_dir
+from .config import (
+    default_fit_dir,
+    garmin_api_key,
+    intervals_credentials,
+    runalyze_api_key,
+)
 from .fit_import import FitImporter
+from .freshness import default_strava_dir, newest_unimported_export
 from .garmin import GarminFetcher
 from .intervals import IntervalsImporter
+from .runalyze import RunalyzeClient, RunalyzeRateLimitError
+from .runalyze_gear import RunalyzeGearImporter
+from .runalyze_import import RunalyzeEnricher
+from .runalyze_races import RunalyzeRaceImporter
+from .runalyze_vo2max import RunalyzeVo2maxImporter
 from .scan import scan_quality
+from .strava_import import StravaCsvImporter
+
+# Runalyze's collection is filtered locally, so re-read a little before the
+# last successful run to catch late uploads and edits.
+RUNALYZE_OVERLAP = timedelta(days=14)
 
 
 @dataclass
@@ -24,6 +50,9 @@ class SyncSummary:
     include_garmin: bool = True
     include_intervals: bool = True
     include_fit: bool = True
+    include_runalyze: bool = True
+    include_strava: bool = True
+    include_derive: bool = True
     include_scan: bool = True
     garmin_fetched: int = 0
     garmin_failed: int = 0
@@ -36,8 +65,21 @@ class SyncSummary:
     fit_activities: int = 0
     fit_matched: int = 0
     fit_created: int = 0
+    runalyze_since: date | None = None
+    runalyze_processed: int = 0
+    runalyze_matched: int = 0
+    runalyze_unmatched: int = 0
+    runalyze_pending: int = 0
+    runalyze_stopped: str = ""
+    runalyze_gear: int = 0
+    runalyze_vo2max: int = 0
+    runalyze_races: int = 0
+    strava_path: Path | None = None
+    strava_social: int = 0
+    strava_created: int = 0
     review_new: int = 0
     review_open: int = 0
+    skips: list[tuple[str, str]] = field(default_factory=list)
     failures: list[tuple[str, str]] = field(default_factory=list)
     # Wall-clock seconds per phase, including a "total" entry.
     durations: dict[str, float] = field(default_factory=dict)
@@ -49,18 +91,25 @@ def run_sync(
     start: date,
     end: date,
     plan_end: date,
+    config: SourcesConfig | None = None,
     include_garmin: bool = True,
     include_intervals: bool = True,
     include_fit: bool = True,
+    include_runalyze: bool = True,
+    include_strava: bool = True,
+    include_derive: bool = True,
     include_scan: bool = True,
     full: bool = False,
     fit_dir: str | Path | None = None,
+    strava_dir: str | Path | None = None,
+    runalyze_since: date | None = None,
 ) -> SyncSummary:
     """Run the ordered incremental sync.
 
     Source failures are recorded and the remaining sources still run. The
     caller decides the exit status from ``summary.failures``.
     """
+    config = config or load_sources()
     summary = SyncSummary(
         start=start,
         end=end,
@@ -68,61 +117,155 @@ def run_sync(
         include_garmin=include_garmin,
         include_intervals=include_intervals,
         include_fit=include_fit,
+        include_runalyze=include_runalyze,
+        include_strava=include_strava,
+        include_derive=include_derive,
         include_scan=include_scan,
     )
 
-    if include_garmin:
-        started = time.monotonic()
-        try:
-            garmin = GarminFetcher(connection).fetch(start, end)
-            summary.garmin_fetched = garmin.downloaded
-            summary.garmin_failed = garmin.failed
-            if garmin.failed:
-                error = (
-                    garmin.errors[0]
-                    if garmin.errors
-                    else f"{garmin.failed} download(s) failed"
+    def skipped(name: str) -> bool:
+        if not config.enabled(name):
+            summary.skips.append((name, "disabled in sources.toml"))
+            return True
+        return False
+
+    if include_garmin and not skipped("garmin"):
+        if not garmin_api_key():
+            summary.skips.append(
+                ("garmin", "GARMIN_PERSONAL_API_KEY is not set")
+            )
+        else:
+            started = time.monotonic()
+            try:
+                garmin = GarminFetcher(connection).fetch(start, end)
+                summary.garmin_fetched = garmin.downloaded
+                summary.garmin_failed = garmin.failed
+                if garmin.failed:
+                    error = (
+                        garmin.errors[0]
+                        if garmin.errors
+                        else f"{garmin.failed} download(s) failed"
+                    )
+                    summary.failures.append(("garmin", error))
+            except Exception as exc:
+                summary.failures.append(("garmin", _error(exc)))
+            finally:
+                summary.durations["garmin"] = time.monotonic() - started
+
+    if include_intervals and not skipped("intervals"):
+        athlete_id, api_key = intervals_credentials()
+        if not athlete_id or not api_key:
+            summary.skips.append(
+                (
+                    "intervals",
+                    "INTERVALS_ATHLETE_ID and INTERVALS_API_KEY are not set",
                 )
-                summary.failures.append(("garmin", error))
-        except Exception as exc:
-            summary.failures.append(("garmin", _error(exc)))
-        finally:
-            summary.durations["garmin"] = time.monotonic() - started
-
-    if include_intervals:
-        started = time.monotonic()
-        try:
-            intervals = IntervalsImporter(connection).import_range(
-                start,
-                end,
-                plan_end=plan_end,
             )
-            summary.intervals_activities = intervals.activities_imported
-            summary.intervals_wellness = intervals.wellness_imported
-            summary.intervals_events = intervals.events_imported
-            summary.intervals_removed = intervals.events_removed
-            summary.intervals_revived = intervals.events_revived
-        except Exception as exc:
-            summary.failures.append(("intervals", _error(exc)))
-        finally:
-            summary.durations["intervals"] = time.monotonic() - started
+        else:
+            started = time.monotonic()
+            try:
+                intervals = IntervalsImporter(connection).import_range(
+                    start,
+                    end,
+                    plan_end=plan_end,
+                )
+                summary.intervals_activities = intervals.activities_imported
+                summary.intervals_wellness = intervals.wellness_imported
+                summary.intervals_events = intervals.events_imported
+                summary.intervals_removed = intervals.events_removed
+                summary.intervals_revived = intervals.events_revived
+            except Exception as exc:
+                summary.failures.append(("intervals", _error(exc)))
+            finally:
+                summary.durations["intervals"] = time.monotonic() - started
 
-    if include_fit:
-        started = time.monotonic()
-        try:
-            fit = FitImporter(connection).import_paths(
-                [fit_dir or default_fit_dir()],
-                recursive=True,
-                skip_known=not full,
+    if include_fit and not skipped("fit"):
+        fit_path = Path(fit_dir).expanduser() if fit_dir else default_fit_dir()
+        if not fit_path.is_dir():
+            summary.skips.append(("fit", f"{fit_path} is not a directory"))
+        else:
+            started = time.monotonic()
+            try:
+                fit = FitImporter(connection).import_paths(
+                    [fit_path],
+                    recursive=True,
+                    skip_known=not full,
+                )
+                summary.fit_files = fit.files_imported
+                summary.fit_activities = fit.activities_imported
+                summary.fit_matched = fit.activities_matched
+                summary.fit_created = fit.activities_created
+            except Exception as exc:
+                summary.failures.append(("fit", _error(exc)))
+            finally:
+                summary.durations["fit"] = time.monotonic() - started
+
+    if include_runalyze and not skipped("runalyze"):
+        summary.runalyze_since = _runalyze_since(
+            connection,
+            runalyze_since,
+            start,
+        )
+        if runalyze_api_key():
+            started = time.monotonic()
+            try:
+                policy = config.policy("runalyze")
+                enrich = RunalyzeEnricher(
+                    connection,
+                    client=RunalyzeClient(),
+                    create=policy.create,
+                ).enrich(
+                    start=summary.runalyze_since,
+                    end=end,
+                )
+                summary.runalyze_processed = enrich.processed
+                summary.runalyze_matched = enrich.matched
+                summary.runalyze_unmatched = enrich.unmatched + enrich.ambiguous
+                summary.runalyze_pending = enrich.not_processed
+                summary.runalyze_stopped = enrich.stopped_reason
+                if enrich.stopped_reason:
+                    summary.skips.append(
+                        (
+                            "runalyze",
+                            f"{enrich.not_processed} row(s) pending: "
+                            f"{enrich.stopped_reason}",
+                        )
+                    )
+            except RunalyzeRateLimitError as exc:
+                summary.skips.append(("runalyze", f"rate limited: {exc}"))
+            except Exception as exc:
+                summary.failures.append(("runalyze", _error(exc)))
+            finally:
+                summary.durations["runalyze"] = time.monotonic() - started
+        else:
+            summary.skips.append(("runalyze", "RUNALYZE_API_KEY is not set"))
+
+        if include_derive:
+            _derive_offline(connection, summary, end)
+
+    if include_strava and not skipped("strava"):
+        export = newest_unimported_export(connection, strava_dir)
+        if export is None:
+            summary.skips.append(
+                ("strava", "no unimported export_*.zip in the drop directory")
             )
-            summary.fit_files = fit.files_imported
-            summary.fit_activities = fit.activities_imported
-            summary.fit_matched = fit.activities_matched
-            summary.fit_created = fit.activities_created
-        except Exception as exc:
-            summary.failures.append(("fit", _error(exc)))
-        finally:
-            summary.durations["fit"] = time.monotonic() - started
+        else:
+            started = time.monotonic()
+            try:
+                policy = config.policy("strava")
+                strava = StravaCsvImporter(
+                    connection,
+                    create=policy.create,
+                    title=policy.title,
+                    description=policy.description,
+                ).import_export(export)
+                summary.strava_path = export
+                summary.strava_social = strava.social_written
+                summary.strava_created = strava.activities_created
+            except Exception as exc:
+                summary.failures.append(("strava", _error(exc)))
+            finally:
+                summary.durations["strava"] = time.monotonic() - started
 
     if include_scan:
         started = time.monotonic()
@@ -146,6 +289,57 @@ def run_sync(
         summary.durations["total"] = sum(summary.durations.values())
 
     return summary
+
+
+def _runalyze_since(
+    connection,
+    explicit: date | None,
+    fallback: date,
+) -> date:
+    """The enrichment window start: last success minus the overlap."""
+    if explicit is not None:
+        return explicit
+    from .freshness import last_success_date
+
+    last = last_success_date(connection, "runalyze")
+    if last is None:
+        return fallback
+    return max(fallback, last - RUNALYZE_OVERLAP)
+
+
+def _derive_offline(connection, summary: SyncSummary, end: date) -> None:
+    """Re-derive Runalyze gear, VO2max and races from stored payloads.
+
+    The first two cost no requests. Races still reads the API; a rate limit or
+    an API error is a warning, because the auxiliary metadata must not fail an
+    otherwise good sync.
+    """
+    started = time.monotonic()
+    try:
+        gear = RunalyzeGearImporter(connection).import_gear()
+        summary.runalyze_gear = gear.created + gear.linked_existing
+    except Exception as exc:
+        summary.failures.append(("runalyze gear", _error(exc)))
+
+    try:
+        vo2max = RunalyzeVo2maxImporter(connection).import_vo2max()
+        summary.runalyze_vo2max = vo2max.written
+    except Exception as exc:
+        summary.failures.append(("runalyze vo2max", _error(exc)))
+
+    if runalyze_api_key():
+        try:
+            races = RunalyzeRaceImporter(
+                connection,
+                RunalyzeClient(),
+            ).import_races()
+            summary.runalyze_races = races.written
+        except RunalyzeRateLimitError as exc:
+            summary.skips.append(("runalyze races", f"rate limited: {exc}"))
+        except Exception as exc:
+            summary.skips.append(("runalyze races", _error(exc)))
+
+    summary.durations["derive"] = time.monotonic() - started
 
 
 def format_sync_summary(summary: SyncSummary) -> str:
@@ -184,6 +378,39 @@ def format_sync_summary(summary: SyncSummary) -> str:
     else:
         lines.append("  fit:       skipped")
 
+    if summary.include_runalyze:
+        detail = (
+            f"{summary.runalyze_processed} processed, "
+            f"{summary.runalyze_matched} matched, "
+            f"{summary.runalyze_unmatched} unmatched"
+        )
+        if summary.runalyze_since is not None:
+            detail = f"since {summary.runalyze_since}: {detail}"
+        if summary.runalyze_stopped:
+            detail += f" (stopped: {summary.runalyze_stopped})"
+        lines.append(f"  runalyze:  {detail}")
+    else:
+        lines.append("  runalyze:  skipped")
+
+    if summary.include_derive and summary.include_runalyze:
+        lines.append(
+            f"  derived:   gear {summary.runalyze_gear}, "
+            f"vo2max {summary.runalyze_vo2max}, "
+            f"races {summary.runalyze_races}"
+        )
+
+    if summary.include_strava:
+        if summary.strava_path is None:
+            lines.append("  strava:    no new export")
+        else:
+            lines.append(
+                f"  strava:    {summary.strava_path.name}: "
+                f"{summary.strava_social} social, "
+                f"{summary.strava_created} created"
+            )
+    else:
+        lines.append("  strava:    skipped")
+
     if summary.include_scan:
         lines.append(
             f"  review:    {summary.review_new} new items, "
@@ -195,13 +422,24 @@ def format_sync_summary(summary: SyncSummary) -> str:
     if summary.durations:
         parts = [
             f"{name} {summary.durations[name]:.1f}s"
-            for name in ("garmin", "intervals", "fit", "review")
+            for name in (
+                "garmin",
+                "intervals",
+                "fit",
+                "runalyze",
+                "derive",
+                "strava",
+                "review",
+            )
             if name in summary.durations
         ]
         if "total" in summary.durations:
             parts.append(f"total {summary.durations['total']:.1f}s")
         if parts:
             lines.append(f"  timing:    {', '.join(parts)}")
+
+    for source, reason in summary.skips:
+        lines.append(f"Skipped: {source}: {reason}")
 
     for source, error in summary.failures:
         lines.append(f"Failures: {source}: {error}")

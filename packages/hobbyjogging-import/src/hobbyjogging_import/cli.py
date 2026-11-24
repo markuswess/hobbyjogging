@@ -662,6 +662,7 @@ def run_sync_command(args, parser: argparse.ArgumentParser) -> int:
         parser.error("--plan-days must be zero or greater")
 
     plan_end = end + timedelta(days=args.plan_days)
+    config = _sources(parser)
 
     try:
         connection = open_database(args.database)
@@ -674,12 +675,17 @@ def run_sync_command(args, parser: argparse.ArgumentParser) -> int:
             start=start,
             end=end,
             plan_end=plan_end,
+            config=config,
             include_garmin=not args.no_garmin,
             include_intervals=not args.no_intervals,
             include_fit=not args.no_fit,
+            include_runalyze=not args.no_runalyze,
+            include_strava=not args.no_strava,
+            include_derive=not args.no_derive,
             include_scan=not args.no_scan,
             full=args.full,
             fit_dir=default_fit_dir(),
+            strava_dir=args.strava_dir,
         )
     finally:
         connection.close()

@@ -21,6 +21,9 @@ RUNALYZE_API_KEY_FALLBACK_ENV = "RUNALYZE_TOKEN"
 RUNALYZE_BASE_URL_ENV = "RUNALYZE_API_BASE_URL"
 DEFAULT_RUNALYZE_BASE_URL = "https://runalyze.com/api/v1"
 
+INTERVALS_ATHLETE_ID_ENV = "INTERVALS_ATHLETE_ID"
+INTERVALS_API_KEY_ENV = "INTERVALS_API_KEY"
+
 
 def default_fit_dir() -> Path:
     """Return the configured FIT directory, falling back to data/fit."""
@@ -68,6 +71,13 @@ def runalyze_base_url() -> str:
     """Return the Runalyze API base URL."""
     value = os.environ.get(RUNALYZE_BASE_URL_ENV)
     return (value or DEFAULT_RUNALYZE_BASE_URL).rstrip("/")
+
+
+def intervals_credentials() -> tuple[str | None, str | None]:
+    """Return ``(athlete_id, api_key)``; either may be missing."""
+    athlete_id = (os.environ.get(INTERVALS_ATHLETE_ID_ENV) or "").strip()
+    api_key = (os.environ.get(INTERVALS_API_KEY_ENV) or "").strip()
+    return athlete_id or None, api_key or None
 
 
 def resolve_fit_path(value: str | Path) -> Path:

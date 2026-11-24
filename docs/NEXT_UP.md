@@ -63,16 +63,21 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 
 **2a · Install**
 
-- **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
-  checks `uv`, the DB path, schema version, FIT dir, that each credential is
-  present, a bounded liveness probe where the API allows one (Garmin token
-  exchange, Runalyze ping), pending data migrations, source staleness and the
-  sources file, and prints the next command.
-- **`sync.sh` skips an unconfigured source** instead of failing on an absent
-  credential, so a missing credential is never a failed sync (item 44 covers
-  the rest).
-- **44 sync covers every configured source** — Runalyze, Strava and the
-  offline derivations join the one command.
+- **`doctor` and `init` (done 2026-11-24)** — `hobbyjogging-maintenance init`
+  creates and migrates a fresh DB and the FIT directory, idempotently;
+  `doctor` checks `uv`, the DB path, schema version, FIT dir, every configured
+  credential, a bounded liveness probe (Garmin token exchange, Intervals and
+  Runalyze reads), pending data migrations, source staleness and the sources
+  file, and prints the next command. Root wrappers: `./init.sh`,
+  `./doctor.sh`.
+- **`sync.sh` skips an unconfigured source (done 2026-11-24)** — a missing
+  credential or a disabled source is a warning, never a failed sync (item 44
+  covers the rest).
+- **44 sync covers every configured source (done 2026-11-24)** — Runalyze,
+  Strava and the offline derivations join the one command. A budgeted Runalyze
+  window, the offline gear/VO2max derivations, race results and the newest
+  unimported Strava export run after the recording sources; `sync.sh` then runs
+  the maintenance recomputes, the scan and the dashboard. Item 44 is closed.
 - **`./demo.sh` as the zero-credential first run**, documented and tested on a
   clean checkout with an empty `$HOBBYJOGGING_DB`.
 - **`sources.toml`, `.env.example` and the README first-run path** (GDPR export
@@ -990,37 +995,23 @@ reports item; 28 is the recurring cleanup.
       use the lexicon, and adding a tag meaning is a one-line change with a
       test.
 
-44. **Sync covers every configured source** (import + reports; phase 2). Today
-    `sync.sh` runs Garmin, Intervals, the FIT scan, the review scan, the
-    classifier and the dashboard; Runalyze and Strava are manual one-offs, so
-    the mirror can be weeks stale and nothing says so. The phase-2 exit test
-    says "runs `sync`", which has to mean the whole configured pipeline — also
-    for an athlete with no Intervals.
-    - **Runalyze (online, budgeted)**: one `runalyze enrich --since <last sync
-      − 14 d>` per run. Re-runs only fetch new rows (a stored, linked detail is
-      skipped); a `429` ends the step with a pending count and a warning, never
-      a failed sync, and `--wait` is never used inside a scheduled run. Then
-      the offline `runalyze gear`, `vo2max` and `races` steps run every time —
-      they read stored payloads and cost no requests.
-    - **Strava (manual drop)**: import the newest **unimported**
-      `export_*.zip` from `data/strava/` (never every zip in the folder), and
-      no-op when it is absent or already recorded. The download stays a human
-      chore — no API, no scraping; the
-      deferred-API decision stands. Tags and gear keep Runalyze as their interim
-      home (item 1 moves tags to the DB later).
-    - **Order**: fetch (Garmin, Intervals, FIT, Runalyze, Strava) → offline
-      derive (gear, vo2max, races) → maintenance recomputes → review scan →
-      dashboard. A source that failed or is unconfigured prints a warning and
-      the rest still run.
-    - **Companion, any time (reports)**: a source-freshness view — last
-      successful run, last activity date, pending Runalyze rows and Strava
-      export age per source, read from `import_runs`/`source_records`, no
-      schema change. `doctor` answers "can it run"; this answers "is it
-      current".
-    - **Acceptance**: a fresh install with Garmin, Intervals, Runalyze and
-      Strava brings all four in with one command; a second run is a no-op;
-      removing one credential skips that source with a warning and leaves the
-      others working; the dashboard reflects the new metadata.
+44. **Sync covers every configured source** (import + maintenance + reports;
+    done 2026-11-24). `hobbyjogging-import sync` runs the whole configured
+    pipeline and `sync.sh` adds the stored derivations and the dashboard.
+    - **Done**: Garmin, Intervals, the FIT archive, a budgeted Runalyze
+      `enrich --since <last success − 14 d>`, the offline `runalyze gear` and
+      `vo2max` passes, race results, and the newest **unimported**
+      `export_*.zip` from the Strava drop directory. A `429` or a missing
+      credential is a warning with a pending count, never a failed sync.
+    - **Order**: fetch → offline derive → maintenance recomputes → review scan
+      → dashboard. A disabled source or a missing credential prints a skip; a
+      configured source that fails is reported and the rest still run.
+    - **Freshness**: `hobbyjogging_import.freshness` reads the last successful
+      run per source, the imported Strava export paths and staleness; `doctor`
+      reports them. A dedicated CLI report stays optional.
+    - **Acceptance (verified on a copy)**: one command brings every configured
+      source in; a second run is a no-op for unchanged data; removing one
+      credential skips that source and leaves the others working.
 
 45. **Readability baseline pass** (reports + tools; small item, after
     `init`/`doctor` and before the phase-3 UI). The codebase is not bloated
@@ -1239,9 +1230,12 @@ owns experimentation, and items 13/14/25 own the eventual home.
   (`--include-review` shows them); excluded activities never appear.
 - `events sync` defaults to today .. today + 182 days; `--from`/`--to`
   override the window, and `--dry-run` reports without writing.
-- `./sync.sh` runs the incremental sync (Garmin → Intervals → FIT → review
-  scan) and then regenerates the dashboard; `--no-garmin`, `--no-intervals`,
-  `--no-fit`, `--no-scan`, and `--no-dashboard` skip those steps.
+- `./sync.sh` runs the whole pipeline — Garmin → Intervals → FIT → Runalyze →
+  Strava → offline derivations → maintenance recomputes → review scan →
+  dashboard; `--no-garmin`, `--no-intervals`, `--no-fit`, `--no-runalyze`,
+  `--no-strava`, `--no-derive`, `--no-maintenance`/`--no-classify`, `--no-scan`
+  and `--no-dashboard` skip those steps. `./init.sh` creates and migrates the
+  database and `./doctor.sh` checks the installation.
 - `./dashboard.sh` regenerates the dashboard and opens `index.html` in the
   browser; `--no-open` or `NO_OPEN=1` suppresses the browser.
 - The `planned` report always starts tomorrow.

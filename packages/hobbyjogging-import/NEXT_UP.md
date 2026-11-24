@@ -5,6 +5,18 @@ on.
 
 ## Done
 
+- **Sync covers every configured source.** `hobbyjogging-import sync` now runs
+  Garmin, Intervals, the FIT archive, a budgeted Runalyze enrichment, the
+  offline gear/VO2max derivations and the newest unimported Strava export, then
+  the quality scan. A source disabled in `sources.toml` or missing a credential
+  is skipped with a warning instead of failing the run; a configured source
+  that fails is reported and the rest still run. `sync.sh` adds the maintenance
+  recomputes and the dashboard in that order. See root item 44.
+- **Setup and doctor.** `hobbyjogging-maintenance init` creates and migrates a
+  fresh database and the FIT directory, idempotently; `doctor` checks `uv`, the
+  DB path and writability, the schema version, the FIT directory, each
+  configured credential, bounded API liveness probes, pending backfills, source
+  freshness and `sources.toml`, and prints the next command. See root item 23.
 - **Provider device identity.** An Intervals `device_name` that names an app
   (`Runalyze`, `Garmin Connect`, `Strava`, `intervals.icu`; case and spacing
   insensitive) writes no device row and no `device_id`. A real name still fills
@@ -332,10 +344,6 @@ on.
   within ~2%, and HR within 5 bpm when both have it. Emit a `duplicate` review
   item carrying both activity ids; resolve by excluding one. Runs in the
   quality scan, idempotent by a fingerprint over the sorted pair.
-- **`init` and `doctor`.** `hobbyjogging-import init` creates and migrates a
-  fresh database explicitly (today the first import does it implicitly), and
-  `doctor` checks the DB path and writability, the schema version, the FIT
-  directory and the credentials, printing what is missing. See root item 23.
 
 ## Waiting on
 

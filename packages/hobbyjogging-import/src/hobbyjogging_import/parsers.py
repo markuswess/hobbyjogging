@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .causes import CAUSE_NAMES
 from .config import default_fit_dir, default_garmin_dir
+from .freshness import default_strava_dir
 from .quality import REVIEW_CATEGORIES
 
 
@@ -32,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sync = subparsers.add_parser(
         "sync",
-        help="incrementally sync Garmin, Intervals, FIT, and review",
+        help="incrementally sync every configured source",
     )
     sync.add_argument("--days", type=int, default=30)
     sync.add_argument("--since", type=date_arg)
@@ -53,9 +54,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="skip the FIT archive scan",
     )
     sync.add_argument(
+        "--no-runalyze",
+        action="store_true",
+        help="skip the Runalyze enrichment and offline derivations",
+    )
+    sync.add_argument(
+        "--no-strava",
+        action="store_true",
+        help="skip the newest unimported Strava export",
+    )
+    sync.add_argument(
+        "--no-derive",
+        action="store_true",
+        help="skip the offline Runalyze gear/VO2max/races derivations",
+    )
+    sync.add_argument(
         "--no-scan",
         action="store_true",
         help="skip the quality review scan",
+    )
+    sync.add_argument(
+        "--strava-dir",
+        type=Path,
+        help=(
+            "directory holding export_*.zip "
+            f"(default: {default_strava_dir()})"
+        ),
     )
     sync.add_argument(
         "--full",

@@ -20,12 +20,20 @@ migrations in `hobbyjogging_core.db.migrations`, applied by `open_database()`.
 ## Commands
 
 ```bash
+uv run --env-file .env hobbyjogging-maintenance init
+uv run --env-file .env hobbyjogging-maintenance doctor --no-network
 uv run --env-file .env hobbyjogging-maintenance list
 uv run --env-file .env hobbyjogging-maintenance status
 uv run --env-file .env hobbyjogging-maintenance run <task> --dry-run
 uv run --env-file .env hobbyjogging-maintenance run <task>
 uv run --env-file .env hobbyjogging-maintenance run --all
 ```
+
+`init` creates and migrates the database and the FIT directory; a second run
+only checks the schema. `doctor` checks `uv`, the DB path and writability, the
+schema version, the FIT directory, each configured credential, bounded API
+liveness probes, pending backfills, source freshness and `sources.toml`, then
+prints the next command. The root wrappers are `./init.sh` and `./doctor.sh`.
 
 `run` options:
 

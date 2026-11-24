@@ -44,45 +44,48 @@ weekly: <https://markuswess.github.io/hobbyjogging/>.
 
 ## Quick start
 
-With no credentials at all, build the synthetic athlete's database and
-dashboard — that proves the install before any account is connected:
+Requirements: Linux or macOS, `git`, and [`uv`](https://docs.astral.sh/uv/).
+Nothing else is installed globally.
+
+Prove the install before connecting any account — this builds a synthetic
+athlete and a complete static dashboard, and reads no personal data:
 
 ```bash
+git clone <this-repo> hobbyjogging
+cd hobbyjogging
 uv sync
 ./demo.sh          # -> build/demo.db and build/site
 ```
 
-Then point it at your own data. `.env` at the repository root holds the
-credentials and optional paths:
+Then point it at your own data:
 
 ```bash
-export HOBBYJOGGING_DB=<your/path/databasefile.db>
-export HOBBYJOGGING_FIT_DIR=<your/path/fit-directory>
-export INTERVALS_ATHLETE_ID=<your-athlete-id>
-export INTERVALS_API_KEY=<your-api-key>
-export GARMIN_PERSONAL_API_KEY=<your-personal-api-key>
-export RUNALYZE_API_KEY=<your-personal-token>
+cp .env.example .env          # paths and credentials; every entry is optional
+$EDITOR sources.toml          # which sources are enabled; create/review/ignore
+./init.sh                     # create and migrate the database
+./doctor.sh                   # what is missing, and the next command
+./sync.sh                     # fetch, derive, maintain, scan, render
 ```
 
-`sources.toml` (optional) selects which sources are enabled, what an unmatched
-row does (create, review or ignore) and where a social title goes; without it
-every source is enabled. Then run the whole loop — Garmin fetch, Intervals
-import, FIT scan, review scan, dashboard:
+`sources.toml` is the only switch for which sources run; a credential you do
+not have is skipped with a warning, never a failed sync. `doctor` probes only
+the sources you enabled.
 
-```bash
-./sync.sh
-```
+The FIT files come from a Garmin GDPR export copied into
+`$HOBBYJOGGING_FIT_DIR`, or from `uv run --env-file .env hobbyjogging-import
+garmin fetch` (Garmin Personal API). A Strava bulk export is dropped as
+`export_*.zip` into `$HOBBYJOGGING_STRAVA_DIR` (default `data/strava`); the
+download stays manual. Runalyze, Intervals.icu and Garmin are fetched by
+`./sync.sh` when their credentials are present.
 
-The FIT files come from `garmin fetch` (Garmin Personal API) or from a Garmin
-GDPR export copied into the FIT directory. `sync.sh` covers Garmin, Intervals
-and the FIT archive; Runalyze enrichment and the Strava bulk export are
-separate commands today, and the historical spreadsheet is a one-off import.
+`./dashboard.sh` regenerates and opens the dashboard; `./db.sh` opens a SQLite
+shell with headers and columns enabled.
 
 ## What you do with it
 
-- **Import.** FIT files, Intervals.icu and the Garmin API run in `sync.sh`;
-  Runalyze, the Strava bulk export and the historical spreadsheet are separate
-  imports.
+- **Import.** `./sync.sh` fetches Garmin, Intervals.icu, the FIT archive,
+  Runalyze and the Strava export, then the offline derivations, maintenance
+  recomputes, review scan and dashboard.
 - **Review.** Conflicts and odd data land in a queue; the interactive walk
   fixes, resolves or excludes them.
 - **Look.** A static dashboard, plus the Markdown reports and charts behind

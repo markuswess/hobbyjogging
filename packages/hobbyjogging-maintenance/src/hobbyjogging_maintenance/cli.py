@@ -35,6 +35,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    init = subparsers.add_parser(
+        "init",
+        help="create and migrate a fresh database; safe to re-run",
+    )
+    init.add_argument("--database", type=Path)
+    init.add_argument(
+        "--fit-dir",
+        type=Path,
+        help="create this FIT directory if missing (default: configured one)",
+    )
+
+    doctor = subparsers.add_parser(
+        "doctor",
+        help="check the install: paths, schema, credentials, freshness",
+    )
+    doctor.add_argument("--database", type=Path)
+    doctor.add_argument("--fit-dir", type=Path)
+    doctor.add_argument("--strava-dir", type=Path)
+    doctor.add_argument(
+        "--sources",
+        type=Path,
+        help="sources.toml path (default: HOBBYJOGGING_SOURCES or ./sources.toml)",
+    )
+    doctor.add_argument(
+        "--no-network",
+        action="store_true",
+        help="skip the bounded API liveness probes",
+    )
+    doctor.add_argument(
+        "--timeout",
+        type=float,
+        default=10.0,
+        help="seconds per liveness probe (default: 10)",
+    )
+
     listing = subparsers.add_parser("list", help="list registered tasks")
     listing.add_argument("--kind", choices=KINDS)
     listing.add_argument("--database", type=Path)
@@ -86,11 +121,47 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "init":
+        return _init(args)
+    if args.command == "doctor":
+        return _doctor(args)
     if args.command == "list":
         return _list(args)
     if args.command == "status":
         return _status(args)
     return _run(args, parser)
+
+
+def _init(args) -> int:
+    from .doctor import initialize
+
+    path, version, created = initialize(
+        args.database,
+        fit_dir=args.fit_dir,
+    )
+    print(f"Database: {path}")
+    print(f"Schema:   {version}")
+    if created:
+        print("Created and migrated.")
+    else:
+        print("Already initialized; no changes.")
+    print("Next: uv run python -m hobbyjogging_maintenance doctor")
+    return 0
+
+
+def _doctor(args) -> int:
+    from .doctor import format_doctor, run_doctor
+
+    report = run_doctor(
+        database=args.database,
+        fit_dir=args.fit_dir,
+        strava_dir=args.strava_dir,
+        sources_path=args.sources,
+        network=not args.no_network,
+        timeout=args.timeout,
+    )
+    print(format_doctor(report))
+    return 1 if report.failed else 0
 
 
 def _open(path: Path | None):

@@ -1,0 +1,43 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
+      - run: uv sync --frozen
+
+      - name: Test core
+        run: cd packages/hobbyjogging-core/tests && uv run python -m unittest discover -q
+
+      - name: Test import
+        run: cd packages/hobbyjogging-import/tests && uv run python -m unittest discover -q
+
+      - name: Test maintenance
+        run: cd packages/hobbyjogging-maintenance/tests && uv run python -m unittest discover -q
+
+      - name: Test reports
+        run: cd packages/hobbyjogging-reports/tests && uv run python -m unittest discover -q
+
+      - name: Check the todo lists
+        run: uv run python tools/check_todos.py
+
+      - name: Build the demo (zero credentials)
+        run: ./demo.sh

@@ -17,6 +17,7 @@ Default windows:
 
 - activities, wellness, and Garmin: last 30 days (`--days`), or since
   `--since DATE`
+- Runalyze: since the last successful run minus 14 days
 - planned events: today through today + `--plan-days` (default 182)
 
 Order is deliberate:
@@ -24,23 +25,31 @@ Order is deliberate:
 1. Garmin fetch
 2. Intervals import (activities, wellness, events; events are reconciled)
 3. FIT archive import (recursive, new paths only unless `--full`)
-4. quality review scan
+4. Runalyze enrichment (budgeted; a `429` is a warning, never a failed sync)
+5. offline Runalyze derivations: gear, VO2max and race results
+6. the newest unimported Strava `export_*.zip`
+7. quality review scan
 
-Runalyze enrichment and the Strava bulk export are separate commands today, so
-a sync can be current for the FIT/Intervals sources while the Runalyze metadata
-lags — check the last import run for the source before trusting its tags or
-gear.
+`sync.sh` adds the maintenance recomputes, a second scan and the dashboard, so
+it is the daily command:
+
+```bash
+./sync.sh
+```
+
+A source that is disabled in `sources.toml` or has no credential is skipped
+with a warning; only a configured source that fails makes the command exit
+non-zero. The summary prints every skip and failure, plus per-phase timing.
 
 Useful options:
 
-- `--no-garmin`, `--no-intervals`, `--no-fit`, `--no-scan` — skip a source.
+- `--no-garmin`, `--no-intervals`, `--no-fit`, `--no-runalyze`, `--no-strava`,
+  `--no-derive`, `--no-scan` — skip a step.
+- `--strava-dir PATH` — the drop directory for `export_*.zip`
+  (default `data/strava`, or `HOBBYJOGGING_STRAVA_DIR`).
 - `--full` — re-import every FIT file instead of skipping paths already in
   `source_records`.
 - `--database PATH` — use a database other than `HOBBYJOGGING_DB`.
-
-Each source is wrapped independently: a failure is reported, the remaining
-sources still run, and the command exits with status 1. The final summary
-shows the window, per-source counts, and failures.
 
 ## FIT files
 

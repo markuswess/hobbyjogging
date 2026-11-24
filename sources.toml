@@ -4,6 +4,10 @@
 # Path: ./sources.toml (or HOBBYJOGGING_SOURCES). A missing file means the code
 # defaults: every source enabled, and create when nothing matches.
 #
+# A source enabled here but missing its credential is skipped by ./sync.sh with
+# a warning, never a failed sync. The Strava export is the newest unimported
+# export_*.zip in data/strava (or $HOBBYJOGGING_STRAVA_DIR).
+#
 # Keys per source:
 #   enabled      true | false
 #   create       create | review | ignore   (Strava and Runalyze)
