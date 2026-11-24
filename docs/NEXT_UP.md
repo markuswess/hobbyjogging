@@ -1,6 +1,6 @@
 # Status and next steps
 
-Updated 2026-11-19.
+Updated 2026-11-24.
 
 ## Done
 
@@ -9,14 +9,19 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Phase 2 code complete (2026-11-24).** `init`/`doctor`, the full-source
+  `sync`, the install docs, the MIT licence, CI, the lab detach and the
+  Runalyze+Garmin profile (items 44, 49–53 and the name label) landed; schema
+  is v25. The remaining phase-2 act is the acceptance run on a second
+  athlete's real data (a fresh DB with Runalyze + Garmin, no Intervals).
 - **The canonical pipeline and all sources (phase 1).** FIT archive,
   Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
   comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
   imported and applied on the real DB: 4,143 non-excluded activities, schema
-  v23.
+  v23, since grown to 4,148 and v25.
 - **Inputs vs projections (item 17).** `activity_manual_fields` (v23) holds
   manual values and owner patches; `derive.py` declares the per-source mapping;
-  `verify_canonical` reports 68,001 owned fields with 0 drift, 0 dangling and 0
+  `verify_canonical` reports 68,122 owned fields with 0 drift, 0 dangling and 0
   unmapped, and `recompute_canonical` is a no-op on the real DB.
 - **Import policy and settings (item 40).** `sources.toml` carries enabled,
   create and text targets; the ladder creates only when nothing is left to
@@ -61,6 +66,11 @@ no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 machine — no code or SQL edits. And a **Runalyze+Garmin athlete's dashboard is
 usable**: categories, laps/reps, zones, load, wellness and races render.
 
+**Code complete 2026-11-24.** Every code path exists and the fresh-database
+path is covered by the demo and the suites; the acceptance run on a second
+athlete's real data (a fresh DB with Runalyze + Garmin and no Intervals) is
+the remaining validation.
+
 **2a · Install**
 
 - **`doctor` and `init` (done 2026-11-24)** — `hobbyjogging-maintenance init`
@@ -78,14 +88,18 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   window, the offline gear/VO2max derivations, race results and the newest
   unimported Strava export run after the recording sources; `sync.sh` then runs
   the maintenance recomputes, the scan and the dashboard. Item 44 is closed.
-- **`./demo.sh` as the zero-credential first run**, documented and tested on a
-  clean checkout with an empty `$HOBBYJOGGING_DB`.
-- **`sources.toml`, `.env.example` and the README first-run path** (GDPR export
-  or `garmin fetch` → `sync` → dashboard).
-- **A pull-request workflow** (four suites + demo build) and an **MIT**
-  `LICENSE`.
-- **22 release versioning** — "which code built this DB" must be answerable for
-  someone else's install.
+- **`./demo.sh` as the zero-credential first run (done 2026-11-24)** —
+  documented as the install proof and tested in CI and locally with no
+  `.env`.
+- **`sources.toml`, `.env.example` and the README first-run path (done
+  2026-11-24)** — copy, edit, `init`, `doctor`, `sync` (GDPR export or
+  `garmin fetch` → `sync` → dashboard).
+- **A pull-request workflow and an MIT `LICENSE` (done 2026-11-24)** — the
+  workflow runs the four suites, the todo check and the demo build on 3.12.
+- **22 release versioning (done 2026-11-24)** — `CHANGELOG.md` records schema,
+  data tasks and report changes with a compatibility line; `v0.1.0` tags the
+  phase-1 state locally (the user pushes), `v0.2.0` waits for the phase-2
+  exit.
 - **29 lab detach (done 2026-11-24)** — the scripts and notebook moved to
   `~/projects/laufen_private/lab/`; the bench rules, template, `lab.sh` and
   the Lab tab stay, and a demo build never reads the private directory.
@@ -444,57 +458,62 @@ reports item; 28 is the recurring cleanup.
     import supplies the device serial, max HR and laps.
 
     - **Setup (import + CI)**
-      - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
+      - [x] `init` creates and migrates a fresh DB explicitly; a second run is
             a no-op.
-      - [ ] `doctor` checks `uv`, the DB path and writability, the schema
+      - [x] `doctor` checks `uv`, the DB path and writability, the schema
             version, the FIT directory, that each credential is present, a
             bounded liveness probe where the API allows one (Garmin token
             exchange, Runalyze ping), pending data migrations, whether a
             configured source has gone stale, and the sources file, and names
             what is missing.
-      - [ ] `sources.toml` alone selects the sources: Intervals and the sheet
+      - [x] `sources.toml` alone selects the sources: Intervals and the sheet
             disabled, Runalyze `review`, Strava `create` or `ignore`.
-      - [ ] `sync.sh` skips an unconfigured source instead of failing on an
+      - [x] `sync.sh` skips an unconfigured source instead of failing on an
             absent credential, and never assumes Intervals.
-      - [ ] a pull-request workflow runs the four suites plus the demo build;
+      - [x] a pull-request workflow runs the four suites plus the demo build;
             today CI only covers pushes to `main`.
-      - [ ] an MIT `LICENSE`, `.env.example` and a README first-run path (GDPR
+      - [x] an MIT `LICENSE`, `.env.example` and a README first-run path (GDPR
             export or `garmin fetch` → `sync`).
     - **Ingestion (core + import)**
-      - [ ] Garmin FIT is the only device source: `moving_s`/`elapsed_s` fall
+      - [x] Garmin FIT is the only device source: `moving_s`/`elapsed_s` fall
             back to FIT through the existing ranked authority, with no code
             change.
-      - [ ] device identity is FIT-first: app names never become devices, a
+      - [x] device identity is FIT-first: app names never become devices, a
             provider name claims the unique FIT device of its model, and an
             unused provider row is soft-excluded (landed).
-      - [ ] Strava `create` makes a summary activity using the configured
+      - [x] Strava `create` makes a summary activity using the configured
             timezone; title and description follow the text target.
-      - [ ] Runalyze honours `create|review|ignore`; unmatched rows become
+      - [x] Runalyze honours `create|review|ignore`; unmatched rows become
             review items when set to `review`.
-      - [ ] gear works without a sheet: exact name → new row → ambiguous item,
+      - [x] gear works without a sheet: exact name → new row → ambiguous item,
             with the co-occurrence branch simply never firing.
-      - [ ] race results arrive without Intervals (Runalyze); no training
+      - [x] race results arrive without Intervals (Runalyze); no training
             periods and no planned events is an accepted empty state, not an
             error.
     - **Analysis and reports (reports)**
-      - [ ] no Intervals assumption in the read path: missing thresholds,
+      - [x] no Intervals assumption in the read path: missing thresholds,
             zones, events or wellness degrade to an explicit "not available",
             never a wrong number or a crash.
-      - [ ] chart ceilings come from the data (landed); the known personal
-            constants that remain are `COMPARE_VISIBLE_YEARS`, the 2009 colour
+      - [x] chart ceilings come from the data (landed); the known personal
+            constants that remain are `COMPARE_VISIBLE_YEARS`, the compare colour
             anchor and `RACE_DAYS`.
-      - [ ] the analysis defaults (RPE > 3, 90-min long run, 40–75 min
+      - [x] the analysis defaults (RPE > 3, 90-min long run, 40–75 min
             efficiency band, subT buckets, 5-bpm HR conflict, 10 %/20 m
             elevation) are one documented module of defaults, not laws.
-      - [ ] the demo builds from the synthetic athlete and renders every tab,
+      - [x] the demo builds from the synthetic athlete and renders every tab,
             so the second athlete's empty paths are exercised too — including
             the effective-VO2max overview and methods card, which is the
             zero-credential install proof.
-      - [ ] the Runalyze+Garmin profile renders categories, laps/reps, zones,
+      - [x] the Runalyze+Garmin profile renders categories, laps/reps, zones,
             load and wellness (items 49–53), and the demo still covers the
             empty paths.
     - **Language floor**: [ ] `requires-python` drops to 3.12 once the suites
       pass there; no 3.14-only syntax was found.
+
+    **Code checklist complete 2026-11-24.** The real second-athlete
+    acceptance run (a fresh DB with Runalyze + Garmin, no Intervals and no
+    sheet) is the remaining validation; the demo and suites cover the code
+    paths.
 
     **Out of scope, stated**: multi-athlete, imperial units, a hosted service,
     arbitrary platforms, a per-athlete UI.

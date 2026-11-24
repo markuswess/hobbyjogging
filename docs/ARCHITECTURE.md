@@ -38,10 +38,10 @@ passed the gate may land in its owning package at any time (see
 
 **Phase 1 is complete (2026-11-19):** all sources are imported, the reports,
 dashboard and race pages answer the daily questions, and the lab promotes
-metrics on demand. **Phase 2 is current** and has two halves: the install path
-(2a) and a usable dashboard for an athlete without Intervals (2b). **Phase 3**
-then makes the stored record trustworthy and correctable. **Phase 4** stays
-parked.
+metrics on demand. **Phase 2 is code complete (2026-11-24):** the install
+path (2a) and the usable Runalyze+Garmin dashboard (2b) are in place; the real
+second-athlete acceptance run is the remaining validation. **Phase 3** then
+makes the stored record trustworthy and correctable. **Phase 4** stays parked.
 
 A platform is retired **per metadata type, never per platform**: the type gets
 a DB surface first (phase 3), the historical import keeps backfilling, and the
@@ -760,13 +760,17 @@ dashboard: the view models make it cheap to add later.
 
 ## Status (November 2026)
 
-- **Phase 1 complete, phase 2 current.** All sources are imported and applied
-  on the real DB; the optional Strava API stays deferred to phase 4.
+- **Phase 1 complete; phase 2 code complete (2026-11-24).** All sources are
+  imported and applied on the real DB; the optional Strava API stays deferred
+  to phase 4. The install path (`init`/`doctor`, full-source `sync`, minimal
+  licence, CI) and the Runalyze+Garmin profile (type mapping, derived reps,
+  TRIMP load, manual thresholds/zones, Garmin wellness, name labels) are in
+  place; the real second-athlete acceptance run remains.
 - Canonical pipeline, review workflow, manual editing and exclusion: done.
   Schema v25 adds interval provenance; v24 soft-excludes retired device rows;
-  v23 is the manual input layer
-  (`activity_manual_fields`), v22 per-source social text, and earlier versions
-  add set-based workout methods/targets and the maintenance bookkeeping.
+  v23 is the manual input layer (`activity_manual_fields`), v22 per-source
+  social text, and earlier versions add set-based workout methods/targets and
+  the maintenance bookkeeping.
 - Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
   (inventory, comments/tags, gear, race results, VO2max) and the Strava CSV.
 - Device identity is FIT-first and generic: a provider name fills `device_id`
