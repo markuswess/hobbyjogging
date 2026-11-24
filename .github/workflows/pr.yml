@@ -39,5 +39,8 @@ jobs:
       - name: Check the todo lists
         run: uv run python tools/check_todos.py
 
+      - name: Check the file-size budget
+        run: uv run python tools/check_size.py
+
       - name: Build the demo (zero credentials)
         run: ./demo.sh

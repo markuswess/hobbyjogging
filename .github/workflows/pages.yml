@@ -53,6 +53,9 @@ jobs:
       - name: Check the todo lists
         run: uv run python tools/check_todos.py
 
+      - name: Check the file-size budget
+        run: uv run python tools/check_size.py
+
   build:
     needs: test
     runs-on: ubuntu-latest

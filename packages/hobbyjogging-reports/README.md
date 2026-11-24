@@ -961,7 +961,11 @@ analysis or chart code:
   `hobbyjogging_core.classify` and prefers the stored workout classification
   (`activity_workout_methods/targets`), falling back to name/RPE/intensity
   when an activity is unclassified.
-- `charts.py` — plotly chart builders shared by the CLI and dashboard.
+- `charts/` — plotly chart builders shared by the CLI and dashboard, split by
+  family (`volume`, `time`, `subt`, `load`, `vo2max`, `pace_hr`, `races`,
+  `compare`, `recovery`, `overview`, `gear`) over shared tokens and helpers in
+  `charts/common.py`. The package root re-exports every builder, so the
+  import path is unchanged.
 - `format.py` — model-based report formatting helpers.
 - `links.py` — Intervals and Garmin Connect URLs for canonical activities.
 - `mdpretty.py` — dependency-free terminal Markdown renderer.
@@ -975,4 +979,4 @@ analysis or chart code:
 The `debug` command dumps the payloads already stored in the database.
 
 To add a visualization: compute the metric in `analysis/` from model
-objects, then plot it in `charts.py`.
+objects, then plot it in the matching `charts/` family module.

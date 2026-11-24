@@ -2,11 +2,26 @@
 
 Updated 2026-11-24.
 
-Current focus: root item 55's athlete-2 bugs are fixed (stored-set subT/LT1
-selection, derived table/list rendering); 10 is parked, 12 is behind the lab
-gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
+Current focus: root item 45's readability baseline is in (charts split by
+family, 34 dead analysis exports removed, a 1,000-line CI budget), and root
+item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
+13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
+
+- **Readability baseline (root item 45).** `charts.py` (3,609 lines) is now
+  the `charts/` package, split by family — `volume`, `time`, `subt`, `load`,
+  `vo2max`, `pace_hr`, `races`, `gear`, `compare`, `recovery`, `overview` —
+  over shared tokens and helpers in `charts/common.py`. Every public builder
+  is re-exported from the package root, so the CLI and dashboard imports did
+  not change. `analysis/__init__.py` drops the 34 re-exports nothing imported
+  (154 → 120) and sorts the remaining surface.
+  `tools/check_size.py` enforces the 1,000-line budget over package sources
+  with a five-file allowlist (`writer`, `triage`, `runalyze_import`, `demo`,
+  `format`), fails on a stale allowlist entry, and runs in both CI workflows
+  beside `check_todos.py`; a deliberately oversized probe file fails it. The
+  demo dashboard rebuilds with identical chart content (only the generated
+  timestamp and Plotly div UUIDs differ).
 
 - **Athlete-2 subT selection and derived rendering (root item 55).**
   `is_subt_activity`/`is_lt1_activity` now prefer the stored targets —
