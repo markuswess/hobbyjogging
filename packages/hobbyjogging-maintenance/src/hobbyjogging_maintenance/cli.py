@@ -110,6 +110,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSONL overlay (default: export the source's overlay in memory)",
     )
 
+    audit = subparsers.add_parser(
+        "audit",
+        help="read-only audit of historical evidence already stored",
+    )
+    audit.add_argument(
+        "--output",
+        type=Path,
+        help="Markdown report (default: stdout)",
+    )
+    audit.add_argument("--database", type=Path)
+
     listing = subparsers.add_parser("list", help="list registered tasks")
     listing.add_argument("--kind", choices=KINDS)
     listing.add_argument("--database", type=Path)
@@ -171,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
         return _import_manual(args)
     if args.command == "rebuild":
         return _rebuild(args)
+    if args.command == "audit":
+        return _audit(args)
     if args.command == "list":
         return _list(args)
     if args.command == "status":
@@ -269,6 +282,34 @@ def _rebuild(args) -> int:
 
     print(format_rebuild_report(report))
     return 0 if report.ok else 1
+
+
+def _audit(args) -> int:
+    import sqlite3
+
+    from .audit import build_audit
+
+    path = (
+        Path(args.database).expanduser()
+        if args.database
+        else default_database_path()
+    )
+    if not path.is_file():
+        raise SystemExit(f"database not found: {path}")
+    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        text = build_audit(connection, database=str(path))
+    finally:
+        connection.close()
+
+    if args.output is None:
+        print(text)
+    else:
+        output = args.output.expanduser()
+        output.write_text(text, encoding="utf-8")
+        print(f"Audit written: {output}")
+    return 0
 
 
 def _open(path: Path | None):

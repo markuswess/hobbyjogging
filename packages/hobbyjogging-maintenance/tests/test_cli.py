@@ -128,6 +128,17 @@ class MaintenanceCliTests(unittest.TestCase):
         self.assertEqual("trail_run", activity["sport"])
         self.assertEqual('"trail_run"', manual["value_json"])
 
+    def test_audit_writes_the_read_only_report(self):
+        path = Path(self.temp_dir.name) / "audit.md"
+
+        code, output = self._main("audit", "--output", str(path))
+
+        self.assertEqual(0, code)
+        self.assertIn("Audit written", output)
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("# Historical data audit", text)
+        self.assertIn("## Field coverage", text)
+
     def test_dry_run_rolls_back(self):
         code, output = self._main("run", "event_zones_v1", "--dry-run")
 

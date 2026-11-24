@@ -4,6 +4,12 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Historical audit.** `maintenance audit` is a read-only Markdown report of
+  the evidence already stored: field coverage per year, unmapped raw keys and
+  tags, interval-like descriptions, trail/race evidence, classification gaps,
+  illness/season periods and the review queue. On the real DB it found 289
+  unmapped raw keys, 195 unmapped tags, 1,227 unclassified activities and 41
+  trail candidates. It opens no review items and writes nothing.
 - **Manual overlay and rebuild.** `export-manual` writes the manual decisions
   as JSONL (73 manual fields, 529 manual set records, 8 exclusions and 734
   review answers on the real DB); `import-manual` re-applies it to a database
@@ -144,8 +150,9 @@ Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on
 
-- **Historical refurbishment** (root item 37). The read-only evidence audit is
-  the first maintenance slice; it starts after the Runalyze import settles.
+- **Historical refurbishment** (root item 37). The read-only audit is done;
+  the proposal rules (classification, trail, illness, seasons) wait for root
+  item 1's edit surface and the lab calibrations.
 
 Nothing else. The package owns schema evolution, backfills, recomputes, and
 their bookkeeping.

@@ -30,6 +30,7 @@ uv run --env-file .env hobbyjogging-maintenance run --all
 uv run --env-file .env hobbyjogging-maintenance export-manual --output overlay.jsonl
 uv run --env-file .env hobbyjogging-maintenance import-manual overlay.jsonl
 uv run --env-file .env hobbyjogging-maintenance rebuild --source live.db
+uv run --env-file .env hobbyjogging-maintenance audit --output audit.md
 ```
 
 `init` creates and migrates the database and the FIT directory; a second run
@@ -63,6 +64,15 @@ re-decide ownership; an empty diff proves the projection from the stored
 inputs, while the pointers stay the recorded decisions. `--target PATH` keeps
 the rebuilt database for inspection; without it the target is temporary. Exit
 status is 1 on any drift, missing/extra activity or exclusion mismatch.
+
+## Historical audit
+
+`audit` is read-only. It writes a Markdown report of the evidence already in
+the database: canonical field coverage per year, raw payload keys without a
+canonical home, tag meanings, interval-like descriptions, elevation/trail
+candidates, race evidence, classification coverage, illness/season periods and
+the review queue. It opens no review items and changes nothing. Re-run it as
+imports land; `--output PATH` writes the report, otherwise it goes to stdout.
 
 `run` options:
 

@@ -138,18 +138,18 @@ passed; its two findings — **55** (subT selection and the derived table) and
 
 ### Phase 3: trustworthy data
 
-Phase 3 is current (since 2026-11-24). **45** (readability baseline) and **34**
-(manual overlay + rebuild proof) are done; item **37**'s read-only audit is
-next.
+Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
+(manual overlay + rebuild proof) and **37**'s read-only audit are done; item
+**1** (the CLI write surface) is next, then the audit's proposal rules.
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
-proof, the safety gate, done) → **37** audit (read-only, cheap, informs
-everything) → **1** (CLI write surface) → **38/35/21** extraction → **37**'s
-rules and **43** tags → **42** duplicates → health score → browser. Accepting
-a suggestion always writes a manual value and an `edit_log` row; nothing
-canonical is auto-applied except an empty, high-confidence classification.
-The corrections export (**57**) follows 37's audit as a small report; it is
-not a gate.
+proof, the safety gate, done) → **37** audit (read-only, done; the proposals
+wait for item 1) → **1** (CLI write surface) → **38/35/21** extraction →
+**37**'s rules and **43** tags → **42** duplicates → health score → browser.
+Accepting a suggestion always writes a manual value and an `edit_log` row;
+nothing canonical is auto-applied except an empty, high-confidence
+classification. The corrections export (**57**) follows 37's audit as a small
+report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -817,10 +817,18 @@ reports item; 28 is the recurring cleanup.
     - **Sequence**: the Runalyze import has landed, so the tags and comments are
       complete; the audit is read-only and can start now. Proposals that need
       the activity edit surface wait for item 1.
-    - **Audit first** (maintenance): a read-only report per field and year —
-      raw payload keys not stored, tag semantics, interval-like descriptions,
-      elevation/trail evidence, race evidence, and coverage gaps. It is the
-      gate for the phases below and is re-runnable as imports land.
+    - **Audit first (done 2026-11-24)**: `maintenance audit [--output FILE]`
+      writes the read-only Markdown report: field coverage per year, raw
+      payload keys without a canonical home, tag meanings, interval-like
+      descriptions, elevation/trail evidence, race evidence, classification
+      gaps, periods/illness and the review queue. On the real DB: 4,149
+      activities; 289 unmapped raw keys; 195 unmapped tags; 1,227 unclassified
+      activities; 41 NxM and 24 ladder interval descriptions; 41 trail
+      candidates (31 by elevation, 16 by tag); 65 `race`-method activities and
+      37 official results; 4 illness-tagged days outside an illness period;
+      19 open `ambiguous_match` items. Report: `/tmp/opencode/historical-audit.md`
+      (re-runnable; not committed). The proposal rules below wait for item 1
+      and the lab calibrations.
     - **Workout classification** (import + maintenance): parse explicit
       interval patterns in `description` and the Runalyze tags (`sub
       threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`, rep lengths)

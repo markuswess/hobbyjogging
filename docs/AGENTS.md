@@ -124,6 +124,9 @@ cleanup pass is part of the todo list, not a rewrite project.
   projection on a fresh schema; it copies raw records, links and ownership
   pointers and does not re-import or re-match. An empty diff is the gate; the
   overlay is not a backup.
+- `maintenance audit` is read-only. It reports evidence and gaps, never opens
+  review items and never writes; proposals go through the review queue and the
+  edit surface (item 1).
 
 ## Tests
 

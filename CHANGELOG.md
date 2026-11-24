@@ -9,6 +9,21 @@ Compatibility is stated as "requires schema ≥ N, migrates to M". The database
 records its own `PRAGMA user_version`, migrations are forward-only, and
 `migrate()` refuses a database newer than the code.
 
+## Unreleased — phase 3: trustworthy data
+
+Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
+
+### Safety
+
+- `maintenance export-manual`/`import-manual` move the manual decisions as
+  JSONL (manual fields, sets, tags, equipment links, exclusions, review
+  answers); `maintenance rebuild --source DB` proves the canonical projection
+  on a fresh schema and reports drift, missing/extra activities and the
+  exclusion set.
+- `maintenance audit` is the read-only historical evidence report: field and
+  year coverage, unmapped raw keys and tags, interval-like descriptions, trail
+  and race evidence, classification gaps and illness/season periods.
+
 ## 0.2.0 — 2026-11-24 (phase 2: works for someone else)
 
 Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
@@ -70,14 +85,6 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 
 - Garmin daily wellness fills resting HR, HRV, sleep, steps, SpO2, floors and
   weight from the Personal API (fill-only; Intervals stays the owner).
-
-### Safety
-
-- `maintenance export-manual`/`import-manual` move the manual decisions as
-  JSONL (manual fields, sets, tags, equipment links, exclusions, review
-  answers); `maintenance rebuild --source DB` proves the canonical projection
-  on a fresh schema and reports drift, missing/extra activities and the
-  exclusion set.
 
 ### Configuration
 
