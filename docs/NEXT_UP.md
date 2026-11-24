@@ -12,9 +12,9 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 - **Phase 2 code complete (2026-11-24).** `init`/`doctor`, the full-source
   `sync`, the install docs, the MIT licence, CI, the lab detach, the
   source-capability matrix and selection, and the Runalyze+Garmin profile
-  (items 44, 49–54 and the name label) landed; schema is v25. The remaining
-  phase-2 act is the acceptance run on a second athlete's real data (a fresh
-  DB with Runalyze + Garmin and the FIT archive, no Intervals).
+  (items 44, 49–54 and the name label) landed; schema is v25. The acceptance
+  run is in progress; its first findings are items 55 (subT selection and the
+  derived table) and 56 (threshold coverage), which gate the sign-off.
 - **The canonical pipeline and all sources (phase 1).** FIT archive,
   Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
   comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
@@ -71,7 +71,8 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 matrix and selection are in place, and the fresh-database path is covered by
 the demo and the suites. The **acceptance run** on a second athlete's real
 data (a fresh DB with Runalyze + Garmin and the FIT archive, no Intervals) is
-the only remaining phase-2 act.
+in progress: **55** (subT selection and the derived table) and **56** (threshold
+coverage) are its first findings and must land before the sign-off.
 
 **2a · Install**
 
@@ -139,18 +140,19 @@ the only remaining phase-2 act.
 
 Phase 2 closes in this order:
 
-- **Step 1 — 54 source capability matrix (done 2026-11-24)** (coding
-  session): the profiles declare the phase-2 capabilities, `settings` renders
-  the matrix and the uncovered record types/fields, `doctor` warns about a
-  missing visible area, and `sources.toml` selects each capability. No data
-  writes; the athlete-2 clone shows the matrix, toggles and the zone/social
-  warnings.
-- **Step 2 — the acceptance run** (owner: user): fresh DB on athlete 2's real
-  Runalyze + Garmin data, then `doctor`, `sync`, the dashboard, and the
-  categories/laps/zones/load/wellness/races check.
-- **Step 3 — 45 readability baseline** (reports session): the first phase-3
-  item, not a phase-2 gate; after the acceptance run, before the write surface
-  and the UI.
+- **Step 1 — 55 athlete-2 report bugs** (reports session): select subT/LT1 from
+  the stored sets (the name is only a fallback), and put the blank line after
+  the derived notes so the table and the work-reps list render in the
+  dashboard. Both are small, tested fixes; no schema.
+- **Step 2 — 56 threshold coverage** (import + maintenance session):
+  `threshold add` prints the effective date and how many earlier activities
+  stay unzoned, accepts `--from first`, and the zone recompute notes the
+  `no_threshold` count. No silent backfill.
+- **Step 3 — re-run the acceptance checks** (owner: user): the subT report and
+  session work-reps, the dashboard activity table, and zones across history
+  after `--from first`; then the phase-2 sign-off.
+- **Step 4 — 45 readability baseline** (reports session): the first phase-3
+  item, after the sign-off and before the write surface and the UI.
 
 ### Phase 3: trustworthy data
 
@@ -1266,6 +1268,56 @@ reports item; 28 is the recurring cleanup.
       disabled capability is visible and skips its step; no ownership or
       canonical value changes; four suites green. The real second-athlete
       acceptance run is the next session's work.
+
+55. **Athlete-2 report bugs: subT selection and derived tables** (reports; bug,
+    phase-2 gate). Two findings from the acceptance run.
+    - **SubT/LT1 selection is name-only.** `analysis/common.py`'s
+      `is_subt_activity`/`is_lt1_activity` check `a.name` for "subt"/LT1 words.
+      Athlete 2 has no names, so a session with the stored `subthreshold`
+      target is categorised but never selected by the subT report, the
+      session's work-reps section, the period report, the activities table or
+      the report command.
+      - Fix: prefer the stored sets — `fartlek` still wins, `lt1` target →
+        LT1, `subthreshold` target → subT; with no sets, keep the name
+        fallback so the current athlete's behaviour is unchanged. Every call
+        site goes through those two functions.
+      - A session still needs usable reps: derived intervals supply them; a
+        SubThreshold run with no laps stays out by design.
+      - Label a derived work-rep block in the subT report as derived, so a
+        worked rep is not mistaken for a measured one (the session report
+        already does).
+    - **Derived table/list breaks in the dashboard.** `format_session` appends
+      the "Derived from device laps…" note directly before the Markdown table,
+      and the "Reps are derived…" note directly before the list. Python-Markdown
+      (`tables`, `sane_lists`) needs a blank line; the CLI renderer is lenient.
+      Fix: add the blank line after both notes, and a test that renders a
+      derived session through `markdown_to_html` and asserts `<table>` and
+      `<ul>`.
+    - **Acceptance**: athlete 2's SubThreshold sessions list in the subT report
+      and show work reps; the dashboard activity page renders the derived
+      table and list; the current athlete's name-based selection is unchanged
+      where no sets exist; four suites green.
+    - **Not**: no schema change; no name-based heuristics written into the
+      stored sets.
+
+56. **Threshold coverage for historical activities** (import + maintenance;
+    bug/UX, phase-2 gate). `threshold add` defaults `effective_from` to today,
+    and `derived_zone_configs_current` only accepts a snapshot with
+    `effective_from <= activity.date`; only activities on or after the
+    snapshot day get zones. The dating is correct, but silent.
+    - **CLI**: after saving, print "Zones apply from <date>; N earlier
+      activities stay unzoned" (when N > 0), and accept `--from first` as the
+      earliest activity date. Document it in the help and the import README.
+    - **Task**: `derived_zone_configs_current` already counts `no_threshold`;
+      add one line with that count and the first snapshot date so the gap is
+      visible in the run summary.
+    - **No silent backfill**: do not fall back to the earliest snapshot for
+      earlier dates; an approximation must be explicit. The VO2max metric's
+      earliest-snapshot fallback is separate and documented.
+    - **Acceptance**: after `threshold add --from first`, every athlete-2
+      activity gets a zone config; the message names the coverage; an
+      Intervals config still wins where present; four suites green.
+    - **Not**: no schema change; no threshold deletion.
 
 ## Parked ideas
 

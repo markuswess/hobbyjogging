@@ -38,10 +38,11 @@ passed the gate may land in its owning package at any time (see
 
 **Phase 1 is complete (2026-11-19):** all sources are imported, the reports,
 dashboard and race pages answer the daily questions, and the lab promotes
-metrics on demand. **Phase 2 is code complete except item 54 (2026-11-24):**
-the install path (2a), the usable Runalyze+Garmin dashboard (2b) and the
-capability matrix close it out, then the real second-athlete acceptance run
-validates it. **Phase 3** then makes the stored record trustworthy and
+metrics on demand. **Phase 2 is code complete (2026-11-24):** the install path
+(2a), the usable Runalyze+Garmin dashboard (2b) and the capability matrix are
+in place; the acceptance run is in progress, and its first findings — items 55
+(subT selection, derived table) and 56 (threshold coverage) — must land before
+the sign-off. **Phase 3** then makes the stored record trustworthy and
 correctable. **Phase 4** stays parked.
 
 A platform is retired **per metadata type, never per platform**: the type gets
