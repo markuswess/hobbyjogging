@@ -112,8 +112,9 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   `threshold add|list` writes dated per-sport snapshots; `derived_zone_configs_current`
   builds local HR/pace configs and lap zone times from them, and Intervals
   still wins where it has a config. The max-HR snapshot feeds effective VO2max.
-- **52 Garmin wellness** — daily resting HR, HRV, sleep and steps into
-  `wellness_days`, so the recovery tab and the efficiency baseline exist.
+- **52 Garmin wellness (done 2026-11-24)** — daily resting HR, HRV, sleep,
+  steps, SpO2, floors and weight join `sync` after the activity fetch;
+  fill-only, so the Intervals wellness stays the owner.
 - **A name label** — when `name` is empty, render sport + distance in tables
   and the session header instead of a blank title (small reports change).
 
@@ -1152,23 +1153,25 @@ reports item; 28 is the recurring cleanup.
       positives the first pass found were road rides, now excluded by the
       run-only gate.
 
-52. **Garmin wellness** (import + reports; phase 2b). Athlete 2 has no wellness
-    source, so resting HR, HRV and sleep are empty, the recovery tab is blank
-    and efficiency has no baseline. Runalyze is not the source: its API exposes
-    no daily wellness endpoints (its health entries are injury and sickness
-    ranges) and it derives wellness from Garmin.
-    - **Path**: probe the Garmin Personal API for daily summaries (sleep, HRV,
-      resting HR, steps) with the athlete's key; if the key's API does not
-      expose them, parse the wellness files in the GDPR export — the same
-      archive that already supplies the FITs.
-    - **Write**: `wellness_days` (HRV, resting HR, sleep, weight, SpO2, steps,
-      floors), fill-only: an existing day is never overwritten, so Intervals
-      stays the owner where both run. A field-level fill is a follow-up.
-    - **Sync**: joins item 44 after the activity fetch; idempotent, and a
-      missing wellness feed is a warning, not a failure.
-    - **Acceptance**: athlete 2's recovery tab and the efficiency baseline
-      render from Garmin; the current athlete's Intervals wellness is
-      untouched; a re-run is a no-op.
+52. **Garmin wellness** (import + reports; done 2026-11-24).
+    - **Probe**: the Personal API exposes
+      `/usersummary-service/usersummary/daily?user=<id>&calendarDate=…`
+      (resting HR, sleep seconds, steps, floors, SpO2),
+      `/hrv-service/hrv/<date>?user=<id>` (last-night HRV) and
+      `/weight-service/weight/range/<start>/<end>?user=<id>` (weight in
+      grams). Sleep detail and sleep score are 404 and stay empty; the GDPR
+      export remains the fallback for a missing feed.
+    - **User id**: `ownerDisplayName` or `ownerId` from one activity summary;
+      no activity means no id, and the import reports that instead of guessing.
+    - **Write**: `wellness_days` with hrv, resting_hr, sleep_s, weight_kg,
+      spo2, steps and floors_climbed. The importer filters to the fields the
+      stored day leaves NULL, so an existing value is never overwritten and
+      Intervals stays the owner where both run.
+    - **Sync**: joins `sync` after the Garmin activity fetch; idempotent, and a
+      missing wellness feed is a skip with a warning, never a failed sync.
+      `hobbyjogging-import garmin wellness --days N` runs it alone.
+    - **Applied**: 8 recent days read on the real DB, 0 written, 8 unchanged —
+      the Intervals values already fill every exposed field.
 
 53. **A load fallback when there is no Intervals** (import + maintenance +
     reports; done 2026-11-24).

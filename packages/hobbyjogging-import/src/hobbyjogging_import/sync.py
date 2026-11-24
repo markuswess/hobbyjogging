@@ -28,6 +28,7 @@ from .config import (
 from .fit_import import FitImporter
 from .freshness import default_strava_dir, newest_unimported_export
 from .garmin import GarminFetcher
+from .garmin_wellness import GarminWellnessImporter
 from .intervals import IntervalsImporter
 from .runalyze import RunalyzeClient, RunalyzeRateLimitError
 from .runalyze_gear import RunalyzeGearImporter
@@ -56,6 +57,7 @@ class SyncSummary:
     include_scan: bool = True
     garmin_fetched: int = 0
     garmin_failed: int = 0
+    garmin_wellness: int = 0
     intervals_activities: int = 0
     intervals_wellness: int = 0
     intervals_events: int = 0
@@ -151,6 +153,16 @@ def run_sync(
                 summary.failures.append(("garmin", _error(exc)))
             finally:
                 summary.durations["garmin"] = time.monotonic() - started
+
+            try:
+                wellness = GarminWellnessImporter(connection).import_range(
+                    start,
+                    end,
+                )
+                summary.garmin_wellness = wellness.written
+            except Exception as exc:
+                # A missing wellness feed must not fail the activity sync.
+                summary.skips.append(("garmin wellness", _error(exc)))
 
     if include_intervals and not skipped("intervals"):
         athlete_id, api_key = intervals_credentials()
@@ -352,7 +364,8 @@ def format_sync_summary(summary: SyncSummary) -> str:
     if summary.include_garmin:
         lines.append(
             f"  garmin:    {summary.garmin_fetched} fetched, "
-            f"{summary.garmin_failed} failed"
+            f"{summary.garmin_failed} failed, "
+            f"{summary.garmin_wellness} wellness days"
         )
     else:
         lines.append("  garmin:    skipped")

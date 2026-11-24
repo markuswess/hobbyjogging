@@ -37,8 +37,21 @@ class FakeGarminFetcher:
         )
 
 
-class FakeIntervalsImporter:
+class FakeWellnessImporter:
 
+    fail = False
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def import_range(self, start, end):
+        CALLS.append(("garmin-wellness", start, end))
+        if type(self).fail:
+            raise RuntimeError("wellness unavailable")
+        return SimpleNamespace(written=4)
+
+
+class FakeIntervalsImporter:
     fail = False
 
     def __init__(self, connection):
@@ -162,6 +175,7 @@ class SyncTests(unittest.TestCase):
         FakeIntervalsImporter.fail = False
         FakeFitImporter.fail = False
         FakeRunalyzeEnricher.stopped = ""
+        FakeWellnessImporter.fail = False
 
         self.conn = connect(":memory:")
         self.addCleanup(self.conn.close)
@@ -190,6 +204,9 @@ class SyncTests(unittest.TestCase):
         with patch(
             "hobbyjogging_import.sync.GarminFetcher",
             FakeGarminFetcher,
+        ), patch(
+            "hobbyjogging_import.sync.GarminWellnessImporter",
+            FakeWellnessImporter,
         ), patch(
             "hobbyjogging_import.sync.IntervalsImporter",
             FakeIntervalsImporter,
@@ -247,6 +264,7 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(
             [
                 "garmin",
+                "garmin-wellness",
                 "intervals",
                 "fit",
                 "runalyze",
@@ -260,14 +278,19 @@ class SyncTests(unittest.TestCase):
         )
         self.assertEqual(("garmin", self.start, self.end), CALLS[0])
         self.assertEqual(
-            ("intervals", self.start, self.end, self.plan_end),
+            ("garmin-wellness", self.start, self.end),
             CALLS[1],
         )
-        self.assertEqual(("fit", [self.fit_dir], True, True), CALLS[2])
-        self.assertEqual(("runalyze", self.start, self.end), CALLS[3])
+        self.assertEqual(
+            ("intervals", self.start, self.end, self.plan_end),
+            CALLS[2],
+        )
+        self.assertEqual(("fit", [self.fit_dir], True, True), CALLS[3])
+        self.assertEqual(("runalyze", self.start, self.end), CALLS[4])
         self.assertEqual(("scan",), CALLS[-1])
 
         self.assertEqual(3, summary.garmin_fetched)
+        self.assertEqual(4, summary.garmin_wellness)
         self.assertEqual(4, summary.intervals_activities)
         self.assertEqual(7, summary.fit_files)
         self.assertEqual(10, summary.runalyze_processed)
@@ -380,6 +403,21 @@ class SyncTests(unittest.TestCase):
         self.assertEqual([], summary.failures)
         self.assertIn("strava", [source for source, _ in summary.skips])
         self.assertIn("strava:    no new export", format_sync_summary(summary))
+
+    def test_a_missing_wellness_feed_is_a_skip(self):
+        FakeWellnessImporter.fail = True
+
+        summary = self._run()
+
+        self.assertEqual([], summary.failures)
+        self.assertIn(
+            "garmin wellness",
+            [source for source, _ in summary.skips],
+        )
+        self.assertIn(
+            "Skipped: garmin wellness: wellness unavailable",
+            format_sync_summary(summary),
+        )
 
     def test_partial_garmin_failure_is_reported(self):
         FakeGarminFetcher.failed = 1

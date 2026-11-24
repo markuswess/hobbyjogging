@@ -139,6 +139,15 @@ class GarminClient:
             raise RuntimeError(f"empty download for activity {activity_id}")
         return response.content
 
+    def get_json(
+        self,
+        path: str,
+        params: dict | None = None,
+    ) -> object:
+        """Read any personal-API JSON endpoint with the bearer token."""
+        response = self._get(path, params=params)
+        return response.json()
+
     def _get(
         self,
         path: str,

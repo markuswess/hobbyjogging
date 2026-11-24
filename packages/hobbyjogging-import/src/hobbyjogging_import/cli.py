@@ -18,6 +18,10 @@ from .config import (
 from .fit import fit_file_to_dict, format_fit_file, parse_fit_file
 from .fit_import import FitImportAction, FitImporter, FitImportSummary
 from .garmin import GarminFetcher, GarminFetchSummary
+from .garmin_wellness import (
+    GarminWellnessImporter,
+    format_wellness_summary,
+)
 from .intervals import EventSyncSummary, IntervalsImporter
 from .ods import OdsError, read_sheets
 from .parsers import build_parser
@@ -553,7 +557,36 @@ def _run_runalyze_races(args, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def _run_garmin_wellness(args, parser: argparse.ArgumentParser) -> int:
+    try:
+        start, end = resolve_range(args.days, args.start, args.end)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        try:
+            summary = GarminWellnessImporter(connection).import_range(
+                start,
+                end,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(format_wellness_summary(summary))
+    print(f"Database: {args.database or default_database_path()}")
+    return 0
+
+
 def run_garmin(args, parser: argparse.ArgumentParser) -> int:
+    if args.garmin_action == "wellness":
+        return _run_garmin_wellness(args, parser)
     if args.garmin_action != "fetch":
         parser.error(f"unknown garmin command: {args.garmin_action}")
 

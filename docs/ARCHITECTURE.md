@@ -393,7 +393,8 @@ SQLite, forward-only migrations. Schema version 25.
   (v19) weight, sleep score and quality, SpO2, steps, floors climbed and
   Intervals' own CTL/ATL. Readiness, stress, respiration, mood, soreness and
   fatigue are present as payload keys but never populated, so they have no
-  column.
+  column. Writes are fill-only: Garmin's daily feed fills only the NULL fields
+  of a day Intervals already wrote, so the first source keeps its values.
 - `equipment`, `activity_equipment`,
   `equipment_source_links`, `zone_configs` — supporting canonical data.
 - `events` — planned workouts and races: local date, type, description,
@@ -612,9 +613,12 @@ is implemented in `hobbyjogging-import` as `garmin fetch`.
   undocumented message 140, field 7 (`raw * 3.5 / 65536`), so the FIT is the
   VO2max source; the JSON summary's `vO2MaxValue` is null.
 - Wellness (resting HR, HRV, sleep, steps) is a separate feed, not part of an
-  activity FIT: it comes from the Personal API's daily summaries where the key
-  exposes them, otherwise from the wellness files in the GDPR export. Runalyze
-  derives its wellness from Garmin, so it is not a substitute source.
+  activity FIT: the Personal API's daily summaries supply resting HR, sleep
+  seconds, steps, floors, SpO2 and weight, and the HRV service supplies the
+  last-night average. Sleep detail and sleep score stay empty. The import is
+  fill-only, so Intervals keeps the values where both run; the GDPR export is
+  the fallback for a missing feed. Runalyze derives its wellness from Garmin,
+  so it is not a substitute source.
 
 ### Runalyze enrichment
 

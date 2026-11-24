@@ -495,6 +495,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="list what would be fetched without writing",
     )
+    garmin_wellness = garmin_sub.add_parser(
+        "wellness",
+        help="import daily resting HR, HRV, sleep, steps and weight",
+    )
+    garmin_wellness.add_argument("--days", type=int, default=30)
+    garmin_wellness.add_argument("--since", dest="start", type=date_arg)
+    garmin_wellness.add_argument("--to", dest="end", type=date_arg)
+    garmin_wellness.add_argument("--database", type=Path)
 
     threshold = subparsers.add_parser(
         "threshold",

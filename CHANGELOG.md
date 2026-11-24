@@ -60,6 +60,11 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
   canonical sets on create and as a gap-filler; existing Intervals/sheet sets
   win, and `runalyze types` audits the unmapped types.
 
+### Import
+
+- Garmin daily wellness fills resting HR, HRV, sleep, steps, SpO2, floors and
+  weight from the Personal API (fill-only; Intervals stays the owner).
+
 ## 0.1.0 — 2026-11-19 (phase 1: works for me)
 
 Schema: **23**. Compatibility: requires schema ≥ 1, migrates to 23.

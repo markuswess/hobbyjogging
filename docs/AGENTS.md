@@ -180,6 +180,9 @@ Cross-package changes must leave all four suites green.
   Normal imports never force.
 - VO2max has two owners: Garmin FIT → `vo2max_garmin`, Runalyze →
   `vo2max_runalyze`. Tags are per-source and manual tags are never replaced.
+- Wellness is fill-only: Garmin's daily feed fills the NULL fields of a day
+  Intervals already wrote, and never overwrites the first source. Sync treats a
+  missing wellness feed as a warning.
 - Route identity is source-scoped: the sheet keys by `Streckennummer` (or the
   name when there is no single number), and Runalyze's `recurring_route` id is
   a different identity — the two never merge automatically.

@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Garmin daily wellness.** `garmin wellness` reads the Personal API's daily
+  summary (resting HR, sleep seconds, steps, floors, SpO2), the HRV summary
+  and the weight range, and fills only the NULL fields of a stored day. Sleep
+  detail and score are not exposed and stay empty. It joins `sync` after the
+  activity fetch; a missing feed is a skip with a warning. Real DB: 8 days
+  read, 0 written, 8 unchanged.
 - **Runalyze workout type.** `runalyze_types` maps `Jogging`/`JOG` →
   `continuous` + `base`, `Long Slow Distance`/`LSD` → `long_run` + `base`, and
   `SubThreshold`/`ST` → `intervals` + `subthreshold`, by name or abbreviation,

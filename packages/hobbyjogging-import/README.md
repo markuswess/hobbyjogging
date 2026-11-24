@@ -220,6 +220,20 @@ JSON activity summary exposes `vO2MaxValue` but leaves it null; the FIT still
 carries message 140, so the FIT is the VO2max source. The separate type-44
 `max_met_data` files are only present in GDPR exports and are not needed.
 
+### Daily wellness
+
+```bash
+uv run --env-file .env hobbyjogging-import garmin wellness --days 30
+```
+
+One request per day for the daily summary (resting HR, sleep seconds, steps,
+floors, SpO2) and one for the HRV summary, plus one weight-range request.
+Sleep detail and sleep score are not exposed by the Personal API and stay
+empty; the GDPR export remains the fallback. The import is fill-only: it
+writes only the fields a stored day leaves NULL, so Intervals stays the owner
+where both sources run. `./sync.sh` runs it after the activity fetch, and a
+missing feed is a warning, not a failed sync.
+
 ## Runalyze
 
 The read-only inventory proves what the personal API exposes before comments,
