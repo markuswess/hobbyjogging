@@ -27,6 +27,9 @@ uv run --env-file .env hobbyjogging-maintenance status
 uv run --env-file .env hobbyjogging-maintenance run <task> --dry-run
 uv run --env-file .env hobbyjogging-maintenance run <task>
 uv run --env-file .env hobbyjogging-maintenance run --all
+uv run --env-file .env hobbyjogging-maintenance export-manual --output overlay.jsonl
+uv run --env-file .env hobbyjogging-maintenance import-manual overlay.jsonl
+uv run --env-file .env hobbyjogging-maintenance rebuild --source live.db
 ```
 
 `init` creates and migrates the database and the FIT directory; a second run
@@ -36,6 +39,30 @@ liveness probes, pending backfills, source freshness, `sources.toml` and
 whether the enabled sources can supply the visible dashboard areas (wellness,
 load, zones, social, reps, races), then prints the next command. The root
 wrappers are `./init.sh` and `./doctor.sh`.
+
+## Manual overlay and rebuild
+
+`export-manual` writes the decisions that cannot be recomputed from a payload:
+manual activity fields and owner patches, manual workout sets, manual tags,
+manual equipment links, activity exclusions and the ignored/resolved review
+answers. It is JSONL, one record per line, with a version header; the default
+output is stdout, `--output PATH` writes a file. `import-manual` re-applies it
+to a database that already has the raw/structural layer (activities, source
+records, links, pointers, equipment).
+
+The overlay lives in the private repository next to the database and is
+exported at each release tag. It is not a backup and not a canonical dump: the
+raw payloads and the SQLite file remain the data of record.
+
+`rebuild` is the proof. It copies the raw source records, activity identities,
+links, ownership pointers, devices and equipment into a fresh schema, applies
+the overlay, projects `local_date`/`sport`, runs `recompute_canonical`, and
+diffs every canonical activity value and the exclusion set against the live
+database. It does not re-import from the network, re-match activities or
+re-decide ownership; an empty diff proves the projection from the stored
+inputs, while the pointers stay the recorded decisions. `--target PATH` keeps
+the rebuilt database for inspection; without it the target is temporary. Exit
+status is 1 on any drift, missing/extra activity or exclusion mismatch.
 
 `run` options:
 

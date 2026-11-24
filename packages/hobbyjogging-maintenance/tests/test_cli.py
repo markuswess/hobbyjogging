@@ -73,6 +73,61 @@ class MaintenanceCliTests(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("Applied.", output)
 
+    def test_export_manual_writes_jsonl(self):
+        path = Path(self.temp_dir.name) / "overlay.jsonl"
+
+        code, output = self._main(
+            "export-manual",
+            "--output",
+            str(path),
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("overlay written", output)
+        self.assertTrue(path.is_file())
+        first = path.read_text(encoding="utf-8").splitlines()[0]
+        self.assertEqual(
+            '{"kind": "overlay", "version": 1}',
+            first,
+        )
+
+    def test_import_manual_reapplies_a_field(self):
+        connection = open_database(self.database)
+        try:
+            connection.execute(
+                "INSERT INTO activities (id, local_date, sport) "
+                "VALUES ('a1', '2026-10-01', 'run')"
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+        path = Path(self.temp_dir.name) / "overlay.jsonl"
+        path.write_text(
+            '{"kind": "overlay", "version": 1}\n'
+            '{"kind": "manual_field", "activity": "a1", '
+            '"field": "sport", "owner": null, "value": "trail_run"}\n',
+            encoding="utf-8",
+        )
+
+        code, output = self._main("import-manual", str(path))
+
+        self.assertEqual(0, code)
+        self.assertIn("overlay imported", output)
+        connection = open_database(self.database)
+        try:
+            activity = connection.execute(
+                "SELECT sport FROM activities WHERE id = 'a1'"
+            ).fetchone()
+            manual = connection.execute(
+                "SELECT value_json FROM activity_manual_fields "
+                "WHERE activity_id = 'a1' AND field_name = 'sport'"
+            ).fetchone()
+        finally:
+            connection.close()
+        self.assertEqual("trail_run", activity["sport"])
+        self.assertEqual('"trail_run"', manual["value_json"])
+
     def test_dry_run_rolls_back(self):
         code, output = self._main("run", "event_zones_v1", "--dry-run")
 

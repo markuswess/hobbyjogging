@@ -118,6 +118,12 @@ cleanup pass is part of the todo list, not a rewrite project.
 - Dry-run first (`--dry-run`), then apply; back up the real DB first.
 - Tasks write through `TrainingWriter` and must not commit; the runner owns
   the transaction and rolls it back for a dry run.
+- The manual decisions live in a JSONL overlay next to the private database,
+  exported with `maintenance export-manual` at each release tag and re-applied
+  with `import-manual`. `maintenance rebuild --source DB` proves the canonical
+  projection on a fresh schema; it copies raw records, links and ownership
+  pointers and does not re-import or re-match. An empty diff is the gate; the
+  overlay is not a backup.
 
 ## Tests
 

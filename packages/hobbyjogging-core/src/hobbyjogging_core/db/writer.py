@@ -2334,6 +2334,38 @@ class TrainingWriter:
             )
         return len(cleaned)
 
+    def set_manual_activity_workout_targets(
+        self,
+        activity_id: str,
+        targets: list[str],
+    ) -> int:
+        """Replace an activity's whole target set as manual values.
+
+        Symmetric to :meth:`set_manual_activity_workout_methods`: rows from
+        every source are cleared, so the manual set is the whole decision.
+        """
+        self._require_workout_entity("activity_id", activity_id)
+        cleaned = self._clean_workout_values(
+            targets,
+            allowed=WORKOUT_TARGETS,
+            canonical=canonical_target,
+        )
+
+        self.connection.execute(
+            "DELETE FROM activity_workout_targets WHERE activity_id = ?",
+            (activity_id,),
+        )
+        if cleaned:
+            self.connection.executemany(
+                """
+                INSERT INTO activity_workout_targets (
+                    activity_id, target, source, source_record_id, is_manual
+                ) VALUES (?, ?, 'manual', NULL, 1)
+                """,
+                [(activity_id, value) for value in cleaned],
+            )
+        return len(cleaned)
+
     def upsert_zone_config(
         self,
         *,

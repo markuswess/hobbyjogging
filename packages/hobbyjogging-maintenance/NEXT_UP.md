@@ -4,6 +4,15 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Manual overlay and rebuild.** `export-manual` writes the manual decisions
+  as JSONL (73 manual fields, 529 manual set records, 8 exclusions and 734
+  review answers on the real DB); `import-manual` re-applies it to a database
+  with the raw/structural layer. `rebuild --source DB` copies the raw records,
+  identities, links, pointers, devices and equipment into a fresh schema,
+  applies the overlay, runs `recompute_canonical` and diffs every canonical
+  value and the exclusion set; it also checks the FIT archive files. On a copy
+  of the real DB: 4,149 activities, 91,278 values, 0 drift, 8/8 exclusions,
+  2,864 FIT files present. It does not re-import or re-match.
 - **`verify_canonical`.** A read-only recompute that derives every owned
   activity field from its manual value, owner patch or source pointer and
   compares it with the stored value. On the real DB: 4,143 activities, 68,001
@@ -126,10 +135,10 @@ This file records what the package is still waiting on.
 
 - **Canonical rebuild** (root item 17). `verify_canonical` (read-only diff) and
   `recompute_canonical` (dry-run first) land here, on top of the manual input
-  layer and the per-adapter mapping. They derive activity scalar fields from
-  the stored pointer and payload, apply manual edits last, and never touch
-  links, exclusions, review answers, child tables or entity rows. The
-  fresh-database rebuild proof with the manual overlay is root item 34.
+  layer and the per-adapter mapping. The fresh-database proof and the manual
+  overlay are done (root item 34); they derive activity scalar fields from the
+  stored pointer and payload, apply manual edits last, and never touch links,
+  exclusions, review answers, child tables or entity rows.
 
 Nothing else queued. New data work registers a task here instead of a script.
 

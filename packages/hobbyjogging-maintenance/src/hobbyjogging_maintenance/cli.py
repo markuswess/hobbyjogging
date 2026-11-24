@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -70,6 +71,45 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds per liveness probe (default: 10)",
     )
 
+    export_manual = subparsers.add_parser(
+        "export-manual",
+        help="write the manual overlay as JSONL",
+    )
+    export_manual.add_argument(
+        "--output",
+        type=Path,
+        help="JSONL file (default: stdout)",
+    )
+    export_manual.add_argument("--database", type=Path)
+
+    import_manual = subparsers.add_parser(
+        "import-manual",
+        help="apply a manual overlay to an existing raw layer",
+    )
+    import_manual.add_argument("overlay", type=Path)
+    import_manual.add_argument("--database", type=Path)
+
+    rebuild = subparsers.add_parser(
+        "rebuild",
+        help="rebuild a fresh database from raw inputs and compare canon",
+    )
+    rebuild.add_argument(
+        "--source",
+        type=Path,
+        required=True,
+        help="live database to copy the input layer from",
+    )
+    rebuild.add_argument(
+        "--target",
+        type=Path,
+        help="fresh database path (default: a temporary file)",
+    )
+    rebuild.add_argument(
+        "--overlay",
+        type=Path,
+        help="JSONL overlay (default: export the source's overlay in memory)",
+    )
+
     listing = subparsers.add_parser("list", help="list registered tasks")
     listing.add_argument("--kind", choices=KINDS)
     listing.add_argument("--database", type=Path)
@@ -125,6 +165,12 @@ def main(argv: list[str] | None = None) -> int:
         return _init(args)
     if args.command == "doctor":
         return _doctor(args)
+    if args.command == "export-manual":
+        return _export_manual(args)
+    if args.command == "import-manual":
+        return _import_manual(args)
+    if args.command == "rebuild":
+        return _rebuild(args)
     if args.command == "list":
         return _list(args)
     if args.command == "status":
@@ -162,6 +208,67 @@ def _doctor(args) -> int:
     )
     print(format_doctor(report))
     return 1 if report.failed else 0
+
+
+def _export_manual(args) -> int:
+    from .overlay import format_counts, write_overlay
+
+    connection = _open(args.database)
+    try:
+        if args.output is None:
+            counts = write_overlay(connection, sys.stdout)
+            print(
+                format_counts(counts, label="overlay exported"),
+                file=sys.stderr,
+            )
+        else:
+            path = args.output.expanduser()
+            with path.open("w", encoding="utf-8") as stream:
+                counts = write_overlay(connection, stream)
+            print(format_counts(counts, label="overlay written"))
+            print(f"Path: {path}")
+    finally:
+        connection.close()
+    return 0
+
+
+def _import_manual(args) -> int:
+    from .overlay import apply_overlay, format_counts, read_overlay
+
+    try:
+        records = read_overlay(args.overlay)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
+
+    connection = _open(args.database)
+    try:
+        try:
+            counts = apply_overlay(connection, records)
+            connection.commit()
+        except Exception as exc:  # noqa: BLE001 - surfaced as a clean exit
+            connection.rollback()
+            raise SystemExit(str(exc)) from exc
+    finally:
+        connection.close()
+
+    print(format_counts(counts, label="overlay imported"))
+    return 0
+
+
+def _rebuild(args) -> int:
+    from .rebuild import format_rebuild_report, rebuild
+
+    try:
+        report = rebuild(
+            args.source,
+            target=args.target,
+            overlay=args.overlay,
+        )
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print(format_rebuild_report(report))
+    return 0 if report.ok else 1
 
 
 def _open(path: Path | None):

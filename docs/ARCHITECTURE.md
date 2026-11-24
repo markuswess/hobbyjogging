@@ -146,12 +146,20 @@ Principle 1 splits stored data into two kinds:
 
 `recompute_canonical` rebuilds the projections from inputs without re-deciding
 ownership (a no-op on the current DB); `verify_canonical` diffs the same
-derivation without writing. On the real DB every owned activity field (68,001
-across 4,143 activities) matched its input. Ownership is an **input** (a
-recorded decision), not a projection: the first owner keeps a field, per-field
-ranked authority resolves the declared exceptions, and a meaningful
-disagreement becomes a review item. There is no global source order and no
-virtual read path.
+derivation without writing. On the real DB every owned activity field matched
+its input. Ownership is an **input** (a recorded decision), not a projection:
+the first owner keeps a field, per-field ranked authority resolves the declared
+exceptions, and a meaningful disagreement becomes a review item. There is no
+global source order and no virtual read path.
+
+The manual overlay protects the decisions themselves: `export-manual` writes
+manual fields, owner patches, manual sets/tags/equipment, exclusions and
+ignored/resolved review answers as JSONL; `import-manual` re-applies it. The
+`rebuild` check copies the raw records, activity links and pointers into a
+fresh schema, applies the overlay, runs `recompute_canonical`, and diffs every
+canonical value and the exclusion set against the live database. It does not
+re-import from the network or re-match activities; an empty diff proves the
+projection from the stored inputs, not the matching decisions.
 
 ## Topology
 

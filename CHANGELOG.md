@@ -71,6 +71,14 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 - Garmin daily wellness fills resting HR, HRV, sleep, steps, SpO2, floors and
   weight from the Personal API (fill-only; Intervals stays the owner).
 
+### Safety
+
+- `maintenance export-manual`/`import-manual` move the manual decisions as
+  JSONL (manual fields, sets, tags, equipment links, exclusions, review
+  answers); `maintenance rebuild --source DB` proves the canonical projection
+  on a fresh schema and reports drift, missing/extra activities and the
+  exclusion set.
+
 ### Configuration
 
 - The source profiles declare the phase-2 capabilities (Runalyze

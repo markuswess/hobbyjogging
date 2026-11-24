@@ -138,16 +138,18 @@ passed; its two findings — **55** (subT selection and the derived table) and
 
 ### Phase 3: trustworthy data
 
-Phase 3 is current (since 2026-11-24).
+Phase 3 is current (since 2026-11-24). The **45** readability baseline is in
+the reports session; **34** (manual overlay + rebuild proof) landed early in
+the root session alongside it.
 
 Order: **45** (readability baseline, reports session) → **34** (manual overlay
-+ rebuild proof, the safety gate) → **37** audit (read-only, cheap, informs
-everything) → **1** (CLI write surface) → **38/35/21** extraction → **37**'s
-rules and **43** tags → **42** duplicates → health score → browser. Accepting
-a suggestion always writes a manual value and an `edit_log` row; nothing
-canonical is auto-applied except an empty, high-confidence classification.
-The corrections export (**57**) follows 37's audit as a small report; it is
-not a gate.
++ rebuild proof, the safety gate, done) → **37** audit (read-only, cheap,
+informs everything) → **1** (CLI write surface) → **38/35/21** extraction →
+**37**'s rules and **43** tags → **42** duplicates → health score → browser.
+Accepting a suggestion always writes a manual value and an `edit_log` row;
+nothing canonical is auto-applied except an empty, high-confidence
+classification. The corrections export (**57**) follows 37's audit as a small
+report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -745,36 +747,37 @@ reports item; 28 is the recurring cleanup.
       estimated flag; the compare and overview aggregates still exclude it; a
       fallback of 0 or 200 is rejected.
 
-34. **Manual-layer export and rebuild check** (maintenance + core; phase 3,
-    the safety gate). The raw layer is preserved and
-    SQLite stays readable, so the data does not disappear; what dies with the
-    code is the *meaning*: which values were overridden, which sessions were
-    deliberately excluded, which conflicts were decided. That layer is small —
-    measured on the real DB: 73 manual field overrides (`sport` 38, `avg_hr`
-    28, …), 335 + 209 manual workout method/target rows, 29 exclusions, 33
-    ignored review items — against 14,393 source records and 4,148 activities
-    that are raw or recomputable.
-    - **Export**: `maintenance export-manual` writes JSONL — the
-      `activity_manual_fields` overlay (item 17), manual sets, manual tags,
-      manual equipment links, exclusions and the ignored/resolved review
-      fingerprints — and `import-manual` re-applies it to a fresh database,
-      idempotently. Human-readable, diffable, a few kilobytes.
-    - **Rebuild proof**: a `rebuild` check — fresh database, replay the raw
-      layer (`source_records` plus the FIT archive), apply the overlay, run
-      `recompute_canonical`, then diff the canonical layer against the live
-      database. An empty diff is the proof that raw + overlay + code reproduce
-      everything. Companion to item 17.
+34. **Manual-layer export and rebuild check** (maintenance + core; done
+    2026-11-24, the safety gate). The raw layer is preserved and SQLite stays
+    readable, so the data does not disappear; what dies with the code is the
+    *meaning*: which values were overridden, which sessions were deliberately
+    excluded, which conflicts were decided.
+    - **Export (done)**: `maintenance export-manual` writes JSONL — the
+      `activity_manual_fields` overlay, manual workout sets, manual tags,
+      manual equipment links, activity exclusions and the ignored/resolved
+      review answers — and `import-manual` re-applies it to a database with the
+      raw/structural layer. The format has a version header, sorted records and
+      no timestamps, so it is diffable. On the real DB: 73 manual fields,
+      529 manual set records, 8 exclusions and 734 review answers; 1,345
+      lines, about 300 KB.
+    - **Rebuild proof (done)**: `maintenance rebuild --source DB` copies the
+      raw records, activity identities, links, ownership pointers, devices and
+      equipment into a fresh schema, applies the overlay, projects
+      `local_date`/`sport` first, runs `recompute_canonical`, and diffs every
+      canonical value and the exclusion set; it also checks that the FIT
+      archive files the raw records point at are present. On a copy of the real
+      DB: **4,149 activities, 91,278 values, 0 drift, 0 missing, 0 extra, 8/8
+      exclusions, 2,864 FIT files present** in about 2 s. It does not re-import
+      from the network, re-match activities or re-decide ownership; the
+      pointers stay the recorded decisions, and the proof is the projection.
     - **Placement and cadence**: the overlay lives in `laufen_private` next to
-      the database (item 29) and is exported at each release tag (item 22).
-    - **Not doing**: a CSV/JSON export of the whole canonical database — it
-      duplicates the raw layer and rots with the schema — and not treating the
-      overlay as a backup; a periodic `sqlite3 .backup` remains the safety net.
-    - **Why first, though it is insurance**: the raw sources and the database
-      are already safe; this protects the decisions and the design claim, which
-      matters if the project is ever abandoned or handed over. It is small,
-      the rebuild it exercises just landed, and an empty diff makes every
-      later phase confident in `recompute_canonical`. The input table itself
-      belongs to item 17; this item is the export and the fresh-database proof.
+      the database (`hobbyjogging.manual.jsonl`) and is exported at each release
+      tag. It is not a backup; `sqlite3 .backup` remains the safety net.
+    - **Not doing**: a CSV/JSON export of the whole canonical database, and
+      re-importing the FIT archive just to rebuild scalar fields.
+    - **Why first, though it is insurance**: it protects the decisions and the
+      design claim if the project is handed over, and the empty diff makes
+      every later phase confident in `recompute_canonical`.
 
 35. **Runalyze's extra metrics: what to store, what to ignore** (core + import
     + reports; phase 3, with item 38). The activity payload carries more than

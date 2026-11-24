@@ -1347,6 +1347,34 @@ class Vo2maxAndTagTests(unittest.TestCase):
                 "missing", ["continuous"]
             )
 
+    def test_set_manual_activity_workout_targets_clears_every_source(self):
+        self.writer.replace_activity_workout_targets(
+            "a1",
+            ["vo2max", "speed"],
+            source="backfill",
+        )
+
+        written = self.writer.set_manual_activity_workout_targets(
+            "a1",
+            ["subthreshold"],
+        )
+
+        self.assertEqual(1, written)
+        rows = self.conn.execute(
+            "SELECT target, source, is_manual FROM activity_workout_targets "
+            "WHERE activity_id = 'a1'"
+        ).fetchall()
+        self.assertEqual(
+            [("subthreshold", "manual", 1)],
+            [(row["target"], row["source"], row["is_manual"]) for row in rows],
+        )
+
+    def test_set_manual_activity_workout_targets_rejects_unknown_entity(self):
+        with self.assertRaises(ValueError):
+            self.writer.set_manual_activity_workout_targets(
+                "missing", ["base"]
+            )
+
     def test_event_workout_sets(self):
         self.writer.upsert_event(
             event_id="e1",
