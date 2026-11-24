@@ -77,7 +77,8 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   clean checkout with an empty `$HOBBYJOGGING_DB`.
 - **`sources.toml`, `.env.example` and the README first-run path** (GDPR export
   or `garmin fetch` → `sync` → dashboard).
-- **A pull-request workflow** (four suites + demo build) and a `LICENSE`.
+- **A pull-request workflow** (four suites + demo build) and an **MIT**
+  `LICENSE`.
 - **22 release versioning** — "which code built this DB" must be answerable for
   someone else's install.
 - **29 lab detach** — a clone must not ship this athlete's findings; last,
@@ -405,8 +406,9 @@ reports item; 28 is the recurring cleanup.
       GitHub release note. **No PyPI** — private workspace, no consumer.
       Pre-1.0 while the schema moves; 1.0 only once a second person's data is
       on it.
-    - **Cadence**: not time-based — tag now for the current state, then at each
-      schema bump and milestone.
+    - **Cadence**: not time-based — `v0.1.0` tags the phase-1 state now (local
+      tag; the user pushes), `v0.2.0` the phase-2 exit, then each schema bump
+      and milestone.
     - **Not versioned**: experiments, report output, docs.
     - **Checklist instead of tests**: suites green, changelog written, DB
       backed up before the migration, tag created locally (the user pushes).
@@ -442,8 +444,8 @@ reports item; 28 is the recurring cleanup.
             absent credential, and never assumes Intervals.
       - [ ] a pull-request workflow runs the four suites plus the demo build;
             today CI only covers pushes to `main`.
-      - [ ] `LICENSE`, `.env.example` and a README first-run path (GDPR export
-            or `garmin fetch` → `sync`).
+      - [ ] an MIT `LICENSE`, `.env.example` and a README first-run path (GDPR
+            export or `garmin fetch` → `sync`).
     - **Ingestion (core + import)**
       - [ ] Garmin FIT is the only device source: `moving_s`/`elapsed_s` fall
             back to FIT through the existing ranked authority, with no code
@@ -618,8 +620,9 @@ reports item; 28 is the recurring cleanup.
     so another user can run their own.
     - **Split**: the bench ships (the rules, `experiments/template.py`,
       `lab.sh`, the gate in `docs/METRICS.md`, the Lab tab); the log moves to
-      `laufen_private/lab/` (the scripts, the candidate table, the statuses and
-      the rejected findings).
+      `~/projects/laufen_private/lab/` — the existing private repo, not a
+      separate one; create the directory — with the scripts, the candidate
+      table, the statuses and the rejected findings.
     - **Env var rename**: `HOBBYJOGGING_LAB_DIR` currently means the output
       directory (`data/lab`) in `shell.py`; rename that to
       `HOBBYJOGGING_LAB_OUTPUT_DIR` and give `HOBBYJOGGING_LAB_DIR` the lab
@@ -999,9 +1002,10 @@ reports item; 28 is the recurring cleanup.
       a failed sync, and `--wait` is never used inside a scheduled run. Then
       the offline `runalyze gear`, `vo2max` and `races` steps run every time —
       they read stored payloads and cost no requests.
-    - **Strava (manual drop)**: import the newest `export_*.zip` from
-      `data/strava/` when it is new, and no-op when it is absent or already
-      recorded. The download stays a human chore — no API, no scraping; the
+    - **Strava (manual drop)**: import the newest **unimported**
+      `export_*.zip` from `data/strava/` (never every zip in the folder), and
+      no-op when it is absent or already recorded. The download stays a human
+      chore — no API, no scraping; the
       deferred-API decision stands. Tags and gear keep Runalyze as their interim
       home (item 1 moves tags to the DB later).
     - **Order**: fetch (Garmin, Intervals, FIT, Runalyze, Strava) → offline
