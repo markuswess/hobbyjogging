@@ -9,11 +9,12 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
-- **Phase 2 code complete (2026-11-24).** `init`/`doctor`, the full-source
-  `sync`, the install docs, the MIT licence, CI, the lab detach and the
-  Runalyze+Garmin profile (items 44, 49–53 and the name label) landed; schema
-  is v25. The remaining phase-2 act is the acceptance run on a second
-  athlete's real data (a fresh DB with Runalyze + Garmin, no Intervals).
+- **Phase 2 code complete except item 54 (2026-11-24).** `init`/`doctor`, the
+  full-source `sync`, the install docs, the MIT licence, CI, the lab detach
+  and the Runalyze+Garmin profile (items 44, 49–53 and the name label) landed;
+  schema is v25. The close-out is item 54 (source capability matrix) and then
+  the acceptance run on a second athlete's real data (a fresh DB with Runalyze
+  + Garmin, no Intervals).
 - **The canonical pipeline and all sources (phase 1).** FIT archive,
   Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
   comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
@@ -66,10 +67,11 @@ no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 machine — no code or SQL edits. And a **Runalyze+Garmin athlete's dashboard is
 usable**: categories, laps/reps, zones, load, wellness and races render.
 
-**Code complete 2026-11-24.** Every code path exists and the fresh-database
-path is covered by the demo and the suites; the acceptance run on a second
-athlete's real data (a fresh DB with Runalyze + Garmin and no Intervals) is
-the remaining validation.
+**Code complete except item 54 (2026-11-24).** Every code path exists and the
+fresh-database path is covered by the demo and the suites. The **close-out** is
+two steps: **54** (the source capability matrix, so the profiles declare what
+the phase-2 additions can supply) and then the **acceptance run** on a second
+athlete's real data (a fresh DB with Runalyze + Garmin and no Intervals).
 
 **2a · Install**
 
@@ -135,21 +137,28 @@ the remaining validation.
 
 ### Immediate
 
-- **54 source capability matrix** — do it while the phase-2 source code is
-  fresh: register the new capabilities, render the matrix in `settings` and
-  use it in `doctor`, and add per-capability selection to `sources.toml`.
+Phase 2 closes in this order:
+
+- **Step 1 — 54 source capability matrix** (coding session): the last phase-2
+  code item. Register the new capabilities, render the matrix in `settings`
+  and use it in `doctor`, and add per-capability selection to `sources.toml`.
   Read-only plus config; no data writes.
-- **45 readability baseline** — still open (no `tools/check_size.py` yet);
-  due after `init`/`doctor` and before the phase-3 UI.
+- **Step 2 — the acceptance run** (owner: user): fresh DB on athlete 2's real
+  Runalyze + Garmin data, then `doctor`, `sync`, the dashboard, and the
+  categories/laps/zones/load/wellness/races check.
+- **Step 3 — 45 readability baseline** (reports session): the first phase-3
+  item, not a phase-2 gate; after the acceptance run, before the write surface
+  and the UI.
 
 ### Phase 3: trustworthy data
 
-Order: **34** (manual overlay + rebuild proof, the safety gate) → **37** audit
-(read-only, cheap, informs everything) → **1** (CLI write surface) →
-**38/35/21** extraction → **37**'s rules and **43** tags → **42** duplicates →
-health score → browser. Accepting a suggestion always writes a manual value and
-an `edit_log` row; nothing canonical is auto-applied except an empty,
-high-confidence classification.
+Order: **45** (readability baseline, reports session — after the phase-2
+acceptance run) → **34** (manual overlay + rebuild proof, the safety gate) →
+**37** audit (read-only, cheap, informs everything) → **1** (CLI write
+surface) → **38/35/21** extraction → **37**'s rules and **43** tags →
+**42** duplicates → health score → browser. Accepting a suggestion always
+writes a manual value and an `edit_log` row; nothing canonical is auto-applied
+except an empty, high-confidence classification.
 
 ### Phase 4: durable and more reach
 
@@ -1044,8 +1053,8 @@ reports item; 28 is the recurring cleanup.
       source in; a second run is a no-op for unchanged data; removing one
       credential skips that source and leaves the others working.
 
-45. **Readability baseline pass** (reports + tools; small item, after
-    `init`/`doctor` and before the phase-3 UI). The codebase is not bloated
+45. **Readability baseline pass** (reports + tools; phase 3 first, reports
+    session — after the phase-2 acceptance run). The codebase is not bloated
     yet, but reports and import are two-thirds of it and two files are doing
     too much. Measured 2026-11-19: reports 75 modules / 22.8k
     lines, import 41 / 16k, core 14 / 6.3k, maintenance 33 / 4.6k;
@@ -1221,7 +1230,8 @@ reports item; 28 is the recurring cleanup.
       the source.
 
 54. **Source capability matrix and capability selection** (core + import +
-    reports; small, immediate). The capability layer exists in code —
+    reports; small, phase-2 close-out — before the acceptance run). The
+    capability layer exists in code —
     `SourceProfile.entities`, `match`, `creation_fields`, `detail_required`,
     `request_budget` — but it is neither rendered nor used consistently: the
     phase-2 additions are not registered (Runalyze lacks `workout_type` and
