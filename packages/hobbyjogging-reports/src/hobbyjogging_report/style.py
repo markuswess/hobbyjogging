@@ -42,6 +42,7 @@ RPE_LINE_COLORS = {
 
 # Training-period bands, drawn behind the data.
 SEASON_BAND_COLOR = "rgba(46, 139, 87, 0.07)"
+SEASON_START_COLOR = "rgba(46, 139, 87, 0.35)"
 ILLNESS_BAND_COLOR = "rgba(220, 53, 69, 0.08)"
 PERIOD_LABEL_COLOR = "#6b7280"
 

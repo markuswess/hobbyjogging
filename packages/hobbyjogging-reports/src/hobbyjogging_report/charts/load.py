@@ -20,6 +20,7 @@ from ..style import (
     RPE_AXIS_MIN,
     RPE_LINE_COLORS,
     SEASON_BAND_COLOR,
+    SEASON_START_COLOR,
 )
 
 from .common import (
@@ -145,6 +146,8 @@ def plot_load(
             bottom=0,
             top=ceiling,
             labels=True,
+            mark_start=True,
+            start_color=SEASON_START_COLOR,
         )
 
     if any(weekly_run.values()):

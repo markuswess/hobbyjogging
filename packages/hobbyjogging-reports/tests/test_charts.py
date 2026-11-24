@@ -78,6 +78,18 @@ def plotly_data(html):
     return data
 
 
+def plotly_layout(html):
+    """The layout object from a rendered plotly figure."""
+    index = html.index("Plotly.newPlot(")
+    start = html.index("[", index)
+    _, consumed = json.JSONDecoder().raw_decode(html[start:])
+    rest = html[start + consumed:]
+    layout, _ = json.JSONDecoder().raw_decode(
+        rest[rest.index("{"):]
+    )
+    return layout
+
+
 def hoverable_unnamed(data):
     """Traces the unified hover would label "trace N"."""
     return [
@@ -222,6 +234,68 @@ class PeriodBandTests(unittest.TestCase):
         self.assertEqual(1, len(bands))
         self.assertIn("Marathon build:", bands[0]["text"])
         self.assertIn('"text":"Marathon build"', html)
+        marker = next(
+            shape
+            for shape in plotly_layout(html).get("shapes", [])
+            if shape.get("type") == "line"
+            and shape.get("x0") == "2026-01-01"
+        )
+        self.assertEqual("below", marker["layer"])
+
+    def test_a_season_start_is_marked_with_a_faint_line(self):
+        data = [
+            (date(2026, 1, 5), 30.0),
+            (date(2026, 1, 12), 40.0),
+        ]
+        periods = [
+            TrainingPeriod(
+                id="s",
+                kind="season",
+                label="Base",
+                start_date=date(2026, 1, 12),
+                end_date=date(2026, 2, 1),
+            )
+        ]
+
+        html = plot_volume(data, "", periods=periods, as_html=True)
+        shapes = plotly_layout(html).get("shapes", [])
+        marker = next(
+            shape
+            for shape in shapes
+            if shape.get("type") == "line"
+            and shape.get("x0") == "2026-01-12"
+            and shape.get("x0") == shape.get("x1")
+        )
+
+        self.assertEqual("below", marker["layer"])
+        self.assertEqual("dot", marker["line"]["dash"])
+        self.assertEqual(
+            "rgba(46, 139, 87, 0.35)",
+            marker["line"]["color"],
+        )
+
+    def test_a_season_started_before_the_window_is_not_marked(self):
+        data = [(date(2026, 1, 5), 30.0)]
+        periods = [
+            TrainingPeriod(
+                id="s",
+                kind="season",
+                label="Old",
+                start_date=date(2025, 1, 1),
+                end_date=date(2026, 2, 1),
+            )
+        ]
+
+        html = plot_volume(data, "", periods=periods, as_html=True)
+        shapes = plotly_layout(html).get("shapes", [])
+
+        self.assertFalse(
+            [
+                shape
+                for shape in shapes
+                if shape.get("x0") == "2025-01-01"
+            ]
+        )
 
     def test_recovery_shades_illness_on_every_panel(self):
         points = [

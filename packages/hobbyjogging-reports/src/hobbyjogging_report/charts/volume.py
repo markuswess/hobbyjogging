@@ -9,7 +9,12 @@ import plotly.graph_objects as go
 from hobbyjogging_core.model import TrainingPeriod
 
 from ..model import AverageWindows, DistancePoint
-from ..style import SEASON_BAND_COLOR, VOLUME_Y_MIN, VOLUME_Y_STEP
+from ..style import (
+    SEASON_BAND_COLOR,
+    SEASON_START_COLOR,
+    VOLUME_Y_MIN,
+    VOLUME_Y_STEP,
+)
 
 from .common import (
     VOLUME_BAR_COLOR,
@@ -81,6 +86,8 @@ def plot_volume(
             bottom=0,
             top=ceiling,
             labels=True,
+            mark_start=True,
+            start_color=SEASON_START_COLOR,
         )
 
     if data:

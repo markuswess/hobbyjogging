@@ -67,8 +67,9 @@ Pages:
   week), and weekly planned load stacked on the current week's actual bar.
   Each week
   stacks hard done, hard planned, easy done, easy planned from the bottom up.
-  Season bands shade the volume and load charts behind the bars, with a quiet
-  label at each band start and the dates in the hover. Running time reads in
+  Season bands shade the volume and load charts behind the bars, with a faint
+  dotted vertical line and a quiet label at each visible band start, and the
+  dates in the hover. Running time reads in
   hours on the left; the hard-running averages sit on a
   right-hand axis in minutes per week that mirrors the hour ticks (2 h =
   120 min), so the lines and bars keep one vertical scale. The total, hard

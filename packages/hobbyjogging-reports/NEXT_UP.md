@@ -9,6 +9,13 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **Season starts are marked.** The volume and load charts add a faint
+  dotted vertical line at the start of each season that begins inside the
+  visible range, beside the existing band and quiet label; a season already
+  underway at the left edge gets no marker. The CLI and dashboard share the
+  chart code. Tests pin the line's position, dash, colour and layer, and the
+  out-of-range case.
+
 - **Readability baseline (root item 45).** `charts.py` (3,609 lines) is now
   the `charts/` package, split by family — `volume`, `time`, `subt`, `load`,
   `vo2max`, `pace_hr`, `races`, `gear`, `compare`, `recovery`, `overview` —

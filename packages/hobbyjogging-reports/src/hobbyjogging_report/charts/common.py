@@ -476,10 +476,17 @@ def _period_bands(
     bottom: float,
     top: float,
     labels: bool = False,
+    mark_start: bool = False,
+    start_color: str = PERIOD_LABEL_COLOR,
     row: int | None = None,
     col: int | None = None,
 ) -> None:
-    """Shade training periods of one kind behind a date-axis chart."""
+    """Shade training periods of one kind behind a date-axis chart.
+
+    ``mark_start`` adds a faint vertical line where a period begins, but only
+    when the beginning is inside the visible range; a band already underway at
+    the left edge gets no marker.
+    """
     for period in periods or []:
         if period.kind != kind or period.start_date is None:
             continue
@@ -516,6 +523,25 @@ def _period_bands(
             showlegend=False,
         )
         _add(figure, trace, row=row, col=col)
+
+        if mark_start and start <= period.start_date <= end:
+            marker = {
+                "type": "line",
+                "x0": period.start_date,
+                "x1": period.start_date,
+                "y0": bottom,
+                "y1": top,
+                "line": {
+                    "color": start_color,
+                    "width": 1,
+                    "dash": "dot",
+                },
+                "layer": "below",
+            }
+            if row is None:
+                figure.add_shape(**marker)
+            else:
+                figure.add_shape(**marker, row=row, col=col)
 
         if labels:
             annotation = {
