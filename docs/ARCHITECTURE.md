@@ -285,7 +285,8 @@ Analysis, views, and rendering.
   lookback search, the review view, and a dump of the stored raw payloads.
 - `activity_list.py` — the activities table (selection, columns, rendering).
 - `summary.py` — period totals, quality-session lists, recovery averages.
-- `charts.py`, `chart_commands.py` — plotly figures over prepared series.
+- `charts/` (split by family), `chart_commands.py` — plotly figures over
+  prepared series.
 - `format.py`, `mdpretty.py` — human formatting for the terminal.
 - `commands.py`, `cli.py`, `command_support.py`, `__main__.py` — command
   registry, shared CLI helpers, and entry point.
@@ -718,8 +719,8 @@ The rule is **compute → render**:
    - Markdown reports for the terminal (`daily.py`, `overview.py`,
      `recovery_report.py`, `period_report.py`, `subt_report.py`,
      `activity_list.py`, `mdpretty.py`);
-   - plotly figures (`charts.py`): the CLI exports PNGs via kaleido and the
-     dashboard embeds the same figures as HTML;
+   - plotly figures (`charts/`, split by family): the CLI exports PNGs via
+     kaleido and the dashboard embeds the same figures as HTML;
    - static HTML dashboard pages (`html.py`, `dashboard/`);
    - JSON for LLM bundles or future clients (planned).
 

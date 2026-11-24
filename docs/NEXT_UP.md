@@ -1054,10 +1054,13 @@ reports item; 28 is the recurring cleanup.
     and `analysis/__init__` re-exported 154 names.
     - **Done**: `charts.py` is now a `charts/` package split by family
       (overview, volume, load, time, subt, races, compare, gear, recovery,
-      vo2max, pace/HR, common) behind the same public imports; the dead
-      `analysis/__init__` exports are gone; `tools/check_size.py` enforces the
-      1,000-line budget with a shrinking allowlist and is wired into CI beside
-      `check_todos.py`.
+      vo2max, pace/HR, common) behind the same public imports; it left the
+      `check_size` allowlist, which now lists the five cohesive or mechanical
+      giants (`writer.py`, `demo.py`, `triage.py`, `runalyze_import.py`,
+      `format.py`). The dead `analysis/__init__` exports are gone — the surface
+      is 121 names, down from 154 — and `tools/check_size.py` enforces the
+      1,000-line budget with that shrinking allowlist and is wired into CI
+      beside `check_todos.py`.
     - **Not now**: splitting `writer.py` (cohesive) or `demo.py` (mechanical),
       a linter, package renames, or extracting `hobbyjogging-app` — that waits
       for the front end (item 1).
