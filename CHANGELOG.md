@@ -77,6 +77,10 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
   `vo2max`, `workout_type`, `trimp`, `wellness`); unknown keys fail loudly and
   a disabled capability skips only its step. `doctor` warns when the enabled
   sources cannot supply wellness, load, zones, social, reps or races.
+- `threshold add --from first` anchors the snapshot on the earliest activity of
+  the sport and reports how many earlier activities stay unzoned;
+  `derived_zone_configs_current` prints the `no_threshold` count and the first
+  snapshot date.
 
 ## 0.1.0 — 2026-11-19 (phase 1: works for me)
 

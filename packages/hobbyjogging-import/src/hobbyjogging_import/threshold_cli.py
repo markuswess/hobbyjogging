@@ -34,13 +34,6 @@ def _add(args, parser: argparse.ArgumentParser) -> int:
     except ValueError as exc:
         parser.error(str(exc))
 
-    try:
-        effective = date.fromisoformat(
-            args.effective_from or date.today().isoformat()
-        )
-    except ValueError as exc:
-        parser.error(f"invalid date: {exc}")
-
     values: dict[str, float] = {}
     if args.max_hr is not None:
         if args.max_hr <= 0:
@@ -63,17 +56,79 @@ def _add(args, parser: argparse.ArgumentParser) -> int:
 
     connection = open_database(args.database)
     try:
+        effective = _resolve_effective(
+            args.effective_from,
+            connection,
+            sport,
+            parser,
+        )
         TrainingWriter(connection).set_manual_threshold(
             effective,
             sport,
             **values,
         )
         connection.commit()
+        earlier = _earlier_unzoned(connection, sport, effective)
     finally:
         connection.close()
 
     print(f"threshold saved: {sport} from {effective}")
+    if earlier:
+        print(
+            f"Zones apply from {effective}; {earlier} earlier {sport} "
+            "activities stay unzoned (use --from first)."
+        )
+    else:
+        print(
+            f"Zones apply from {effective}; no earlier {sport} activity "
+            "stays unzoned."
+        )
     return 0
+
+
+def _resolve_effective(
+    value: str | None,
+    connection,
+    sport: str,
+    parser: argparse.ArgumentParser,
+) -> date:
+    """Resolve ``--from``, including the ``first`` activity anchor."""
+    if value is None:
+        return date.today()
+    if value.strip().lower() == "first":
+        row = connection.execute(
+            """
+            SELECT MIN(local_date) FROM activities
+            WHERE excluded_at IS NULL AND sport = ?
+            """,
+            (sport,),
+        ).fetchone()
+        if row is None or row[0] is None:
+            parser.error(
+                f"no {sport} activities to anchor --from first"
+            )
+        return date.fromisoformat(row[0])
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        parser.error(f"invalid date: {exc}")
+
+
+def _earlier_unzoned(connection, sport: str, effective: date) -> int:
+    """Earlier activities of this sport that still have no zone config."""
+    row = connection.execute(
+        """
+        SELECT COUNT(*) FROM activities
+        WHERE excluded_at IS NULL
+          AND sport = ?
+          AND local_date < ?
+          AND hr_zone_config_id IS NULL
+          AND pace_zone_config_id IS NULL
+        """,
+        (sport, effective.isoformat()),
+    ).fetchone()
+    return row[0] if row is not None else 0
 
 
 def _list(args, parser: argparse.ArgumentParser) -> int:

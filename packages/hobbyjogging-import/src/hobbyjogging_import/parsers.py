@@ -521,7 +521,10 @@ def build_parser() -> argparse.ArgumentParser:
     threshold_add.add_argument(
         "--from",
         dest="effective_from",
-        help="first day the snapshot applies (default: today)",
+        help=(
+            "first day the snapshot applies (default: today; "
+            "'first' = the earliest activity of the sport)"
+        ),
     )
     threshold_add.add_argument("--max-hr", type=float)
     threshold_add.add_argument("--lthr", type=float)

@@ -782,10 +782,21 @@ uv run --env-file .env hobbyjogging-import threshold list --sport run
 ```
 
 `--threshold-pace` takes minutes per kilometre (`4:30`, `4:30/km`) or a speed
-(`3.70mps`). `derived_zone_configs_current` builds local HR/pace zone configs
-and lap zone times from the snapshot in force on each activity's date; an
-Intervals config always wins, and an activity before the first snapshot stays
-unzoned.
+(`3.70mps`). `--from first` anchors the snapshot on the earliest activity of
+that sport, so the whole history gets a zone config. After saving, the command
+names the effective date and how many earlier activities of that sport stay
+unzoned; it never backfills them silently.
+
+`derived_zone_configs_current` builds local HR/pace zone configs and lap zone
+times from the snapshot in force on each activity's date; an Intervals config
+always wins. When some activities predate the first snapshot, the recompute
+prints that count and the first snapshot date, so the gap is visible in the
+run summary.
+
+```text
+threshold saved: run from 2019-01-22
+Zones apply from 2019-01-22; no earlier run activity stays unzoned.
+```
 
 ## Import review
 

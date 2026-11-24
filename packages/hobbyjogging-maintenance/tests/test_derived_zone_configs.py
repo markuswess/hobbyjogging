@@ -117,6 +117,10 @@ class DerivedZoneConfigTests(unittest.TestCase):
         self.assertEqual({"thresholds"}, sources)
         self.assertEqual([(1, 600), (3, 200)], self._zone_times(activity_id, "hr"))
         self.assertEqual([(1, 600), (4, 200)], self._zone_times(activity_id, "pace"))
+        self.assertFalse(
+            any("threshold snapshot" in note for note in run.notes),
+            run.notes,
+        )
 
     def test_a_second_run_is_a_no_op(self):
         self._threshold()
@@ -145,6 +149,14 @@ class DerivedZoneConfigTests(unittest.TestCase):
         self.assertEqual(1, run.counts["no_threshold"])
         self.assertEqual((None, None), self._configs(activity_id))
         self.assertEqual([], self._zone_times(activity_id, "hr"))
+        self.assertTrue(
+            any(
+                "1 activities have no threshold snapshot in force for their "
+                "sport; the first snapshot is 2027-01-01" in note
+                for note in run.notes
+            ),
+            run.notes,
+        )
 
     def test_an_existing_intervals_config_wins(self):
         self._threshold()

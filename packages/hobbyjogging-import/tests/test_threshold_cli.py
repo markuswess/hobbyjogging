@@ -35,6 +35,28 @@ class ThresholdCommandTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.database = Path(self.tmp.name) / "thresholds.db"
+        self.counter = 0
+
+    def _activity(self, day, *, sport="run", excluded=False):
+        self.counter += 1
+        connection = open_database(self.database)
+        try:
+            connection.execute(
+                """
+                INSERT INTO activities
+                    (id, local_date, sport, excluded_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    f"a{self.counter}",
+                    day,
+                    sport,
+                    "2026-01-01" if excluded else None,
+                ),
+            )
+            connection.commit()
+        finally:
+            connection.close()
 
     def _run(self, *args):
         output = io.StringIO()
@@ -60,6 +82,7 @@ class ThresholdCommandTests(unittest.TestCase):
         )
         self.assertEqual(0, code)
         self.assertIn("threshold saved", text)
+        self.assertIn("Zones apply from 2026-01-01", text)
 
         code, text = self._run("list")
         self.assertEqual(0, code)
@@ -69,6 +92,68 @@ class ThresholdCommandTests(unittest.TestCase):
         self.assertIn("170", text)
         self.assertIn("4:30 /km", text)
         self.assertIn("manual", text)
+
+    def test_from_first_anchors_on_the_earliest_activity_of_the_sport(self):
+        self._activity("2020-01-01")
+        self._activity("2019-06-01")
+        self._activity("2018-01-01", sport="ride")
+
+        code, text = self._run(
+            "add",
+            "--sport",
+            "run",
+            "--from",
+            "first",
+            "--lthr",
+            "170",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("threshold saved: run from 2019-06-01", text)
+        self.assertIn("no earlier run activity stays unzoned", text)
+
+        connection = open_database(self.database)
+        try:
+            rows = TrainingRepository(connection).athlete_thresholds()
+        finally:
+            connection.close()
+        self.assertEqual(1, len(rows))
+        self.assertEqual("2019-06-01", rows[0].effective_from.isoformat())
+
+    def test_earlier_unzoned_activities_are_counted_for_the_sport(self):
+        self._activity("2020-01-01")
+        self._activity("2020-06-01")
+        self._activity("2020-03-01", excluded=True)
+        self._activity("2020-03-01", sport="ride")
+
+        code, text = self._run(
+            "add",
+            "--sport",
+            "run",
+            "--from",
+            "2021-01-01",
+            "--lthr",
+            "170",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn(
+            "Zones apply from 2021-01-01; 2 earlier run activities stay "
+            "unzoned",
+            text,
+        )
+
+    def test_from_first_without_activities_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            self._run(
+                "add",
+                "--sport",
+                "run",
+                "--from",
+                "first",
+                "--lthr",
+                "170",
+            )
 
     def test_a_re_add_for_the_same_date_replaces_the_values(self):
         self._run("add", "--from", "2026-01-01", "--lthr", "170")

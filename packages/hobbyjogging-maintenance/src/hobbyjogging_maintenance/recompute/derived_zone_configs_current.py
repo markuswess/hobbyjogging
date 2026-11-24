@@ -144,6 +144,14 @@ def derived_zone_configs_current(context: TaskContext) -> None:
                 boundaries=_pace_boundaries(threshold),
             )
 
+    if context.counts.get("no_threshold"):
+        first = min(row.effective_from for row in thresholds)
+        context.note(
+            f"{context.counts['no_threshold']} activities have no threshold "
+            f"snapshot in force for their sport; the first snapshot is "
+            f"{first.isoformat()}"
+        )
+
     context.order_counts(_COUNT_ORDER)
 
 

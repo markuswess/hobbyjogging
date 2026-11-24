@@ -144,10 +144,10 @@ Phase 2 closes in this order:
   the stored sets (the name is only a fallback), and put the blank line after
   the derived notes so the table and the work-reps list render in the
   dashboard. Both are small, tested fixes; no schema.
-- **Step 2 — 56 threshold coverage** (import + maintenance session):
-  `threshold add` prints the effective date and how many earlier activities
-  stay unzoned, accepts `--from first`, and the zone recompute notes the
-  `no_threshold` count. No silent backfill.
+- **Step 2 — 56 threshold coverage (done 2026-11-24)** (import + maintenance
+  session): `threshold add --from first` and the coverage message, plus the
+  `no_threshold` note in the zone recompute. No silent backfill, no schema
+  change.
 - **Step 3 — re-run the acceptance checks** (owner: user): the subT report and
   session work-reps, the dashboard activity table, and zones across history
   after `--from first`; then the phase-2 sign-off.
@@ -1301,23 +1301,23 @@ reports item; 28 is the recurring cleanup.
       stored sets.
 
 56. **Threshold coverage for historical activities** (import + maintenance;
-    bug/UX, phase-2 gate). `threshold add` defaults `effective_from` to today,
-    and `derived_zone_configs_current` only accepts a snapshot with
-    `effective_from <= activity.date`; only activities on or after the
-    snapshot day get zones. The dating is correct, but silent.
-    - **CLI**: after saving, print "Zones apply from <date>; N earlier
-      activities stay unzoned" (when N > 0), and accept `--from first` as the
-      earliest activity date. Document it in the help and the import README.
-    - **Task**: `derived_zone_configs_current` already counts `no_threshold`;
-      add one line with that count and the first snapshot date so the gap is
-      visible in the run summary.
-    - **No silent backfill**: do not fall back to the earliest snapshot for
-      earlier dates; an approximation must be explicit. The VO2max metric's
-      earliest-snapshot fallback is separate and documented.
-    - **Acceptance**: after `threshold add --from first`, every athlete-2
-      activity gets a zone config; the message names the coverage; an
-      Intervals config still wins where present; four suites green.
-    - **Not**: no schema change; no threshold deletion.
+    done 2026-11-24). `threshold add` defaulted `effective_from` to today, and
+    `derived_zone_configs_current` only accepts a snapshot with
+    `effective_from <= activity.date`, so the historical gap was silent.
+    - **CLI (done)**: `--from first` resolves to the earliest non-excluded
+      activity of the sport; `--from` still takes an explicit date and defaults
+      to today. After saving, the command prints the effective date and, when
+      there are earlier activities of that sport with no zone config,
+      `N earlier <sport> activities stay unzoned (use --from first)`. The help
+      and the import README document it.
+    - **Task (done)**: `derived_zone_configs_current` adds one note with the
+      `no_threshold` count and the earliest snapshot date, so the gap appears
+      in the run summary.
+    - **No silent backfill**: earlier dates do not borrow the first snapshot;
+      the VO2max earliest-snapshot fallback remains separate and documented.
+    - **Acceptance**: `threshold add --from first` anchors on the earliest
+      activity; the message names the coverage; an Intervals config still wins;
+      four suites green.
 
 ## Parked ideas
 
