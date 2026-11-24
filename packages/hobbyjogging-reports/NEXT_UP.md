@@ -15,7 +15,7 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
   over shared tokens and helpers in `charts/common.py`. Every public builder
   is re-exported from the package root, so the CLI and dashboard imports did
   not change. `analysis/__init__.py` drops the 34 re-exports nothing imported
-  (154 → 120) and sorts the remaining surface.
+  (154 → 121) and sorts the remaining surface.
   `tools/check_size.py` enforces the 1,000-line budget over package sources
   with a five-file allowlist (`writer`, `triage`, `runalyze_import`, `demo`,
   `format`), fails on a stale allowlist entry, and runs in both CI workflows
