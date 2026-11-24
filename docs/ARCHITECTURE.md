@@ -91,6 +91,12 @@ classifier, a description does not.
 Each adapter declares its payload→field mapping (`FIELD_MAP`), so the derive
 check, the rebuild and the settings view read one table.
 
+A source that carries its **own workout type** maps it to the canonical sets at
+import time — the sheet's `Trainigstyp` codes and Runalyze's `type` object — so
+classification does not depend on a name the athlete never writes. An unmapped
+type is reported for the audit, never guessed. A source without one leaves
+classification to the classifier, tags and triage.
+
 A new source is a profile plus a fetch/normalize adapter. It should not add a
 branch to the writer, the matcher or the quality rules.
 

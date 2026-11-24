@@ -85,11 +85,12 @@ machine — no code or SQL edits.
 ### Phase 3: trustworthy data
 
 Order: **34** (manual overlay + rebuild proof, the safety gate) → **37** audit
-(read-only, cheap, informs everything) → **1** (CLI write surface) →
-**38/35/21** extraction → **37**'s rules and proposals → **42** duplicates →
-health score → browser. Accepting a suggestion always writes a manual value and
-an `edit_log` row; nothing canonical is auto-applied except an empty,
-high-confidence classification.
+(read-only, cheap, informs everything) → **49** (Runalyze workout type, so a
+name-less athlete is readable) → **1** (CLI write surface) → **38/35/21**
+extraction → **37**'s rules and **43** tags → **50** manual thresholds →
+**42** duplicates → health score → browser. Accepting a suggestion always
+writes a manual value and an `edit_log` row; nothing canonical is auto-applied
+except an empty, high-confidence classification.
 
 ### Phase 4: durable and more reach
 
@@ -218,10 +219,13 @@ reports item; 28 is the recurring cleanup.
       row). That queue is user triage, not import code.
     - **Backstop**: `runalyze.com/my/exports` (CSV/JSON from the web UI) if the
       API regresses; the bulk path, not the daily one.
-    - **Not scheduled**: Runalyze weather (0 rows), routes (0; the nested
-      `recurring_route` identity stays unused), health entries (0 illness
-      periods, 0 wellness rows) and the gear category map (two hard-coded IDs
-      that a second athlete does not share — root item 23).
+    - **Not scheduled for this athlete**: Runalyze weather (0 rows here, but
+      `weather_condition` is on every athlete-2 payload — revisit when a
+      non-Intervals athlete needs it), routes (0 here; `route_name` and
+      `recurring_route` exist on athlete-2 payloads but the identity stays
+      source-scoped), health entries (0 illness periods, 0 wellness rows) and
+      the gear category map (two hard-coded IDs that a second athlete does not
+      share — root item 23).
 
 13. **Homelab cutover** (phase 4): DB + importer + dashboard generator + static
     server, periodic backups of the database **and the FIT archive**, Tailscale
@@ -396,7 +400,10 @@ reports item; 28 is the recurring cleanup.
 
     **Target profile** (the real athlete's data comes later): Garmin, Runalyze
     and Strava — no Intervals, no sheet. Phase 2 proves the path on a fresh DB;
-    the athlete's own run is the later validation.
+    the athlete's own run is the later validation. Athlete 2's first run is
+    **Runalyze-only**: no activity names, no wellness, thresholds or zones,
+    tags plus Runalyze's own workout type. That profile is the acceptance case
+    for items 49 and 50.
 
     - **Setup (import + CI)**
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
@@ -724,10 +731,17 @@ reports item; 28 is the recurring cleanup.
       Runalyze's values as a cross-check, not as stored metrics.
     - **Out of scope for now**: vertical oscillation, stance time and ratio
       (4 % in Intervals, more in FIT), impact loading, leg spring stiffness,
-      TRIMP and training effect (we keep Intervals' `training_load`), climbs as
+      training effect (we keep Intervals' `training_load`), climbs as
       an entity, HRV analysis, and zone distributions as percentages. If the
       dynamics ever matter, extract the FIT session averages rather than
       storing streams.
+    - **Load fallback (decide before phase 3 ends)**: `trimp` and `fit_trimp`
+      are on every athlete-2 payload (40/40), and an Intervals-less athlete has
+      no `training_load` at all, so the load chart is empty rather than
+      sparse. Decide: map TRIMP as that athlete's load — documented as a
+      vendor scale, never mixed with Intervals load in one database — or
+      accept "no load". This is the one field where "keep Intervals' load"
+      costs a whole report.
     - **Open**: whether cadence and stride sit on `activities` or in an
       `activity_dynamics` row; two columns are defensible at 83 % coverage.
 
@@ -909,6 +923,11 @@ reports item; 28 is the recurring cleanup.
       ±15 min or the same day, distance within ~2%, and HR within 5 bpm when
       both carry it; emit one `duplicate` review item carrying both activity
       ids, idempotent by a fingerprint over the sorted pair.
+    - **Athlete-2 finding**: the Runalyze-only test left 10 of 40 rows in
+      review, each with exactly one same-day candidate — mostly rides and one
+      other sport. Before a broad rule runs, check whether the candidate is a
+      different sport or duration; the same-day guard is currently too strict
+      for a legitimate second session on the same day.
     - **Sheet pairs** (maintenance): a task that blank-fills the description
       from the sheet row and then excludes it, so the session keeps its text
       and stops counting twice. It rewrites existing rows, so it is a
@@ -921,12 +940,18 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: a dry run lists the candidate pairs on a copy, the known
       sheet duplicates drop out of the totals, and a re-run is a no-op.
 
-43. **Tag lexicon** (core + import + maintenance; phase 3, informs item 37).
+43. **Tag lexicon** (core + import + maintenance; phase 3, after item 49).
     Tags already carry facts the rules need — workout targets (`sub
-    threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`), illness
-    (`krank`, `verkühlt`, `Infekt`, `Magen-Darm`, `wieder gesund`), race days
-    (`Raceday`, `race`) and the sheet's training-area labels (`w`, `m`, `wb`,
-    `a`, `t`, `I`) — but their meaning is implicit in code or prose.
+    threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`), rep lengths
+    (`6'`, `3'`, `10'`), illness (`krank`, `verkühlt`, `Infekt`, `Magen-Darm`,
+    `wieder gesund`), race days (`Raceday`, `race`) and the sheet's
+    training-area labels (`w`, `m`, `wb`, `a`, `t`, `I`) — but their meaning
+    is implicit in code or prose. Athlete 2 is the tag-first case: tags on 19
+    of 30 runs, no names, empty notes.
+    - **Order**: item 49 maps the source's own workout type first — that is
+      the reliable classification signal. The lexicon then covers what the
+      type cannot say: rep lengths, illness, race day and context tags
+      (`Commute`, `Rucksack`, `GAT1`, people).
     - **Shape**: one lexicon that maps a stored tag (normalized) to a meaning
       and the rule it feeds, plus an audit that lists every stored tag as
       mapped or **unmapped**. Start as a code-level module beside
@@ -1044,6 +1069,57 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: a disputed activity names the winning source and the
       losing value, a single-source activity stays short, and the CLI and the
       dashboard print the same list.
+
+49. **Runalyze workout type → canonical sets** (import + maintenance; small,
+    first in phase 3). Runalyze's activity payload carries a `type` object
+    with `name`, `abbreviation`, `quality_session` and a reference `avg_hr` —
+    per activity, no parsing. Measured on the athlete-2 slice (30 runs):
+    `Jogging`/`JOG` ×20 (`quality_session: false`), `SubThreshold`/`ST` ×8
+    (true), `Long Slow Distance`/`LSD` ×2 (true); rides and other sports carry
+    no type. It is the one classification signal a name-less, RPE-less
+    athlete has.
+    - **Mapping**: a code-level module beside `hobbyjogging_import.sheet_codes`
+      (`runalyze_types`), applied on create and as a gap-filler for matched
+      activities with no sets, the same way `workout_sets_current` treats the
+      sheet. Manual and existing source sets always win; an unknown type is
+      listed, never guessed.
+    - **Decision**: the canonical pair per type. Jogging → `continuous` +
+      `base` (non-quality); Long Slow Distance → `long_run` (quality);
+      SubThreshold → `continuous` + `subthreshold` or `intervals` +
+      `subthreshold` — decide by how it should display and whether the subT
+      report should see it (without rep data it has no tables either way).
+      `quality_session` is a cross-check, not an override: quality is derived.
+    - **Audit**: print the distinct stored types with counts and the unmapped
+      ones, so a new Runalyze type is visible before it silently classifies
+      nothing.
+    - **Not this item**: rep structure, intervals and laps. The type says
+      "SubThreshold", not "6×3′"; subT tables still need device intervals.
+    - **Acceptance**: athlete 2's Jogging runs read easy, LSD long runs and
+      SubThreshold quality; a re-run is a no-op; an unmapped type is reported;
+      the current athlete's Intervals/sheet sets are untouched.
+
+50. **Manual thresholds and local zone configs** (core + import + maintenance +
+    reports; phase 3, small write surface). Zones, the derived VO2max and
+    intensity all read `athlete_thresholds` and `zone_configs`, which only the
+    Intervals recomputes fill. An Intervals-less athlete therefore has no
+    zones at all, and Runalyze cannot supply the boundaries (`/api/v1/sport`
+    is 403; only percentages are in the payload).
+    - **Write surface**: `threshold add|list` per sport with `max_hr`, `lthr`
+      and `threshold_pace_mps`, written as dated snapshots with
+      `source='manual'` (the tables already carry `source`; no schema change).
+      The recompute never removes a manual snapshot.
+    - **Derivation**: build the zone configs from the manual snapshots with a
+      documented, printed model (for example %LTHR for HR and %threshold pace
+      for pace), registered as a recompute; an activity with no config stays
+      unzoned rather than borrowing a guess.
+    - **Unlocks**: HR/pace zones and zone charts for a non-Intervals athlete;
+      the max-HR snapshot the effective-VO2max metric needs; threshold-relative
+      subT comparisons where reps exist.
+    - **Not**: importing Runalyze's zone percentages as canonical zones — they
+      are shares of an unknown config. Keep them as a cross-check if wanted.
+    - **Acceptance**: athlete 2 gets zones and a VO2max series from entered
+      thresholds; a manual snapshot survives every recompute; a missing
+      threshold leaves the report explicitly empty.
 
 ## Parked ideas
 
