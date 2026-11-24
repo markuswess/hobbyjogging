@@ -38,6 +38,7 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         sheet=True,
         avg_hr=None,
         intensity=None,
+        runalyze_type=None,
     ):
         self.counter += 1
         activity_id = f"a{self.counter}"
@@ -68,6 +69,22 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         )
         if sheet:
             self.writer.link_activity_source(activity_id, record_id)
+        if runalyze_type is not None:
+            runalyze_record = self.writer.upsert_source_record(
+                source="runalyze",
+                record_type="activity",
+                external_id=f"r-{activity_id}",
+                checksum=f"r-{activity_id}",
+                payload_json=json.dumps(
+                    {"type": {"name": runalyze_type, "abbreviation": ""}}
+                ),
+                import_run_id=self.run_id,
+            )
+            self.writer.link_activity_source(
+                activity_id,
+                runalyze_record,
+                match_method="exact_twin",
+            )
         self.conn.commit()
         return activity_id
 
@@ -231,6 +248,63 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         self.assertEqual(
             (["continuous"], ["threshold"]),
             self._sets(second),
+        )
+
+
+    def test_runalyze_type_fills_a_gap_with_runalyze_provenance(self):
+        activity_id = self._activity(
+            "",
+            sheet=False,
+            runalyze_type="SubThreshold",
+        )
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["from_runalyze_type"])
+        self.assertEqual(
+            (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+        self.assertEqual(
+            [
+                ("intervals", "runalyze", 0),
+            ],
+            [
+                (method, source, manual)
+                for method, source, manual in self._sources(activity_id)
+                if method == "intervals"
+            ],
+        )
+
+    def test_an_unknown_runalyze_type_stays_empty(self):
+        activity_id = self._activity(
+            "",
+            sheet=False,
+            runalyze_type="Trail Run",
+        )
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["no_proposal"])
+        self.assertEqual(([], []), self._sets(activity_id))
+
+    def test_a_classifier_proposal_wins_over_the_runalyze_type(self):
+        activity_id = self._activity(
+            "Tempo",
+            sheet=False,
+            runalyze_type="SubThreshold",
+        )
+
+        with patch(CLASSIFY, return_value=TEMPO):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["derived"])
+        self.assertEqual(0, run.counts["from_runalyze_type"])
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
         )
 
 

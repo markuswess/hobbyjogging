@@ -45,6 +45,12 @@ Schema: **24**. Compatibility: requires schema ≥ 1, migrates to 24.
 - Device labels come from a stored name or the FIT product; the device report
   hides the soft-excluded provider rows.
 
+### Classification
+
+- Runalyze's activity type maps Jogging, Long Slow Distance and SubThreshold to
+  canonical sets on create and as a gap-filler; existing Intervals/sheet sets
+  win, and `runalyze types` audits the unmapped types.
+
 ## 0.1.0 — 2026-11-19 (phase 1: works for me)
 
 Schema: **23**. Compatibility: requires schema ≥ 1, migrates to 23.

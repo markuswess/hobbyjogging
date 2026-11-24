@@ -5,6 +5,14 @@ on.
 
 ## Done
 
+- **Runalyze workout type.** `runalyze_types` maps `Jogging`/`JOG` →
+  `continuous` + `base`, `Long Slow Distance`/`LSD` → `long_run` + `base`, and
+  `SubThreshold`/`ST` → `intervals` + `subthreshold`, by name or abbreviation,
+  case and separator insensitive. It is written on create and used by
+  `workout_sets_current` as a gap-filler when the classifier and sheet have
+  nothing; existing sets win and only run sports are mapped.
+  `hobbyjogging-import runalyze types` audits the stored types and lists the
+  unmapped ones.
 - **Sync covers every configured source.** `hobbyjogging-import sync` now runs
   Garmin, Intervals, the FIT archive, a budgeted Runalyze enrichment, the
   offline gear/VO2max derivations and the newest unimported Strava export, then

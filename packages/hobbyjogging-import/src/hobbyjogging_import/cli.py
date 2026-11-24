@@ -34,6 +34,7 @@ from .runalyze_gear import (
 )
 from .runalyze_import import RunalyzeEnricher, format_enrich_summary
 from .runalyze_races import RunalyzeRaceImporter, format_race_summary
+from .runalyze_types import audit_types, format_type_audit
 from .runalyze_vo2max import (
     RunalyzeVo2maxImporter,
     format_vo2max_summary,
@@ -336,6 +337,8 @@ def run_runalyze(args, parser: argparse.ArgumentParser) -> int:
         return _run_runalyze_gear(args, parser)
     if args.runalyze_action == "vo2max":
         return _run_runalyze_vo2max(args, parser)
+    if args.runalyze_action == "types":
+        return _run_runalyze_types(args, parser)
     if args.runalyze_action == "races":
         return _run_runalyze_races(args, parser)
 
@@ -500,6 +503,22 @@ def _run_runalyze_vo2max(args, parser: argparse.ArgumentParser) -> int:
         connection.close()
 
     print(format_vo2max_summary(summary))
+    print(f"Database: {args.database or default_database_path()}")
+    return 0
+
+
+def _run_runalyze_types(args, parser: argparse.ArgumentParser) -> int:
+    try:
+        connection = open_database(args.database)
+    except Exception as exc:
+        raise SystemExit(f"could not open database: {exc}") from exc
+
+    try:
+        rows = audit_types(connection)
+    finally:
+        connection.close()
+
+    print(format_type_audit(rows))
     print(f"Database: {args.database or default_database_path()}")
     return 0
 

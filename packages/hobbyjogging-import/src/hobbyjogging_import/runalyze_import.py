@@ -24,12 +24,14 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
+from hobbyjogging_core.sports import RUN_SPORTS
 
 from .create_activity import create_activity
 from .derive import derive_values
 from .matching import MatchPolicy, decide_match
 from .quality import AMBIGUOUS_MATCH, review_fingerprint
 from .runalyze import RunalyzeApi, RunalyzeClient, RunalyzeRateLimitError
+from .runalyze_types import classification_for_payload
 
 SOURCE = "runalyze"
 DISTANCE_KM_TO_M = 1000.0
@@ -536,12 +538,28 @@ class RunalyzeEnricher:
                             ).items()
                             if value not in (None, "")
                         }
-                        create_activity(
+                        activity_id = create_activity(
                             self.writer,
                             source=SOURCE,
                             values=values,
                             source_record_id=source_record_id,
                         )
+                        methods, targets = classification_for_payload(
+                            payload
+                        )
+                        if (methods or targets) and values.get(
+                            "sport"
+                        ) in RUN_SPORTS:
+                            self.writer.replace_activity_workout_methods(
+                                activity_id,
+                                sorted(methods),
+                                source=SOURCE,
+                            )
+                            self.writer.replace_activity_workout_targets(
+                                activity_id,
+                                sorted(targets),
+                                source=SOURCE,
+                            )
                         apply_stored_enrichment(
                             self.connection,
                             source_record_id,

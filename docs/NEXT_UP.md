@@ -97,9 +97,10 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 
 **2b · A usable dashboard without Intervals** (the Runalyze+Garmin profile)
 
-- **49 Runalyze workout type → canonical sets** — `Jogging`, `SubThreshold`
-  (always `intervals` + `subthreshold`), `Long Slow Distance`, with an
-  unmapped-type audit. This is what gives a name-less athlete categories.
+- **49 Runalyze workout type → canonical sets (done 2026-11-24)** — Jogging,
+  Long Slow Distance and SubThreshold map to canonical sets, applied on create
+  and as a gap-filler; `runalyze types` audits every stored type. This is what
+  gives a name-less athlete categories.
 - **51 typed reps without Intervals** — Garmin workout steps if the FIT has
   them, otherwise derived WORK/RECOVERY from laps, gated by the source type;
   marked derived, never overwriting Intervals reps.
@@ -1084,41 +1085,24 @@ reports item; 28 is the recurring cleanup.
       losing value, a single-source activity stays short, and the CLI and the
       dashboard print the same list.
 
-49. **Runalyze workout type → canonical sets** (import + maintenance; phase 2b,
-    first). Runalyze's activity payload carries a `type` object
-    with `name`, `abbreviation`, `quality_session` and a reference `avg_hr` —
-    per activity, no parsing. Measured on the athlete-2 slice (30 runs):
-    `Jogging`/`JOG` ×20 (`quality_session: false`), `SubThreshold`/`ST` ×8
-    (true), `Long Slow Distance`/`LSD` ×2 (true); rides and other sports carry
-    no type. It is the one classification signal a name-less, RPE-less
-    athlete has.
-    - **Mapping**: a code-level module beside `hobbyjogging_import.sheet_codes`
-      (`runalyze_types`), applied on create and as a gap-filler for matched
-      activities with no sets, the same way `workout_sets_current` treats the
-      sheet. Manual and existing source sets always win; an unknown type is
-      listed, never guessed.
-    - **Decision (settled)**: Jogging → `continuous` + `base` (non-quality);
-      Long Slow Distance → `long_run` (quality); SubThreshold → `intervals` +
-      `subthreshold`, **always** — the athlete uses the type for structured
-      work, so the method should say reps were intended even when no rep data
-      exists. The display kind is `quality/intervals/other` until reps arrive,
-      and the subT rep-length buckets stay empty without them.
-      `quality_session` is a cross-check, not an override: quality is derived.
-    - **Audit**: print the distinct stored types with counts and the unmapped
-      ones, so a new Runalyze type is visible before it silently classifies
-      nothing.
-    - **Not this item**: rep structure and laps. The type says
-      "SubThreshold", not "6×3′". Runalyze's payload does carry `laps` (30 of
-      40 in the probe), but each is only `{distance, duration, intensity:
-      'unknown'}` — auto splits or device laps with no WORK/RECOVERY type, HR
-      or pace. Laps belong to `activity_laps` (the segment table); typed
-      intervals come from Intervals.icu, or are derived from those laps by
-      item 51. A Runalyze interval importer is not planned. If no FIT archive
-      exists, importing the Runalyze laps as `activity_laps` is an acceptable
-      fallback; it never creates work reps.
-    - **Acceptance**: athlete 2's Jogging runs read easy, LSD long runs and
-      SubThreshold quality; a re-run is a no-op; an unmapped type is reported;
-      the current athlete's Intervals/sheet sets are untouched.
+49. **Runalyze workout type → canonical sets** (import + maintenance; done
+    2026-11-24). Runalyze's `type` object is the one classification signal a
+    name-less, RPE-less athlete has.
+    - **Done**: `hobbyjogging_import.runalyze_types` maps Jogging → `continuous`
+      + `base`, Long Slow Distance → `long_run` + `base`, SubThreshold →
+      `intervals` + `subthreshold`, by name or abbreviation and case/separator
+      insensitive. It is applied on create and as a gap-filler in
+      `workout_sets_current` when the classifier and sheet have nothing;
+      manual and existing source sets always win. Only run sports are mapped.
+    - **Audit**: `hobbyjogging-import runalyze types` prints the distinct
+      stored types with counts and the unmapped ones. On this athlete's log it
+      finds `Easy Run`/`JOG` mapped and eight unmapped types; the athlete-2
+      slice (`Jogging`, `SubThreshold`, `Long Slow Distance`) maps completely.
+    - **Not this item**: rep structure and laps (item 51); Runalyze's laps are
+      untyped auto splits and never create work reps.
+    - **Acceptance**: Jogging runs read easy, LSD long runs and SubThreshold
+      quality; a re-run is a no-op; unmapped types are reported; the current
+      athlete's Intervals/sheet sets are untouched.
 
 50. **Manual thresholds and local zone configs** (core + import + maintenance +
     reports; phase 2b, small write surface). Zones, the derived VO2max and

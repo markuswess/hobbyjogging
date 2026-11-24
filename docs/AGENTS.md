@@ -197,6 +197,9 @@ Cross-package changes must leave all four suites green.
   intervals, fartlek, long_run, progression, race, and the quality targets
   are quality; strides never make a session quality by itself. A tempo run is
   `continuous` with a `threshold` target (there is no `tempo` method).
+  Runalyze's activity type is a gap-filler only — Jogging, Long Slow Distance
+  and SubThreshold map in `runalyze_types`, existing sets win, and unknown
+  types are audited, never guessed.
 - Reports use plotly for charts and never pandas.
 
 ## Metrics

@@ -425,6 +425,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="report what would change without writing",
     )
 
+    runalyze_types = runalyze_sub.add_parser(
+        "types",
+        help="audit the stored Runalyze workout types and their mapping",
+    )
+    runalyze_types.add_argument("--database", type=Path)
+
     runalyze_races = runalyze_sub.add_parser(
         "races",
         help="import official race results from Runalyze",

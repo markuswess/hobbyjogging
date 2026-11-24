@@ -22,6 +22,7 @@ from hobbyjogging_import.quality import (
     WORKOUT_CLASSIFICATION,
     review_fingerprint,
 )
+from hobbyjogging_import.runalyze_types import classification_for_payload
 from hobbyjogging_import.sheet_codes import classification_for_sheet_code
 
 from .context import TaskContext
@@ -120,6 +121,38 @@ def sheet_proposal(
     code = str(values.get("Trainigstyp") or "")
     methods, targets, tags = classification_for_sheet_code(code)
     return Proposal(methods, targets), row["id"], tags, code
+
+
+def runalyze_proposal(
+    connection: sqlite3.Connection,
+    activity_id: str,
+) -> Proposal | None:
+    """Return Runalyze's type proposal for one linked activity, if any."""
+    row = connection.execute(
+        """
+        SELECT sr.payload_json
+        FROM activity_sources als
+        JOIN source_records sr ON sr.id = als.source_record_id
+        WHERE als.activity_id = ?
+          AND sr.source = 'runalyze'
+          AND sr.record_type = 'activity'
+        ORDER BY sr.id DESC
+        LIMIT 1
+        """,
+        (activity_id,),
+    ).fetchone()
+    if row is None:
+        return None
+
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+    except (TypeError, ValueError):
+        return None
+
+    methods, targets = classification_for_payload(payload)
+    if not methods and not targets:
+        return None
+    return Proposal(methods, targets)
 
 
 def disagrees(classifier: Proposal, sheet: Proposal) -> bool:

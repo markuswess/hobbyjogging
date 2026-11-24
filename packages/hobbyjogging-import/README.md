@@ -475,6 +475,27 @@ Runalyze races: 37 race results
   unmatched: 0
 ```
 
+### Workout types
+
+Runalyze's own activity type is a classification signal when the athlete has
+no Intervals sets, name or RPE. The mapping is small and evidence-based:
+
+| Runalyze type | canonical sets |
+|---|---|
+| `Jogging` / `JOG` | `continuous` + `base` |
+| `Long Slow Distance` / `LSD` | `long_run` + `base` |
+| `SubThreshold` / `ST` | `intervals` + `subthreshold` |
+
+It is written on create and used by `workout_sets_current` only when the
+classifier and the sheet propose nothing; existing sets always win. Audit the
+stored types, and see which ones are unmapped, without writing:
+
+```bash
+uv run --env-file .env hobbyjogging-import runalyze types
+```
+
+An unknown type is listed, never guessed.
+
 ## Strava
 
 The bulk export is a ZIP or an extracted directory. It needs no API app,
