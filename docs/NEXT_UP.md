@@ -64,9 +64,10 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 **2a · Install**
 
 - **`doctor` and `init`** — create and migrate a fresh DB explicitly; `doctor`
-  checks `uv`, the DB path, schema version, FIT dir, each credential and its
-  age, pending data migrations, source staleness and the sources file, and
-  prints the next command.
+  checks `uv`, the DB path, schema version, FIT dir, that each credential is
+  present, a bounded liveness probe where the API allows one (Garmin token
+  exchange, Runalyze ping), pending data migrations, source staleness and the
+  sources file, and prints the next command.
 - **`sync.sh` skips an unconfigured source** instead of failing on an absent
   credential, so a missing credential is never a failed sync (item 44 covers
   the rest).
@@ -408,7 +409,7 @@ reports item; 28 is the recurring cleanup.
       schema bump and milestone.
     - **Not versioned**: experiments, report output, docs.
     - **Checklist instead of tests**: suites green, changelog written, DB
-      backed up before the migration, tag pushed.
+      backed up before the migration, tag created locally (the user pushes).
 
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
@@ -430,9 +431,11 @@ reports item; 28 is the recurring cleanup.
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
             a no-op.
       - [ ] `doctor` checks `uv`, the DB path and writability, the schema
-            version, the FIT directory, the credentials (including the Garmin
-            key's age), pending data migrations, whether a configured source
-            has gone stale, and the sources file, and names what is missing.
+            version, the FIT directory, that each credential is present, a
+            bounded liveness probe where the API allows one (Garmin token
+            exchange, Runalyze ping), pending data migrations, whether a
+            configured source has gone stale, and the sources file, and names
+            what is missing.
       - [ ] `sources.toml` alone selects the sources: Intervals and the sheet
             disabled, Runalyze `review`, Strava `create` or `ignore`.
       - [ ] `sync.sh` skips an unconfigured source instead of failing on an
