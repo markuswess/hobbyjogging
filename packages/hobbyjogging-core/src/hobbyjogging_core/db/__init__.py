@@ -1,5 +1,7 @@
 """Database schema, migrations, and connections."""
 
+from __future__ import annotations
+
 from .connection import connect, default_database_path, open_database
 from .migrations import SCHEMA_VERSION, migrate
 from .repository import TrainingRepository

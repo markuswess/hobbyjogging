@@ -44,7 +44,7 @@ weekly: <https://markuswess.github.io/hobbyjogging/>.
 
 ## Quick start
 
-Requirements: Linux or macOS, `git`, and [`uv`](https://docs.astral.sh/uv/).
+Requirements: Linux or macOS, `git`, Python 3.12+ (or [`uv`](https://docs.astral.sh/uv/), which installs it).
 Nothing else is installed globally.
 
 Prove the install before connecting any account — this builds a synthetic
@@ -121,7 +121,7 @@ lab metrics land whenever they are ready.
 `docs/ARCHITECTURE.md` holds the design and the rules,
 `docs/SOURCE_NOTES.md` the source-specific field quirks, `docs/METRICS.md` the
 metric cards, and `docs/AGENTS.md` the working conventions. Experiments run
-through `./lab.sh` and the scripts in `experiments/`.
+through `./lab.sh` and the private notebook at `$HOBBYJOGGING_LAB_DIR`.
 
 ## Tests
 

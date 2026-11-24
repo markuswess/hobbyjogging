@@ -5,6 +5,8 @@ this protocol and returns canonical model objects. Analysis, charts, and
 reports should depend only on this interface.
 """
 
+from __future__ import annotations
+
 from datetime import date
 from typing import Protocol
 

@@ -21,6 +21,7 @@ from ..analysis import (
     yearly_coverage,
 )
 from ..command_support import activity_start, resting_hr_lookup
+from ..defaults import ANALYSIS_DAYS, NSA_DAYS, RACE_DAYS, RECOVERY_DAYS
 from ..format import format_event
 from ..html import markdown_to_html
 from ..model import AverageWindows
@@ -67,11 +68,6 @@ from ..zone_groups import (
 )
 
 MARKER = ".hobbyjogging-dashboard"
-RACE_DAYS = 180
-# The Recovery and Health tab covers two years for its plots and reports.
-RECOVERY_DAYS = 730
-ANALYSIS_DAYS = 731
-NSA_DAYS = 365
 
 
 def resolve_output_dir(output: str | Path | None = None) -> Path:

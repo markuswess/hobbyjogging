@@ -1,5 +1,7 @@
 """Small CLI helpers shared by the report commands."""
 
+from __future__ import annotations
+
 import argparse
 from datetime import date, timedelta
 

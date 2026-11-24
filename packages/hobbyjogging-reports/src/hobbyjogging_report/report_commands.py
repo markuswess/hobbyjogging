@@ -1,5 +1,7 @@
 """Report command handlers."""
 
+from __future__ import annotations
+
 import sys
 
 from .activity_list import activities_report

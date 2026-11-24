@@ -28,8 +28,9 @@ Schema: **24**. Compatibility: requires schema ≥ 1, migrates to 24.
   newest unimported Strava export, the maintenance recomputes, the review scan
   and the dashboard.
 - `./demo.sh` remains the zero-credential first run; `.env.example`, an MIT
-  licence and a pull-request workflow (four suites plus the demo build) are in
-  place.
+  licence, a pull-request workflow (four suites plus the demo build) and
+  Python 3.12+ are in place. The athlete-tuned numbers live in
+  `hobbyjogging_report/defaults.py`.
 
 ### Schema and data tasks
 

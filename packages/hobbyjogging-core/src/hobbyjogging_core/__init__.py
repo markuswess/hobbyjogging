@@ -1,5 +1,7 @@
 """Canonical training model and shared database helpers."""
 
+from __future__ import annotations
+
 from .classify import (
     CROSS_TRAINING,
     UNKNOWN,

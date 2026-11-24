@@ -697,10 +697,17 @@ Charts consume prepared series and return figures; they never read the
 database or parse report text. Adding a report means adding analysis plus a
 renderer, not a new data path.
 
-New metrics start in the lab — `./lab.sh` for an interactive session and
-`experiments/` for a runnable script — and are promoted through the gate in
+New metrics start in the lab — `./lab.sh` for an interactive session and the
+private notebook (`$HOBBYJOGGING_LAB_DIR`, default `experiments/`) for a
+runnable script — and are promoted through the gate in
 [METRICS.md](METRICS.md): cheap exploration, then a card, then `analysis/`
 plus a renderer, and only then the dashboard.
+
+The athlete-tuned numbers — the quality RPE, the long-run and efficiency
+bands, the subT buckets, the conflict tolerances, the compare window and the
+dashboard lookbacks — live in
+[`hobbyjogging_report/defaults.py`](../packages/hobbyjogging-reports/src/hobbyjogging_report/defaults.py)
+with the evidence in the metric cards. They are defaults, not laws.
 
 ### Dashboard
 

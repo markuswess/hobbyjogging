@@ -1,5 +1,7 @@
 """Data source adapters."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from hobbyjogging_core.datasource import DataSource

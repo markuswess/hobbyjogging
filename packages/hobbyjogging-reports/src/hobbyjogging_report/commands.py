@@ -1,5 +1,7 @@
 """Command registry and per-command help."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Callable

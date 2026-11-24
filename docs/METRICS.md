@@ -5,17 +5,18 @@ baseline and its known failure modes. Cards are deliberately short.
 
 ## Promotion gate
 
-An idea starts in the lab (`./lab.sh`, `experiments/`) and is promoted only
-when all four hold:
+An idea starts in the lab (`./lab.sh`, the private notebook at
+`$HOBBYJOGGING_LAB_DIR`) and is promoted only when all four hold:
 
 1. it answers a question that comes up repeatedly;
 2. it is stable under known distortions (illness, heat, sparse data);
 3. it beats the naive version on the real data;
 4. it will be looked at weekly.
 
-The candidate list lives in `experiments/README.md`; this file records the
-promoted and rejected cards and the reference catalogue of everything else
-the reports compute.
+The candidate list lives in the private notebook (`$HOBBYJOGGING_LAB_DIR`);
+this file records the promoted and rejected cards and the reference catalogue
+of everything else the reports compute. The athlete-tuned numbers behind the
+cards live in `hobbyjogging_report/defaults.py`.
 
 Promotion is staged: pure function in `analysis/` with tests → cheapest
 renderer (a CLI report or one column) → live with it for a week → charts →
@@ -68,7 +69,7 @@ dashboard. The dashboard is the last step, never the first.
   at 2 h); the model cannot separate cardiac drift from heat, dehydration and
   fatigue, so the correction factor is **parked** until streams or a
   heat/fatigue control can shrink the uncertainty below the effect.
-  `experiments/efficiency_duration.py`. Reports act on this directly: the
+  `laufen_private/lab/efficiency_duration.py`. Reports act on this directly: the
   steady aggregates use a fixed **40–75 min** band, and a run counts as steady
   only when it is non-quality (unknown/unclassified runs count; intervals,
   races, long runs, progressions and fartlek do not). The floor sits at 40 min
@@ -105,7 +106,7 @@ dashboard. The dashboard is the last step, never the first.
   stay in the scatter.
 - **Informs**: whether the pace/HR cloud behaves like a single efficiency
   value, and whether aerobic efficiency moved between the two periods.
-- **Validation**: `experiments/hr_efficiency_line.py`, 1,262 steady runs
+- **Validation**: `laufen_private/lab/hr_efficiency_line.py`, 1,262 steady runs
   (2022-09 .. 2026-11, median RHR 51): regression R² 0.676 / RMSE 7.76 bpm;
   efficiency line R² 0.725 / RMSE 7.14 (aerobic range only: 8.11 vs 7.52).
   Efficiency is flat across the first three speed quartiles (2.41–2.44,
@@ -133,7 +134,7 @@ dashboard. The dashboard is the last step, never the first.
   whether a cycling-heavy block should count toward running fitness. It does
   not: cross load is context, so a hard ride week must not read as a running
   build.
-- **Validation**: `experiments/cross_training_load.py`, 2022-09..2026-11.
+- **Validation**: `laufen_private/lab/cross_training_load.py`, 2022-09..2026-11.
   Cross load is 9–26 % of annual load. 42-day running/cross correlations with
   steady efficiency are +0.04 / −0.06 raw and +0.05 / −0.04 year-adjusted;
   adding cross load gives R² 0.074 with a negative coefficient and a bootstrap
@@ -168,7 +169,7 @@ dashboard. The dashboard is the last step, never the first.
 - **Informs**: whether aerobic capacity is moving, independent of which watch
   recorded the run. It replaces the Garmin-only overview line, which mixes
   device generations and per-sport estimates.
-- **Validation**: `experiments/vo2max_estimates.py`, 2019–2026. All runs
+- **Validation**: `laufen_private/lab/vo2max_estimates.py`, 2019–2026. All runs
   n=2,821, mean 59.3: r +0.95 against Runalyze and 42-day r +0.76 against
   Garmin; steady 40–75 n=1,092, mean 59.7: +0.91 / +0.67. The device split
   explains the weaker whole-period fit — FR645 (n=888) raw r +0.26 and 42-day
@@ -245,4 +246,4 @@ One line per rejected idea — name, reason, date — so it is not re-litigated.
   correlation with quarter n was −0.19, not positive). It is a level shift,
   not extra signal. Evidence:
   `git show 143267d:experiments/efficiency_frontier.py` and
-  `experiments/README.md`.
+  the private notebook.

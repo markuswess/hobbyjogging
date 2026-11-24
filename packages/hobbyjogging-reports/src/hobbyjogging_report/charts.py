@@ -37,6 +37,11 @@ from .analysis import (
     riegel_time,
     week_start,
 )
+from .defaults import (
+    COMPARE_COLOR_ANCHOR_YEAR,
+    COMPARE_VISIBLE_YEARS,
+    PACE_HR_SPEED_RANGE,
+)
 from .format import fmt_clock, fmt_time, format_pace, format_weather
 from .model import (
     AverageWindows,
@@ -132,9 +137,6 @@ SUBT_COLORS = {
 }
 CHART_CATEGORIES = (*SUBT_CATEGORIES, "lt1")
 WEEK_MS = 7 * 24 * 60 * 60 * 1000
-# The pace/HR scatters share one linear-speed x-axis; fits run across it.
-PACE_HR_SPEED_RANGE = (2.0, 5.2)
-COMPARE_VISIBLE_YEARS = 5
 
 COMPARE_COLORS = (
     "#1f77b4",
@@ -158,9 +160,6 @@ COMPARE_COLORS = (
     "#dbdb8d",
     "#9edae5",
 )
-
-
-COMPARE_COLOR_ANCHOR_YEAR = 2026
 
 
 def compare_color(year: int) -> str:

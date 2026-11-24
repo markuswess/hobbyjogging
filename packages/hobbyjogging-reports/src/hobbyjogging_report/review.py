@@ -5,6 +5,8 @@ model. Reports exclude them by default so questionable data never silently
 changes training numbers; the excluded count is surfaced as a report note.
 """
 
+from __future__ import annotations
+
 from hobbyjogging_core.model import Activity
 
 

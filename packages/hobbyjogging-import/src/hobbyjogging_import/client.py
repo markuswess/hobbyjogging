@@ -1,5 +1,7 @@
 """Minimal Intervals.icu API client used by the importer."""
 
+from __future__ import annotations
+
 import os
 from datetime import date
 from typing import Protocol

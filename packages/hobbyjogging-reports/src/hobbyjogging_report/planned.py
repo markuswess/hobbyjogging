@@ -1,5 +1,7 @@
 """Upcoming planned workouts report."""
 
+from __future__ import annotations
+
 from datetime import date, timedelta
 
 from hobbyjogging_core.datasource import DataSource

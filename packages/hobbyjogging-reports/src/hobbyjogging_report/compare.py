@@ -1,5 +1,7 @@
 """Yearly and monthly comparison report."""
 
+from __future__ import annotations
+
 from datetime import date
 
 from hobbyjogging_core.datasource import DataSource

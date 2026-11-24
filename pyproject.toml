@@ -2,7 +2,7 @@
 name = "hobbyjogging"
 version = "0.1.0"
 description = "Training data, imports, and reports"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "hobbyjogging-core",
     "hobbyjogging-import",

@@ -86,11 +86,14 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   `LICENSE`.
 - **22 release versioning** — "which code built this DB" must be answerable for
   someone else's install.
-- **29 lab detach** — a clone must not ship this athlete's findings; last,
-  after the install path works.
-- **Defaults consolidation and the Python floor** — the remaining personal
-  constants in one documented module; `requires-python` 3.12 once the suites
-  pass there.
+- **29 lab detach (done 2026-11-24)** — the scripts and notebook moved to
+  `~/projects/laufen_private/lab/`; the bench rules, template, `lab.sh` and
+  the Lab tab stay, and a demo build never reads the private directory.
+- **Defaults consolidation and the Python floor (done 2026-11-24)** — the
+  athlete-tuned numbers live in `hobbyjogging_report/defaults.py` with the
+  conflict tolerances re-exported from `core.import_rules`; `requires-python`
+  is `>=3.12`, all four suites pass there, and the pull-request workflow runs
+  on 3.12.
 
 **2b · A usable dashboard without Intervals** (the Runalyze+Garmin profile)
 
@@ -620,35 +623,29 @@ reports item; 28 is the recurring cleanup.
       has outgrown its purpose without being split or trimmed.
 
 29. **Detach the lab into `laufen_private`, keep the bench** (root + reports;
-    phase 2, last). The lab's scripts and notebook carry personal research and
-    findings and should not live in the project repo — but the bench must stay
-    so another user can run their own.
-    - **Split**: the bench ships (the rules, `experiments/template.py`,
-      `lab.sh`, the gate in `docs/METRICS.md`, the Lab tab); the log moves to
-      `~/projects/laufen_private/lab/` — the existing private repo, not a
-      separate one; create the directory — with the scripts, the candidate
-      table, the statuses and the rejected findings.
-    - **Env var rename**: `HOBBYJOGGING_LAB_DIR` currently means the output
-      directory (`data/lab`) in `shell.py`; rename that to
-      `HOBBYJOGGING_LAB_OUTPUT_DIR` and give `HOBBYJOGGING_LAB_DIR` the lab
-      itself, defaulting to `experiments/` so a fresh clone works out of the
-      box.
-    - **Dashboard**: read `$HOBBYJOGGING_LAB_DIR` for local builds; demo builds
-      never read it and render the bench guide only (see the reports bug).
-    - **Evidence split**: `docs/METRICS.md` keeps the contract (definition,
-      baseline, thresholds) and the aggregate statistics; the personal
-      narrative — illness dates, resting-HR values, run counts tied to events —
-      moves to the lab repo and is referenced by name.
-    - **Move checklist**: create `laufen_private/lab/`, move the scripts and the
-      candidate table, split `experiments/README.md` into bench rules and
-      notebook, then update `lab.sh`, the lab section of `AGENTS.md`, the
-      dashboard and the `.env` example.
-    - **Risks**: two repos to clone on a new machine; `lab.sh` must fail
-      clearly when the lab dir is missing; CI must never need the private repo;
-      the moved scripts lose their in-repo history.
-    - **Related**: item 23 (this is its lab case), item 26 (demo upkeep) and
-      item 25 — the coaching notes will live in the same private repo, so the
-      dashboard reads both from there.
+    done 2026-11-24). The lab's scripts and notebook carry personal research
+    and findings and no longer live in the project repo; the bench ships so
+    another user can run their own.
+    - **Split (done)**: `experiments/` keeps the rules and `template.py`;
+      `lab.sh`, the gate in `docs/METRICS.md` and the Lab tab stay. The 19
+      scripts and the candidate table/notebook moved to
+      `~/projects/laufen_private/lab/` (the existing private repo).
+    - **Env vars (done)**: `shell.py` writes plots to
+      `HOBBYJOGGING_LAB_OUTPUT_DIR` (default `data/lab`);
+      `HOBBYJOGGING_LAB_DIR` now names the notebook and defaults to
+      `experiments/`, so a fresh clone still works.
+    - **Dashboard (done)**: a local build renders the shipped bench rules plus
+      the notebook and scripts from `$HOBBYJOGGING_LAB_DIR`; a demo build never
+      reads that directory and shows the bench guide only.
+    - **Evidence split (done)**: `docs/METRICS.md` keeps the contract, the
+      baselines and the aggregate statistics; the private narrative is the
+      notebook, referenced by name.
+    - **Risks accepted**: two repos to clone on a new machine; `lab.sh` fails
+      clearly when an explicit lab dir is missing; CI never needs the private
+      repo; the moved scripts keep their content but not their in-repo
+      history.
+    - **Related**: item 23 (its lab case), item 26 (demo upkeep) and item 25 —
+      the coaching notes will live in the same private repo.
 
 31. **Efficiency over all activities** (lab first, then reports and the card;
     any time after the gate). The steady aggregate stops at 75 min (`STEADY_DURATION_BAND`), so a long run

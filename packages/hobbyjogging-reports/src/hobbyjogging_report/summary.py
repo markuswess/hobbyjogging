@@ -1,5 +1,7 @@
 """Training summaries used by period reports."""
 
+from __future__ import annotations
+
 from hobbyjogging_core.model import Activity, WellnessDay
 
 from .analysis import RUN_TYPES

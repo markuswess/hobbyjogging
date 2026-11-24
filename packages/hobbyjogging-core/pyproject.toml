@@ -2,7 +2,7 @@
 name = "hobbyjogging-core"
 version = "0.1.0"
 description = "Canonical training model, database schema, and shared helpers"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,5 +1,7 @@
 """Schema evolution and data maintenance for the training database."""
 
+from __future__ import annotations
+
 from . import backfills, recompute  # noqa: F401 - importing registers the tasks
 from .context import Scope, TaskContext
 from .registry import Task, all_tasks, get_task, task

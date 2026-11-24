@@ -19,7 +19,7 @@ from hobbyjogging_core.model import (
 )
 from hobbyjogging_report.dashboard import build_dashboard, resolve_output_dir
 from hobbyjogging_report.dashboard.analysis import build_analysis_section
-from hobbyjogging_report.dashboard.lab import _bench_guide, build_lab_section
+from hobbyjogging_report.dashboard.lab import build_lab_section
 from hobbyjogging_report.links import ActivityLinks
 from hobbyjogging_report.overview import overview_ewma, planned_overview
 from hobbyjogging_report.zone_groups import (
@@ -1103,21 +1103,25 @@ class DashboardEwmaTests(unittest.TestCase):
 
 class LabSectionTests(unittest.TestCase):
 
-    def test_bench_guide_stops_at_the_idea_table(self):
-        text = (
-            "# Experiments\n\nRules.\n\n"
-            "## Lab session ground rules\n\n- one\n\n"
-            "## Ideas\n\n| Idea |\n"
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.lab = Path(self.tmp.name)
+        (self.lab / "README.md").write_text(
+            "# Private notebook\n\n## Ideas\n\n| Idea |\n\n"
+            "### Parked notes\n\nPersonal detail.\n",
+            encoding="utf-8",
+        )
+        (self.lab / "experiment_one.py").write_text(
+            '"""Experiment one summary."""\n',
+            encoding="utf-8",
         )
 
-        self.assertEqual(
-            "# Experiments\n\nRules.\n\n"
-            "## Lab session ground rules\n\n- one\n",
-            _bench_guide(text),
+    def _env(self):
+        return patch.dict(
+            os.environ,
+            {"HOBBYJOGGING_LAB_DIR": str(self.lab)},
         )
-
-    def test_bench_guide_is_empty_without_the_idea_table(self):
-        self.assertEqual("", _bench_guide("# Experiments\n"))
 
     def test_demo_section_shows_the_bench_guide_only(self):
         section = build_lab_section(demo=True)
@@ -1129,19 +1133,40 @@ class LabSectionTests(unittest.TestCase):
         self.assertNotIn(">Ideas<", section.readme_html)
         self.assertNotIn("Parked notes", section.readme_html)
 
+    def test_demo_never_reads_the_private_lab(self):
+        with self._env():
+            section = build_lab_section(demo=True)
+
+        self.assertNotIn("Private notebook", section.readme_html)
+        self.assertNotIn("experiment_one.py", section.readme_html)
+
     def test_demo_guide_does_not_link_to_the_registry(self):
         section = build_lab_section(demo=True)
 
         self.assertNotIn("../docs/", section.readme_html)
         self.assertIn("<code>docs/METRICS.md</code>", section.readme_html)
 
-    def test_full_section_keeps_the_notebook_and_registry(self):
-        section = build_lab_section()
+    def test_full_section_reads_the_private_notebook(self):
+        with self._env():
+            section = build_lab_section()
 
         self.assertFalse(section.demo)
+        self.assertIn("Lab session ground rules", section.readme_html)
+        self.assertIn("Private notebook", section.readme_html)
         self.assertIn(">Ideas<", section.readme_html)
-        self.assertIn("Experiment", section.scripts_html)
+        self.assertIn("experiment_one", section.scripts_html)
+        self.assertIn("Experiment one summary.", section.scripts_html)
         self.assertIn("Promoted", section.metrics_html)
+
+    def test_a_missing_lab_directory_is_reported(self):
+        with patch.dict(
+            os.environ,
+            {"HOBBYJOGGING_LAB_DIR": str(self.lab / "missing")},
+        ):
+            section = build_lab_section()
+
+        self.assertIn("Lab session ground rules", section.readme_html)
+        self.assertIn("No lab directory", section.scripts_html)
 
 
 if __name__ == "__main__":

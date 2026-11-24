@@ -1,5 +1,7 @@
 """Registered backfills. Importing this package registers every task."""
 
+from __future__ import annotations
+
 from . import (
     activity_device_v1,
     activity_routes_v1,

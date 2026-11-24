@@ -4,6 +4,8 @@ Dates and timestamps are stored as ISO-8601 text. Durations are seconds,
 distances are meters, and booleans are integers (0/1).
 """
 
+from __future__ import annotations
+
 INITIAL_SCHEMA_SQL = """
 CREATE TABLE import_runs (
     id INTEGER PRIMARY KEY,

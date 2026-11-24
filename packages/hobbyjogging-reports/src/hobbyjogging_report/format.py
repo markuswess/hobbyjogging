@@ -4,6 +4,8 @@ All helpers take canonical model objects (see ``hobbyjogging_core.model``), so
 reports work with any ``DataSource`` implementation.
 """
 
+from __future__ import annotations
+
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import (
     Activity,

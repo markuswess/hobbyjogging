@@ -1,5 +1,7 @@
 """Review workflow CLI: list, inspect, and resolve import review items."""
 
+from __future__ import annotations
+
 import json
 
 from hobbyjogging_core import TrainingWriter, open_database

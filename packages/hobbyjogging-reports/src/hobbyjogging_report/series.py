@@ -4,6 +4,8 @@ These functions operate on dates and numbers only. They know nothing about
 activities, data sources, or plotting.
 """
 
+from __future__ import annotations
+
 import math
 from datetime import date, timedelta
 

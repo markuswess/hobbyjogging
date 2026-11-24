@@ -18,20 +18,21 @@ The project runs four kinds of sessions:
   fixes, tests, and package docs. One session per package; `hobbyjogging-core`
   has no session of its own and is handled by the root session.
 - **Lab** — exploring metrics and analysis before they enter a package:
-  `./lab.sh` sessions, `experiments/` scripts, and the candidate list in
-  `experiments/README.md`. The lab may read the whole repo and write
-  experiments and lab docs, but it does not change package code; promotion
-  happens in the package session once an idea passes the gate in
-  `docs/METRICS.md` (see `docs/ARCHITECTURE.md`). The root session writes and
-  commits the promoted/rejected cards in `docs/METRICS.md`.
+  `./lab.sh` sessions and the private notebook at `$HOBBYJOGGING_LAB_DIR`
+  (default `experiments/`, which ships only the bench rules and the template).
+  The lab may read the whole repo and write the notebook, but it does not
+  change package code; promotion happens in the package session once an idea
+  passes the gate in `docs/METRICS.md` (see `docs/ARCHITECTURE.md`). The root
+  session writes and commits the promoted/rejected cards in `docs/METRICS.md`.
 
 Rules:
 
 - If a package change needs a core API or schema change, settle or implement
   the core part in a root session first, then consume it in the package.
 - Sessions may read the whole repo; only *changes* stay in their lane.
-- `experiments/` belongs to the lab; package sessions consume what the lab
-  promoted rather than writing new experiments.
+- `$HOBBYJOGGING_LAB_DIR` belongs to the lab; package sessions consume what the
+  lab promoted rather than writing new experiments. The public repo ships the
+  bench (`experiments/README.md`, `template.py`), never the notebook.
 - Commit scope follows session scope. Never stage unrelated in-progress edits
   (check `git status` before committing).
 - Do not push; the user pushes manually.
@@ -200,8 +201,8 @@ Cross-package changes must leave all four suites green.
 
 ## Metrics
 
-- New metrics start in the lab (`./lab.sh`, `experiments/`) and are promoted
-  only through the gate in `docs/METRICS.md`.
+- New metrics start in the lab (`./lab.sh`, the private notebook) and are
+  promoted only through the gate in `docs/METRICS.md`.
 - Every promoted metric keeps a card there; definition, baseline and caveats
   stay in sync with the code.
 - The dashboard is the last place a metric lands, never the first.

@@ -4,6 +4,8 @@ Adapters translate raw payloads from APIs, files, or the local database into
 these types. Analysis, charts, and reports depend only on this model.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import date
 

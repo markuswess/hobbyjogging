@@ -4,6 +4,8 @@ Functions take model objects (see ``hobbyjogging_core.model``) and return
 plain Python structures. They never touch the API, a database, or plotting.
 """
 
+from __future__ import annotations
+
 from .averages import (
     AVERAGE_WARMUP_FACTOR,
     DEFAULT_AVERAGE_WINDOWS,

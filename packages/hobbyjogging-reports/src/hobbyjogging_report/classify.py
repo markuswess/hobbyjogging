@@ -5,6 +5,8 @@ keeps the report-facing aggregation (category stats and their ordering) and
 re-exports the classifier so existing imports keep working.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from hobbyjogging_core.classify import (

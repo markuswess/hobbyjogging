@@ -4,6 +4,8 @@ The chart builders themselves live in :mod:`hobbyjogging_report.charts` so the
 CLI and the dashboard render exactly the same figure.
 """
 
+from __future__ import annotations
+
 from plotly.offline import get_plotlyjs
 
 

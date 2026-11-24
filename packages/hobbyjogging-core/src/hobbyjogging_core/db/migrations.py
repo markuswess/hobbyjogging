@@ -1,5 +1,7 @@
 """Ordered schema migrations."""
 
+from __future__ import annotations
+
 import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL

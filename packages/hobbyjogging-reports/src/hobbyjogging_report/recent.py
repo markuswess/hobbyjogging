@@ -1,5 +1,7 @@
 """Widening-lookback search shared by session and activity selection."""
 
+from __future__ import annotations
+
 from datetime import date, timedelta
 from typing import Callable
 

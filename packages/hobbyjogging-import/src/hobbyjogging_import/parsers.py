@@ -1,5 +1,7 @@
 """Argument parser construction for the hobbyjogging import CLI."""
 
+from __future__ import annotations
+
 import argparse
 from datetime import date
 from pathlib import Path

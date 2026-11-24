@@ -1,5 +1,7 @@
 """Read-side access to the canonical database."""
 
+from __future__ import annotations
+
 import json
 import sqlite3
 from collections import defaultdict

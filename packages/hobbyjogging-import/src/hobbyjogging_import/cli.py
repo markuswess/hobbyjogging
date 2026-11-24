@@ -1,5 +1,7 @@
 """Command-line interface for hobbyjogging imports."""
 
+from __future__ import annotations
+
 import argparse
 import json
 from datetime import date, timedelta

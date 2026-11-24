@@ -21,8 +21,8 @@ import plotly.graph_objects as go
 from .analysis import RUN_TYPES
 from .sources import create_source
 
-LAB_DIR_ENV = "HOBBYJOGGING_LAB_DIR"
-DEFAULT_LAB_DIR = Path("data/lab")
+LAB_OUTPUT_DIR_ENV = "HOBBYJOGGING_LAB_OUTPUT_DIR"
+DEFAULT_LAB_OUTPUT_DIR = Path("data/lab")
 
 BANNER = """\
 hobbyjogging lab
@@ -40,10 +40,16 @@ Promote only what survives: docs/METRICS.md.
 """
 
 
-def lab_dir() -> Path:
-    """Directory for throwaway plots (``HOBBYJOGGING_LAB_DIR`` overrides)."""
-    value = os.environ.get(LAB_DIR_ENV)
-    directory = Path(value).expanduser() if value else DEFAULT_LAB_DIR
+def lab_output_dir() -> Path:
+    """Directory for throwaway plots.
+
+    ``HOBBYJOGGING_LAB_OUTPUT_DIR`` overrides the default ``data/lab``;
+    ``HOBBYJOGGING_LAB_DIR`` is the notebook itself, not the output.
+    """
+    value = os.environ.get(LAB_OUTPUT_DIR_ENV)
+    directory = (
+        Path(value).expanduser() if value else DEFAULT_LAB_OUTPUT_DIR
+    )
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 
@@ -124,7 +130,7 @@ def table(
 
 def save(figure, name: str = "plot") -> Path:
     """Write a plotly figure to ``data/lab/<name>.png`` and return the path."""
-    path = lab_dir() / f"{name}.png"
+    path = lab_output_dir() / f"{name}.png"
     figure.write_image(str(path), scale=2)
     print(path)
     return path

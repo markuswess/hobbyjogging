@@ -1,5 +1,7 @@
 """Intervals.icu importer."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import sqlite3

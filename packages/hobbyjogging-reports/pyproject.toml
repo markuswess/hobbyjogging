@@ -3,7 +3,7 @@ name = "hobbyjogging-reports"
 version = "0.1.0"
 description = "Training reports, analysis, and charts"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "hobbyjogging-core",
     # kaleido 0.2.x bundles its Chromium; kaleido 1.x needs system Chrome.

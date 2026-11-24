@@ -6,6 +6,8 @@ code blocks, and pipe tables. The output is for terminal display only;
 clipboard data should always be the original Markdown.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import sys
