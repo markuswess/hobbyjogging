@@ -57,7 +57,15 @@ def _activity_lines(
     lines = []
 
     for activity in sorted(activities, key=activity_sort_key):
-        heading = f"{prefix}{sport_label(activity)} {activity.name}"
+        distance = (
+            f"{activity.distance_m / 1000:.2f} km"
+            if activity.distance_m
+            else ""
+        )
+        heading = (
+            f"{prefix}{sport_label(activity)} "
+            f"{activity.name or distance}"
+        ).strip()
         lines.extend(
             format_activity(
                 source,

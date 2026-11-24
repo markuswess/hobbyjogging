@@ -9,6 +9,7 @@ from hobbyjogging_core.model import Activity, Event, ReviewItem
 
 from ..analysis import RUN_TYPES, YearCoverage
 from ..format import (
+    activity_display_name,
     fmt_clock,
     fmt_time,
     format_feel,
@@ -174,7 +175,7 @@ def activities_page(
 
     for activity in activities:
         href = activity_href(activity.id)
-        name = activity.name or sport_label(activity)
+        name = activity_display_name(activity)
         rows.append((
             activity.date,
             [
@@ -583,7 +584,7 @@ def health_page(
     review_rows = []
 
     for activity in health.review_flagged:
-        name = activity.name or sport_label(activity)
+        name = activity_display_name(activity)
         status = "included" if include_review else "hidden"
         name_html = (
             link(activity_href(activity.id), name)

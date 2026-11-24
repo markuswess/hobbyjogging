@@ -69,6 +69,17 @@ def sport_label(item):
     )
 
 
+def activity_display_name(activity: Activity) -> str:
+    """The activity name, or sport + distance when it has no name."""
+    name = (activity.name or "").strip()
+    if name:
+        return name
+    label = sport_label(activity)
+    if activity.distance_m and activity.distance_m > 0:
+        return f"{label} {activity.distance_m / 1000:.2f} km"
+    return label
+
+
 def _workout_labels(values, labels) -> str:
     present = set(values or [])
 
@@ -852,6 +863,8 @@ def format_session_activity(
 
     if activity.name:
         title = f"{title} — {activity.name}"
+    else:
+        title = activity_display_name(activity)
 
     lines = [
         f"\n## {title}",

@@ -8,6 +8,10 @@ lab gate, 13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
 
+- **Nameless activity labels.** `activity_display_name()` renders sport plus
+  distance ("Run 10.00 km") when `name` is empty; the activity table, race
+  tables, planned list and session header use it, so a Runalyze-only athlete
+  never sees a blank title.
 - **Effective VO2max and its methods chart.** The lab's promoted HR/economy
   metric retires item 15. `effective_vo2max()` is
   `(3.5 + 0.2 · speed_m_min) / (avg_hr / max_hr)`, using the running max-HR

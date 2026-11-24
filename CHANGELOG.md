@@ -53,6 +53,8 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 
 - Device labels come from a stored name or the FIT product; the device report
   hides the soft-excluded provider rows.
+- A nameless activity renders as sport plus distance ("Run 10.00 km") in the
+  activity tables, race tables and the session header.
 
 ### Classification
 

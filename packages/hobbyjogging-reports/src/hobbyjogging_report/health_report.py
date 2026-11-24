@@ -9,7 +9,11 @@ from hobbyjogging_core.datasource import DataSource
 from .analysis import yearly_coverage
 from .command_support import activity_start
 from .dashboard.health import collect_health
-from .format import sport_label, table_text
+from .format import (
+    activity_display_name,
+    sport_label,
+    table_text,
+)
 from .review import exclude_review
 
 
@@ -140,7 +144,7 @@ def health_report(
         for activity in health.review_flagged:
             lines.append(
                 f"| {activity.date} | {sport_label(activity)} | "
-                f"{table_text(activity.name) or '-'} | "
+                f"{table_text(activity_display_name(activity))} | "
                 f"{'included' if include_review else 'hidden'} |"
             )
 

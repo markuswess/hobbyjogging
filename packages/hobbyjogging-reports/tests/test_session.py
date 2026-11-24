@@ -248,6 +248,20 @@ class SessionReportTests(unittest.TestCase):
         self.assertIn("- ID: b", report)
         self.assertNotIn("- ID: a", report)
 
+    def test_nameless_session_header_uses_sport_and_distance(self):
+        nameless = activity(
+            id="c",
+            date=D2,
+            name="",
+            duration_s=3600,
+            distance_m=10000,
+        )
+        source = FakeSource([nameless], {"c": []})
+
+        report = session_report("c", source, today=self.today)
+
+        self.assertIn("## Run 10.00 km", report)
+
     def test_old_session_gets_an_estimated_baseline(self):
         old = activity(
             id="old",

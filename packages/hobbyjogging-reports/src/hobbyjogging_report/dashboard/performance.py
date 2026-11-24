@@ -23,7 +23,12 @@ from ..analysis import (
 )
 from ..charts import plot_pb_progressions, plot_races, plot_vo2max_methods
 from ..command_support import activity_start
-from ..format import fmt_clock, format_pace, format_place
+from ..format import (
+    activity_display_name,
+    fmt_clock,
+    format_pace,
+    format_place,
+)
 from ..html import esc, table
 from ..review import exclude_review
 
@@ -134,7 +139,7 @@ def build_performance_section(
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'
-                f"{esc(result.activity.name or '-')}</a>",
+                f"{esc(activity_display_name(result.activity))}</a>",
                 esc(result.official_name or "-"),
                 esc(result.bucket),
                 _measured(
@@ -184,7 +189,7 @@ def build_performance_section(
                 f'<a href="{race_href(result.activity.id)}">'
                 f"{esc(result.activity.date)}</a>",
                 f'<a href="{race_href(result.activity.id)}">'
-                f"{esc(result.activity.name or '-')}</a>",
+                f"{esc(activity_display_name(result.activity))}</a>",
                 esc(result.official_name or "-"),
                 _measured(
                     _distance(result.distance_m),

@@ -3,6 +3,7 @@ from datetime import date
 
 from hobbyjogging_report.classify import category_breakdown
 from hobbyjogging_report.format import (
+    activity_display_name,
     format_activity,
     format_category_table,
     format_event,
@@ -303,6 +304,24 @@ class FormattingTests(unittest.TestCase):
         self.assertEqual("Run", sport_label(activity(type="run")))
         self.assertEqual("TrailRun", sport_label(activity(type="trail_run")))
         self.assertEqual("Ride", sport_label(activity(type="ride")))
+
+    def test_activity_display_name_keeps_a_stored_name(self):
+        self.assertEqual(
+            "Morning run",
+            activity_display_name(
+                activity(name="Morning run", distance_m=10000)
+            ),
+        )
+
+    def test_activity_display_name_uses_sport_and_distance_when_empty(self):
+        self.assertEqual(
+            "Run 10.00 km",
+            activity_display_name(activity(name="", distance_m=10000)),
+        )
+        self.assertEqual(
+            "Run",
+            activity_display_name(activity(name="", distance_m=0)),
+        )
 
     def test_pace(self):
         self.assertEqual(

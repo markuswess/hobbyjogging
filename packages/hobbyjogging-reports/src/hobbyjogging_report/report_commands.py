@@ -12,6 +12,7 @@ from .equipment_report import equipment_report
 from .health_report import health_report
 from .dashboard import build_dashboard
 from .debug import debug
+from .format import activity_display_name
 from .overview import overview_report
 from .period_report import period_report, summary
 from .planned import planned_report
@@ -262,7 +263,7 @@ def run_classify_command(parsed, source, include_review):
             f"{activity.duration_s / 60:5.0f}min "
             f"rpe={rpe} "
             f"{category.path:36s} "
-            f"{activity.name}"
+            f"{activity_display_name(activity)}"
         )
 
     return None

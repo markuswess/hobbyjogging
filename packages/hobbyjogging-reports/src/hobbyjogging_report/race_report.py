@@ -21,6 +21,7 @@ from .analysis import (
 )
 from .command_support import activity_start, resting_hr_lookup
 from .format import (
+    activity_display_name,
     fmt_clock,
     format_pace,
     format_place,
@@ -164,7 +165,7 @@ def races_report(
             )
             lines.append(
                 f"| {activity.date} | "
-                f"{table_text(activity.name) or '-'} | "
+                f"{table_text(activity_display_name(activity))} | "
                 f"{table_text(result.official_name) or '-'} | "
                 f"{result.bucket} | "
                 f"{_measured(_distance(result.distance_m), official=official)} | "
@@ -200,7 +201,7 @@ def races_report(
             lines.append(
                 f"| {bucket_label(result.bucket)} | "
                 f"{result.activity.date} | "
-                f"{table_text(result.activity.name) or '-'} | "
+                f"{table_text(activity_display_name(result.activity))} | "
                 f"{table_text(result.official_name) or '-'} | "
                 f"{_measured(_distance(result.distance_m), official=official)} | "
                 f"{_measured(fmt_clock(result.time_s), official=official)} | "

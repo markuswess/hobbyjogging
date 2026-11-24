@@ -115,8 +115,9 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
 - **52 Garmin wellness (done 2026-11-24)** — daily resting HR, HRV, sleep,
   steps, SpO2, floors and weight join `sync` after the activity fetch;
   fill-only, so the Intervals wellness stays the owner.
-- **A name label** — when `name` is empty, render sport + distance in tables
-  and the session header instead of a blank title (small reports change).
+- **A name label (done 2026-11-24)** — when `name` is empty, tables and the
+  session header render the sport plus distance ("Run 10.00 km") instead of a
+  blank title.
 
 ### Phase 3: trustworthy data
 
