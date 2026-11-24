@@ -101,8 +101,8 @@ and columns enabled.
 ## Where it is going
 
 Four phases, each with an exit test: **works for me** (done), **works for
-someone else** (install and configure on a fresh machine), **trustworthy
-data** (extract, audit, correct — CLI first, then a localhost UI) and
+someone else** (done — install and configure on a fresh machine), **trustworthy
+data** (current: extract, audit, correct — CLI first, then a localhost UI) and
 **durable and more reach** (homelab, more sources, streams). The phase table
 and the structural rules are in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); small features and promoted

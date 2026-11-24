@@ -1,6 +1,6 @@
 [project]
 name = "hobbyjogging-import"
-version = "0.1.0"
+version = "0.2.0"
 description = "Import and normalize training data from external sources"
 requires-python = ">=3.12"
 dependencies = [

@@ -9,7 +9,7 @@ Compatibility is stated as "requires schema ≥ N, migrates to M". The database
 records its own `PRAGMA user_version`, migrations are forward-only, and
 `migrate()` refuses a database newer than the code.
 
-## Unreleased — phase 2: works for someone else
+## 0.2.0 — 2026-11-24 (phase 2: works for someone else)
 
 Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 
@@ -55,6 +55,10 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
   hides the soft-excluded provider rows.
 - A nameless activity renders as sport plus distance ("Run 10.00 km") in the
   activity tables, race tables and the session header.
+- SubT/LT1 sessions are selected from the stored targets, with the name only
+  as a fallback, so a name-less athlete reaches the subT report and work reps.
+- A derived interval set and its work-reps list render correctly in the
+  dashboard; the subT report labels derived reps.
 
 ### Classification
 

@@ -9,12 +9,12 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
-- **Phase 2 code complete (2026-11-24).** `init`/`doctor`, the full-source
-  `sync`, the install docs, the MIT licence, CI, the lab detach, the
+- **Phase 2 complete (2026-11-24).** `init`/`doctor`, the full-source `sync`,
+  the install docs, the MIT licence, CI, the lab detach, the
   source-capability matrix and selection, and the Runalyze+Garmin profile
   (items 44, 49–54 and the name label) landed; schema is v25. The acceptance
-  run is in progress; its first findings are items 55 (subT selection and the
-  derived table) and 56 (threshold coverage), which gate the sign-off.
+  run on a second athlete's real data passed; its findings 55 (subT selection
+  and the derived table) and 56 (threshold coverage) are fixed and tested.
 - **The canonical pipeline and all sources (phase 1).** FIT archive,
   Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
   comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
@@ -67,12 +67,12 @@ no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 machine — no code or SQL edits. And a **Runalyze+Garmin athlete's dashboard is
 usable**: categories, laps/reps, zones, load, wellness and races render.
 
-**Code complete (2026-11-24).** Every code path exists, the source capability
-matrix and selection are in place, and the fresh-database path is covered by
-the demo and the suites. The **acceptance run** on a second athlete's real
-data (a fresh DB with Runalyze + Garmin and the FIT archive, no Intervals) is
-in progress: **55** (subT selection and the derived table) and **56** (threshold
-coverage) are its first findings and must land before the sign-off.
+**Phase 2 complete (2026-11-24).** Every code path exists, the source
+capability matrix and selection are in place, and the fresh-database path is
+covered by the demo and the suites. The acceptance run on a second athlete's
+real data (a fresh DB with Runalyze + Garmin and the FIT archive, no Intervals)
+passed; its two findings — **55** (subT selection and the derived table) and
+**56** (threshold coverage) — are fixed and tested.
 
 **2a · Install**
 
@@ -136,33 +136,16 @@ coverage) are its first findings and must land before the sign-off.
   session header render the sport plus distance ("Run 10.00 km") instead of a
   blank title.
 
-### Immediate
-
-Phase 2 closes in this order:
-
-- **Step 1 — 55 athlete-2 report bugs** (reports session): select subT/LT1 from
-  the stored sets (the name is only a fallback), and put the blank line after
-  the derived notes so the table and the work-reps list render in the
-  dashboard. Both are small, tested fixes; no schema.
-- **Step 2 — 56 threshold coverage (done 2026-11-24)** (import + maintenance
-  session): `threshold add --from first` and the coverage message, plus the
-  `no_threshold` note in the zone recompute. No silent backfill, no schema
-  change.
-- **Step 3 — re-run the acceptance checks** (owner: user): the subT report and
-  session work-reps, the dashboard activity table, and zones across history
-  after `--from first`; then the phase-2 sign-off.
-- **Step 4 — 45 readability baseline** (reports session): the first phase-3
-  item, after the sign-off and before the write surface and the UI.
-
 ### Phase 3: trustworthy data
 
-Order: **45** (readability baseline, reports session — after the phase-2
-acceptance run) → **34** (manual overlay + rebuild proof, the safety gate) →
-**37** audit (read-only, cheap, informs everything) → **1** (CLI write
-surface) → **38/35/21** extraction → **37**'s rules and **43** tags →
-**42** duplicates → health score → browser. Accepting a suggestion always
-writes a manual value and an `edit_log` row; nothing canonical is auto-applied
-except an empty, high-confidence classification.
+Phase 3 is current (since 2026-11-24).
+
+Order: **45** (readability baseline, reports session) → **34** (manual overlay
++ rebuild proof, the safety gate) → **37** audit (read-only, cheap, informs
+everything) → **1** (CLI write surface) → **38/35/21** extraction → **37**'s
+rules and **43** tags → **42** duplicates → health score → browser. Accepting
+a suggestion always writes a manual value and an `edit_log` row; nothing
+canonical is auto-applied except an empty, high-confidence classification.
 
 ### Phase 4: durable and more reach
 
@@ -529,13 +512,14 @@ reports item; 28 is the recurring cleanup.
       - [x] the Runalyze+Garmin profile renders categories, laps/reps, zones,
             load and wellness (items 49–53), and the demo still covers the
             empty paths.
-    - **Language floor**: [ ] `requires-python` drops to 3.12 once the suites
-      pass there; no 3.14-only syntax was found.
+    - **Language floor**: [x] `requires-python` is `>=3.12`; the suites pass
+      there and the pull-request workflow runs on 3.12.
 
-    **Code checklist complete 2026-11-24.** The real second-athlete
-    acceptance run (a fresh DB with Runalyze + Garmin, no Intervals and no
-    sheet) is the remaining validation; the demo and suites cover the code
-    paths.
+    **Acceptance passed 2026-11-24.** A fresh DB with athlete 2's Runalyze +
+    Garmin data, no Intervals and no sheet: `init`/`doctor`/`sync` ran on the
+    documented path, the dashboard rendered categories, laps/reps, zones, load,
+    wellness and races, and `verify_canonical` was clean. The two findings it
+    produced (55, 56) are fixed and tested.
 
     **Out of scope, stated**: multi-athlete, imperial units, a hosted service,
     arbitrary platforms, a per-athlete UI.
@@ -1058,7 +1042,7 @@ reports item; 28 is the recurring cleanup.
       credential skips that source and leaves the others working.
 
 45. **Readability baseline pass** (reports + tools; phase 3 first, reports
-    session — after the phase-2 acceptance run). The codebase is not bloated
+    session). The codebase is not bloated
     yet, but reports and import are two-thirds of it and two files are doing
     too much. Measured 2026-11-19: reports 75 modules / 22.8k
     lines, import 41 / 16k, core 14 / 6.3k, maintenance 33 / 4.6k;
@@ -1269,34 +1253,32 @@ reports item; 28 is the recurring cleanup.
       canonical value changes; four suites green. The real second-athlete
       acceptance run is the next session's work.
 
-55. **Athlete-2 report bugs: subT selection and derived tables** (reports; bug,
-    phase-2 gate). Two findings from the acceptance run.
-    - **SubT/LT1 selection is name-only.** `analysis/common.py`'s
-      `is_subt_activity`/`is_lt1_activity` check `a.name` for "subt"/LT1 words.
-      Athlete 2 has no names, so a session with the stored `subthreshold`
-      target is categorised but never selected by the subT report, the
+55. **Athlete-2 report bugs: subT selection and derived tables** (reports; done
+    2026-11-24). The acceptance run found two bugs; both are fixed and tested.
+    - **SubT/LT1 selection was name-only.** `analysis/common.py`'s
+      `is_subt_activity`/`is_lt1_activity` only checked `a.name`, so a session
+      with the stored `subthreshold` target never reached the subT report, the
       session's work-reps section, the period report, the activities table or
       the report command.
-      - Fix: prefer the stored sets — `fartlek` still wins, `lt1` target →
-        LT1, `subthreshold` target → subT; with no sets, keep the name
-        fallback so the current athlete's behaviour is unchanged. Every call
-        site goes through those two functions.
+      - Fixed: the stored sets win — `fartlek` still wins, `lt1` target → LT1,
+        `subthreshold` target → subT; with no sets the name is the fallback, so
+        the current athlete's behaviour is unchanged. Every call site goes
+        through those two functions.
       - A session still needs usable reps: derived intervals supply them; a
         SubThreshold run with no laps stays out by design.
-      - Label a derived work-rep block in the subT report as derived, so a
-        worked rep is not mistaken for a measured one (the session report
-        already does).
-    - **Derived table/list breaks in the dashboard.** `format_session` appends
-      the "Derived from device laps…" note directly before the Markdown table,
-      and the "Reps are derived…" note directly before the list. Python-Markdown
-      (`tables`, `sane_lists`) needs a blank line; the CLI renderer is lenient.
-      Fix: add the blank line after both notes, and a test that renders a
-      derived session through `markdown_to_html` and asserts `<table>` and
-      `<ul>`.
-    - **Acceptance**: athlete 2's SubThreshold sessions list in the subT report
-      and show work reps; the dashboard activity page renders the derived
-      table and list; the current athlete's name-based selection is unchanged
-      where no sets exist; four suites green.
+      - A derived work-rep block is labelled as derived in the subT report.
+    - **The derived table and list broke in the dashboard.** `format_session`
+      appended the "Derived from device laps…" note directly before the
+      Markdown table, and the "Reps are derived…" note directly before the
+      list; Python-Markdown needs a blank line, while the CLI renderer is
+      lenient.
+      - Fixed: a blank line after both notes, plus a test that renders a
+        derived session through `markdown_to_html` and asserts `<table>` and
+        `<ul>`.
+    - **Acceptance (2026-11-24)**: athlete 2's SubThreshold sessions list in the
+      subT report and show work reps; the dashboard activity page renders the
+      derived table and list; the current athlete's name-based selection is
+      unchanged where no sets exist; four suites green.
     - **Not**: no schema change; no name-based heuristics written into the
       stored sets.
 

@@ -1,6 +1,6 @@
 [project]
 name = "hobbyjogging-maintenance"
-version = "0.1.0"
+version = "0.2.0"
 description = "Schema evolution and data maintenance for the training database"
 requires-python = ">=3.12"
 dependencies = [
