@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -498,6 +498,14 @@ ALTER TABLE devices ADD COLUMN excluded_at TEXT;
 """
 
 
+MIGRATION_25_SQL = """
+-- An interval set carries its provenance: Intervals.icu's typed reps, or a
+-- derived set from device laps. A derived write never replaces a measured
+-- set, and the reports can label the difference.
+ALTER TABLE activity_intervals ADD COLUMN source TEXT NOT NULL DEFAULT '';
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -523,6 +531,7 @@ MIGRATIONS: dict[int, str] = {
     22: MIGRATION_22_SQL,
     23: MIGRATION_23_SQL,
     24: MIGRATION_24_SQL,
+    25: MIGRATION_25_SQL,
 }
 
 

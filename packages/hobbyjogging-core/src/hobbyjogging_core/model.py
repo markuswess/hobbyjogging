@@ -279,6 +279,9 @@ class Interval:
     distance_m: float = 0
     avg_hr: float | None = None
     max_hr: float | None = None
+    # Provenance: "intervals" for imported typed reps, "derived" for a set
+    # inferred from device laps, "" for legacy rows.
+    source: str = ""
 
 
 @dataclass

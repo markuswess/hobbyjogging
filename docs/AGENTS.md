@@ -200,6 +200,10 @@ Cross-package changes must leave all four suites green.
   Runalyze's activity type is a gap-filler only — Jogging, Long Slow Distance
   and SubThreshold map in `runalyze_types`, existing sets win, and unknown
   types are audited, never guessed.
+- Interval sets carry provenance in `activity_intervals.source`: `intervals`
+  for measured typed reps, `derived` for reps inferred from device laps. A
+  derived set never replaces a measured one, is run-only, and is labelled in
+  the session report.
 - Reports use plotly for charts and never pandas.
 
 ## Metrics

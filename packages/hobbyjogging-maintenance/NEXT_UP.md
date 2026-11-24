@@ -94,6 +94,14 @@ This file records what the package is still waiting on.
   FIT claim moved their last activities. `devices.excluded_at` (v24) and the
   `TrainingRepository.devices()` filter hide them; applied: 2 excluded, the
   four FIT devices remain.
+- **`interval_source_v1`.** Stamped the 14,680 interval rows that predate
+  schema v25 with `source='intervals'`, so a derived set from device laps can
+  coexist without overwriting them. Applied; a rerun changes nothing.
+- **`derived_intervals_current`.** Infers WORK/RECOVERY reps from device laps
+  for a run with no measured set, gated by the stored intervals type or a
+  strong lap-pace spread; run-only, idempotent, and written with
+  `source='derived'`. On the real DB it derives nothing (the structured runs
+  already carry Intervals sets), which is the expected conservative result.
 
 ## Next
 

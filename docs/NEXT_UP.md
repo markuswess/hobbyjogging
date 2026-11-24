@@ -101,9 +101,10 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   Long Slow Distance and SubThreshold map to canonical sets, applied on create
   and as a gap-filler; `runalyze types` audits every stored type. This is what
   gives a name-less athlete categories.
-- **51 typed reps without Intervals** — Garmin workout steps if the FIT has
-  them, otherwise derived WORK/RECOVERY from laps, gated by the source type;
-  marked derived, never overwriting Intervals reps.
+- **51 typed reps without Intervals (done 2026-11-24)** — `derived_intervals_current`
+  infers WORK/RECOVERY from device laps, gated by the source type or lap
+  variance and marked `source='derived'`; a measured set always wins, and the
+  session report labels derived reps.
 - **53 a load fallback** — map `fit_trimp`/`trimp` when no Intervals
   `training_load` exists, with the vendor scale documented per athlete.
 - **50 manual thresholds and local zone configs** — `threshold add|list`,
@@ -1128,29 +1129,29 @@ reports item; 28 is the recurring cleanup.
       threshold leaves the report explicitly empty.
 
 51. **Typed work reps without Intervals** (import + maintenance + reports;
-    phase 2b). Athlete 2's FIT archive gives device laps but no WORK/RECOVERY
-    typing, and Intervals is the only typed source today, so structured runs
-    have a segment table but no subT reps.
-    - **Check first**: inspect a structured FIT for Garmin `workout` /
-      `workout_step` messages. If the watch ran a programmed workout, the
-      steps are authoritative; map those before any heuristic.
-    - **Fallback heuristic**: when an activity has at least two laps and no
-      intervals, infer reps from lap pace and duration — a WORK lap is within a
-      small percentage of the session's fastest qualifying laps and at least
-      60 s, the rest are RECOVERY. Gate on the Runalyze type (`intervals` /
-      `subthreshold`) or on lap variance, so an easy run with 1 km auto splits
-      stays laps. Write `activity_intervals` with `source='derived'`, never
-      overwriting Intervals or manual rows, idempotent.
-    - **Reporting**: the session table already shows laps; a derived set may
-      feed the subT tables only when labelled derived, so a worked rep is
-      never mistaken for a measured one.
-    - **Calibration**: athlete 2's structured sessions show ~3 km reps with
-      150–265 m recoveries; that is the first test case. A session whose laps
-      cluster into equal fast/slow pairs is the target; a uniform easy run is
-      not.
-    - **Acceptance**: a SubThreshold session shows work reps and a subT table
-      marked derived; an easy run with auto splits stays laps; a re-run is a
-      no-op; Intervals-derived reps win where they exist.
+    done 2026-11-24). Athlete 2's FIT archive gives device laps but no
+    WORK/RECOVERY typing; `derived_intervals_current` infers them.
+    - **Probe first**: one of 782 sampled FIT files carries Garmin
+      `workout`/`workout_step` messages (17 steps, `open`/`distance`/`time`
+      durations, 50 laps). The steps describe the plan but do not type the
+      laps, so a step-to-lap matcher is not justified; the lap heuristic is
+      the fallback and a programmed-workout importer stays unplanned.
+    - **Heuristic**: run sports only, at least two laps of ≥60 s and ≥100 m,
+      no measured interval set, and the gate is the stored `intervals` method /
+      `subthreshold` target (Runalyze type, item 49) or a lap-pace spread of
+      1.50. A WORK lap is within 1.20 of the fastest third's pace; at least
+      two WORK laps and one slower RECOVERY lap are required, so a uniform
+      easy run stays laps.
+    - **Storage**: `activity_intervals.source` (schema v25) records `intervals`
+      or `derived`; `replace_derived_intervals` never touches a measured set
+      and is idempotent. `interval_source_v1` stamped the 14,680 existing rows.
+    - **Reporting**: the session report labels a derived interval table and
+      its work reps, so a derived rep is never mistaken for a measured one.
+    - **Acceptance**: the synthetic tests cover a structured set, a uniform
+      easy run, a measured set and a re-run; on this athlete's log 0 runs
+      derive (the structured ones already have Intervals sets) and the 4 false
+      positives the first pass found were road rides, now excluded by the
+      run-only gate.
 
 52. **Garmin wellness** (import + reports; phase 2b). Athlete 2 has no wellness
     source, so resting HR, HRV and sleep are empty, the recovery tab is blank

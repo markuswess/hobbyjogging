@@ -117,6 +117,19 @@ class SegmentTableRuleTests(unittest.TestCase):
         self.assertNotIn("### Intervals", report)
         self.assertNotIn("### Laps", report)
 
+    def test_a_derived_set_is_labelled(self):
+        intervals = work_intervals(count=2)
+        for interval in intervals:
+            interval.source = "derived"
+
+        report = self._report(intervals, [_lap(1), _lap(2)])
+
+        self.assertIn("### Intervals", report)
+        self.assertIn(
+            "Derived from device laps; not an imported interval set.",
+            report,
+        )
+
 
 class SessionSelectionTests(unittest.TestCase):
 

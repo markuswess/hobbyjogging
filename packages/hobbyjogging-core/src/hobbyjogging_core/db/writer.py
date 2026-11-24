@@ -1037,11 +1037,74 @@ class TrainingWriter:
         intervals: list[Interval],
         *,
         source_record_id: int | None = None,
+        source: str = "",
     ) -> None:
         self.connection.execute(
             "DELETE FROM activity_intervals WHERE activity_id = ?",
             (activity_id,),
         )
+        self._insert_intervals(
+            activity_id,
+            intervals,
+            source_record_id=source_record_id,
+            source=source,
+        )
+
+    def stamp_interval_source(
+        self,
+        source: str,
+        *,
+        previous: str = "",
+    ) -> int:
+        """Set the provenance of intervals that predate the source column."""
+        cursor = self.connection.execute(
+            "UPDATE activity_intervals SET source = ? WHERE source = ?",
+            (source, previous),
+        )
+        return cursor.rowcount
+
+    def replace_derived_intervals(        self,
+        activity_id: str,
+        intervals: list[Interval],
+    ) -> bool:
+        """Replace a derived set, never a measured one.
+
+        Returns ``False`` when the activity carries any interval whose source
+        is neither empty nor ``derived`` — an Intervals.icu or manual set wins.
+        """
+        row = self.connection.execute(
+            """
+            SELECT 1 FROM activity_intervals
+            WHERE activity_id = ? AND source NOT IN ('', 'derived')
+            LIMIT 1
+            """,
+            (activity_id,),
+        ).fetchone()
+        if row is not None:
+            return False
+
+        self.connection.execute(
+            """
+            DELETE FROM activity_intervals
+            WHERE activity_id = ? AND source = 'derived'
+            """,
+            (activity_id,),
+        )
+        self._insert_intervals(
+            activity_id,
+            intervals,
+            source_record_id=None,
+            source="derived",
+        )
+        return True
+
+    def _insert_intervals(        self,
+        activity_id: str,
+        intervals: list[Interval],
+        *,
+        source_record_id: int | None,
+        source: str,
+    ) -> None:
         rows = [
             (
                 activity_id,
@@ -1054,6 +1117,7 @@ class TrainingWriter:
                 interval.avg_hr,
                 interval.max_hr,
                 source_record_id,
+                interval.source or source,
             )
             for index, interval in enumerate(intervals, start=1)
         ]
@@ -1063,8 +1127,8 @@ class TrainingWriter:
                 INSERT INTO activity_intervals (
                     activity_id, interval_index, group_id, type,
                     start_time, duration_s, distance_m, avg_hr,
-                    max_hr, source_record_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    max_hr, source_record_id, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )

@@ -204,7 +204,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 24).
+  (`SCHEMA_VERSION`, currently 25).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits, exclusions, review items, laps,
   intervals, zone times, tags.
@@ -300,7 +300,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 24.
+SQLite, forward-only migrations. Schema version 25.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -369,11 +369,14 @@ SQLite, forward-only migrations. Schema version 24.
   the row; a later source only fills the fields it left empty.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
   attached to activities, tagged by source record. Laps are device splits
-  (auto-lap or manual); intervals are Intervals.icu's typed reps (`WORK` /
-  `RECOVERY`, with group ids). They are complementary, not duplicates: the
-  session report prints one raw segment table — intervals when there is more
-  than one, otherwise laps when there is more than one — and the subT
-  work-reps section is derived separately.
+  (auto-lap or manual); intervals are typed reps (`WORK` / `RECOVERY`, with
+  group ids). An interval row's `source` (v25) is `intervals` for
+  Intervals.icu's measured set or `derived` for one inferred from device laps;
+  a derived set never replaces a measured one, and the session report labels
+  it. They are complementary, not duplicates: the session report prints one
+  raw segment table — intervals when there is more than one, otherwise laps
+  when there is more than one — and the subT work-reps section is derived
+  separately.
 - `activity_tags` (v5) — activity labels with their source. The sheet writes
   its training-area code (`Trainingsgebiet`); the classification code is not a
   tag, because the method/target sets already carry it.
@@ -752,7 +755,8 @@ dashboard: the view models make it cheap to add later.
 - **Phase 1 complete, phase 2 current.** All sources are imported and applied
   on the real DB; the optional Strava API stays deferred to phase 4.
 - Canonical pipeline, review workflow, manual editing and exclusion: done.
-  Schema v24 soft-excludes retired device rows; v23 is the manual input layer
+  Schema v25 adds interval provenance; v24 soft-excludes retired device rows;
+  v23 is the manual input layer
   (`activity_manual_fields`), v22 per-source social text, and earlier versions
   add set-based workout methods/targets and the maintenance bookkeeping.
 - Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze

@@ -943,6 +943,10 @@ def format_session_activity(
     # the activity; the subT work-reps section below is independent.
     if len(intervals) > 1:
         lines.append("\n### Intervals")
+        if any(interval.source == "derived" for interval in intervals):
+            lines.append(
+                "Derived from device laps; not an imported interval set."
+            )
         lines.extend(format_interval_table(intervals))
     elif len(laps or []) > 1:
         lines.extend(format_laps_table(laps or []))
@@ -962,6 +966,10 @@ def format_session_activity(
         label = "LT1" if is_lt1_activity(activity) else None
 
         lines.append("\n### Work reps")
+        if any(interval.source == "derived" for interval in intervals):
+            lines.append(
+                "Reps are derived from device laps, not measured."
+            )
 
         for point in points:
             lines.append(f"- {format_work_result(point, label)}")

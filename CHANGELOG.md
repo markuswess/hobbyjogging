@@ -11,7 +11,7 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — phase 2: works for someone else
 
-Schema: **24**. Compatibility: requires schema ≥ 1, migrates to 24.
+Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 
 ### Install
 
@@ -34,11 +34,16 @@ Schema: **24**. Compatibility: requires schema ≥ 1, migrates to 24.
 
 ### Schema and data tasks
 
+- v25 adds `activity_intervals.source` (`intervals` or `derived`); a derived
+  set from device laps never replaces a measured one.
 - v24 adds `devices.excluded_at`; `TrainingRepository.devices()` lists only
   active rows.
 - `device_identity_v1` re-points provider fallback devices at the FIT device
   they claim; `device_identity_orphans_v1` soft-excludes the provider rows no
   activity uses.
+- `interval_source_v1` stamps the pre-v25 interval rows with
+  `source='intervals'`; `derived_intervals_current` infers WORK/RECOVERY reps
+  from device laps for runs with no measured set.
 
 ### Reports
 

@@ -131,6 +131,7 @@ if (( generate_maintenance )); then
     maintenance_started=$(now_ms)
     for task in \
         workout_sets_current \
+        derived_intervals_current \
         workout_classification_queue \
         athlete_thresholds_current \
         activity_zone_configs_current \

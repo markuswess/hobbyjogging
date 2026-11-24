@@ -501,6 +501,7 @@ class IntervalsImporter:
             activity_id,
             intervals,
             source_record_id=interval_source_id,
+            source=SOURCE,
         )
         return len(intervals)
 

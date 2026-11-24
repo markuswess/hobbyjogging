@@ -177,7 +177,8 @@ class TrainingRepository:
     def activity_intervals(self, activity_id: str) -> list[Interval]:
         rows = self.connection.execute(
             """
-            SELECT group_id, type, start_time, duration_s, distance_m, avg_hr, max_hr
+            SELECT group_id, type, start_time, duration_s, distance_m, avg_hr,
+                   max_hr, source
             FROM activity_intervals
             WHERE activity_id = ?
             ORDER BY interval_index
@@ -194,6 +195,7 @@ class TrainingRepository:
                 distance_m=row["distance_m"],
                 avg_hr=row["avg_hr"],
                 max_hr=row["max_hr"],
+                source=row["source"],
             )
             for row in rows
         ]

@@ -1204,6 +1204,7 @@ def _write_activity(writer: TrainingWriter, activity: dict) -> None:
         writer.replace_activity_intervals(
             activity["id"],
             activity["intervals"],
+            source="intervals",
         )
 
     if activity["equipment_id"]:

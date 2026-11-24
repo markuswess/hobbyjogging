@@ -629,6 +629,73 @@ class TrainingWriterTests(unittest.TestCase):
         self.assertEqual([(1, 300)], [(row["zone_index"], row["seconds"]) for row in zones])
         self.assertEqual([(1, "g3")], [(row["interval_index"], row["group_id"]) for row in intervals])
 
+    def test_a_derived_set_never_replaces_a_measured_one(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.writer.replace_activity_intervals(
+            "a1",
+            [Interval(type="WORK", duration_s=90)],
+            source="intervals",
+        )
+
+        replaced = self.writer.replace_derived_intervals(
+            "a1",
+            [Interval(type="WORK", duration_s=60)],
+        )
+
+        self.assertFalse(replaced)
+        rows = self.conn.execute(
+            "SELECT duration_s, source FROM activity_intervals"
+        ).fetchall()
+        self.assertEqual([(90, "intervals")], [
+            (row["duration_s"], row["source"]) for row in rows
+        ])
+
+    def test_a_derived_set_is_written_and_replaced(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+
+        self.assertTrue(
+            self.writer.replace_derived_intervals(
+                "a1",
+                [Interval(type="WORK", duration_s=60)],
+            )
+        )
+        self.assertTrue(
+            self.writer.replace_derived_intervals(
+                "a1",
+                [Interval(type="WORK", duration_s=90)],
+            )
+        )
+
+        rows = self.conn.execute(
+            "SELECT duration_s, source FROM activity_intervals"
+        ).fetchall()
+        self.assertEqual([(90, "derived")], [
+            (row["duration_s"], row["source"]) for row in rows
+        ])
+
+    def test_legacy_intervals_are_stamped_with_a_source(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.writer.replace_activity_intervals(
+            "a1",
+            [Interval(type="WORK", duration_s=90)],
+        )
+
+        self.assertEqual(1, self.writer.stamp_interval_source("intervals"))
+
+        row = self.conn.execute(
+            "SELECT source FROM activity_intervals"
+        ).fetchone()
+        self.assertEqual("intervals", row["source"])
+
     def test_activity_laps_are_replaced(self):
         self.conn.execute(
             "INSERT INTO activities (id, local_date, sport) "
