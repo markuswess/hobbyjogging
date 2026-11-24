@@ -105,8 +105,9 @@ usable**: categories, laps/reps, zones, load, wellness and races render.
   infers WORK/RECOVERY from device laps, gated by the source type or lap
   variance and marked `source='derived'`; a measured set always wins, and the
   session report labels derived reps.
-- **53 a load fallback** — map `fit_trimp`/`trimp` when no Intervals
-  `training_load` exists, with the vendor scale documented per athlete.
+- **53 a load fallback (done 2026-11-24)** — `fit_trimp`/`trimp` fills an empty
+  `training_load` under `source='runalyze'`; Intervals outranks it, and the
+  vendor scale is documented per athlete.
 - **50 manual thresholds and local zone configs** — `threshold add|list`,
   derived zone configs, and the max-HR snapshot the effective-VO2max metric
   needs.
@@ -1171,24 +1172,23 @@ reports item; 28 is the recurring cleanup.
       render from Garmin; the current athlete's Intervals wellness is
       untouched; a re-run is a no-op.
 
-53. **A load fallback when there is no Intervals** (import + reports; phase 2b).
-    `training_load` comes only from Intervals' `icu_training_load`, so an
-    Intervals-less athlete has an empty load chart, no fitness/fatigue and no
-    quality-load split, while the payload carries `trimp` and `fit_trimp` on
-    every activity (40/40 on the athlete-2 slice).
-    - **Mapping**: `fit_trimp` (device) first, `trimp` as fallback, written to
-      `activities.training_load` under `source='runalyze'` only when no
-      Intervals load exists. The vendor scale is documented per athlete and
-      never presented as the same number as an Intervals load.
-    - **Reports**: no change — the load chart, EWMAs and compare read
-      `training_load`; the axis is data-driven, so a TRIMP-scale series still
-      plots.
-    - **Guard**: a mixed database (Intervals plus Runalyze) keeps Intervals'
-      value and does not blend the two; provenance shows which source filled
-      it.
-    - **Acceptance**: athlete 2's overview, load chart and compare render; the
-      current athlete's numbers are unchanged; the source is visible in the
-      settings/provenance.
+53. **A load fallback when there is no Intervals** (import + maintenance +
+    reports; done 2026-11-24).
+    - **Mapping (done)**: the Runalyze `FIELD_MAP` takes `fit_trimp` first and
+      `trimp` as the fallback. `training_load` declares the ranked authority
+      Intervals → Runalyze, so a mixed database keeps the Intervals value and a
+      Runalyze TRIMP fills only an empty one, under `source='runalyze'`.
+    - **Create and refresh**: the derive map fills a Runalyze-created activity;
+      `runalyze_load_current` fills a matched activity from its stored payload.
+      Applied to the real DB: 15 historical 2019/2021 runs gained a load,
+      2,815 Intervals-owned values were kept, and `verify_canonical` stayed at
+      0 drift.
+    - **Reports**: no code change; the load chart, EWMAs and compare read
+      `training_load`. The metric card states that a Runalyze-only series is a
+      different vendor scale and its level is not comparable with Intervals'.
+    - **Acceptance**: an Intervals-less database renders the overview/load/
+      compare from TRIMP; a mixed database keeps Intervals; provenance shows
+      the source.
 
 ## Parked ideas
 

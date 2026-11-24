@@ -44,6 +44,8 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 - `interval_source_v1` stamps the pre-v25 interval rows with
   `source='intervals'`; `derived_intervals_current` infers WORK/RECOVERY reps
   from device laps for runs with no measured set.
+- `runalyze_load_current` fills an empty `training_load` from Runalyze's
+  `fit_trimp`/`trimp`; Intervals outranks it in a mixed database.
 
 ### Reports
 

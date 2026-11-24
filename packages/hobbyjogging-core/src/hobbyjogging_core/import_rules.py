@@ -100,7 +100,13 @@ FIELD_RULES: dict[str, FieldRule] = {
     "local_date": FieldRule(conflict=True, manual=True),
     "tz_offset_min": FieldRule(conflict=True, manual=True),
     "sport": FieldRule(conflict=True, manual=True, placeholder=True),
-    "training_load": FieldRule(conflict=True, manual=True),
+    "training_load": FieldRule(
+        conflict=True,
+        manual=True,
+        # Intervals' load is the reference; a Runalyze TRIMP is a fallback and
+        # never outranks it in a mixed database.
+        authority=("intervals", "runalyze"),
+    ),
     # FIT carries the device serial and the Garmin VO2max estimate, so each
     # wins over another source's value. A manual assignment still wins.
     "device_id": FieldRule(authority=("fit",), manual=True),

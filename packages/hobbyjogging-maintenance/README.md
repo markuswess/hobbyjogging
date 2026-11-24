@@ -90,6 +90,7 @@ Recomputes (idempotent, run every time):
 | `workout_classification_queue` | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply (`k` in triage). |
 | `verify_canonical` | Diff every owned canonical field against its manual value, owner patch or pointer without writing. |
 | `recompute_canonical` | Re-project every owned canonical field from its inputs; never re-decides ownership. |
+| `runalyze_load_current` | Fill an empty `training_load` from Runalyze's `fit_trimp`/`trimp`; Intervals always wins in a mixed database. |
 
 ## Adding a task
 

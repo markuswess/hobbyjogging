@@ -246,6 +246,11 @@ FIELD_MAPS: dict[str, dict[str, FieldSpec]] = {
         "avg_hr": FieldSpec(("hr_avg",), _as_float),
         "max_hr": FieldSpec(("hr_max",), _as_float),
         "description": FieldSpec(("note",), _as_str, ""),
+        "training_load": FieldSpec(
+            ("fit_trimp", "trimp"),
+            _as_float,
+            skip_falsy=True,
+        ),
         "vo2max_runalyze": FieldSpec(("vo2max",), _as_float),
     },
     # Strava writes social text and gear; a create uses the manifest fields.

@@ -244,14 +244,15 @@ class TrainingWriterTests(unittest.TestCase):
 
         # The 100 s duration difference fits inside the 100 s pause gap, so
         # it is recording semantics rather than a competing measurement.
-        self.assertEqual(3, len(conflicts))
+        # training_load is ranked (Intervals, then Runalyze), so FIT's value
+        # is ignored silently instead of becoming a conflict.
+        self.assertEqual(2, len(conflicts))
         self.assertEqual(
             {(c.field_name, c.current_source, c.incoming_source)
              for c in conflicts},
             {
                 ("distance_m", "intervals", "fit"),
                 ("avg_hr", "intervals", "fit"),
-                ("training_load", "intervals", "fit"),
             },
         )
 
@@ -284,6 +285,34 @@ class TrainingWriterTests(unittest.TestCase):
             source_record_id=fit_source,
         )
         self.assertEqual(1, len(again))
+
+    def test_training_load_ranking_prefers_intervals(self):
+        self.writer.upsert_activity(
+            "a1",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "training_load": 80,
+            },
+            source="runalyze",
+            source_record_id=self.source_id,
+        )
+        self.writer.upsert_activity(
+            "a1",
+            {"training_load": 120},
+            source="intervals",
+            source_record_id=self._source("intervals-a1", "i-a1"),
+        )
+
+        row = self.conn.execute(
+            "SELECT training_load FROM activities WHERE id = 'a1'"
+        ).fetchone()
+        owner = self.conn.execute(
+            "SELECT source FROM activity_field_sources "
+            "WHERE activity_id = 'a1' AND field_name = 'training_load'"
+        ).fetchone()
+        self.assertEqual(120, row["training_load"])
+        self.assertEqual("intervals", owner["source"])
 
     def test_same_source_refresh_its_own_fields(self):
         self.writer.upsert_activity(

@@ -124,9 +124,11 @@ dashboard. The dashboard is the last step, never the first.
 ### Running-only load
 
 - **Definition**: daily training load comes from the canonical `training_load`
-  (Intervals' `icu_training_load`). The running-fitness series sums **runs
-  only**; rides and other cross-training are drawn as a separate context stack
-  and carry **no transfer factor**.
+  (Intervals' `icu_training_load`; when absent, Runalyze's `fit_trimp` then
+  `trimp`, written under `source='runalyze'`). Intervals outranks the fallback
+  in a mixed database, and the field source records which scale filled it. The
+  running-fitness series sums **runs only**; rides and other cross-training are
+  drawn as a separate context stack and carry **no transfer factor**.
 - **Baseline / thresholds**: 7-, 42- and 182-day EWMAs (fatigue, fitness,
   base). The 7-day line is not used to set the chart ceiling. Planned load is
   split by sport and projected through the calendar.
@@ -145,7 +147,9 @@ dashboard. The dashboard is the last step, never the first.
   2020 phase is not covered by the comparison. The load signal itself is weak,
   so this rejects a positive transfer factor rather than proving there is
   none. Training load is a platform-derived session score, not a physiological
-  measurement; a source without it (FIT alone) leaves the series empty.
+  measurement. An Intervals-less database plots Runalyze's TRIMP: it is a
+  different vendor scale, so its absolute level is not comparable with an
+  Intervals series — read the trend, not the level.
 - **Rendered**: load chart (running/cross stacked, running-only EWMAs),
   overview `Run load / week`, the compare load metric, planned load split by
   sport, and the analysis charts' planned-load projections. Code landed in

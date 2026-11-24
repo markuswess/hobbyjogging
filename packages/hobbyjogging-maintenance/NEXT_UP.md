@@ -102,6 +102,11 @@ This file records what the package is still waiting on.
   strong lap-pace spread; run-only, idempotent, and written with
   `source='derived'`. On the real DB it derives nothing (the structured runs
   already carry Intervals sets), which is the expected conservative result.
+- **`runalyze_load_current`.** Fills an empty `training_load` from Runalyze's
+  `fit_trimp`/`trimp` under `source='runalyze'`; `training_load` now ranks
+  Intervals before Runalyze, so a mixed database keeps the Intervals value.
+  Applied: 15 historical runs gained a load, 2,815 Intervals values were kept,
+  and `verify_canonical` stayed at 0 drift.
 
 ## Next
 

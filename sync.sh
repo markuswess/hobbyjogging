@@ -137,6 +137,7 @@ if (( generate_maintenance )); then
         activity_zone_configs_current \
         training_periods_current \
         race_links_current \
+        runalyze_load_current \
         recompute_canonical
     do
         uv run "${env_args[@]}" python -m hobbyjogging_maintenance \

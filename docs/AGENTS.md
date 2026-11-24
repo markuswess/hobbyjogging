@@ -155,7 +155,9 @@ Cross-package changes must leave all four suites green.
   `field_conflict` review item (average HR: beyond 5 bpm). A field may declare
   a ranked authority where one source is a better measurement:
   `moving_s`/`elapsed_s` → Intervals, then FIT; `device_id` and
-  `vo2max_garmin` → FIT. Manual values always win.
+  `vo2max_garmin` → FIT. Manual values always win. `training_load` ranks
+  Intervals, then Runalyze: an Intervals-less database fills an empty load
+  from Runalyze's `fit_trimp`/`trimp`, which is a different vendor scale.
 - Social text is per source in `activity_social`: a source refreshes its own
   row and a manual row survives imports. A per-source target may promote it to
   `activities.name`/`description` (default: social only), because a promoted
