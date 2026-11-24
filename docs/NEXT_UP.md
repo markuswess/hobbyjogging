@@ -403,7 +403,9 @@ reports item; 28 is the recurring cleanup.
     the athlete's own run is the later validation. Athlete 2's first run is
     **Runalyze-only**: no activity names, no wellness, thresholds or zones,
     tags plus Runalyze's own workout type. That profile is the acceptance case
-    for items 49 and 50.
+    for items 49 and 50. Its payload names a Garmin watch (`device_name`), so
+    the **FIT import is its next source**: laps, device serial, max HR and
+    cadence. Runalyze alone yields no typed intervals and no device.
 
     - **Setup (import + CI)**
       - [ ] `init` creates and migrates a fresh DB explicitly; a second run is
@@ -1083,17 +1085,24 @@ reports item; 28 is the recurring cleanup.
       activities with no sets, the same way `workout_sets_current` treats the
       sheet. Manual and existing source sets always win; an unknown type is
       listed, never guessed.
-    - **Decision**: the canonical pair per type. Jogging → `continuous` +
-      `base` (non-quality); Long Slow Distance → `long_run` (quality);
-      SubThreshold → `continuous` + `subthreshold` or `intervals` +
-      `subthreshold` — decide by how it should display and whether the subT
-      report should see it (without rep data it has no tables either way).
+    - **Decision (settled)**: Jogging → `continuous` + `base` (non-quality);
+      Long Slow Distance → `long_run` (quality); SubThreshold → `intervals` +
+      `subthreshold`, **always** — the athlete uses the type for structured
+      work, so the method should say reps were intended even when no rep data
+      exists. The display kind is `quality/intervals/other` until reps arrive,
+      and the subT rep-length buckets stay empty without them.
       `quality_session` is a cross-check, not an override: quality is derived.
     - **Audit**: print the distinct stored types with counts and the unmapped
       ones, so a new Runalyze type is visible before it silently classifies
       nothing.
-    - **Not this item**: rep structure, intervals and laps. The type says
-      "SubThreshold", not "6×3′"; subT tables still need device intervals.
+    - **Not this item**: rep structure and laps. The type says
+      "SubThreshold", not "6×3′". Runalyze's payload does carry `laps` (30 of
+      40 in the probe), but each is only `{distance, duration, intensity:
+      'unknown'}` — auto splits or device laps with no WORK/RECOVERY type, HR
+      or pace. Laps belong to `activity_laps` (the segment table); typed
+      intervals come from Intervals.icu, and a Runalyze interval importer is
+      not planned. If no FIT archive exists, importing those laps as
+      `activity_laps` is an acceptable fallback; it never creates work reps.
     - **Acceptance**: athlete 2's Jogging runs read easy, LSD long runs and
       SubThreshold quality; a re-run is a no-op; an unmapped type is reported;
       the current athlete's Intervals/sheet sets are untouched.
@@ -1136,6 +1145,11 @@ owns experimentation, and items 13/14/25 own the eventual home.
   write-back (phase 4, with item 14).
 - **"As-of" reports** — render the log as it looked at a past date; possible
   because inputs are preserved, expensive, so phase 4 at the earliest.
+- **Lap-based rep detection** — infer WORK/RECOVERY reps from lap
+  distance/duration when a source has laps but no typed intervals (athlete 2's
+  structured runs show 3.0 km reps with 150–265 m recoveries, all labelled
+  `intensity: 'unknown'`); lab first, calibrated on known structured sessions,
+  and never written automatically.
 
 ## Notes
 
