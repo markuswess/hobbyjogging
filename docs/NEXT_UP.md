@@ -146,6 +146,8 @@ everything) → **1** (CLI write surface) → **38/35/21** extraction → **37**
 rules and **43** tags → **42** duplicates → health score → browser. Accepting
 a suggestion always writes a manual value and an `edit_log` row; nothing
 canonical is auto-applied except an empty, high-confidence classification.
+The corrections export (**57**) follows 37's audit as a small report; it is
+not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -1301,6 +1303,35 @@ reports item; 28 is the recurring cleanup.
       activity; the message names the coverage; an Intervals config still wins;
       four suites green.
 
+57. **Corrections export** (reports; small feature, after 37's audit). The
+    companion to the no-write-back rule: the DB knows where a value disagrees
+    and often why, so it can list the fixes to apply by hand in the platform.
+    - **Input**: open `field_conflict` items with their causes, plus quality
+      findings whose owner source is identifiable (a zero distance, an
+      implausible pace, the same upload arriving twice). It is not a merge, a
+      new queue or a second review surface.
+    - **Output**: one table per platform (Intervals, Runalyze, Strava, Garmin
+      Connect) grouped by the source whose value disagrees with the canonical
+      one: date, activity, field, canonical value, that source's value, cause,
+      suggested action, and a deep link. Markdown for reading, CSV/JSON for
+      ticking off. Start with `reports.sh corrections [--days|--from|--to]`;
+      the dashboard can embed the same report later.
+    - **Links**: `links.py` resolves Intervals and Garmin Connect; Strava's
+      activity id is in `activity_social`; confirm the Runalyze activity URL
+      pattern before relying on it.
+    - **Caveat**: it shows a disagreement and the canonical choice, not which
+      side is true. A human decides at the source; the export never writes,
+      never calls an API and never auto-resolves.
+    - **Trigger**: build it once 37's audit starts producing source-side
+      findings (a wrong distance, a missing sport, a duplicate upload), or
+      earlier if the review queue becomes noisy. It is not a phase gate.
+    - **Acceptance**: every open conflict appears once under the source that
+      disagrees (or "unknown source"), the links open the right activity where
+      one exists, the CSV is usable as a checklist, and no database row
+      changes.
+    - **Not**: write-back or platform auth (item 14), an auto-fix, or a second
+      identity model.
+
 ## Parked ideas
 
 Not queued and not scheduled; recorded so they are not re-invented. The lab
@@ -1311,9 +1342,6 @@ owns experimentation, and items 13/14/25 own the eventual home.
 - **Race execution scorecard** — pacing vs plan, split consistency, HR drift
   and heat for a race day, from data already stored (lab first, then a card if
   it earns one).
-- **Corrections export** — a "to fix in Intervals/Runalyze" list built from
-  conflicts and their causes, applied by hand; closes the loop without
-  write-back (phase 4, with item 14).
 - **"As-of" reports** — render the log as it looked at a past date; possible
   because inputs are preserved, expensive, so phase 4 at the earliest.
 
