@@ -5,6 +5,13 @@ on.
 
 ## Done
 
+- **Activity edit command.** `activity edit <id>` is the direct human write
+  surface: name, description, duration, distance, sport, sub-sport, RPE, feel,
+  tags, methods, targets and equipment, with `--clear`, `--dry-run`,
+  `--history` and an interactive mode. It reuses `apply_manual_edit`, re-runs
+  the quality rules, writes an `edit_log` row and closes the matching
+  `field_conflict` / `workout_classification` item. `_VALUE_PROMPTS` moved to
+  `values.py`.
 - **Garmin daily wellness.** `garmin wellness` reads the Personal API's daily
   summary (resting HR, sleep seconds, steps, floors, SpO2), the HRV summary
   and the weight range, and fills only the NULL fields of a stored day. Sleep
@@ -299,18 +306,6 @@ on.
 
 ## Next
 
-- **Activity edit command.** The human write surface next to triage: a general
-  `hobbyjogging activity edit <id>` that edits name, description, RPE, feel,
-  sub-sport, tags, classification and equipment without a review item, with
-  `--clear`, `--dry-run`, `--history`, and an interactive mode. Every field
-  writes manual provenance, reuses `apply_manual_edit` for the quality
-  re-check, and records an `edit_log` row. It shares triage's write path, so it
-  must also close the open `field_conflict` for a touched field and the
-  `workout_classification` item when the sets change; move `_VALUE_PROMPTS`
-  into `values.py` so both use one prompt table. See root item 1; the logic
-  stays in this package until a front end justifies an app package. Needs root
-  item 17 (the manual input layer) so edits land in `activity_manual_fields`
-  instead of only the materialized row.
 - **Consistency audit** (`review scan --rules consistency`). A dataset-wide
   scan for contradictions between the stored classification and the evidence,
   producing `consistency` review items (info, non-hiding) with a suggestion in

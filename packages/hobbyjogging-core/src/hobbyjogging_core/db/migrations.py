@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 25
+SCHEMA_VERSION = 26
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -506,6 +506,40 @@ ALTER TABLE activity_intervals ADD COLUMN source TEXT NOT NULL DEFAULT '';
 """
 
 
+MIGRATION_26_SQL = """
+-- Every manual write keeps an append-only audit trail. The field-source
+-- table stores only the current owner and value; this log answers what a
+-- value was before an edit and which review items the edit resolved. It is
+-- shared by activity edits, events and wellness (entity_kind).
+CREATE TABLE edit_log (
+    id INTEGER PRIMARY KEY,
+    entity_kind TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    field TEXT NOT NULL,
+    old_json TEXT,
+    new_json TEXT,
+    source TEXT NOT NULL DEFAULT 'manual',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_edit_log_entity
+ON edit_log(entity_kind, entity_id, id);
+
+CREATE TRIGGER edit_log_no_update
+BEFORE UPDATE ON edit_log
+BEGIN
+    SELECT RAISE(ABORT, 'edit_log is append-only');
+END;
+
+CREATE TRIGGER edit_log_no_delete
+BEFORE DELETE ON edit_log
+BEGIN
+    SELECT RAISE(ABORT, 'edit_log is append-only');
+END;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -532,6 +566,7 @@ MIGRATIONS: dict[int, str] = {
     23: MIGRATION_23_SQL,
     24: MIGRATION_24_SQL,
     25: MIGRATION_25_SQL,
+    26: MIGRATION_26_SQL,
 }
 
 

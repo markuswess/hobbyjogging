@@ -789,6 +789,41 @@ class TrainingWriter:
             (activity_id, field_name, source),
         )
 
+    def record_edit_log(
+        self,
+        *,
+        entity_kind: str,
+        entity_id: str,
+        field: str,
+        old: object,
+        new: object,
+        source: str = "manual",
+        note: str = "",
+    ) -> None:
+        """Append one manual change to the audit trail.
+
+        The log is append-only (enforced by triggers): a later edit adds a
+        row instead of rewriting history. It is written in the same
+        transaction as the value it describes.
+        """
+        self.connection.execute(
+            """
+            INSERT INTO edit_log (
+                entity_kind, entity_id, field, old_json, new_json,
+                source, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity_kind,
+                entity_id,
+                field,
+                json.dumps(old, default=str),
+                json.dumps(new, default=str),
+                source,
+                note,
+            ),
+        )
+
     def project_activity_field(
         self,
         activity_id: str,
@@ -928,6 +963,17 @@ class TrainingWriter:
             return False, None
         if not column["notnull"]:
             return True, None
+        default = column["dflt_value"]
+        if default is not None:
+            text = str(default).strip()
+            if len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
+                return True, text[1:-1]
+            if text.upper() == "NULL":
+                return True, None
+            try:
+                return True, float(text)
+            except ValueError:
+                return True, text
         if str(column["type"]).upper().startswith(("INT", "REAL", "NUM")):
             return True, 0
         if field_name == "sport":
@@ -1686,6 +1732,52 @@ class TrainingWriter:
             ),
         )
         return True
+
+    def set_manual_activity_equipment(
+        self,
+        activity_id: str,
+        equipment_ids: list[str],
+    ) -> int:
+        """Replace the manual equipment links for one activity.
+
+        The first id becomes the primary item and the rest are secondary.
+        Import links are left alone unless the manual primary displaces one
+        in the primary slot (the writer's usual manual-wins rule).
+        """
+        self._require_editable_activity(activity_id)
+
+        cleaned: list[str] = []
+        for equipment_id in equipment_ids:
+            text = str(equipment_id or "").strip()
+            if not text or text in cleaned:
+                continue
+            cleaned.append(text)
+
+        for equipment_id in cleaned:
+            row = self.connection.execute(
+                "SELECT 1 FROM equipment WHERE id = ?",
+                (equipment_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"unknown equipment: {equipment_id}")
+
+        self.connection.execute(
+            """
+            DELETE FROM activity_equipment
+            WHERE activity_id = ? AND is_manual = 1
+            """,
+            (activity_id,),
+        )
+
+        for index, equipment_id in enumerate(cleaned):
+            self.link_activity_equipment(
+                activity_id,
+                equipment_id,
+                source="manual",
+                role="primary" if index == 0 else "secondary",
+                is_manual=True,
+            )
+        return len(cleaned)
 
     def record_review_item(
         self,

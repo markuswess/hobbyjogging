@@ -151,8 +151,8 @@ Nothing else queued. New data work registers a task here instead of a script.
 ## Waiting on
 
 - **Historical refurbishment** (root item 37). The read-only audit is done;
-  the proposal rules (classification, trail, illness, seasons) wait for root
-  item 1's edit surface and the lab calibrations.
+  the proposal rules (classification, trail, illness, seasons) wait for the
+  landed `activity edit` surface and the lab calibrations.
 
 Nothing else. The package owns schema evolution, backfills, recomputes, and
 their bookkeeping.

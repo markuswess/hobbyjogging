@@ -13,6 +13,7 @@ from hobbyjogging_core.model import (
     ActivityWeather,
     AthleteThreshold,
     Device,
+    EditLogEntry,
     RaceResult,
     TrainingPeriod,
     Equipment,
@@ -40,6 +41,40 @@ class TrainingRepository:
 
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
+
+    def edit_history(
+        self,
+        entity_kind: str,
+        entity_id: str,
+    ) -> list[EditLogEntry]:
+        """Return the append-only edit log for one entity, oldest first."""
+        rows = self.connection.execute(
+            """
+            SELECT id, entity_kind, entity_id, field, old_json, new_json,
+                   source, note, created_at
+            FROM edit_log
+            WHERE entity_kind = ? AND entity_id = ?
+            ORDER BY id
+            """,
+            (entity_kind, entity_id),
+        ).fetchall()
+
+        entries = []
+        for row in rows:
+            entries.append(
+                EditLogEntry(
+                    id=row["id"],
+                    entity_kind=row["entity_kind"],
+                    entity_id=row["entity_id"],
+                    field=row["field"],
+                    old=_decode_json(row["old_json"]),
+                    new=_decode_json(row["new_json"]),
+                    source=row["source"],
+                    note=row["note"],
+                    created_at=row["created_at"],
+                )
+            )
+        return entries
 
     def activities(self, start: date, end: date) -> list[Activity]:
         rows = self.connection.execute(
@@ -795,3 +830,12 @@ def _context(raw: str | None) -> dict[str, object]:
     except (TypeError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _decode_json(raw: str | None) -> object:
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return raw

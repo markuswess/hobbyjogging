@@ -54,6 +54,11 @@ class FieldRuleTests(unittest.TestCase):
                 "vo2max_garmin",
                 "vo2max_runalyze",
                 "device_id",
+                "name",
+                "description",
+                "sub_sport",
+                "rpe",
+                "feel",
             },
             set(MANUAL_FIELDS),
         )
@@ -93,10 +98,11 @@ class FieldRuleTests(unittest.TestCase):
     def test_rules_only_name_activity_columns(self):
         self.assertLessEqual(set(FIELD_RULES), ACTIVITY_COLUMNS)
 
-    def test_text_and_subjective_fields_stay_owner_tracked(self):
-        for field in ("name", "description", "rpe", "feel", "intensity"):
+    def test_text_and_subjective_fields_are_manual_but_not_conflicts(self):
+        for field in ("name", "description", "sub_sport", "rpe", "feel"):
             self.assertNotIn(field, CONFLICT_FIELDS)
-            self.assertNotIn(field, MANUAL_FIELDS)
+            self.assertIn(field, MANUAL_FIELDS)
+        self.assertNotIn("intensity", MANUAL_FIELDS)
 
 
 class SourceProfileTests(unittest.TestCase):

@@ -53,14 +53,12 @@ from .runalyze_import import SOURCE as RUNALYZE_SOURCE
 from .runalyze_import import apply_stored_enrichment
 from .sheet import DEFAULT_TIMEZONE, as_date, as_seconds, local_start
 from .values import (
+    VALUE_PROMPTS,
     format_distance_m,
     format_duration_s,
     format_field,
     format_pace,
     format_speed,
-    parse_distance_m,
-    parse_duration_s,
-    parse_sport,
 )
 
 KEYS_HELP = """\
@@ -296,22 +294,6 @@ _FIELD_LABELS = {
     "distance_m": "distance",
     "sport": "sport",
 }
-
-_VALUE_PROMPTS = {
-    "duration_s": (
-        "value (46:20, 1:02:03, or seconds): ",
-        parse_duration_s,
-    ),
-    "distance_m": (
-        "value (8.2km, 8200m, or plain km): ",
-        parse_distance_m,
-    ),
-    "sport": (
-        "value (e.g. trail_running or mtb_ride): ",
-        parse_sport,
-    ),
-}
-
 
 class AbortEdit(ValueError):
     """Raised when the user aborts value entry in the triage edit flow."""
@@ -1271,7 +1253,7 @@ class TriageRunner:
             self.print("  cancelled")
             return False
 
-        prompt, parse = _VALUE_PROMPTS[field]
+        prompt, parse = VALUE_PROMPTS[field]
         try:
             value = self._read_value(prompt, parse)
         except AbortEdit:
@@ -1286,6 +1268,7 @@ class TriageRunner:
                 field=field,
                 value=value,
                 resolve_item_id=item["id"],
+                source="triage",
             )
         except ValueError as exc:
             self.print(f"  error: {exc}")

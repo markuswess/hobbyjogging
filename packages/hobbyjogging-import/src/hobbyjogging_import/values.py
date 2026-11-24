@@ -116,6 +116,55 @@ def parse_sport(text: str) -> str:
     return normalized
 
 
+def parse_text(text: str) -> str:
+    """Parse a non-empty free-text value, trimmed but otherwise unchanged."""
+    value = text.strip()
+    if not value:
+        raise ValueError("value is empty")
+    return value
+
+
+def parse_rpe(text: str) -> float:
+    """Parse a rating of perceived exertion on the 1-10 scale."""
+    try:
+        value = float(text.strip())
+    except ValueError:
+        raise ValueError(f"invalid RPE: {text!r}") from None
+    if not 1 <= value <= 10:
+        raise ValueError("RPE must be between 1 and 10")
+    return value
+
+
+def parse_feel(text: str) -> int:
+    """Parse a subjective feel rating on the schema's 1-5 scale."""
+    try:
+        value = int(text.strip())
+    except ValueError:
+        raise ValueError(f"invalid feel: {text!r}") from None
+    if not 1 <= value <= 5:
+        raise ValueError("feel must be between 1 and 5")
+    return value
+
+
+# One prompt/parser table for the review CLI, triage and the edit command.
+# Fields without a terse notation are entered literally and use their parser
+# directly.
+VALUE_PROMPTS = {
+    "duration_s": (
+        "value (46:20, 1:02:03, or seconds): ",
+        parse_duration_s,
+    ),
+    "distance_m": (
+        "value (8.2km, 8200m, or plain km): ",
+        parse_distance_m,
+    ),
+    "sport": (
+        "value (e.g. trail_running or mtb_ride): ",
+        parse_sport,
+    ),
+}
+
+
 def format_duration_s(seconds: float | None) -> str:
     """Format seconds as ``46:20`` or, past one hour, ``1:02:03``."""
     if seconds is None:
@@ -158,10 +207,19 @@ def _format_hr(value) -> str:
     return f"{float(value):.0f} bpm"
 
 
+def _format_rating(value) -> str:
+    if value is None:
+        return "-"
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(number)
+
+
 FORMATTERS = {
     "duration_s": format_duration_s,
     "elapsed_s": format_duration_s,
     "distance_m": format_distance_m,
     "sport": str,
     "avg_hr": _format_hr,
+    "rpe": _format_rating,
+    "feel": _format_rating,
 }

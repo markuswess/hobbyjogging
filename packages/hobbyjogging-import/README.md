@@ -798,6 +798,49 @@ threshold saved: run from 2019-01-22
 Zones apply from 2019-01-22; no earlier run activity stays unzoned.
 ```
 
+## Activity editing
+
+`activity edit <id>` is the direct human write surface. It needs no review
+item; every value becomes a manual override through the same functions triage
+uses, so a reimport cannot undo it. It edits the activity's own fields
+(`name`, `description`, `duration`, `distance`, `sport`, `sub-sport`, `rpe`,
+`feel`), the manual tag set (`--tag`, repeatable) and the whole-set workout
+classification (`--method`, `--target`), and the manual equipment links
+(`--equipment`, repeatable).
+
+```bash
+uv run --env-file .env hobbyjogging-import activity edit <id> \
+  --name "Long run" --rpe 7 --feel 2 --sub-sport trail \
+  --tag "long" --method long_run --target base
+
+# show the append-only history (old value, new value, source, resolved items)
+uv run --env-file .env hobbyjogging-import activity edit <id> --history
+
+# see what a change would do without writing it
+uv run --env-file .env hobbyjogging-import activity edit <id> \
+  --duration 46:20 --dry-run
+```
+
+- `--clear <field>` removes the manual value and its ownership, restoring the
+  source snapshot or the column default. It accepts the scalar fields and
+  `tags`, `methods`, `targets`, `equipment`.
+- `--item <review-item-id>` also resolves an explicit review item. It is a
+  convenience, not a requirement: a manual edit automatically resolves the
+  open `field_conflict` for a touched field and, after a method/target change,
+  the open `workout_classification` item. Other fields' items stay open.
+- Every change appends one `edit_log` row in the same transaction
+  (`old_json`, `new_json`, source and note). `--history` reads it. The log is
+  append-only; it is the audit trail a platform would keep, while
+  `activity_field_sources` is only the current snapshot.
+- With no edit flags the command is interactive: it prompts field by field with
+  the current value as the default, and a blank answer keeps it. `-` clears
+  the field, and sets accept comma-separated values.
+- The quality rules re-run after every scalar edit and print what still stands
+  (`quality: ok` or the findings). A set change does not affect the quality
+  rules.
+- `--dry-run` applies the whole edit, prints it, and rolls the transaction
+  back; nothing is written.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*

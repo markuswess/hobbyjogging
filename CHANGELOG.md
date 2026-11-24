@@ -11,7 +11,23 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — phase 3: trustworthy data
 
-Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
+Schema: **26**. Compatibility: requires schema ≥ 1, migrates to 26.
+
+### Editing
+
+- `activity edit <id>` is the direct human write surface: name, description,
+  duration, distance, sport, sub-sport, RPE, feel, tags, workout methods and
+  targets, and equipment. It needs no review item; every change is a manual
+  input written through the same path as triage, and a reimport cannot undo
+  it. `--clear` removes a manual value and its ownership, `--dry-run` rolls
+  the whole edit back, `--history` reads the audit trail, and no edit flags
+  starts an interactive field-by-field mode.
+- `edit_log` (schema 26) is the append-only audit trail for manual writes
+  (entity, field, old/new JSON, source, note). An item-less edit resolves the
+  open `field_conflict` for a touched field and the `workout_classification`
+  item after a set change; the log records which items closed.
+- Manual editing now covers `name`, `description`, `sub_sport`, `rpe` and
+  `feel`; clearing a manual text value restores the column default.
 
 ### Safety
 

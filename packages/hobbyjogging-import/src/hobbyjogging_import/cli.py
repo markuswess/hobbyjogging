@@ -897,6 +897,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "review":
         return run_review(args, parser)
 
+    if args.command == "activity":
+        from .activity_cli import run_activity
+
+        return run_activity(args, parser)
+
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")
 

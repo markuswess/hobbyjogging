@@ -126,7 +126,7 @@ cleanup pass is part of the todo list, not a rewrite project.
   overlay is not a backup.
 - `maintenance audit` is read-only. It reports evidence and gaps, never opens
   review items and never writes; proposals go through the review queue and the
-  edit surface (item 1).
+  landed `activity edit` surface.
 
 ## Tests
 
@@ -153,6 +153,9 @@ Cross-package changes must leave all four suites green.
   stored as inputs in `activity_manual_fields`, so a rebuild reproduces them.
   The same table holds an owner patch (triage `(t)`), which keeps the chosen
   source owning the field.
+- Every manual write appends an `edit_log` row in the same transaction
+  (entity, field, old/new JSON, source, note). The log is append-only;
+  `activity_field_sources` is a snapshot, not history.
 - `duration_s` is recording/timer time, `moving_s` is moving time, and
   `elapsed_s` is elapsed time. `duration_s` is owner-tracked; `moving_s` and
   `elapsed_s` have a ranked authority (Intervals, then FIT) and never produce

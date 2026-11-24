@@ -43,7 +43,8 @@ class FieldRule:
 
 # The table is the single source of truth for field behaviour. A field that
 # is absent is owner-tracked without a conflict item, which is the default
-# for subjective text (name, description) and source-specific extras.
+# for source-specific extras. Subjective text and ratings are present only so
+# the edit surface may write them manually, not to open conflicts.
 FIELD_RULES: dict[str, FieldRule] = {
     # Recording time is owner-tracked, but a difference that fits inside
     # either source's pause gap is accounting noise rather than a conflict.
@@ -112,6 +113,12 @@ FIELD_RULES: dict[str, FieldRule] = {
     "device_id": FieldRule(authority=("fit",), manual=True),
     "vo2max_garmin": FieldRule(authority=("fit",), manual=True),
     "vo2max_runalyze": FieldRule(manual=True),
+    # Subjective fields: never a cross-source conflict, but editable by hand.
+    "name": FieldRule(manual=True),
+    "description": FieldRule(manual=True),
+    "sub_sport": FieldRule(manual=True),
+    "rpe": FieldRule(manual=True),
+    "feel": FieldRule(manual=True),
 }
 
 CONFLICT_FIELDS = frozenset(

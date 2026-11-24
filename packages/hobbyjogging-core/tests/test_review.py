@@ -1,3 +1,4 @@
+import sqlite3
 import unittest
 
 from hobbyjogging_core import TrainingRepository, TrainingWriter, connect, migrate
@@ -509,11 +510,64 @@ class ManualFieldTests(unittest.TestCase):
     def test_clear_missing_override_is_a_noop(self):
         self.assertFalse(self.writer.clear_manual_field("a1", "duration_s"))
 
+    def test_clear_manual_text_falls_back_to_the_column_default(self):
+        self.writer.set_manual_field("a1", "name", "Edited name")
+
+        self.assertTrue(self.writer.clear_manual_field("a1", "name"))
+        self.conn.commit()
+
+        self.assertEqual("", self._activity_value("name"))
+        self.assertIsNone(self._field_row("name"))
+
+    def test_edit_log_is_append_only_and_readable(self):
+        repository = TrainingRepository(self.conn)
+        self.writer.record_edit_log(
+            entity_kind="activity",
+            entity_id="a1",
+            field="name",
+            old="",
+            new="Edited name",
+            source="test",
+            note="first edit",
+        )
+        self.conn.commit()
+
+        entries = repository.edit_history("activity", "a1")
+        self.assertEqual(1, len(entries))
+        self.assertEqual("", entries[0].old)
+        self.assertEqual("Edited name", entries[0].new)
+        self.assertEqual("test", entries[0].source)
+        self.assertEqual("first edit", entries[0].note)
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.conn.execute("UPDATE edit_log SET note = 'rewritten'")
+        self.conn.rollback()
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.conn.execute("DELETE FROM edit_log")
+        self.conn.rollback()
+
+        self.writer.record_edit_log(
+            entity_kind="activity",
+            entity_id="a1",
+            field="name",
+            old="Edited name",
+            new="Later name",
+            source="test",
+        )
+        self.conn.commit()
+        self.assertEqual(
+            ["first edit", ""],
+            [
+                entry.note
+                for entry in repository.edit_history("activity", "a1")
+            ],
+        )
+
     def test_invalid_field_rejected(self):
         with self.assertRaises(ValueError):
-            self.writer.set_manual_field("a1", "name", "Not allowed")
+            self.writer.set_manual_field("a1", "intensity", 0.8)
         with self.assertRaises(ValueError):
-            self.writer.clear_manual_field("a1", "name")
+            self.writer.clear_manual_field("a1", "intensity")
 
     def test_unknown_and_excluded_activities_rejected(self):
         with self.assertRaises(ValueError):

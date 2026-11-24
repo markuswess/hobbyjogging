@@ -117,7 +117,9 @@ a visible dashboard area (wellness, load, zones, social, reps, races).
    payloads and the fields they report). Maintenance writes *derived stored
    values* (one-time backfills and recurring recomputes). Reports compute
    *cheap metrics on read* and never mutate the database. No layer formats
-   another layer's output.
+   another layer's output. Human edits are inputs, not a fourth layer: triage
+   and `activity edit` write manual values through the same `TrainingWriter`,
+   and the projections are rebuilt from them.
 2. **Placement follows cost.** A value that is cheap to derive stays in the
    report layer. A value that is expensive, or needs cross-row context
    (ownership, classification, review state), is stored and maintained — with
@@ -223,10 +225,10 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 25).
+  (`SCHEMA_VERSION`, currently 26).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
-  upserts, field provenance, manual edits, exclusions, review items, laps,
-  intervals, zone times, tags.
+  upserts, field provenance, manual edits and the append-only `edit_log`,
+  exclusions, review items, laps, intervals, zone times, tags.
 - `db/repository.py` — `TrainingRepository`: read queries over the canonical
   model.
 - `datasource.py` — the `DataSource` protocol every report consumer depends
@@ -256,8 +258,14 @@ Source ingestion and the review queue.
 - `matching.py` — temporal activity matching across sources.
 - `quality.py` — canonical quality rules, field-conflict recording, review
   fingerprints, quality refresh after edits.
-- `values.py` — parsers/formatters for manual entry (`46:20`, `8.2km`).
-- `editing.py` — shared manual-edit application used by the CLI and triage.
+- `values.py` — parsers/formatters for manual entry (`46:20`, `8.2km`,
+  RPE/feel/text) and the one prompt/parser table shared by triage and the edit
+  command.
+- `editing.py` — shared manual-edit application used by `review edit`,
+  `activity edit` and triage: scalar values, whole sets, clears, conflict and
+  classification closure, the `edit_log` row and the quality re-check.
+- `activity_cli.py` — `activity edit`: the direct human write surface with
+  explicit flags, `--clear`, `--dry-run`, `--history` and an interactive mode.
 - `triage.py` — interactive review walk.
 - `review_cli.py`, `cli.py` — `hobbyjogging-import` entry point.
 
@@ -320,7 +328,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 25.
+SQLite, forward-only migrations. Schema version 26.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -334,6 +342,14 @@ SQLite, forward-only migrations. Schema version 25.
   including match method, confidence, and primary flag.
 - `activity_field_sources` — per-field provenance: which source wrote a value,
   the value it wrote, and whether it is a manual override.
+- `activity_manual_fields` — the manual inputs (a value or an owner patch)
+  that a rebuild replays, so a manual decision is an input rather than a
+  materialized side effect.
+- `edit_log` (v26) — the append-only audit trail for manual writes
+  (`entity_kind`, `entity_id`, `field`, old/new JSON, source, note). It answers
+  what a value was before an edit and which review items the edit resolved;
+  triggers reject update and delete. `activity_field_sources` is a snapshot,
+  not a history.
 - `routes` (v20) + `activity_routes` — a named loop or course and the
   activities that covered it. Route identity is source-scoped: the sheet keys
   by `Streckennummer`, falling back to the name's number when unambiguous and
@@ -692,6 +708,17 @@ A resolved decision is not reopened; changed proposals supersede the old item.
   queue management and backfill.
 - `review edit` — manual values (`duration`, `distance`, `sport`), written as
   manual overrides and followed by a quality re-check.
+- `activity edit <id>` — the direct human write surface, with no review item
+  required: name, description, duration, distance, sport, sub-sport, RPE,
+  feel, tags, methods, targets and equipment. Every change is a manual input
+  through the same `editing` functions as triage, appends an `edit_log` row,
+  and closes the open `field_conflict` for a touched field or the
+  `workout_classification` item after a set change. `--clear` removes a manual
+  value and its ownership; `--dry-run` rolls everything back; `--history`
+  reads the log; with no flags it prompts field by field, current value as the
+  default, and a blank answer keeps it. This is the reference write surface:
+  the later localhost UI binds to the same functions rather than reimplementing
+  them.
 - `review exclude` / `review restore` — durable soft delete of an activity and
   its source records, or undo.
 - `review triage` — interactive walk with per-item decisions committed
@@ -787,10 +814,10 @@ dashboard: the view models make it cheap to add later.
   TRIMP load, manual thresholds/zones, Garmin wellness, name labels) are in
   place; the real second-athlete acceptance run remains.
 - Canonical pipeline, review workflow, manual editing and exclusion: done.
-  Schema v25 adds interval provenance; v24 soft-excludes retired device rows;
-  v23 is the manual input layer (`activity_manual_fields`), v22 per-source
-  social text, and earlier versions add set-based workout methods/targets and
-  the maintenance bookkeeping.
+  Schema v26 adds the append-only `edit_log`; v25 interval provenance; v24
+  soft-excludes retired device rows; v23 is the manual input layer
+  (`activity_manual_fields`), v22 per-source social text, and earlier versions
+  add set-based workout methods/targets and the maintenance bookkeeping.
 - Sources: FIT archive, Intervals.icu, the Garmin Personal API fetch, Runalyze
   (inventory, comments/tags, gear, race results, VO2max) and the Strava CSV.
 - Device identity is FIT-first and generic: a provider name fills `device_id`

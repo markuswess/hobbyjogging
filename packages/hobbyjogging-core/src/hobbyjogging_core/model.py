@@ -316,3 +316,23 @@ class ReviewItem:
     source: str = ""
     external_id: str = ""
     context: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass
+class EditLogEntry:
+    """One append-only record of a manual write.
+
+    ``entity_kind`` scopes the id (activity, event, wellness); ``field`` is
+    the edited field or set name. ``old`` and ``new`` are decoded JSON
+    values, so a list-valued field stays a list.
+    """
+
+    id: int
+    entity_kind: str
+    entity_id: str
+    field: str
+    old: object = None
+    new: object = None
+    source: str = "manual"
+    note: str = ""
+    created_at: str = ""

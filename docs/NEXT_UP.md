@@ -9,6 +9,13 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Activity editing (2026-11-24).** `activity edit <id>` is the
+  direct human write surface: name, description, duration, distance, sport,
+  sub-sport, RPE, feel, tags, methods, targets and equipment, plus `--clear`,
+  `--dry-run`, `--history` and an interactive mode. Every change is a manual
+  input through the triage write path; an item-less edit closes the matching
+  `field_conflict` and, after a set change, the `workout_classification`
+  item. Schema 26 adds the append-only `edit_log`.
 - **Phase 2 complete (2026-11-24).** `init`/`doctor`, the full-source `sync`,
   the install docs, the MIT licence, CI, the lab detach, the
   source-capability matrix and selection, and the Runalyze+Garmin profile
@@ -139,17 +146,17 @@ passed; its two findings — **55** (subT selection and the derived table) and
 ### Phase 3: trustworthy data
 
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
-(manual overlay + rebuild proof) and **37**'s read-only audit are done; item
-**1** (the CLI write surface) is next, then the audit's proposal rules.
+(manual overlay + rebuild proof), **37**'s read-only audit and the CLI write
+surface are done; the next structural work is **38/35/21** extraction.
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit (read-only, done; the proposals
-wait for item 1) → **1** (CLI write surface) → **38/35/21** extraction →
-**37**'s rules and **43** tags → **42** duplicates → health score → browser.
-Accepting a suggestion always writes a manual value and an `edit_log` row;
-nothing canonical is auto-applied except an empty, high-confidence
-classification. The corrections export (**57**) follows 37's audit as a small
-report; it is not a gate.
+wait for the landed edit surface) → the CLI write surface (done) → **38/35/21**
+extraction → **37**'s rules and **43** tags → **42** duplicates → health score
+→ browser. Accepting a suggestion always writes a manual value and an
+`edit_log` row; nothing canonical is auto-applied except an empty,
+high-confidence classification. The corrections export (**57**) follows 37's
+audit as a small report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -160,88 +167,6 @@ Item 40 is closed (see its entry): the recording sources keep `enabled`, so
 there is no create policy to wire. Item 41 (device identity) landed as a bug
 fix, not as phase work. Items 12, 16, 17, 24, 32 and 39 are landed; 15 is a
 reports item; 28 is the recurring cleanup.
-
-1. **Activity editing, CLI first** (core + import; phase 3). The only manual
-   write surface is `review edit`, which changes `duration_s`, `distance_m` and
-   `sport`, and only with a review item attached. Name, description, RPE, feel,
-   sub-sport, tags, classification and equipment have no free-form edit, no way
-   to clear a value, and no history — `activity_field_sources` stores only the
-   current owner and value, so there is nothing to undo against.
-   - **Command**: `hobbyjogging activity edit <id>` with explicit flags
-     (`--name`, `--description`, `--rpe`, `--feel`, `--sub-sport`, repeatable
-     `--tag`, `--method`, `--target`, `--equipment`), plus `--clear <field>`,
-     `--dry-run`, `--history`, and an interactive mode that prompts field by
-     field with the current value as the default. A review item is never
-     required.
-   - **Provenance**: every field goes through `TrainingWriter.set_manual_field`
-     (`is_manual=1`, `source='manual'`), so a reimport cannot undo it; `sport`
-     still normalizes through `core.sports`; the sets go through
-     `set_manual_activity_workout_methods` / `_targets`. **`MANUAL_FIELDS`
-     currently rejects `name`, `description`, `rpe`, `feel` and `sub_sport`**,
-     so that tuple has to grow first — `set_manual_field` raises for every one
-     of those flags today.
-   - **Quality**: reuse `apply_manual_edit`, which re-runs the quality rules and
-     prints the findings that still stand.
-   - **Relationship to triage**: both surfaces share one write path —
-     `apply_manual_edit` → `set_manual_field` + `refresh_activity_quality` — so
-     provenance and the quality re-check never diverge. Triage stays the
-     contextual surface (sources, `(v)` pick value, `(t)` trust Intervals,
-     `(ci)`/`(cg)` links, `(d)` exclude, `(k)` classification proposals); edit
-     is the direct surface and must not grow those actions. Only
-     `duration_s`/`distance_m`/`sport` and the classification sets genuinely
-     duplicate, which is intended: `_VALUE_PROMPTS` covers exactly three
-     fields, and `(k)` adds the proposals the raw `--method`/`--target` cannot.
-   - **Item lifecycle fix**: `refresh_activity_quality` only closes
-     `category=quality` items, and `prune_field_conflicts` only closes a
-     conflict whose *recorded* current/incoming values agree — it knows nothing
-     about a manual override. An item-less edit therefore leaves the matching
-     `field_conflict` open forever. `apply_manual_edit` must also resolve open
-     `field_conflict` items for the touched `(activity, field)` and open
-     `workout_classification` items when methods/targets are written; `--item`
-     then becomes a convenience, not a requirement. `edit_log` records the
-     resolved item id so the history explains the closure.
-   - **Prompt table**: move `_VALUE_PROMPTS` from `triage.py` to `values.py`
-     so the interactive edit mode and triage share one prompt/parser table.
-   - **Text fields (decided).** One training-notes text per activity, not a
-     list. `activities.description` is the training notes — Intervals
-     description, the sheet's `Beschreibung`, Runalyze as a blank-fill fallback
-     — and the edit CLI edits it with `--description`. **No `activity_notes`
-     table**: the field inventory shows one training text and one social text
-     per activity, so a notes table would be the speculative abstraction the
-     rules warn about. The social text lives in `activity_social` (item 16).
-   - **Edit log (new)**: `edit_log(entity_kind, entity_id, field, old_json,
-     new_json, source, note, created_at)`, append-only, written in the same
-     transaction as the edit. `activity_field_sources` is a snapshot, not a
-     history; independence later means the database has to carry the audit
-     trail a platform would have kept. `--history` reads it, and events and
-     wellness reuse it.
-   - **Placement**: keep it in the import CLI for now — `editing`, `values`,
-     `quality` and `causes` already live there. When the front end starts,
-     extract a `hobbyjogging-app` package and move those modules behind it, the
-     same move the classifier made to core once it had a second consumer.
-   - **Localhost write surface (later in phase 3, after the CLI)**:
-     server-rendered forms bound to `127.0.0.1`, one user, no auth,
-     POST-redirect-GET, reusing the existing HTML renderer and **the same write
-     functions as the CLI** — the UI never runs its own SQL and never becomes a
-     second implementation. The CLI stays the reference implementation: if the
-     UI needs something the CLI cannot do, the CLI is wrong. Start with the
-     standard library
-     (`wsgiref`/`http.server`, zero new dependencies) and escalate to a small
-     framework only if forms, uploads or sessions demand it. No SPA, no JS
-     framework, no background jobs; the static dashboard stays read-only and
-     the phone stays read-only. The database is single-writer (WAL, 5 s busy
-     timeout) and unauthenticated, so it must never be exposed beyond loopback.
-     No long write transaction, and never overlap with `sync.sh`: a lock is a
-     bug to fix, not a retry to hide.
-   - **Tests**: a manual edit survives a reimport; `--clear` removes the value
-     and its manual ownership; `--history` shows the prior value; `--dry-run`
-     writes nothing; quality findings print; an empty interactive answer keeps
-     the current value; tags/methods/targets replace as sets; an item-less edit
-     closes the matching `field_conflict` and leaves other fields' items open;
-     a classification edit closes the `workout_classification` item; `--item`
-     still resolves explicitly.
-   - **Docs**: the ARCHITECTURE role list gains the human write surface, and
-     the import README documents the command.
 
 12. **Runalyze enrichment** (core + import + reports). Phases 1–5 are landed
     and applied; this entry keeps only what matters to rerun it or to explain
@@ -306,14 +231,15 @@ reports item; 28 is the recurring cleanup.
       backfilling, and the platform stays a read-only fallback until the DB is
       at least as good for that type. Runalyze is nearly reachable: race
       results already have the manual `race-result` CLI (about five per year),
-      comments live in Intervals, tags move with item 1, and the only missing
-      surface is equipment add/edit/retire; the lost series is
+      comments live in Intervals, tags have the manual edit surface, and the
+      only missing surface is equipment add/edit/retire; the lost series is
       `vo2max_runalyze`. Intervals is the hard one (plans, wellness, events,
       thresholds, zones), which is why it comes last.
     - **Phases**, in order: owner-tracked events (`event_field_sources`, manual
       wins, a new `AGENTS.md` rule) → planned-workout steps and authoring →
       subjective wellness ownership → thresholds/zones (item 8) → the front end
-      from item 1 → Garmin/FIT ingest so Intervals becomes optional.
+      from the `activity edit` surface → Garmin/FIT ingest so Intervals becomes
+      optional.
     - **Not needed**: a notes/comments table. The field inventory shows one
       training-notes text per activity (`description`) plus a social text on
       Strava, so this work reuses `description` rather than adding
@@ -322,8 +248,8 @@ reports item; 28 is the recurring cleanup.
       watch (which would need a `.fit` workout export and upload) or the lap
       button is enough — the 370 intervals activities with ≥3 WORK reps suggest
       the latter; and whether the front end ever replaces the CLI.
-    - **Edit history** from item 1 is a prerequisite, not an extra: without it,
-      dropping the platform also drops the audit trail.
+    - **Edit history** (`edit_log`, schema 26) is a prerequisite, not an extra:
+      without it, dropping the platform also drops the audit trail.
 
 15. **Reports backlog** — handed to the reports session; the list lives in
    `packages/hobbyjogging-reports/NEXT_UP.md` and is kept current there rather
@@ -816,7 +742,7 @@ reports item; 28 is the recurring cleanup.
     to invent facts.
     - **Sequence**: the Runalyze import has landed, so the tags and comments are
       complete; the audit is read-only and can start now. Proposals that need
-      the activity edit surface wait for item 1.
+      the activity edit surface wait for the landed `activity edit` CLI.
     - **Audit first (done 2026-11-24)**: `maintenance audit [--output FILE]`
       writes the read-only Markdown report: field coverage per year, raw
       payload keys without a canonical home, tag meanings, interval-like
@@ -827,8 +753,8 @@ reports item; 28 is the recurring cleanup.
       candidates (31 by elevation, 16 by tag); 65 `race`-method activities and
       37 official results; 4 illness-tagged days outside an illness period;
       19 open `ambiguous_match` items. Report: `/tmp/opencode/historical-audit.md`
-      (re-runnable; not committed). The proposal rules below wait for item 1
-      and the lab calibrations.
+      (re-runnable; not committed). The proposal rules below wait for the
+      landed edit surface and the lab calibrations.
     - **Workout classification** (import + maintenance): parse explicit
       interval patterns in `description` and the Runalyze tags (`sub
       threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`, rep lengths)
@@ -859,7 +785,7 @@ reports item; 28 is the recurring cleanup.
       `Raceday` tags, distance/name) as a `season_candidate`; do not derive a
       build start silently.
     - **Manual surface**: accepted candidates write manual values through the
-      activity edit CLI or `period add` and land in `edit_log` (item 1).
+      activity edit CLI or `period add` and land in `edit_log`.
       Review is the default; auto-fill only for high-confidence empty
       classifications.
     - **Health score** (reports; rides on this audit): one view of data trust —
@@ -1071,7 +997,7 @@ reports item; 28 is the recurring cleanup.
       beside `check_todos.py`.
     - **Not now**: splitting `writer.py` (cohesive) or `demo.py` (mechanical),
       a linter, package renames, or extracting `hobbyjogging-app` — that waits
-      for the front end (item 1).
+      for the front end (the `activity edit` CLI is its reference).
     - **Acceptance**: four suites green, the demo dashboard renders
       identically, the public import paths still resolve, and a deliberately
       oversized new file fails CI.

@@ -608,6 +608,108 @@ def build_parser() -> argparse.ArgumentParser:
     )
     race_result_remove.add_argument("activity")
 
+    activity = subparsers.add_parser(
+        "activity",
+        help="inspect and edit one canonical activity by hand",
+    )
+    activity.add_argument("--database", type=Path)
+    activity_sub = activity.add_subparsers(
+        dest="activity_action",
+        required=True,
+    )
+    activity_edit = activity_sub.add_parser(
+        "edit",
+        help="edit activity fields as manual overrides (no review item needed)",
+    )
+    activity_edit.add_argument("activity_id", metavar="ACTIVITY_ID")
+    activity_edit.add_argument("--name")
+    activity_edit.add_argument("--description")
+    activity_edit.add_argument(
+        "--duration",
+        help="new duration: 46:20, 1:02:03, or seconds",
+    )
+    activity_edit.add_argument(
+        "--distance",
+        help="new distance: 8.2km, 8200m, or plain km",
+    )
+    activity_edit.add_argument(
+        "--sport",
+        help="new sport, e.g. trail_running",
+    )
+    activity_edit.add_argument(
+        "--rpe",
+        help="rating of perceived exertion, 1-10",
+    )
+    activity_edit.add_argument(
+        "--feel",
+        help="subjective feel, 1 (strong) .. 5 (weak)",
+    )
+    activity_edit.add_argument(
+        "--sub-sport",
+        dest="sub_sport",
+        help="free-form sub-sport, e.g. trail",
+    )
+    activity_edit.add_argument(
+        "--tag",
+        action="append",
+        default=None,
+        help="replace the manual tag set (repeatable)",
+    )
+    activity_edit.add_argument(
+        "--method",
+        action="append",
+        default=None,
+        help="replace the workout method set (repeatable)",
+    )
+    activity_edit.add_argument(
+        "--target",
+        action="append",
+        default=None,
+        help="replace the workout target set (repeatable)",
+    )
+    activity_edit.add_argument(
+        "--equipment",
+        action="append",
+        default=None,
+        help="replace the manual equipment links (repeatable)",
+    )
+    activity_edit.add_argument(
+        "--clear",
+        action="append",
+        default=[],
+        metavar="FIELD",
+        help=(
+            "remove a manual value and its ownership (repeatable); accepts "
+            "the scalar fields and tags/methods/targets/equipment"
+        ),
+    )
+    activity_edit.add_argument(
+        "--item",
+        type=int,
+        metavar="REVIEW_ITEM_ID",
+        help="also resolve this review item",
+    )
+    activity_edit.add_argument(
+        "--note",
+        help="note stored on the edit log and any resolved item",
+    )
+    activity_edit.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the changes and roll them back",
+    )
+    activity_edit.add_argument(
+        "--history",
+        action="store_true",
+        help="show the append-only edit log for this activity",
+    )
+    activity_edit.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="prompt field by field (also the default with no flags)",
+    )
+
     review = subparsers.add_parser(
         "review",
         help="list and resolve import conflicts and quality review items",

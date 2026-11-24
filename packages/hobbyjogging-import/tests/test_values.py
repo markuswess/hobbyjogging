@@ -3,11 +3,15 @@ import unittest
 from hobbyjogging_import.values import (
     format_distance_m,
     format_duration_s,
+    format_field,
     format_pace,
     format_speed,
     parse_distance_m,
     parse_duration_s,
+    parse_feel,
+    parse_rpe,
     parse_sport,
+    parse_text,
 )
 
 
@@ -50,7 +54,6 @@ class ParseDistanceTests(unittest.TestCase):
 
 
 class ParseSportTests(unittest.TestCase):
-
     def test_aliases_are_normalized(self):
         self.assertEqual("run", parse_sport("running"))
         self.assertEqual("trail_run", parse_sport("trail_running"))
@@ -64,6 +67,27 @@ class ParseSportTests(unittest.TestCase):
     def test_rejects_empty(self):
         with self.assertRaises(ValueError):
             parse_sport("   ")
+
+
+class ParseSubjectiveTests(unittest.TestCase):
+
+    def test_rpe_accepts_the_1_to_10_scale(self):
+        self.assertEqual(8.0, parse_rpe("8"))
+        self.assertEqual(7.5, parse_rpe("7.5"))
+        for value in ("0", "11", "high", ""):
+            with self.assertRaises(ValueError, msg=value):
+                parse_rpe(value)
+
+    def test_feel_accepts_the_1_to_5_scale(self):
+        self.assertEqual(2, parse_feel("2"))
+        for value in ("0", "6", "2.5", ""):
+            with self.assertRaises(ValueError, msg=value):
+                parse_feel(value)
+
+    def test_text_is_trimmed_and_non_empty(self):
+        self.assertEqual("Long run", parse_text("  Long run "))
+        with self.assertRaises(ValueError):
+            parse_text("   ")
 
 
 class FormatTests(unittest.TestCase):
@@ -88,6 +112,12 @@ class FormatTests(unittest.TestCase):
     def test_format_speed(self):
         self.assertEqual("30.0 km/h", format_speed(3600, 30000))
         self.assertEqual("-", format_speed(3600, 0))
+
+    def test_format_ratings(self):
+        self.assertEqual("8", format_field("rpe", 8.0))
+        self.assertEqual("7.5", format_field("rpe", 7.5))
+        self.assertEqual("2", format_field("feel", 2))
+        self.assertEqual("-", format_field("rpe", None))
 
 
 if __name__ == "__main__":

@@ -386,6 +386,7 @@ def _run_edit(args, writer: TrainingWriter, parser) -> int:
                     value=value,
                     resolve_item_id=args.item,
                     note=args.note,
+                    source="review-edit",
                 )
             except ValueError as exc:
                 writer.connection.rollback()

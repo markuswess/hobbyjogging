@@ -571,9 +571,11 @@ pointer. Items 1 and 15 are such gaps.
 
 6. **Strava in the session report.** The shared session renderer now shows
    the generic social line (`Strava: title — description (link)`) on the CLI,
-   the dashboard activity page and the race page. What remains is the
-   notes/description policy in root item 1: whether a description is promoted
-   or stays social-only.
+   the dashboard activity page and the race page. The notes/description policy
+   is settled: one training-notes text per activity in `activities.description`
+   (the `activity edit --description` field), and social text stays in
+   `activity_social`. What remains is whether the report promotes a source's
+   description or keeps it social-only.
 
 7. **Metrics tab.** Render the analysis catalogue from root item 24 as a
    dashboard tab next to Docs: grouped by area (load, intensity, efficiency,
