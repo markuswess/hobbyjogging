@@ -41,6 +41,11 @@ EOF
 open_page=1
 args=()
 
+env_args=()
+if [[ -f .env ]]; then
+    env_args=(--env-file .env)
+fi
+
 for arg in "$@"; do
     case "$arg" in
         --no-open)
@@ -60,7 +65,7 @@ if [[ "${NO_OPEN:-0}" == "1" ]]; then
     open_page=0
 fi
 
-site="$(uv run --env-file .env python -m hobbyjogging_report dashboard "${args[@]}")"
+site="$(uv run ${env_args[@]+"${env_args[@]}"} python -m hobbyjogging_report dashboard "${args[@]}")"
 echo "$site"
 
 if (( open_page == 0 )); then

@@ -49,6 +49,11 @@ Environment:
 EOF
 }
 
+env_args=()
+if [[ -f .env ]]; then
+    env_args=(--env-file .env)
+fi
+
 args=("$@")
 mode="daily"
 explicit_mode=0
@@ -58,7 +63,7 @@ index=0
 # the payload mapping); delegate before the report dispatch.
 if [[ "${1:-}" == "settings" ]]; then
     shift
-    uv run --env-file .env python -m hobbyjogging_import settings "$@"
+    uv run "${env_args[@]}" python -m hobbyjogging_import settings "$@"
     exit $?
 fi
 
@@ -90,7 +95,7 @@ fi
 tmp="$(mktemp "${TMPDIR:-/tmp}/hobbyjogging-report.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 
-if ! uv run --env-file .env python -m hobbyjogging_report "${args[@]}" >"$tmp"; then
+if ! uv run "${env_args[@]}" python -m hobbyjogging_report "${args[@]}" >"$tmp"; then
     cat "$tmp" >&2
     exit 1
 fi

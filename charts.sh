@@ -54,6 +54,11 @@ projections. The load, volume, and time charts also accept --base-days /
 EOF
 }
 
+env_args=()
+if [[ -f .env ]]; then
+    env_args=(--env-file .env)
+fi
+
 args=("$@")
 mode="volume"
 explicit_mode=0
@@ -109,4 +114,4 @@ else
     args[$mode_index]="$chart_mode"
 fi
 
-uv run --env-file .env python -m hobbyjogging_report "${args[@]}"
+uv run "${env_args[@]}" python -m hobbyjogging_report "${args[@]}"
