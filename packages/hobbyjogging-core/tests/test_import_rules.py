@@ -120,6 +120,15 @@ class SourceProfileTests(unittest.TestCase):
         self.assertTrue(profile.detail_required)
         self.assertIn("vo2max_runalyze", profile.creation_fields)
 
+    def test_phase_two_capabilities_are_declared(self):
+        self.assertLessEqual(
+            {"workout_type", "trimp"},
+            source_profile("runalyze").entities,
+        )
+        self.assertIn("wellness", source_profile("garmin").entities)
+        self.assertIn("training_load", source_profile("runalyze").creation_fields)
+        self.assertIn("intervals", source_profile("intervals").entities)
+
     def test_activity_sources_yield_activities(self):
         for name in ("fit", "intervals", "sheet", "runalyze", "strava"):
             self.assertTrue(source_profile(name).yields_activities, name)

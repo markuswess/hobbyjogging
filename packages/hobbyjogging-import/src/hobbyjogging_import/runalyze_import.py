@@ -132,6 +132,8 @@ class RunalyzeEnricher:
         client: RunalyzeApi | None = None,
         *,
         create: str = "review",
+        workout_type: bool = True,
+        trimp: bool = True,
     ):
         if create not in ("create", "review", "ignore"):
             raise ValueError("create must be 'create', 'review' or 'ignore'")
@@ -139,6 +141,8 @@ class RunalyzeEnricher:
         self.client = client or RunalyzeClient()
         self.writer = TrainingWriter(connection)
         self.create = create
+        self.workout_type = workout_type
+        self.trimp = trimp
 
     def enrich(
         self,
@@ -538,6 +542,8 @@ class RunalyzeEnricher:
                             ).items()
                             if value not in (None, "")
                         }
+                        if not self.trimp:
+                            values.pop("training_load", None)
                         activity_id = create_activity(
                             self.writer,
                             source=SOURCE,
@@ -547,9 +553,9 @@ class RunalyzeEnricher:
                         methods, targets = classification_for_payload(
                             payload
                         )
-                        if (methods or targets) and values.get(
-                            "sport"
-                        ) in RUN_SPORTS:
+                        if self.workout_type and (methods or targets) and (
+                            values.get("sport") in RUN_SPORTS
+                        ):
                             self.writer.replace_activity_workout_methods(
                                 activity_id,
                                 sorted(methods),

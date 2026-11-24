@@ -195,6 +195,7 @@ SOURCES: dict[str, SourceProfile] = {
         entities=frozenset(
             {
                 "activity",
+                "intervals",
                 "wellness",
                 "event",
                 "thresholds",
@@ -235,11 +236,11 @@ SOURCES: dict[str, SourceProfile] = {
     "garmin": SourceProfile(
         name="garmin",
         label="Garmin Personal API",
-        entities=frozenset({"fit_file"}),
+        entities=frozenset({"fit_file", "wellness"}),
         yields_activities=False,
         match="none",
         request_budget="garmin",
-        notes="Downloads FIT files; the FIT importer creates the activity.",
+        notes="Downloads FIT files and the daily wellness feed.",
     ),
     "sheet": SourceProfile(
         name="sheet",
@@ -269,7 +270,15 @@ SOURCES: dict[str, SourceProfile] = {
         name="runalyze",
         label="Runalyze",
         entities=frozenset(
-            {"activity", "gear", "race_result", "tags", "vo2max"}
+            {
+                "activity",
+                "gear",
+                "race_result",
+                "tags",
+                "vo2max",
+                "workout_type",
+                "trimp",
+            }
         ),
         yields_activities=True,
         match="exact_twin",
@@ -285,6 +294,7 @@ SOURCES: dict[str, SourceProfile] = {
                 "avg_hr",
                 "max_hr",
                 "description",
+                "training_load",
                 "vo2max_runalyze",
             }
         ),

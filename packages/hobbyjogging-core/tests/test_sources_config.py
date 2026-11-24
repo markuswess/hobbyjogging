@@ -49,6 +49,83 @@ class SourcesConfigTests(unittest.TestCase):
         self.assertEqual("create", policies["fit"].create)
         self.assertEqual("ignore", policies["garmin"].create)
         self.assertEqual("social", policies["strava"].title)
+        self.assertEqual(
+            {"wellness"},
+            set(policies["garmin"].capabilities),
+        )
+        self.assertEqual(
+            {
+                "tags",
+                "gear",
+                "races",
+                "vo2max",
+                "workout_type",
+                "trimp",
+            },
+            set(policies["runalyze"].capabilities),
+        )
+
+    def test_capabilities_are_on_by_default(self):
+        config = self._load(CONFIG)
+
+        self.assertTrue(config.capability("runalyze", "workout_type"))
+        self.assertTrue(config.capability("garmin", "wellness"))
+
+    def test_a_capability_can_be_disabled(self):
+        config = self._load(
+            """
+[sources.runalyze]
+workout_type = false
+trimp = false
+"""
+        )
+
+        self.assertFalse(config.capability("runalyze", "workout_type"))
+        self.assertFalse(config.capability("runalyze", "trimp"))
+        self.assertTrue(config.capability("runalyze", "tags"))
+
+    def test_an_unknown_capability_key_is_an_error(self):
+        with self.assertRaises(ValueError) as raised:
+            self._load(
+                """
+[sources.runalyze]
+create = "review"
+telepathy = true
+"""
+            )
+
+        self.assertIn("unknown key", str(raised.exception))
+        self.assertIn("telepathy", str(raised.exception))
+
+    def test_a_capability_on_the_wrong_source_is_an_error(self):
+        with self.assertRaises(ValueError) as raised:
+            self._load(
+                """
+[sources.fit]
+enabled = true
+wellness = true
+"""
+            )
+
+        self.assertIn("unknown key", str(raised.exception))
+
+    def test_a_non_boolean_capability_is_an_error(self):
+        with self.assertRaises(ValueError):
+            self._load(
+                """
+[sources.garmin]
+enabled = true
+wellness = "yes"
+"""
+            )
+
+    def test_an_unknown_capability_name_fails_loudly(self):
+        config = self._load(CONFIG)
+
+        with self.assertRaises(KeyError) as raised:
+            config.capability("garmin", "trimp")
+
+        self.assertIn("known: wellness", str(raised.exception))
 
     def test_reads_the_athlete_config(self):
         config = self._load(CONFIG)

@@ -71,6 +71,7 @@ class DoctorTests(unittest.TestCase):
         self.sources.write_text(SOURCES, encoding="utf-8")
 
     def _doctor(self, *, probe=None, today=date(2026, 11, 24), **kwargs):
+        sources_path = kwargs.pop("sources_path", self.sources)
         with patch(
             "hobbyjogging_maintenance.doctor.garmin_api_key",
             return_value=kwargs.pop("garmin_key", "key"),
@@ -85,7 +86,7 @@ class DoctorTests(unittest.TestCase):
                 database=self.database,
                 fit_dir=self.fit_dir,
                 strava_dir=self.strava_dir,
-                sources_path=self.sources,
+                sources_path=sources_path,
                 today=today,
                 probe=probe,
                 **kwargs,
@@ -102,6 +103,51 @@ class DoctorTests(unittest.TestCase):
         self.assertTrue(report.database_empty)
         self.assertNotEqual("./dashboard.sh", report.next_command)
         self.assertEqual("./sync.sh", report.next_command)
+
+    def test_all_dashboard_capabilities_covered_is_ok(self):
+        report = self._doctor(network=False)
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual("ok", checks["capabilities"].status)
+        self.assertIn("wellness", checks["capabilities"].detail)
+
+    def test_missing_dashboard_capabilities_are_warnings(self):
+        path = self.root / "athlete2.toml"
+        path.write_text(
+            """
+[sources.fit]
+enabled = false
+
+[sources.intervals]
+enabled = false
+
+[sources.garmin]
+enabled = true
+
+[sources.runalyze]
+create = "review"
+
+[sources.strava]
+enabled = false
+
+[sources.sheet]
+enabled = false
+""",
+            encoding="utf-8",
+        )
+
+        report = self._doctor(network=False, sources_path=path)
+
+        check = next(
+            item for item in report.checks
+            if item.name == "capabilities"
+        )
+        self.assertEqual("warn", check.status)
+        self.assertIn("HR/pace zones", check.detail)
+        self.assertIn("social text", check.detail)
+        self.assertIn("threshold add", check.hint)
+        self.assertIn("source disabled", check.hint)
+        self.assertFalse(report.failed)
 
     def test_a_missing_database_points_at_init(self):
         report = self._doctor(network=False)

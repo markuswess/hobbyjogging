@@ -9,6 +9,7 @@ one-time backfill are safe.
 
 from __future__ import annotations
 
+from hobbyjogging_core.sources_config import load_sources
 from hobbyjogging_core.sports import RUN_SPORTS
 
 from ..context import TaskContext
@@ -47,6 +48,12 @@ def workout_sets_current(context: TaskContext) -> None:
         context.note("No activities in scope.")
         return
 
+    config = load_sources()
+    runalyze_type = (
+        config.enabled("runalyze")
+        and config.capability("runalyze", "workout_type")
+    )
+
     for activity in activities:
         context.count("activities")
 
@@ -57,7 +64,11 @@ def workout_sets_current(context: TaskContext) -> None:
         intervals = context.repository.activity_intervals(activity.id)
         classifier = classifier_proposal(activity, intervals)
         sheet, _, _, _ = sheet_proposal(context.connection, activity.id)
-        runalyze = runalyze_proposal(context.connection, activity.id)
+        runalyze = (
+            runalyze_proposal(context.connection, activity.id)
+            if runalyze_type
+            else None
+        )
 
         classifier_has = not classifier.empty
         sheet_has = sheet is not None and not sheet.empty

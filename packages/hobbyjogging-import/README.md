@@ -558,19 +558,47 @@ subscription, and single-player reads are limited to 100 per 15 minutes and
 ## Sources and policy
 
 `sources.toml` (or `HOBBYJOGGING_SOURCES`) sets `enabled`, `create`
-(`create | review | ignore` for Strava and Runalyze) and the social text
-targets. The file is optional; without it every source is enabled and creates
-when nothing matches.
+(`create | review | ignore` for Strava and Runalyze), the social text
+targets, and the optional capabilities. The file is optional; without it
+every source is enabled, creates when nothing matches, and runs every
+declared capability.
 
 ```bash
 uv run --env-file .env hobbyjogging-import sources   # effective policy
-uv run --env-file .env hobbyjogging-import settings  # rules + mapping
+uv run --env-file .env hobbyjogging-import settings  # matrix, rules, mapping
 ./reports.sh settings                                # the same, via reports
 ```
 
 FIT, Intervals and the sheet always create when nothing matches; use `enabled`
-to leave one out. Garmin yields files, not activity rows. `--create` and
-`--no-create` override one Strava or Runalyze run.
+to leave one out. Garmin yields files and the daily wellness feed, not activity
+rows. `--create` and `--no-create` override one Strava or Runalyze run.
+
+### Capability selection
+
+Capability is declared by the source profile; this file only selects it. Every
+toggle defaults to on:
+
+```toml
+[sources.runalyze]
+create = "review"
+tags = true          # enrich: comments + tags
+gear = true
+races = true         # race results
+vo2max = true
+workout_type = true  # Jogging/SubThreshold/LSD -> canonical sets
+trimp = true         # training_load fallback
+
+[sources.garmin]
+wellness = true      # daily resting HR, HRV, sleep, steps, SpO2, weight
+```
+
+A disabled capability skips only its step in `sync`; it never changes field
+ownership or the review rules. Unknown keys and non-booleans fail loudly.
+`settings` renders the capability matrix, the selection, the record types and
+activity fields no enabled source can supply (distinguishing a disabled
+source from a disabled capability), and the visible dashboard coverage.
+`doctor` warns when the enabled sources cannot provide wellness, load, zones,
+social, reps/intervals or race results.
 
 ### Device identity
 

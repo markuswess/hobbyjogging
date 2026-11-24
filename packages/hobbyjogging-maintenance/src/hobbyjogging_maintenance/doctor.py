@@ -24,6 +24,10 @@ from hobbyjogging_core import (
     default_database_path,
     open_database,
 )
+from hobbyjogging_core.capabilities import (
+    DASHBOARD_CAPABILITIES,
+    capability_availability,
+)
 from hobbyjogging_core.sources_config import SourcesConfig, load_sources
 
 from hobbyjogging_import.config import (
@@ -170,6 +174,37 @@ def _sources_check(config: SourcesConfig) -> Check:
         "sources",
         "ok",
         f"{location}: {', '.join(enabled)}",
+    )
+
+
+def _capability_check(config: SourcesConfig) -> Check:
+    """Warn, never fail, when the sources cannot supply a visible area."""
+    missing: list[str] = []
+    hints: list[str] = []
+
+    for capability in DASHBOARD_CAPABILITIES:
+        providers, reasons = capability_availability(config, capability)
+        if providers:
+            continue
+        missing.append(capability.label)
+        hints.append(
+            f"{capability.label}: "
+            + ("; ".join(reasons) or "no configured source provides it")
+        )
+
+    if not missing:
+        names = [capability.key for capability in DASHBOARD_CAPABILITIES]
+        covered = ", ".join(names[:-1]) + " and " + names[-1]
+        return Check(
+            "capabilities",
+            "ok",
+            f"{covered} are covered",
+        )
+    return Check(
+        "capabilities",
+        "warn",
+        "missing: " + ", ".join(missing),
+        "; ".join(hints) or "no configured source provides it",
     )
 
 
@@ -473,6 +508,7 @@ def run_doctor(
         checks.append(_database_check(path, connection))
         checks.append(_schema_check(connection))
         checks.append(_sources_check(config))
+        checks.append(_capability_check(config))
         checks.extend(
             _credential_checks(
                 config,

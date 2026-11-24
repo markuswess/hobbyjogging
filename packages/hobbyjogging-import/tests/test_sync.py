@@ -94,9 +94,21 @@ class FakeFitImporter:
 class FakeRunalyzeEnricher:
 
     stopped = ""
+    workout_type = None
+    trimp = None
 
-    def __init__(self, connection, client=None, *, create="review"):
+    def __init__(
+        self,
+        connection,
+        client=None,
+        *,
+        create="review",
+        workout_type=True,
+        trimp=True,
+    ):
         self.connection = connection
+        type(self).workout_type = workout_type
+        type(self).trimp = trimp
 
     def enrich(self, *, start=None, end=None, **kwargs):
         CALLS.append(("runalyze", start, end))
@@ -175,6 +187,8 @@ class SyncTests(unittest.TestCase):
         FakeIntervalsImporter.fail = False
         FakeFitImporter.fail = False
         FakeRunalyzeEnricher.stopped = ""
+        FakeRunalyzeEnricher.workout_type = None
+        FakeRunalyzeEnricher.trimp = None
         FakeWellnessImporter.fail = False
 
         self.conn = connect(":memory:")
@@ -366,6 +380,83 @@ class SyncTests(unittest.TestCase):
             summary.skips,
         )
         self.assertNotIn("garmin", [call[0] for call in CALLS])
+
+    def test_disabling_a_runalyze_capability_skips_only_that_step(self):
+        self.config = all_enabled(
+            runalyze={
+                "capabilities": frozenset(
+                    {"tags", "vo2max", "workout_type", "trimp"}
+                )
+            }
+        )
+
+        summary = self._run()
+
+        self.assertEqual([], summary.failures)
+        calls = [call[0] for call in CALLS]
+        self.assertNotIn("gear", calls)
+        self.assertNotIn("races", calls)
+        self.assertIn("vo2max", calls)
+        self.assertIn("runalyze", calls)
+        self.assertIn(
+            ("runalyze gear", "gear capability disabled"),
+            summary.skips,
+        )
+        self.assertIn(
+            ("runalyze races", "races capability disabled"),
+            summary.skips,
+        )
+
+    def test_disabling_tags_skips_the_enrich_step_but_keeps_the_derivations(
+        self,
+    ):
+        self.config = all_enabled(
+            runalyze={
+                "capabilities": frozenset(
+                    {"gear", "races", "vo2max", "workout_type", "trimp"}
+                )
+            }
+        )
+
+        summary = self._run()
+
+        calls = [call[0] for call in CALLS]
+        self.assertNotIn("runalyze", calls)
+        self.assertIn("gear", calls)
+        self.assertIn("vo2max", calls)
+        self.assertIn("races", calls)
+        self.assertIn(
+            (
+                "runalyze",
+                "tags capability disabled; the enrich step is skipped",
+            ),
+            summary.skips,
+        )
+
+    def test_disabling_garmin_wellness_skips_it(self):
+        self.config = all_enabled(garmin={"capabilities": frozenset()})
+
+        summary = self._run()
+
+        self.assertNotIn("garmin-wellness", [call[0] for call in CALLS])
+        self.assertIn(
+            ("garmin wellness", "wellness capability disabled"),
+            summary.skips,
+        )
+
+    def test_the_runalyze_type_and_trim_flags_reach_the_enricher(self):
+        self.config = all_enabled(
+            runalyze={
+                "capabilities": frozenset(
+                    {"tags", "gear", "races", "vo2max"}
+                )
+            }
+        )
+
+        self._run()
+
+        self.assertFalse(FakeRunalyzeEnricher.workout_type)
+        self.assertFalse(FakeRunalyzeEnricher.trimp)
 
     def test_a_missing_fit_directory_is_a_skip(self):
         self.fit_dir.rmdir()

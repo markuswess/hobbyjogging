@@ -32,8 +32,10 @@ uv run --env-file .env hobbyjogging-maintenance run --all
 `init` creates and migrates the database and the FIT directory; a second run
 only checks the schema. `doctor` checks `uv`, the DB path and writability, the
 schema version, the FIT directory, each configured credential, bounded API
-liveness probes, pending backfills, source freshness and `sources.toml`, then
-prints the next command. The root wrappers are `./init.sh` and `./doctor.sh`.
+liveness probes, pending backfills, source freshness, `sources.toml` and
+whether the enabled sources can supply the visible dashboard areas (wellness,
+load, zones, social, reps, races), then prints the next command. The root
+wrappers are `./init.sh` and `./doctor.sh`.
 
 `run` options:
 

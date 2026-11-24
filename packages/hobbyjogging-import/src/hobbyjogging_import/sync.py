@@ -154,15 +154,20 @@ def run_sync(
             finally:
                 summary.durations["garmin"] = time.monotonic() - started
 
-            try:
-                wellness = GarminWellnessImporter(connection).import_range(
-                    start,
-                    end,
+            if not config.capability("garmin", "wellness"):
+                summary.skips.append(
+                    ("garmin wellness", "wellness capability disabled")
                 )
-                summary.garmin_wellness = wellness.written
-            except Exception as exc:
-                # A missing wellness feed must not fail the activity sync.
-                summary.skips.append(("garmin wellness", _error(exc)))
+            else:
+                try:
+                    wellness = GarminWellnessImporter(connection).import_range(
+                        start,
+                        end,
+                    )
+                    summary.garmin_wellness = wellness.written
+                except Exception as exc:
+                    # A missing wellness feed must not fail the activity sync.
+                    summary.skips.append(("garmin wellness", _error(exc)))
 
     if include_intervals and not skipped("intervals"):
         athlete_id, api_key = intervals_credentials()
@@ -218,7 +223,16 @@ def run_sync(
             runalyze_since,
             start,
         )
-        if runalyze_api_key():
+        if not runalyze_api_key():
+            summary.skips.append(("runalyze", "RUNALYZE_API_KEY is not set"))
+        elif not config.capability("runalyze", "tags"):
+            summary.skips.append(
+                (
+                    "runalyze",
+                    "tags capability disabled; the enrich step is skipped",
+                )
+            )
+        else:
             started = time.monotonic()
             try:
                 policy = config.policy("runalyze")
@@ -226,6 +240,11 @@ def run_sync(
                     connection,
                     client=RunalyzeClient(),
                     create=policy.create,
+                    workout_type=config.capability(
+                        "runalyze",
+                        "workout_type",
+                    ),
+                    trimp=config.capability("runalyze", "trimp"),
                 ).enrich(
                     start=summary.runalyze_since,
                     end=end,
@@ -249,11 +268,9 @@ def run_sync(
                 summary.failures.append(("runalyze", _error(exc)))
             finally:
                 summary.durations["runalyze"] = time.monotonic() - started
-        else:
-            summary.skips.append(("runalyze", "RUNALYZE_API_KEY is not set"))
 
         if include_derive:
-            _derive_offline(connection, summary, end)
+            _derive_offline(connection, summary, config)
 
     if include_strava and not skipped("strava"):
         export = newest_unimported_export(connection, strava_dir)
@@ -319,27 +336,46 @@ def _runalyze_since(
     return max(fallback, last - RUNALYZE_OVERLAP)
 
 
-def _derive_offline(connection, summary: SyncSummary, end: date) -> None:
+def _derive_offline(
+    connection,
+    summary: SyncSummary,
+    config: SourcesConfig,
+) -> None:
     """Re-derive Runalyze gear, VO2max and races from stored payloads.
 
     The first two cost no requests. Races still reads the API; a rate limit or
     an API error is a warning, because the auxiliary metadata must not fail an
-    otherwise good sync.
+    otherwise good sync. A disabled capability skips only its own step.
     """
     started = time.monotonic()
-    try:
-        gear = RunalyzeGearImporter(connection).import_gear()
-        summary.runalyze_gear = gear.created + gear.linked_existing
-    except Exception as exc:
-        summary.failures.append(("runalyze gear", _error(exc)))
 
-    try:
-        vo2max = RunalyzeVo2maxImporter(connection).import_vo2max()
-        summary.runalyze_vo2max = vo2max.written
-    except Exception as exc:
-        summary.failures.append(("runalyze vo2max", _error(exc)))
+    if not config.capability("runalyze", "gear"):
+        summary.skips.append(
+            ("runalyze gear", "gear capability disabled")
+        )
+    else:
+        try:
+            gear = RunalyzeGearImporter(connection).import_gear()
+            summary.runalyze_gear = gear.created + gear.linked_existing
+        except Exception as exc:
+            summary.failures.append(("runalyze gear", _error(exc)))
 
-    if runalyze_api_key():
+    if not config.capability("runalyze", "vo2max"):
+        summary.skips.append(
+            ("runalyze vo2max", "vo2max capability disabled")
+        )
+    else:
+        try:
+            vo2max = RunalyzeVo2maxImporter(connection).import_vo2max()
+            summary.runalyze_vo2max = vo2max.written
+        except Exception as exc:
+            summary.failures.append(("runalyze vo2max", _error(exc)))
+
+    if not config.capability("runalyze", "races"):
+        summary.skips.append(
+            ("runalyze races", "races capability disabled")
+        )
+    elif runalyze_api_key():
         try:
             races = RunalyzeRaceImporter(
                 connection,

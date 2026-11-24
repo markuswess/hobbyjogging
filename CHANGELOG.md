@@ -67,6 +67,17 @@ Schema: **25**. Compatibility: requires schema ≥ 1, migrates to 25.
 - Garmin daily wellness fills resting HR, HRV, sleep, steps, SpO2, floors and
   weight from the Personal API (fill-only; Intervals stays the owner).
 
+### Configuration
+
+- The source profiles declare the phase-2 capabilities (Runalyze
+  `workout_type`, `trimp`; Garmin `wellness`; Intervals `intervals`), and
+  `settings` renders the capability matrix, the selection, the uncovered
+  record types/fields and the dashboard coverage.
+- `sources.toml` can disable each optional capability (`tags`, `gear`, `races`,
+  `vo2max`, `workout_type`, `trimp`, `wellness`); unknown keys fail loudly and
+  a disabled capability skips only its step. `doctor` warns when the enabled
+  sources cannot supply wellness, load, zones, social, reps or races.
+
 ## 0.1.0 — 2026-11-19 (phase 1: works for me)
 
 Schema: **23**. Compatibility: requires schema ≥ 1, migrates to 23.

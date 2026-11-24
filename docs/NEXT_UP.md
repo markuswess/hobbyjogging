@@ -9,12 +9,12 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
-- **Phase 2 code complete except item 54 (2026-11-24).** `init`/`doctor`, the
-  full-source `sync`, the install docs, the MIT licence, CI, the lab detach
-  and the Runalyze+Garmin profile (items 44, 49–53 and the name label) landed;
-  schema is v25. The close-out is item 54 (source capability matrix) and then
-  the acceptance run on a second athlete's real data (a fresh DB with Runalyze
-  + Garmin, no Intervals).
+- **Phase 2 code complete (2026-11-24).** `init`/`doctor`, the full-source
+  `sync`, the install docs, the MIT licence, CI, the lab detach, the
+  source-capability matrix and selection, and the Runalyze+Garmin profile
+  (items 44, 49–54 and the name label) landed; schema is v25. The remaining
+  phase-2 act is the acceptance run on a second athlete's real data (a fresh
+  DB with Runalyze + Garmin and the FIT archive, no Intervals).
 - **The canonical pipeline and all sources (phase 1).** FIT archive,
   Intervals.icu, the Garmin Personal API fetch, Runalyze (inventory,
   comments/tags, gear, race results, `vo2max_runalyze`) and the Strava CSV are
@@ -67,11 +67,11 @@ no credentials, then fills `.env` and `sources.toml` and runs `init`, `doctor`,
 machine — no code or SQL edits. And a **Runalyze+Garmin athlete's dashboard is
 usable**: categories, laps/reps, zones, load, wellness and races render.
 
-**Code complete except item 54 (2026-11-24).** Every code path exists and the
-fresh-database path is covered by the demo and the suites. The **close-out** is
-two steps: **54** (the source capability matrix, so the profiles declare what
-the phase-2 additions can supply) and then the **acceptance run** on a second
-athlete's real data (a fresh DB with Runalyze + Garmin and no Intervals).
+**Code complete (2026-11-24).** Every code path exists, the source capability
+matrix and selection are in place, and the fresh-database path is covered by
+the demo and the suites. The **acceptance run** on a second athlete's real
+data (a fresh DB with Runalyze + Garmin and the FIT archive, no Intervals) is
+the only remaining phase-2 act.
 
 **2a · Install**
 
@@ -139,10 +139,12 @@ athlete's real data (a fresh DB with Runalyze + Garmin and no Intervals).
 
 Phase 2 closes in this order:
 
-- **Step 1 — 54 source capability matrix** (coding session): the last phase-2
-  code item. Register the new capabilities, render the matrix in `settings`
-  and use it in `doctor`, and add per-capability selection to `sources.toml`.
-  Read-only plus config; no data writes.
+- **Step 1 — 54 source capability matrix (done 2026-11-24)** (coding
+  session): the profiles declare the phase-2 capabilities, `settings` renders
+  the matrix and the uncovered record types/fields, `doctor` warns about a
+  missing visible area, and `sources.toml` selects each capability. No data
+  writes; the athlete-2 clone shows the matrix, toggles and the zone/social
+  warnings.
 - **Step 2 — the acceptance run** (owner: user): fresh DB on athlete 2's real
   Runalyze + Garmin data, then `doctor`, `sync`, the dashboard, and the
   categories/laps/zones/load/wellness/races check.
@@ -1230,37 +1232,40 @@ reports item; 28 is the recurring cleanup.
       the source.
 
 54. **Source capability matrix and capability selection** (core + import +
-    reports; small, phase-2 close-out — before the acceptance run). The
-    capability layer exists in code —
-    `SourceProfile.entities`, `match`, `creation_fields`, `detail_required`,
-    `request_budget` — but it is neither rendered nor used consistently: the
-    phase-2 additions are not registered (Runalyze lacks `workout_type` and
-    `trimp`, Garmin lacks `wellness`), `settings` shows the field rules and the
-    payload mapping but not what each source can supply, and `doctor` cannot
-    say "your sources cannot provide wellness, load, zones or social".
-    - **Register**: add the phase-2 capabilities to the profiles (`runalyze`:
-      `workout_type`, `trimp`; `garmin`: `wellness`) and keep the profile the
-      single declaration.
-    - **Render**: `settings` (also `reports.sh settings`) gains a capability
-      matrix — per source: record types, whether it yields activities, the
-      match, creation fields and budget — plus the inverse, the record types
-      and fields no enabled source can supply. `doctor` uses the same data to
-      warn about a missing capability, not only a stale source.
-    - **Select**: `sources.toml` gains per-capability booleans
-      (`[sources.runalyze] tags = true, gear = true, races = true, vo2max =
-      true, workout_type = true, trimp = true`; `[sources.garmin] wellness =
-      true`), defaulting to on. Unknown keys fail loudly; a disabled capability
-      skips that step in `sync` and is visible in `settings`.
-    - **Not**: field priority or an import-order key in `sources.toml`. The
-      four axes stay distinct — capability (profile), selection (TOML),
-      precedence (owner-based plus per-field ranked authority in code), review
-      (the queue and its causes). Manual and triage remain the per-athlete
-      override; a different ranked authority is a code-level field-rule change
-      with tests.
-    - **Acceptance**: `settings` prints the matrix and the uncovered
-      capabilities for a Runalyze+Garmin profile; disabling a capability skips
-      its step in `sync`; an unknown capability key fails; no ownership or
-      canonical value changes; four suites green.
+    maintenance; done 2026-11-24). The capability layer is now registered,
+    rendered, selected and checked.
+    - **Register (done)**: Runalyze declares `workout_type` and `trimp` (and
+      `training_load` as a creation field); Garmin declares `wellness`;
+      Intervals declares `intervals`. The profile stays the single capability
+      declaration.
+    - **Render (done)**: `settings` (and `reports.sh settings`) prints a
+      capability matrix — per source the record types, yields-activities,
+      match, detail need, budget and creation fields — plus capability
+      selection, the uncovered record types and activity fields, and the
+      dashboard coverage. Uncovered entries distinguish
+      `<source> (source disabled)` from `<source> (capability disabled)` and
+      "not available in any profile".
+    - **Doctor (done)**: one fixed `DASHBOARD_CAPABILITIES` list (wellness,
+      load, zones, social, reps/intervals, race results) drives a `capabilities`
+      warning when the enabled sources cannot supply a visible area. It is a
+      warning, never a failure, and names the disabled source or capability or
+      the manual fallback (`threshold add` for zones).
+    - **Select (done)**: `sources.toml` accepts `tags`, `gear`, `races`,
+      `vo2max`, `workout_type` and `trimp` under `[sources.runalyze]`, and
+      `wellness` under `[sources.garmin]`, all true by default. Unknown keys
+      and non-booleans fail loudly. A disabled capability skips only its step:
+      `tags` the enrich step, `gear`/`vo2max`/`races` their derivations,
+      `workout_type` the type gap-filler, `trimp` the load fallback, `wellness`
+      the Garmin feed. Tests cover each skip.
+    - **Not**: field priority or an import-order key. The four axes stay
+      distinct — capability (profile), selection (TOML), precedence
+      (owner-based plus per-field ranked authority in code), review (the queue
+      and its causes). Manual and triage remain the per-athlete override.
+    - **Acceptance**: the settings matrix and the uncovered list render for the
+      Runalyze+Garmin profile; the doctor warns about zones and social; a
+      disabled capability is visible and skips its step; no ownership or
+      canonical value changes; four suites green. The real second-athlete
+      acceptance run is the next session's work.
 
 ## Parked ideas
 

@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+from hobbyjogging_core.capabilities import (
+    DASHBOARD_CAPABILITIES,
+    capability_availability,
+    source_rows,
+    uncovered_entities,
+    uncovered_fields,
+)
 from hobbyjogging_core.import_rules import (
     FIELD_RULES,
     MANUAL_FIELDS,
-    SOURCES,
     FieldRule,
 )
-from hobbyjogging_core.sources_config import POLICY_SOURCES, SourcesConfig
+from hobbyjogging_core.sources_config import (
+    CAPABILITY_TOGGLES,
+    POLICY_SOURCES,
+    SourcesConfig,
+)
 from hobbyjogging_core.workouts import (
     QUALITY_METHODS,
     QUALITY_TARGETS,
@@ -38,9 +48,104 @@ def format_sources(config: SourcesConfig) -> str:
             f"create={create:6} "
             f"title={policy.title:6} description={policy.description}"
         )
+        toggles = CAPABILITY_TOGGLES.get(name, {})
+        if toggles:
+            enabled = ",".join(
+                key for key in toggles
+                if policy.capability_enabled(key)
+            ) or "-"
+            disabled = ",".join(
+                key for key in toggles
+                if not policy.capability_enabled(key)
+            ) or "-"
+            lines[-1] += (
+                f"  capabilities={enabled} disabled={disabled}"
+            )
         if not profile.yields_activities:
             lines[-1] += "  (files only)"
     return "\n".join(lines)
+
+
+def _reason_text(reasons: tuple[tuple[str, str], ...]) -> str:
+    if not reasons:
+        return "not available in any profile"
+    return "; ".join(
+        f"{source} ({reason})" for source, reason in reasons
+    )
+
+
+def _capability_sections(config: SourcesConfig) -> list[str]:
+    lines = [
+        "## Capability matrix",
+        "",
+        "| source | enabled | yields activities | match | budget | detail | "
+        "record types | creation fields |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for row in source_rows(config):
+        lines.append(
+            f"| {row.name} | {'yes' if row.enabled else 'no'} | "
+            f"{'yes' if row.yields_activities else 'no'} | "
+            f"{row.match} | {row.request_budget or '-'} | "
+            f"{'yes' if row.detail_required else 'no'} | "
+            f"{', '.join(row.entities) or '-'} | "
+            f"{', '.join(row.creation_fields) or '-'} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Capability selection",
+            "",
+            "| source | capability | enabled |",
+            "|---|---|---|",
+        ]
+    )
+    selection_rows = 0
+    for name in sorted(config.policies):
+        policy = config.policy(name)
+        for key in CAPABILITY_TOGGLES.get(name, {}):
+            selection_rows += 1
+            enabled = policy.capability_enabled(key)
+            state = "yes" if enabled else "no"
+            if not policy.enabled:
+                state += " (source disabled)"
+            lines.append(f"| {name} | {key} | {state} |")
+    if selection_rows == 0:
+        lines.append("| - | - | no selectable capabilities |")
+
+    lines.extend(["", "## Uncovered record types", ""])
+    entities = uncovered_entities(config)
+    if not entities:
+        lines.append("Every record type is supplied by an enabled source.")
+    else:
+        for row in entities:
+            lines.append(
+                f"- `{row.name}` — {_reason_text(row.reasons)}"
+            )
+
+    lines.extend(["", "## Uncovered activity fields", ""])
+    fields = uncovered_fields(config)
+    if not fields:
+        lines.append("Every activity field is supplied by an enabled source.")
+    else:
+        for row in fields:
+            lines.append(
+                f"- `{row.name}` — {_reason_text(row.reasons)}"
+            )
+
+    lines.extend(["", "## Dashboard capabilities", ""])
+    for capability in DASHBOARD_CAPABILITIES:
+        providers, hints = capability_availability(config, capability)
+        detail = (
+            f"covered by {', '.join(providers)}"
+            if providers
+            else ("; ".join(hints) or "not available")
+        )
+        lines.append(f"- {capability.label}: {detail}")
+
+    lines.append("")
+    return lines
 
 
 def settings_report(config: SourcesConfig) -> str:
@@ -67,7 +172,9 @@ def settings_report(config: SourcesConfig) -> str:
             f"{profile.match} | {'yes' if profile.detail_required else 'no'} |"
         )
 
-    lines.extend(["", "## Field rules", ""])
+    lines.extend([""] + _capability_sections(config))
+
+    lines.extend(["## Field rules", ""])
     lines.append(
         "| field | conflict | tolerance | authority | manual | placeholder |"
     )

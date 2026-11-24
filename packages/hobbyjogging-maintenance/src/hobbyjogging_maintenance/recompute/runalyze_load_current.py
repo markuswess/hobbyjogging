@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 
+from hobbyjogging_core.sources_config import load_sources
+
 from ..context import TaskContext
 from ..registry import task
 
@@ -38,6 +40,14 @@ _COUNT_ORDER = (
     ),
 )
 def runalyze_load_current(context: TaskContext) -> None:
+    config = load_sources()
+    if not (
+        config.enabled("runalyze")
+        and config.capability("runalyze", "trimp")
+    ):
+        context.note("Runalyze trimp is disabled; the load fallback is skipped.")
+        return
+
     rows = context.connection.execute(
         """
         SELECT als.activity_id AS activity_id,

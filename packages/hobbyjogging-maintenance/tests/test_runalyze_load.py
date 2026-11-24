@@ -1,7 +1,10 @@
 import json
 import unittest
+from dataclasses import replace
+from unittest.mock import patch
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
+from hobbyjogging_core.sources_config import SourcesConfig, default_policies
 
 from hobbyjogging_maintenance.registry import get_task
 from hobbyjogging_maintenance.runner import run_task
@@ -174,6 +177,29 @@ class RunalyzeLoadTests(unittest.TestCase):
 
         self.assertEqual(1, run.counts["written"])
         self.assertIsNone(self._load(activity_id))
+
+    def test_a_disabled_trimp_capability_skips_the_fill(self):
+        activity_id = self._activity(fit_trimp=120)
+        policies = dict(default_policies())
+        policy = policies["runalyze"]
+        policies["runalyze"] = replace(
+            policy,
+            capabilities=policy.capabilities - {"trimp"},
+        )
+        config = SourcesConfig(policies=policies)
+
+        with patch(
+            "hobbyjogging_maintenance.recompute.runalyze_load_current."
+            "load_sources",
+            return_value=config,
+        ):
+            run = self._run()
+
+        self.assertIsNone(self._load(activity_id))
+        self.assertTrue(
+            any("disabled" in note for note in run.notes),
+            run.notes,
+        )
 
 
 if __name__ == "__main__":

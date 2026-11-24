@@ -13,6 +13,16 @@
 #   create       create | review | ignore   (Strava and Runalyze)
 #   title        social | name              (where a title goes)
 #   description  social | description       (where a description goes)
+#   <capability> true | false               (Runalyze/Garmin, default true)
+#
+# Capability keys:
+#   [sources.runalyze]  tags, gear, races, vo2max, workout_type, trimp
+#   [sources.garmin]    wellness
+#
+# A capability switch selects a step; it never changes field precedence. The
+# four axes are capability (the source profile), selection (this file),
+# precedence (owner-based plus ranked authority in code) and review (the
+# queue).
 #
 # FIT, Intervals and the sheet always create when nothing matches; use
 # enabled to leave one out. Garmin yields files, not activity rows.
@@ -25,9 +35,16 @@ enabled = true
 
 [sources.garmin]
 enabled = true
+wellness = true
 
 [sources.runalyze]
 create = "review"
+tags = true
+gear = true
+races = true
+vo2max = true
+workout_type = true
+trimp = true
 
 [sources.strava]
 create = "ignore"

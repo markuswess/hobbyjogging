@@ -166,6 +166,12 @@ Cross-package changes must leave all four suites green.
   `create | review | ignore` policy in `sources.toml` decides what an unmatched
   row does; FIT, Intervals and the sheet always create and use `enabled`.
   Creation happens only when there is nothing to review.
+- `sources.toml` also toggles optional capabilities: Runalyze
+  `tags`, `gear`, `races`, `vo2max`, `workout_type` and `trimp`, Garmin
+  `wellness`, all on by default. A toggle skips that step only; field
+  ownership and review do not change. `settings` prints the capability matrix
+  and the uncovered record types/fields; `doctor` warns when the enabled
+  sources cannot supply wellness, load, zones, social, reps or race results.
 - Inputs are never rebuilt, projections are: payloads, pointers, manual edits,
   links, exclusions and review answers are inputs; canonical activity fields
   are a cache rebuilt by `recompute_canonical` and checked by

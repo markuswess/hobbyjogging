@@ -428,6 +428,11 @@ def _run_runalyze_enrich(args, parser: argparse.ArgumentParser) -> int:
                 connection,
                 client=client,
                 create=create,
+                workout_type=config.capability(
+                    "runalyze",
+                    "workout_type",
+                ),
+                trimp=config.capability("runalyze", "trimp"),
             ).enrich(
                 start=args.start,
                 end=args.end,

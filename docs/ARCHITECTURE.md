@@ -106,7 +106,10 @@ creation fields, detail need and request budget), **selection**
 (`sources.toml`: enabled sources, the create policy, text targets and
 per-capability toggles), **precedence** (owner-based, per-field ranked
 authority, manual inputs) and **review** (what a disagreement does). Capability
-and selection are configurable; precedence and review are not.
+and selection are configurable; precedence and review are not. The profile is
+the one capability declaration; `settings` renders the matrix and the uncovered
+record types/fields, and `doctor` warns when the enabled sources cannot supply
+a visible dashboard area (wellness, load, zones, social, reps, races).
 
 ## Principles
 

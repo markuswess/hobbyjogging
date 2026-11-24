@@ -1,9 +1,11 @@
 import json
 import unittest
+from dataclasses import replace
 from unittest.mock import patch
 
 from hobbyjogging_core import TrainingWriter, connect, migrate
 from hobbyjogging_core.classify import Category
+from hobbyjogging_core.sources_config import SourcesConfig, default_policies
 
 from hobbyjogging_maintenance.registry import get_task
 from hobbyjogging_maintenance.runner import run_task
@@ -306,6 +308,30 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             (["continuous"], ["threshold"]),
             self._sets(activity_id),
         )
+
+    def test_a_disabled_runalyze_type_is_not_used(self):
+        activity_id = self._activity(
+            "",
+            sheet=False,
+            runalyze_type="SubThreshold",
+        )
+        policies = dict(default_policies())
+        policy = policies["runalyze"]
+        policies["runalyze"] = replace(
+            policy,
+            capabilities=policy.capabilities - {"workout_type"},
+        )
+        config = SourcesConfig(policies=policies)
+
+        with patch(CLASSIFY, return_value=UNKNOWN), patch(
+            "hobbyjogging_maintenance.recompute.workout_sets_current."
+            "load_sources",
+            return_value=config,
+        ):
+            run = self._run()
+
+        self.assertEqual(0, run.counts["from_runalyze_type"])
+        self.assertEqual(([], []), self._sets(activity_id))
 
 
 if __name__ == "__main__":
