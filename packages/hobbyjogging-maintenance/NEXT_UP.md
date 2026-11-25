@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Session metrics.** `activity_metrics_v1` fills the session-average row
+  from the stored payloads and the FIT archive (the archive is re-read for the
+  old FIT payloads). The audit gained a coverage/unit/conflict section with a
+  `--fit-sample` option.
 - **Historical audit.** `maintenance audit` is a read-only Markdown report of
   the evidence already stored: field coverage per year, unmapped raw keys and
   tags, interval-like descriptions, trail/race evidence, classification gaps,
@@ -150,9 +154,9 @@ Nothing else queued. New data work registers a task here instead of a script.
 
 ## Waiting on
 
-- **Historical refurbishment** (root item 37). The read-only audit is done;
-  the proposal rules (classification, trail, illness, seasons) wait for the
-  landed `activity edit` surface and the lab calibrations.
+- **Historical refurbishment.** The read-only audit is done; the proposal
+  rules (classification, trail, illness, seasons) wait for the landed
+  `activity edit` surface and the lab calibrations.
 
 Nothing else. The package owns schema evolution, backfills, recomputes, and
 their bookkeeping.

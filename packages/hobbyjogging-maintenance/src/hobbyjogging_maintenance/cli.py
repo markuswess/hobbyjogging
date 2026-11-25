@@ -120,6 +120,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Markdown report (default: stdout)",
     )
     audit.add_argument("--database", type=Path)
+    audit.add_argument(
+        "--fit-sample",
+        type=int,
+        default=100,
+        help=(
+            "raw FIT files to sample for metric coverage "
+            "(0 disables the FIT sample)"
+        ),
+    )
 
     listing = subparsers.add_parser("list", help="list registered tasks")
     listing.add_argument("--kind", choices=KINDS)
@@ -299,7 +308,11 @@ def _audit(args) -> int:
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
-        text = build_audit(connection, database=str(path))
+        text = build_audit(
+            connection,
+            database=str(path),
+            fit_sample=args.fit_sample,
+        )
     finally:
         connection.close()
 

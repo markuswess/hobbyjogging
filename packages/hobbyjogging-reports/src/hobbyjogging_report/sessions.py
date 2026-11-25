@@ -108,6 +108,7 @@ def session_activity_lines(
         planned_events=planned_events,
         planned_hrefs=planned_hrefs,
         weather=source.activity_weather(activity.id),
+        metrics=source.activity_metrics(activity.id),
         device=context.devices.get(activity.device_id),
         wellness=context.wellness_for(source, activity.date),
         review_items=[

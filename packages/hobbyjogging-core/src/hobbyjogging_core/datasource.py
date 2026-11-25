@@ -14,6 +14,7 @@ from .model import (
     Activity,
     ActivitySocial,
     ActivityWeather,
+    ActivityMetrics,
     AthleteThreshold,
     Device,
     RaceResult,
@@ -48,6 +49,10 @@ class DataSource(Protocol):
         ...
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
+        ...
+
+    def activity_metrics(self, activity_id: str) -> ActivityMetrics | None:
+        """Return the session-average metrics for one activity."""
         ...
 
     def activity_social(self, activity_id: str) -> list[ActivitySocial]:

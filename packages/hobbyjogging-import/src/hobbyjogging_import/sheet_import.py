@@ -24,6 +24,7 @@ from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.import_rules import CONFLICT_FIELDS
 
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
+from .metrics import derive_metrics
 from .ods import Sheet, read_sheet
 from .quality import (
     record_ambiguous_match,
@@ -413,6 +414,16 @@ class SheetImporter:
                 source=SOURCE,
                 source_record_id=source_record_id,
                 temp_c=as_float(record.get("Temperatur in °C")),
+            )
+            self.writer.upsert_activity_metrics(
+                activity_id,
+                source=SOURCE,
+                source_record_id=source_record_id,
+                **derive_metrics(
+                    SOURCE,
+                    {"values": record},
+                    str(values.get("sport") or ""),
+                ),
             )
             weight = as_float(record.get("Gewicht nachher"))
             if weight is not None and sheet.name == ROHDATEN:

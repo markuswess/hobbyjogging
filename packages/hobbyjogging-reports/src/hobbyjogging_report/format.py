@@ -9,6 +9,7 @@ from __future__ import annotations
 from hobbyjogging_core.datasource import DataSource
 from hobbyjogging_core.model import (
     Activity,
+    ActivityMetrics,
     ActivitySocial,
     ActivityWeather,
     Device,
@@ -646,6 +647,73 @@ def format_weather(weather: ActivityWeather | None) -> str:
     return ", ".join(parts)
 
 
+def format_metrics(
+    metrics: ActivityMetrics | None,
+    *,
+    sport: str = "",
+) -> str:
+    """One line of session averages (``Cadence 172 spm, 692 kcal``)."""
+    if metrics is None:
+        return ""
+
+    is_run = sport in RUN_TYPES
+    parts = []
+
+    if metrics.cadence is not None:
+        unit = "spm" if is_run else "rpm"
+        parts.append(f"Cadence {metrics.cadence:.0f} {unit}")
+    if is_run and metrics.stride_m is not None:
+        parts.append(f"Stride {metrics.stride_m:.2f} m")
+    if metrics.power_w is not None:
+        parts.append(f"Power {metrics.power_w:.0f} W")
+    if metrics.calories_kcal is not None:
+        parts.append(f"{metrics.calories_kcal:.0f} kcal")
+    if metrics.training_effect is not None:
+        parts.append(f"TE {metrics.training_effect:.1f}")
+    if is_run and metrics.gap_mps is not None:
+        parts.append(f"GAP {metrics.gap_mps:.2f} m/s")
+    if metrics.altitude_avg_m is not None:
+        text = f"Alt avg {metrics.altitude_avg_m:.0f} m"
+        if (
+            metrics.altitude_min_m is not None
+            and metrics.altitude_max_m is not None
+        ):
+            text += (
+                f" ({metrics.altitude_min_m:.0f}-"
+                f"{metrics.altitude_max_m:.0f} m)"
+            )
+        parts.append(text)
+
+    return ", ".join(parts)
+
+
+def format_dynamics(
+    metrics: ActivityMetrics | None,
+    *,
+    sport: str = "",
+) -> str:
+    """One line of running dynamics (``VO 94 mm, GCT 239 ms``)."""
+    if metrics is None or sport not in RUN_TYPES:
+        return ""
+
+    parts = []
+    if metrics.vertical_oscillation_mm is not None:
+        parts.append(f"VO {metrics.vertical_oscillation_mm:.0f} mm")
+    if metrics.stance_time_ms is not None:
+        text = f"GCT {metrics.stance_time_ms:.0f} ms"
+        if metrics.stance_time_pct is not None:
+            text += f" ({metrics.stance_time_pct:.0f} %) "
+        parts.append(text.rstrip())
+    if metrics.stance_balance_pct is not None:
+        parts.append(f"Balance {metrics.stance_balance_pct:.1f} %")
+    if metrics.vertical_ratio_pct is not None:
+        parts.append(f"VR {metrics.vertical_ratio_pct:.1f} %")
+    if metrics.respiration_bpm is not None:
+        parts.append(f"Resp {metrics.respiration_bpm:.0f} /min")
+
+    return ", ".join(parts)
+
+
 def _link(url: str) -> str:
     """Markdown link whose text is the external activity id."""
     label = url.rsplit("/", 1)[-1] or url
@@ -852,6 +920,7 @@ def format_session_activity(
     planned_events: list[Event] | None = None,
     planned_hrefs: dict[str, str] | None = None,
     weather: ActivityWeather | None = None,
+    metrics: ActivityMetrics | None = None,
     device: Device | None = None,
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
@@ -879,6 +948,14 @@ def format_session_activity(
 
     if conditions:
         lines.append(f"- Weather: {conditions}")
+
+    metrics_line = format_metrics(metrics, sport=activity.type)
+    if metrics_line:
+        lines.append(f"- Metrics: {metrics_line}")
+
+    dynamics = format_dynamics(metrics, sport=activity.type)
+    if dynamics:
+        lines.append(f"- Dynamics: {dynamics}")
 
     if device is not None:
         lines.append(f"- Device: {device_label(device)}")

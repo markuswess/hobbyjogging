@@ -9,6 +9,16 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Session metrics (2026-11-25).** `activity_metrics` (v27/v28) stores one
+  nullable row per activity: cadence, stride, vertical oscillation, stance
+  time/percent/balance, vertical ratio, respiration, power, calories, training
+  effect, GAP and average/min/max altitude. FIT owns device-measured dynamics,
+  Intervals owns altitude, Runalyze fills the gaps, and a per-field source map
+  keeps that stable across reimports. The FIT parser, the three other
+  importers and `activity_metrics_v1` share one extractor; the session report
+  shows `Metrics`/`Dynamics` lines and `maintenance audit --fit-sample`
+  reports coverage and conflicts. On a copy: 2,917 rows, 0 canonical drift.
+  The remaining chart work is item 62.
 - **Activity editing (2026-11-24).** `activity edit <id>` is the
   direct human write surface: name, description, duration, distance, sport,
   sub-sport, RPE, feel, tags, methods, targets and equipment, plus `--clear`,
@@ -146,19 +156,21 @@ passed; its two findings — **55** (subT selection and the derived table) and
 ### Phase 3: trustworthy data
 
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
-(manual overlay + rebuild proof), **37**'s read-only audit and the CLI write
-surface are done; the next structural work is **38/35/21** extraction.
+(manual overlay + rebuild proof), **37**'s read-only audit, the CLI write
+surface and **38/35** (session metrics) are done; the next structural work is
+**21** (sheet leftovers), then the proposal rules.
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit (read-only, done; the proposals
-wait for the landed edit surface) → the CLI write surface (done) → **38/35/21**
-extraction → **37**'s rules and **43** tags → **42** duplicates → health score
-→ browser. The write-surface follow-ups **58–60** (edit-log coverage, the
-equipment CLI, selection by date/name) slot before or alongside **38**.
-Accepting a suggestion always writes a manual value and an `edit_log` row;
-nothing canonical is auto-applied except an empty, high-confidence
-classification. The corrections export (**57**) follows 37's audit as a small
-report; it is not a gate.
+wait for the landed edit surface) → the CLI write surface (done) → **38/35**
+(session metrics, done; charts are item 62) → **21** sheet leftovers →
+**37**'s rules and **43** tags → **42** duplicates → health score → browser.
+The write-surface follow-ups **58–60** (edit-log coverage, the equipment CLI,
+selection by date/name) slot before or alongside **21**. Accepting a
+suggestion always writes a manual value and an `edit_log` row; nothing
+canonical is auto-applied except an empty, high-confidence classification.
+The corrections export (**57**) follows 37's audit as a small report; it is
+not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -354,6 +366,15 @@ reports item; 28 is the recurring cleanup.
     into typed equipment fields (or leave them as text) and use
     `tz_offset_min` where local time matters — chart day boundaries and session
     times. Decide per field whether it earns a place.
+
+62. **Session metric charts** (reports; small, phase 3, after item 38).
+    `activity_metrics` now carries cadence, stride, running dynamics, power,
+    calories, GAP and altitude, and the session report prints the two lines.
+    What remains from item 38 is the visual layer: cadence/stride trends,
+    a power or dynamics scatter, and calories/altitude over time, all over
+    stored data. No schema change; follow the report parity rule (CLI and
+    dashboard), and keep derived metrics (decoupling, efficiency, critical
+    speed) in the lab with a card rather than adding them here.
 
 22. **Release versioning** (repo-level; no package; phase 2). Every
     `pyproject.toml` says
@@ -707,35 +728,6 @@ reports item; 28 is the recurring cleanup.
       design claim if the project is handed over, and the empty diff makes
       every later phase confident in `recompute_canonical`.
 
-35. **Runalyze's extra metrics: what to store, what to ignore** (core + import
-    + reports; phase 3, with item 38). The activity payload carries more than
-    our schema holds. Coverage measured in the Intervals payloads we already keep:
-    `average_cadence` 2,353 of 2,851 (83%), `average_stride` 2,334, but the
-    running-dynamics family (`average_vertical_oscillation`,
-    `average_stance_time`, `average_vertical_ratio`) only 110 (4%). The FIT
-    session message carries the same averages (`avg_vertical_oscillation`,
-    `avg_stance_time`, `avg_stance_time_balance`, `avg_vertical_ratio`,
-    `avg_step_length`, `avg_running_cadence`) and the records carry them per
-    second, so the 4 % is Intervals' coverage, not the ceiling — the importer
-    just does not extract them yet. Runalyze adds `gap`/`x_gap`,
-    `aerobic_decoupling_pace/power`, `trimp`/`fit_trimp`/`fit_training_effect`,
-    `required_critical_pace/power`, `climbs`, `hrv`, and zone distributions as
-    percentages.
-    - **Store**: `cadence` and `stride_length` (83 % coverage, actionable) and
-      `gap_mps` — Runalyze's grade-adjusted pace beats a lap-based estimate.
-    - **Lab**: decoupling and critical speed already have candidates; use
-      Runalyze's values as a cross-check, not as stored metrics.
-    - **Out of scope for now**: vertical oscillation, stance time and ratio
-      (4 % in Intervals, more in FIT), impact loading, leg spring stiffness,
-      training effect (we keep Intervals' `training_load`), climbs as
-      an entity, HRV analysis, and zone distributions as percentages. If the
-      dynamics ever matter, extract the FIT session averages rather than
-      storing streams.
-    - **Load**: the TRIMP fallback moved to phase 2 (item 53); this item keeps
-      the cadence, stride and GAP decision.
-    - **Open**: whether cadence and stride sit on `activities` or in an
-      `activity_dynamics` row; two columns are defensible at 83 % coverage.
-
 37. **Refurbish historical data from evidence already stored** (maintenance +
     import + reports; phase 3, step 2). The log already contains
     facts we do not use: tags carry workout targets, illness recovery and race
@@ -798,43 +790,6 @@ reports item; 28 is the recurring cleanup.
       not classification; keep it as its own item if it is taken up.
     - **Tag meaning** lives in item 43; this audit lists the unmapped tags
       first, and the proposals read that lexicon instead of hard-coded words.
-
-38. **Session-average metrics now, streams later** (core + import + maintenance
-    + reports; phase 3, step 4). The session-level aggregates are already in
-    the raw payloads and the FIT archive, but most are not stored: FIT session
-    fields
-    (cadence, stride, vertical oscillation, stance time/percent/balance,
-    vertical ratio, respiration, power, calories, training effect, altitude),
-    Intervals (cadence 83 %, stride 82 %, calories 100 %, altitude 98 %),
-    Runalyze (dynamics 79 %, GAP 80 %, power 97 %) and the sheet
-    (cadence/contact/oscillation ~33 %). Extract the session averages; leave
-    per-second streams in the FIT archive for later.
-    - **Audit first**: list every session-average field, its coverage, units and
-      conflicts across the four sources; reuse item 37's raw-field audit.
-    - **Schema**: one `activity_metrics` row per activity (like
-      `activity_weather`), with nullable Tier 1 columns: cadence (spm), stride
-      (m), vertical oscillation (mm), stance time (ms/percent), stance balance
-      (%), vertical ratio (%), respiration, power (rides), calories, training
-      effect, GAP (m/s), average/min/max altitude. The first source owns the
-      row and later sources fill gaps; FIT is the authority for
-      device-measured dynamics, Runalyze fills gaps, and Intervals owns
-      cadence/stride/calories/altitude where FIT has none. Tier 2 (climb score,
-      percentage hilly, power variability, HR recovery, decoupling, efficiency
-      factor, TRIMP) stays in the raw payload until a report needs it.
-    - **Extraction**: extend `FitSession` and the FIT parser, then backfill from
-      `source_records.raw_path`; map the Intervals, Runalyze and sheet payloads
-      and backfill them too, reusing item 17's `FIELD_MAP` and recompute
-      machinery. Calories is the quick win: FIT already parses it
-      and drops it, and Intervals/Runalyze cover it at ~100 %.
-    - **Reports/lab**: session-report lines and dynamics/power charts; derived
-      metrics (decoupling, efficiency, critical speed) stay in the lab with a
-      metric card.
-    - **Streams later**: keep the raw FIT archive as the stream source; add a
-      stream index/metadata table and parse on demand or into Parquet. Do not
-      put per-second rows in the canonical SQLite database.
-    - **Sequence**: step 4 — after items 34, 37 and 1. The Tier-1 extraction
-      audit reuses item 37's raw-field audit, and both audits can start before
-      the schema lands. Streams stay phase 4.
 
 39. **Running-only load card** (docs; done 2026-11-19). The card is in
     `docs/METRICS.md` under Promoted, with its load row in the reference

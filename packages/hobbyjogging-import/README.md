@@ -841,6 +841,46 @@ uv run --env-file .env hobbyjogging-import activity edit <id> \
 - `--dry-run` applies the whole edit, prints it, and rolls the transaction
   back; nothing is written.
 
+## Session metrics
+
+`activity_metrics` stores one nullable row per activity with the session
+averages the payloads already carry; per-second streams stay in the FIT
+archive. The importers write it, and
+`hobbyjogging-maintenance run activity_metrics_v1` backfills the existing rows
+from the stored payloads (and re-reads the FIT archive for the older FIT
+records). `maintenance audit --fit-sample N` reports the per-source coverage
+and the cross-source disagreements.
+
+Units and ownership:
+
+| field | unit | primary source |
+|---|---|---|
+| `cadence` | steps/min for runs, rpm for rides | FIT, then Intervals/Runalyze/sheet |
+| `stride_m` | m | FIT, then Intervals/Runalyze |
+| `vertical_oscillation_mm` | mm | FIT, then Intervals/Runalyze/sheet |
+| `stance_time_ms` / `stance_time_pct` | ms / % | FIT, then Intervals |
+| `stance_balance_pct` | % | FIT, then Intervals/Runalyze |
+| `vertical_ratio_pct` | % | FIT, then Intervals/Runalyze/sheet |
+| `respiration_bpm` | breaths/min | FIT, then Runalyze |
+| `power_w` | W | FIT, then Runalyze |
+| `calories_kcal` | kcal | FIT, then Intervals/Runalyze |
+| `training_effect` | 0-5 | FIT, then Intervals/Runalyze |
+| `gap_mps` | m/s | Intervals, then Runalyze |
+| `altitude_avg_m` / `min` / `max` | m | Intervals |
+
+Run cadence is one-leg in FIT, Intervals and Runalyze (86) and steps/min in
+the sheet (172), so a run value at or below 120 is doubled. Runalyze's stride
+is centimetres, its GAP is km/h, its balance is hundredths of a percent and
+its vertical ratio is tenths of a percent; the extractor normalizes all four.
+If two sources disagree, the per-field authority above wins; a reimport from
+the row's first source cannot undo a higher-authority value.
+
+`fit --inspect FILE` prints the same metrics line the session report uses:
+
+```text
+Metrics: cadence 172, stride 1.29 m, VO 94 mm, GCT 239 ms (35 %), balance 48.2 %, VR 7.4 %, respiration 33.7, TE 3.7
+```
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*

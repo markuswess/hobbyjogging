@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from . import (
     activity_device_v1,
+    activity_metrics_v1,
     activity_routes_v1,
     activity_measurements_v1,
     activity_weather_v1,
@@ -22,6 +23,7 @@ from . import (
 
 __all__ = [
     "activity_device_v1",
+    "activity_metrics_v1",
     "activity_routes_v1",
     "activity_measurements_v1",
     "activity_weather_v1",

@@ -214,8 +214,9 @@ The repo is a uv workspace with four packages.
 
 Canonical model, schema, and read/write access.
 
-- `model.py` — `Activity`, `Lap`, `Interval`, `WellnessDay`, `Event`,
-  `Equipment`, zone models; activities carry both VO2max values and tags.
+- `model.py` — `Activity`, `ActivityWeather`, `ActivityMetrics`, `Lap`,
+  `Interval`, `WellnessDay`, `Event`, `Equipment`, zone models; activities
+  carry both VO2max values and tags.
 - `sports.py` — canonical sport names, labels, groups, and the shared alias
   table for FIT/Intervals/manual entry.
 - `classify.py` — the workout-category heuristic (quality/non-quality,
@@ -232,8 +233,8 @@ Canonical model, schema, and read/write access.
 - `db/repository.py` — `TrainingRepository`: read queries over the canonical
   model.
 - `datasource.py` — the `DataSource` protocol every report consumer depends
-  on: activities, wellness, events, intervals, equipment, and the review
-  queue (`review_items`, read-only).
+  on: activities, wellness, events, intervals, weather, session metrics,
+  equipment, and the review queue (`review_items`, read-only).
 - `db/connection.py` — database path resolution and connection setup.
 
 Core owns the rules that must not drift between packages: field ownership,
@@ -261,6 +262,9 @@ Source ingestion and the review queue.
 - `values.py` — parsers/formatters for manual entry (`46:20`, `8.2km`,
   RPE/feel/text) and the one prompt/parser table shared by triage and the edit
   command.
+- `metrics.py` — session-average extraction from Intervals, Runalyze and the
+  sheet payloads, normalized to the canonical units the FIT parser already
+  emits; the importer and the backfill share it.
 - `editing.py` — shared manual-edit application used by `review edit`,
   `activity edit` and triage: scalar values, whole sets, clears, conflict and
   classification closure, the `edit_log` row and the quality re-check.
@@ -295,7 +299,8 @@ Analysis, views, and rendering.
 - `summary.py` — period totals, quality-session lists, recovery averages.
 - `charts/` (split by family), `chart_commands.py` — plotly figures over
   prepared series.
-- `format.py`, `mdpretty.py` — human formatting for the terminal.
+- `format.py`, `mdpretty.py` — human formatting for the terminal, including
+  the session metrics and running-dynamics lines.
 - `commands.py`, `cli.py`, `command_support.py`, `__main__.py` — command
   registry, shared CLI helpers, and entry point.
 
@@ -316,6 +321,13 @@ changes.
 - `store.py` — reads and writes for `data_migrations` and `maintenance_runs`.
 - `workouts.py` — classifier/sheet proposals shared by the classification
   tasks.
+- `backfills/activity_weather_v1.py` — `activity_weather` from the stored
+  payloads.
+- `backfills/activity_metrics_v1.py` — `activity_metrics` from the stored
+  payloads and the FIT archive (the archive is re-read for the old FIT rows).
+- `audit*.py` — the read-only historical evidence report: coverage, raw keys,
+  tags, descriptions, trail/race evidence, classification, periods and
+  session-average metrics. It never opens a review item.
 - `backfills/event_race_method_v1.py` — `event_race_method_v1`.
 - `backfills/event_zones.py` — `event_zones_v1`.
 - `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
@@ -328,7 +340,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 26.
+SQLite, forward-only migrations. Schema version 28.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -407,6 +419,15 @@ SQLite, forward-only migrations. Schema version 26.
   humidity, wind speed/degree/gust, wind chill, heat index, pressure, UV,
   clouds, condition and a night flag, in metric units. The first source owns
   the row; a later source only fills the fields it left empty.
+- `activity_metrics` (v27/v28) — one nullable row per activity for session
+  averages: cadence (steps/min for runs, rpm for rides), stride (m), vertical
+  oscillation (mm), stance time (ms and %), stance balance (%), vertical ratio
+  (%), respiration, power (W), calories (kcal), training effect, grade-adjusted
+  pace (m/s) and average/min/max altitude (m). A per-field source map (v28)
+  keeps the ranked authority stable: FIT owns device-measured dynamics,
+  Intervals owns altitude and fills cadence/stride/calories where FIT has none,
+  and Runalyze fills the remaining gaps. Per-second streams stay in the FIT
+  archive.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
   attached to activities, tagged by source record. Laps are device splits
   (auto-lap or manual); intervals are typed reps (`WORK` / `RECOVERY`, with

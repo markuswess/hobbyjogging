@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 28
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -540,6 +540,46 @@ END;
 """
 
 
+MIGRATION_27_SQL = """
+-- Session-average metrics live in one nullable row per activity, like
+-- activity_weather. The values are normalized to canonical units (see
+-- import_rules.METRIC_FIELDS); per-second streams stay in the FIT archive.
+CREATE TABLE activity_metrics (
+    activity_id TEXT PRIMARY KEY
+        REFERENCES activities(id) ON DELETE CASCADE,
+    source TEXT NOT NULL DEFAULT '',
+    source_record_id INTEGER
+        REFERENCES source_records(id) ON DELETE SET NULL,
+    cadence REAL,
+    stride_m REAL,
+    vertical_oscillation_mm REAL,
+    stance_time_ms REAL,
+    stance_time_pct REAL,
+    stance_balance_pct REAL,
+    vertical_ratio_pct REAL,
+    respiration_bpm REAL,
+    power_w REAL,
+    calories_kcal REAL,
+    training_effect REAL,
+    gap_mps REAL,
+    altitude_avg_m REAL,
+    altitude_min_m REAL,
+    altitude_max_m REAL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+MIGRATION_28_SQL = """
+-- Per-field source tracking for activity_metrics. The row has one first
+-- owner, but FIT, Intervals, Runalyze and the sheet have different per-field
+-- authority; without this map a later refresh from the row owner could undo a
+-- higher-authority value. A JSON object keeps the row shape in one table.
+ALTER TABLE activity_metrics
+ADD COLUMN field_sources_json TEXT NOT NULL DEFAULT '{}';
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -567,6 +607,8 @@ MIGRATIONS: dict[int, str] = {
     24: MIGRATION_24_SQL,
     25: MIGRATION_25_SQL,
     26: MIGRATION_26_SQL,
+    27: MIGRATION_27_SQL,
+    28: MIGRATION_28_SQL,
 }
 
 

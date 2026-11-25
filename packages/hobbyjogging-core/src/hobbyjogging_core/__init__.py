@@ -23,6 +23,7 @@ from .db.writer import FieldConflict
 from .model import (
     Activity,
     ActivityEquipment,
+    ActivityMetrics,
     Equipment,
     EditLogEntry,
     Event,
@@ -57,6 +58,7 @@ from .workouts import (
 __all__ = [
     "Activity",
     "ActivityEquipment",
+    "ActivityMetrics",
     "CANONICAL_SPORTS",
     "CROSS_TRAINING",
     "Category",

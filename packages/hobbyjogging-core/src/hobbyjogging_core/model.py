@@ -271,6 +271,36 @@ class ActivityWeather:
 
 
 @dataclass
+class ActivityMetrics:
+    """Session-average metrics for one activity, in canonical units.
+
+    ``cadence`` is steps per minute for run sports and revolutions per minute
+    for rides; ``stride_m`` is metres, ``vertical_oscillation_mm`` and
+    ``stance_time_ms`` are the device units, the percentage fields are 0-100,
+    ``power_w`` is watts, ``calories_kcal`` is kilocalories, ``gap_mps`` is
+    metres per second and the altitude fields are metres. Every field is
+    nullable.
+    """
+
+    cadence: float | None = None
+    stride_m: float | None = None
+    vertical_oscillation_mm: float | None = None
+    stance_time_ms: float | None = None
+    stance_time_pct: float | None = None
+    stance_balance_pct: float | None = None
+    vertical_ratio_pct: float | None = None
+    respiration_bpm: float | None = None
+    power_w: float | None = None
+    calories_kcal: float | None = None
+    training_effect: float | None = None
+    gap_mps: float | None = None
+    altitude_avg_m: float | None = None
+    altitude_min_m: float | None = None
+    altitude_max_m: float | None = None
+    source: str = ""
+
+
+@dataclass
 class Interval:
     group_id: str | None = None
     type: str = ""

@@ -145,6 +145,55 @@ def authority_rank(rule: FieldRule, source: str) -> int | None:
         return None
 
 
+# Session-average metrics are a separate row, not activity columns. The unit
+# is part of the field name or documented in ActivityMetrics; ``cadence`` is
+# steps/min for run sports and rpm for rides. The tuple is the field order,
+# the map the per-field ranked authority (FIT is the device measurement,
+# Intervals owns altitude, Runalyze fills the gaps).
+METRIC_FIELDS = (
+    "cadence",
+    "stride_m",
+    "vertical_oscillation_mm",
+    "stance_time_ms",
+    "stance_time_pct",
+    "stance_balance_pct",
+    "vertical_ratio_pct",
+    "respiration_bpm",
+    "power_w",
+    "calories_kcal",
+    "training_effect",
+    "gap_mps",
+    "altitude_avg_m",
+    "altitude_min_m",
+    "altitude_max_m",
+)
+METRIC_AUTHORITY: dict[str, tuple[str, ...]] = {
+    "cadence": ("fit", "intervals", "runalyze", "sheet"),
+    "stride_m": ("fit", "intervals", "runalyze"),
+    "vertical_oscillation_mm": ("fit", "intervals", "runalyze", "sheet"),
+    "stance_time_ms": ("fit", "intervals", "runalyze", "sheet"),
+    "stance_time_pct": ("fit", "intervals"),
+    "stance_balance_pct": ("fit", "intervals", "runalyze"),
+    "vertical_ratio_pct": ("fit", "intervals", "runalyze", "sheet"),
+    "respiration_bpm": ("fit", "runalyze"),
+    "power_w": ("fit", "runalyze"),
+    "calories_kcal": ("fit", "intervals", "runalyze"),
+    "training_effect": ("fit", "intervals", "runalyze"),
+    "gap_mps": ("intervals", "runalyze"),
+    "altitude_avg_m": ("intervals",),
+    "altitude_min_m": ("intervals",),
+    "altitude_max_m": ("intervals",),
+}
+
+
+def metric_authority_rank(field: str, source: str) -> int | None:
+    """Return a source's rank for one metric field, or None if unranked."""
+    try:
+        return METRIC_AUTHORITY[field].index(source)
+    except (KeyError, ValueError):
+        return None
+
+
 @dataclass(frozen=True)
 class SourceProfile:
     """What one import source can supply, and how it joins the canonical DB.

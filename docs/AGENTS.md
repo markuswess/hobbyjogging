@@ -227,6 +227,10 @@ Cross-package changes must leave all four suites green.
   for measured typed reps, `derived` for reps inferred from device laps. A
   derived set never replaces a measured one, is run-only, and is labelled in
   the session report.
+- Session averages live in `activity_metrics` (one nullable row); run cadence
+  is steps/min, ride cadence is rpm, FIT owns device-measured dynamics,
+  Intervals owns altitude, and Runalyze fills the gaps. Per-second streams
+  stay in the FIT archive, never in SQLite.
 - Thresholds are per sport and dated in `athlete_thresholds`. A manual
   `threshold add` snapshot survives every recompute; `derived_zone_configs_current`
   builds local zone configs and lap zone times from it, and an Intervals config

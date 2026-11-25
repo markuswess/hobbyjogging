@@ -30,6 +30,7 @@ from .audit_facts import (
     trail_audit,
     trail_section,
 )
+from .audit_metrics import build_metrics_audit
 from .audit_sources import (
     raw_key_audit,
     raw_key_section,
@@ -53,6 +54,7 @@ def build_audit(
     connection: sqlite3.Connection,
     *,
     database: str | None = None,
+    fit_sample: int = 100,
 ) -> str:
     """Return the Markdown audit for one database."""
     years = _years(connection)
@@ -71,6 +73,7 @@ def build_audit(
     coverage = _coverage(connection)
     year_counts = _year_field_counts(connection)
     lines.extend(_coverage_section(coverage, years, year_counts))
+    lines.extend(build_metrics_audit(connection, fit_sample=fit_sample))
     raw = raw_key_audit(connection)
     lines.extend(raw_key_section(raw))
     tags = tag_audit(connection)

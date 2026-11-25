@@ -6,8 +6,10 @@ from hobbyjogging_report.format import (
     activity_display_name,
     format_activity,
     format_category_table,
+    format_dynamics,
     format_event,
     format_feel,
+    format_metrics,
     format_weather,
     format_methods,
     format_session_activity,
@@ -19,6 +21,7 @@ from hobbyjogging_report.format import (
 )
 from hobbyjogging_report.summary import recovery_summary, summarize_training
 from hobbyjogging_core.model import (
+    ActivityMetrics,
     ActivitySocial,
     ActivityWeather,
     Event,
@@ -30,6 +33,78 @@ from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
 activity = activity_factory()
+
+
+class MetricsLineTests(unittest.TestCase):
+
+    def test_run_metrics_use_steps_per_minute_and_include_dynamics(self):
+        metrics = ActivityMetrics(
+            cadence=172.0,
+            stride_m=1.31,
+            vertical_oscillation_mm=94.0,
+            stance_time_ms=239.0,
+            stance_time_pct=35.0,
+            stance_balance_pct=48.2,
+            vertical_ratio_pct=7.4,
+            respiration_bpm=34.0,
+            power_w=326.0,
+            calories_kcal=692.0,
+            training_effect=3.7,
+            gap_mps=3.78,
+            altitude_avg_m=191.0,
+            altitude_min_m=185.0,
+            altitude_max_m=214.0,
+        )
+
+        line = format_metrics(metrics, sport="run")
+        dynamics = format_dynamics(metrics, sport="run")
+
+        self.assertIn("Cadence 172 spm", line)
+        self.assertIn("Stride 1.31 m", line)
+        self.assertIn("Power 326 W", line)
+        self.assertIn("692 kcal", line)
+        self.assertIn("GAP 3.78 m/s", line)
+        self.assertIn("Alt avg 191 m (185-214 m)", line)
+        self.assertIn("VO 94 mm", dynamics)
+        self.assertIn("GCT 239 ms (35 %)", dynamics)
+        self.assertIn("Balance 48.2 %", dynamics)
+        self.assertIn("VR 7.4 %", dynamics)
+
+    def test_ride_metrics_use_rpm_and_hide_running_dynamics(self):
+        metrics = ActivityMetrics(
+            cadence=86.0,
+            power_w=250.0,
+            calories_kcal=600.0,
+            vertical_oscillation_mm=90.0,
+        )
+
+        line = format_metrics(metrics, sport="ride")
+        dynamics = format_dynamics(metrics, sport="ride")
+
+        self.assertIn("Cadence 86 rpm", line)
+        self.assertNotIn("Stride", line)
+        self.assertNotIn("GAP", line)
+        self.assertEqual("", dynamics)
+
+    def test_session_renders_both_lines(self):
+        metrics = ActivityMetrics(
+            cadence=172.0,
+            stride_m=1.29,
+            stance_time_ms=238.0,
+            calories_kcal=692.0,
+        )
+
+        lines = format_session_activity(
+            activity(),
+            [],
+            metrics=metrics,
+        )
+
+        self.assertIn(
+            "- Metrics: Cadence 172 spm, Stride 1.29 m, 692 kcal",
+            lines,
+        )
+        self.assertIn("- Dynamics: GCT 238 ms", lines)
 
 
 class Vo2maxLabelTests(unittest.TestCase):

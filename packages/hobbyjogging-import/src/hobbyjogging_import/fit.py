@@ -14,6 +14,7 @@ from typing import Any
 import fitdecode
 
 from hobbyjogging_core.sports import (
+    RIDE_SPORTS,
     RUN_SPORTS,
     SPORT_LABELS,
     canonical_sport,
@@ -60,6 +61,18 @@ class FitSession:
     ascent_m: float | None = None
     descent_m: float | None = None
     calories: float | None = None
+    # Session-average metrics in canonical units. Cadence is steps/min for
+    # run sports and rpm for rides; stride is metres.
+    cadence: float | None = None
+    stride_m: float | None = None
+    vertical_oscillation_mm: float | None = None
+    stance_time_ms: float | None = None
+    stance_time_pct: float | None = None
+    stance_balance_pct: float | None = None
+    vertical_ratio_pct: float | None = None
+    respiration_bpm: float | None = None
+    power_w: float | None = None
+    training_effect: float | None = None
     vo2max_garmin: float | None = None
     laps: list[FitLap] = field(default_factory=list)
 
@@ -209,6 +222,39 @@ def summarize_fit_messages(
                 ascent_m=_number(session.get("total_ascent")),
                 descent_m=_number(session.get("total_descent")),
                 calories=_number(session.get("total_calories")),
+                cadence=_cadence(
+                    canonical,
+                    session.get("avg_running_cadence")
+                    if session.get("avg_running_cadence") is not None
+                    else session.get("avg_cadence"),
+                ),
+                stride_m=_stride_m(
+                    canonical,
+                    session.get("avg_step_length"),
+                ),
+                vertical_oscillation_mm=_number(
+                    session.get("avg_vertical_oscillation")
+                ),
+                stance_time_ms=_number(session.get("avg_stance_time")),
+                stance_time_pct=_number(
+                    session.get("avg_stance_time_percent")
+                ),
+                stance_balance_pct=_number(
+                    session.get("avg_stance_time_balance")
+                ),
+                vertical_ratio_pct=_number(
+                    session.get("avg_vertical_ratio")
+                ),
+                respiration_bpm=_number(
+                    session.get("enhanced_avg_respiration_rate")
+                    if session.get("enhanced_avg_respiration_rate")
+                    is not None
+                    else session.get("avg_respiration_rate")
+                ),
+                power_w=_number(session.get("avg_power")),
+                training_effect=_number(
+                    session.get("total_training_effect")
+                ),
                 laps=[
                     _lap_from_message(lap, lap_index)
                     for lap_index, lap in enumerate(
@@ -299,6 +345,10 @@ def format_fit_file(summary: FitFileSummary) -> str:
 
         if session.calories is not None:
             lines.append(f"Calories: {_fmt_number(session.calories)}")
+
+        metrics = _format_session_metrics(session)
+        if metrics:
+            lines.append(f"Metrics: {metrics}")
 
         if session.vo2max_garmin is not None:
             lines.append(f"VO2max: {session.vo2max_garmin:.2f} mL/kg/min")
@@ -495,6 +545,33 @@ def _number(value: object) -> float | None:
         return None
 
 
+def _cadence(sport: str, value: object) -> float | None:
+    """Normalize a FIT cadence to steps/min for runs, rpm otherwise.
+
+    Garmin and Intervals report running cadence one-leg (``86``); the
+    canonical value is steps/min (``172``). A value above 120 is already
+    steps/min and is left alone.
+    """
+    number = _number(value)
+    if number is None or number <= 0:
+        return None
+    if sport not in RUN_SPORTS and sport not in RIDE_SPORTS:
+        return None
+    if sport in RUN_SPORTS and number <= 120:
+        return number * 2
+    return number
+
+
+def _stride_m(sport: str, value: object) -> float | None:
+    """Normalize FIT's millimetre step length to metres for runs."""
+    number = _number(value)
+    if number is None or number <= 0:
+        return None
+    if sport not in RUN_SPORTS:
+        return None
+    return number / 1000.0
+
+
 def _int(value: object, *, default: int) -> int:
     number = _number(value)
     return int(number) if number is not None else default
@@ -502,3 +579,29 @@ def _int(value: object, *, default: int) -> int:
 
 def _fmt_number(value: float | None) -> str:
     return "-" if value is None else f"{value:.0f}"
+
+
+def _format_session_metrics(session: FitSession) -> str:
+    parts = []
+    if session.cadence is not None:
+        parts.append(f"cadence {session.cadence:.0f}")
+    if session.stride_m is not None:
+        parts.append(f"stride {session.stride_m:.2f} m")
+    if session.vertical_oscillation_mm is not None:
+        parts.append(f"VO {session.vertical_oscillation_mm:.0f} mm")
+    if session.stance_time_ms is not None:
+        text = f"GCT {session.stance_time_ms:.0f} ms"
+        if session.stance_time_pct is not None:
+            text += f" ({session.stance_time_pct:.0f} %)"
+        parts.append(text)
+    if session.stance_balance_pct is not None:
+        parts.append(f"balance {session.stance_balance_pct:.1f} %")
+    if session.vertical_ratio_pct is not None:
+        parts.append(f"VR {session.vertical_ratio_pct:.1f} %")
+    if session.respiration_bpm is not None:
+        parts.append(f"respiration {session.respiration_bpm:.1f}")
+    if session.power_w is not None:
+        parts.append(f"power {session.power_w:.0f} W")
+    if session.training_effect is not None:
+        parts.append(f"TE {session.training_effect:.1f}")
+    return ", ".join(parts)

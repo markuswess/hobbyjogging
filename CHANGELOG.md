@@ -11,7 +11,29 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — phase 3: trustworthy data
 
-Schema: **26**. Compatibility: requires schema ≥ 1, migrates to 26.
+Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
+
+### Session metrics
+
+- `activity_metrics` (v27/v28) stores one nullable row per activity for the
+  session averages already in FIT, Intervals, Runalyze and the sheet: cadence
+  (steps/min for runs, rpm for rides), stride, vertical oscillation, stance
+  time and percent, stance balance, vertical ratio, respiration, power,
+  calories, training effect, grade-adjusted pace and average/min/max altitude.
+  FIT owns device-measured dynamics, Intervals owns altitude and fills
+  cadence/stride/calories where FIT has none, and Runalyze fills the remaining
+  gaps; a per-field source map keeps that authority stable across reimports.
+- The FIT parser extracts the averages (calories was already parsed and
+  dropped), the Intervals/Runalyze/sheet imports write them through one
+  extractor, and `activity_metrics_v1` backfills the existing rows (re-reading
+  the FIT archive for the old FIT payloads). Per-second streams stay in the
+  archive.
+- The session report and dashboard show a `Metrics` line and a running
+  `Dynamics` line; `maintenance audit --fit-sample N` reports coverage, units
+  and cross-source disagreements.
+- On a copy of the real database the backfill produced 2,917 rows (cadence
+  2,416, stride 2,356, dynamics 2,146, calories 2,877, GAP 2,234, altitude
+  2,811) with `verify_canonical` still at 0 drift.
 
 ### Editing
 

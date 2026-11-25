@@ -27,6 +27,7 @@ from .matching import (
     linked_activity,
     parse_utc,
 )
+from .metrics import derive_metrics
 from .quality import (
     record_ambiguous_match,
     record_field_conflicts,
@@ -514,6 +515,17 @@ class FitImporter:
             values,
             source=SOURCE,
             source_record_id=source_record_id,
+        )
+        metrics = derive_metrics(
+            SOURCE,
+            {"session": asdict(session)},
+            str(values.get("sport") or ""),
+        )
+        self.writer.upsert_activity_metrics(
+            activity_id,
+            source=SOURCE,
+            source_record_id=source_record_id,
+            **metrics,
         )
         summary.review_recorded += record_field_conflicts(
             self.writer,

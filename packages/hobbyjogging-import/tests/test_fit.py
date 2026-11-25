@@ -115,6 +115,65 @@ class FitSummaryTests(unittest.TestCase):
         self.assertEqual(132, lap_summary.max_hr)
         self.assertEqual(2, lap_summary.elevation_gain_m)
 
+    def test_maps_session_average_metrics(self):
+        file_id, activity, session, lap = _sample_messages()
+        session.update(
+            {
+                "avg_running_cadence": 86,
+                "avg_step_length": 1290.0,
+                "avg_vertical_oscillation": 94.2,
+                "avg_stance_time": 238.6,
+                "avg_stance_time_percent": 34.57,
+                "avg_stance_time_balance": 48.21,
+                "avg_vertical_ratio": 7.36,
+                "enhanced_avg_respiration_rate": 33.67,
+                "avg_power": 250.0,
+                "total_training_effect": 3.7,
+            }
+        )
+
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            file_id,
+            activity,
+            [session],
+            [lap],
+        )
+        mapped = summary.sessions[0]
+
+        self.assertEqual(172.0, mapped.cadence)
+        self.assertEqual(1.29, mapped.stride_m)
+        self.assertEqual(94.2, mapped.vertical_oscillation_mm)
+        self.assertEqual(238.6, mapped.stance_time_ms)
+        self.assertEqual(34.57, mapped.stance_time_pct)
+        self.assertEqual(48.21, mapped.stance_balance_pct)
+        self.assertEqual(7.36, mapped.vertical_ratio_pct)
+        self.assertEqual(33.67, mapped.respiration_bpm)
+        self.assertEqual(250.0, mapped.power_w)
+        self.assertEqual(3.7, mapped.training_effect)
+
+    def test_ride_cadence_is_not_doubled(self):
+        file_id, activity, session, lap = _sample_messages()
+        session.update(
+            {
+                "sport": "cycling",
+                "avg_cadence": 86,
+                "avg_step_length": 1290.0,
+            }
+        )
+
+        summary = summarize_fit_messages(
+            Path("sample.fit"),
+            file_id,
+            activity,
+            [session],
+            [lap],
+        )
+        mapped = summary.sessions[0]
+
+        self.assertEqual(86.0, mapped.cadence)
+        self.assertIsNone(mapped.stride_m)
+
     def test_maps_vo2max_to_single_session(self):
         file_id, activity, session, lap = _sample_messages()
 

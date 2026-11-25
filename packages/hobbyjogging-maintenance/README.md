@@ -71,8 +71,11 @@ status is 1 on any drift, missing/extra activity or exclusion mismatch.
 the database: canonical field coverage per year, raw payload keys without a
 canonical home, tag meanings, interval-like descriptions, elevation/trail
 candidates, race evidence, classification coverage, illness/season periods and
-the review queue. It opens no review items and changes nothing. Re-run it as
-imports land; `--output PATH` writes the report, otherwise it goes to stdout.
+the review queue. It also reports session-average metric coverage and
+cross-source disagreements; `--fit-sample N` controls how many raw FIT files
+are parsed for that table (default 100, `0` disables the sample). It opens no
+review items and changes nothing. Re-run it as imports land; `--output PATH`
+writes the report, otherwise it goes to stdout.
 
 `run` options:
 
@@ -104,6 +107,7 @@ Backfills (one-time, recorded, skipped once applied):
 | `activity_max_hr_v1` | Fill `max_hr` from the stored payloads. |
 | `activity_routes_v1` | Resolve the sheet's `Strecke`/`Streckennummer` into routes and link the activity. |
 | `activity_weather_v1` | Create `activity_weather` rows from the stored payloads. |
+| `activity_metrics_v1` | Create `activity_metrics` rows from the stored payloads and the FIT archive. |
 | `device_identity_v1` | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
 | `device_identity_orphans_v1` | Soft-exclude the provider device rows left unused after the FIT claim (never delete). |
 | `interval_source_v1` | Stamp the interval rows that predate schema v25 with `source='intervals'`. |

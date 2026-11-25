@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Session metrics.** FIT, Intervals, Runalyze and sheet session averages are
+  extracted into `activity_metrics` (cadence, stride, dynamics, respiration,
+  power, calories, training effect, GAP, altitude), normalized to canonical
+  units by `metrics.py`, and written by every importer. The FIT parser now
+  keeps the averages it used to drop. `maintenance activity_metrics_v1`
+  backfills the history.
 - **Activity edit command.** `activity edit <id>` is the direct human write
   surface: name, description, duration, distance, sport, sub-sport, RPE, feel,
   tags, methods, targets and equipment, with `--clear`, `--dry-run`,
@@ -336,7 +342,7 @@ on.
   Rules fire only when the evidence exists; ungated, the counts explode with
   history artefacts (162 / 45 / 69). A changed suggestion supersedes the old
   item.
-- **Pace/HR outlier scan** (root item 37). Add a dataset-wide quality rule
+- **Pace/HR outlier scan** (historical refurbishment). Add a dataset-wide quality rule
   that fits the steady-run pace/HR relationship (robust, per year or a rolling
   window) and records a `quality` review item when a run's average HR is far
   from the expected value for its pace. Start with steady easy/recovery runs only;
@@ -356,8 +362,9 @@ on.
 
 ## Waiting on
 
-- **Historical refurbishment** (root item 37). The comment/tag workout
-  proposals and triage actions start after the Runalyze import settles.
+- **Historical refurbishment.** The read-only audit is done; the
+  comment/tag workout proposals and triage actions start after the Runalyze
+  import settles.
 - **Sheet duplicates (38).** 1,272 activities are sheet-only, and 38 of them
   mirror a device (FIT/Intervals) row on the same day with the duration within
   5 %, so those sessions count twice in the reports. The sheet row often holds

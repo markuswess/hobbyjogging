@@ -67,6 +67,9 @@ class AuditTests(unittest.TestCase):
             {
                 "distance": 10000,
                 "average_cadence": 82,
+                "average_stride": 1.31,
+                "calories": 700,
+                "average_altitude": 191.0,
                 "icu_intervals": [],
             },
         )
@@ -179,6 +182,7 @@ class AuditTests(unittest.TestCase):
         for section in (
             "# Historical data audit",
             "## Field coverage",
+            "## Session-average metrics",
             "## Raw payload keys without a canonical home",
             "## Tags",
             "## Interval-like descriptions",
@@ -191,6 +195,19 @@ class AuditTests(unittest.TestCase):
             "Database: `test.db`",
         ):
             self.assertIn(section, text)
+
+    def test_metrics_section_lists_coverage_and_units(self):
+        text = build_audit(self.conn, fit_sample=0)
+        metrics = self._section(
+            text,
+            "## Session-average metrics",
+            "## Raw payload keys without a canonical home",
+        )
+
+        self.assertIn("| `cadence` | spm (run) / rpm (ride) |", metrics)
+        self.assertIn("| `calories_kcal` | kcal |", metrics)
+        self.assertIn("| `altitude_avg_m` | m |", metrics)
+        self.assertIn("Metric conflicts", metrics)
 
     def test_raw_keys_show_unmapped_fields_and_skip_child_columns(self):
         text = build_audit(self.conn)

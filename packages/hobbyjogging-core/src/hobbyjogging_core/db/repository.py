@@ -9,6 +9,7 @@ from datetime import date
 
 from hobbyjogging_core.model import (
     Activity,
+    ActivityMetrics,
     ActivitySocial,
     ActivityWeather,
     AthleteThreshold,
@@ -411,6 +412,43 @@ class TrainingRepository:
             is_night=(
                 None if row["is_night"] is None else bool(row["is_night"])
             ),
+            source=row["source"] or "",
+        )
+
+    def activity_metrics(self, activity_id: str) -> ActivityMetrics | None:
+        row = self.connection.execute(
+            """
+            SELECT cadence, stride_m, vertical_oscillation_mm,
+                   stance_time_ms, stance_time_pct, stance_balance_pct,
+                   vertical_ratio_pct, respiration_bpm, power_w,
+                   calories_kcal, training_effect, gap_mps,
+                   altitude_avg_m, altitude_min_m, altitude_max_m,
+                   source
+            FROM activity_metrics
+            WHERE activity_id = ?
+            """,
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return ActivityMetrics(
+            cadence=row["cadence"],
+            stride_m=row["stride_m"],
+            vertical_oscillation_mm=row["vertical_oscillation_mm"],
+            stance_time_ms=row["stance_time_ms"],
+            stance_time_pct=row["stance_time_pct"],
+            stance_balance_pct=row["stance_balance_pct"],
+            vertical_ratio_pct=row["vertical_ratio_pct"],
+            respiration_bpm=row["respiration_bpm"],
+            power_w=row["power_w"],
+            calories_kcal=row["calories_kcal"],
+            training_effect=row["training_effect"],
+            gap_mps=row["gap_mps"],
+            altitude_avg_m=row["altitude_avg_m"],
+            altitude_min_m=row["altitude_min_m"],
+            altitude_max_m=row["altitude_max_m"],
             source=row["source"] or "",
         )
 

@@ -21,9 +21,11 @@ from hobbyjogging_core.import_rules import (
     DEFAULT_NUMERIC_TOLERANCE,
     FIELD_RULES,
     MANUAL_FIELDS,
+    METRIC_FIELDS,
     NUMERIC_TOLERANCES,
     START_TOLERANCE_S,
     authority_rank,
+    metric_authority_rank,
 )
 from hobbyjogging_core.sports import NO_DISTANCE_SPORTS, is_known_sport
 
@@ -2871,6 +2873,99 @@ class TrainingWriter:
             f"UPDATE activity_weather SET {assignments}, "
             "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
             (*values.values(), activity_id),
+        )
+        return True
+
+    def upsert_activity_metrics(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        **fields: object,
+    ) -> bool:
+        """Write one activity's session-average metrics.
+
+        The row is shared: a field keeps its first owner, a later source only
+        fills an empty value, and a source with a higher per-field authority
+        (FIT for device-measured dynamics, Intervals for altitude) replaces a
+        weaker source's value. A reimport from the same source refreshes its
+        values. Returns ``True`` when any value was written.
+        """
+        unknown = set(fields) - set(METRIC_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown metric fields: {sorted(unknown)}")
+
+        self._require_editable_activity(activity_id)
+
+        values = {
+            key: value
+            for key, value in fields.items()
+            if value is not None
+        }
+        if not values:
+            return False
+
+        row = self.connection.execute(
+            "SELECT * FROM activity_metrics WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            columns = ["activity_id", "source", "source_record_id", *values]
+            owners = {field: source for field in values}
+            columns.insert(3, "field_sources_json")
+            placeholders = ", ".join("?" for _ in columns)
+            self.connection.execute(
+                f"INSERT INTO activity_metrics ({', '.join(columns)}) "
+                f"VALUES ({placeholders})",
+                (
+                    activity_id,
+                    source,
+                    source_record_id,
+                    json.dumps(owners, sort_keys=True),
+                    *values.values(),
+                ),
+            )
+            return True
+
+        try:
+            owners = json.loads(row["field_sources_json"] or "{}")
+        except (TypeError, ValueError):
+            owners = {}
+        if not isinstance(owners, dict):
+            owners = {}
+
+        writes = {}
+        for key, value in values.items():
+            existing = row[key]
+            field_source = owners.get(key, row["source"])
+            if existing is None or field_source == source:
+                writes[key] = value
+                owners[key] = source
+                continue
+
+            incoming_rank = metric_authority_rank(key, source)
+            current_rank = metric_authority_rank(key, field_source)
+            if incoming_rank is not None and (
+                current_rank is None or incoming_rank < current_rank
+            ):
+                writes[key] = value
+                owners[key] = source
+
+        if not writes:
+            return False
+
+        assignments = ", ".join(f"{key} = ?" for key in writes)
+        self.connection.execute(
+            f"UPDATE activity_metrics SET {assignments}, "
+            "field_sources_json = ?, updated_at = CURRENT_TIMESTAMP "
+            "WHERE activity_id = ?",
+            (
+                *writes.values(),
+                json.dumps(owners, sort_keys=True),
+                activity_id,
+            ),
         )
         return True
 

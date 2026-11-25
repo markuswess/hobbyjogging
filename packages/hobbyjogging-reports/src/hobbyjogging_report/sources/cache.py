@@ -6,7 +6,13 @@ from collections import Counter
 from datetime import date
 
 from hobbyjogging_core.datasource import DataSource
-from hobbyjogging_core.model import Activity, ActivityWeather, Interval, Lap
+from hobbyjogging_core.model import (
+    Activity,
+    ActivityMetrics,
+    ActivityWeather,
+    Interval,
+    Lap,
+)
 
 
 class CachedDataSource:
@@ -23,6 +29,7 @@ class CachedDataSource:
         self._intervals: dict[str, list[Interval]] = {}
         self._laps: dict[str, list[Lap]] = {}
         self._weather: dict[str, ActivityWeather | None] = {}
+        self._metrics: dict[str, ActivityMetrics | None] = {}
         self.query_counts: Counter[str] = Counter()
 
     def activities(self, start: date, end: date) -> list[Activity]:
@@ -61,6 +68,15 @@ class CachedDataSource:
             self.query_counts["activity_weather"] += 1
 
         return self._weather[activity_id]
+
+    def activity_metrics(self, activity_id: str) -> ActivityMetrics | None:
+        if activity_id not in self._metrics:
+            self._metrics[activity_id] = self._source.activity_metrics(
+                activity_id
+            )
+            self.query_counts["activity_metrics"] += 1
+
+        return self._metrics[activity_id]
 
     def __getattr__(self, name):
         return getattr(self._source, name)

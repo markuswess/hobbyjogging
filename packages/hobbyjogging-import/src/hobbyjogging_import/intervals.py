@@ -18,6 +18,7 @@ from .client import IntervalsApi, IntervalsClient
 from .devices import resolve_provider_device
 from .event_zones import current_zone_times, event_zone_data
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
+from .metrics import derive_metrics
 from .quality import (
     record_ambiguous_match,
     record_field_conflicts,
@@ -444,6 +445,12 @@ class IntervalsImporter:
             source=SOURCE,
             source_record_id=source_record_id,
             temp_c=_float(raw.get("average_temp")),
+        )
+        self.writer.upsert_activity_metrics(
+            activity_id,
+            source=SOURCE,
+            source_record_id=source_record_id,
+            **derive_metrics(SOURCE, raw, str(values.get("sport") or "")),
         )
         self.writer.link_activity_source(
             activity_id,

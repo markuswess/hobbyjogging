@@ -29,6 +29,7 @@ from hobbyjogging_core.sports import RUN_SPORTS
 from .create_activity import create_activity
 from .derive import derive_values
 from .matching import MatchPolicy, decide_match
+from .metrics import derive_metrics
 from .quality import AMBIGUOUS_MATCH, review_fingerprint
 from .runalyze import RunalyzeApi, RunalyzeClient, RunalyzeRateLimitError
 from .runalyze_types import classification_for_payload
@@ -967,11 +968,20 @@ def _apply_enrichment(
     dry_run: bool,
 ) -> None:
     row = connection.execute(
-        "SELECT description FROM activities WHERE id = ?",
+        "SELECT description, sport FROM activities WHERE id = ?",
         (entry.activity_id,),
     ).fetchone()
     if row is None:
         return
+
+    if not dry_run:
+        _write_metrics(
+            connection,
+            writer,
+            entry.activity_id,
+            entry.external_id,
+            str(row["sport"] or ""),
+        )
 
     current = str(row["description"] or "")
     if entry.note:
@@ -1012,6 +1022,37 @@ def _apply_enrichment(
             source=SOURCE,
             source_record_id=_source_id(connection, entry.external_id),
         )
+
+
+def _write_metrics(
+    connection: sqlite3.Connection,
+    writer: TrainingWriter,
+    activity_id: str,
+    external_id: str,
+    sport: str,
+) -> None:
+    """Apply a stored Runalyze detail's session metrics to its activity."""
+    row = connection.execute(
+        """
+        SELECT id, payload_json FROM source_records
+        WHERE source = ? AND record_type = 'activity' AND external_id = ?
+        """,
+        (SOURCE, external_id),
+    ).fetchone()
+    if row is None:
+        return
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+    except ValueError:
+        return
+    if not isinstance(payload, dict):
+        return
+    writer.upsert_activity_metrics(
+        activity_id,
+        source=SOURCE,
+        source_record_id=row["id"],
+        **derive_metrics(SOURCE, payload, sport),
+    )
 
 
 def format_enrich_summary(summary: RunalyzeEnrichSummary) -> str:
