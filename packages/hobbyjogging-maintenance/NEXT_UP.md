@@ -80,13 +80,17 @@ This file records what the package is still waiting on.
   manual rows entirely. Applied to the real DB: 60 activities, 40 converted,
   20 kept manual methods, 34 targets filled.
 - **Recurring workout-set derivation.** `workout_sets_current` is a
-  `recompute` task that derives methods/targets for activities that have none,
-  using the same classifier/sheet helpers as the backfill. It fills gaps only:
-  any activity with sets from any source (manual, backfill, classifier) is
-  skipped, so triage decisions and the one-time backfill are never fought.
-  Disagreements stay empty and are left to `workout_classification_queue`.
-  `sync.sh` runs both after a successful sync (`--no-classify` skips them);
-  the full-DB run takes about half a second.
+  `recompute` task that now re-derives activities whose sets are entirely
+  classifier-sourced (from the current name, RPE, intensity and work reps)
+  and fills the remaining unclassified gaps; a classifier proposal that
+  differs replaces the set. Manual, sheet, Runalyze-type and imported sets
+  are inputs and stay untouched, and a sheet-only or merged sheet proposal is
+  written as `source='sheet'` so a later re-derivation cannot overwrite it.
+  With no classifier evidence the stored set is kept and counted
+  `stale_no_evidence`; disagreements stay empty for
+  `workout_classification_queue`. `sync.sh` runs both after a successful sync
+  (`--no-classify` skips them). Seeded stale live example: `intervals` +
+  `subthreshold` became `intervals` + `lt1`; a second run was unchanged.
 - **`event_race_method_v1`.** Re-derives the `race` method for every event
   linked to an Intervals record, adding it where the payload category is
   `RACE_A/B/C` and removing a stale non-manual row otherwise; manual rows win.

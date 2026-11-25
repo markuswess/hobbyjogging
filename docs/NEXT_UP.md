@@ -9,6 +9,14 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Classifier-sourced workout sets are re-derived (2026-11-25).**
+  `workout_sets_current` now re-derives an activity whose sets are entirely
+  classifier-sourced from the current name/RPE/intensity/work reps, so a
+  rename cannot leave stale sets. Manual, sheet, Runalyze-type and imported
+  sets stay untouched; a sheet-only or merged sheet proposal is written as
+  `source='sheet'`, and no classifier evidence keeps the stored set
+  (`stale_no_evidence`). A copy with a seeded stale `intervals`+`subthreshold`
+  classifier set became `intervals`+`lt1`, and a second run was unchanged.
 - **Session metrics (2026-11-25).** `activity_metrics` (v27/v28) stores one
   nullable row per activity: cadence, stride, vertical oscillation, stance
   time/percent/balance, vertical ratio, respiration, power, calories, training
@@ -1268,33 +1276,6 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: id, date, `last` and a unique name each resolve; a
       two-session day and an ambiguous name list candidates; an unknown value
       errors clearly; nothing is picked silently.
-
-61. **Re-derive classifier-sourced workout sets** (maintenance + core; bug,
-    phase 3). Classification is a projection, but `workout_sets_current` skips
-    any activity that already has sets, so a rename leaves stale sets forever.
-    Live example: the 2026-11-14 run named `3x9' LT1` still holds `intervals` +
-    `subthreshold` from a 2026-11-15 classifier run. At that moment the name
-    must have said subT (the classifier can only produce that target from a
-    subT word in the name, and there is no sheet to propose it); the rename
-    came later, and no review item opened because there is nothing to disagree
-    with.
-    - **Fix**: re-derive activities whose sets are classifier-sourced and not
-      manual from the current name, RPE, intensity and work reps. A proposal
-      that differs replaces the stored set and counts `reclassified`; `manual`,
-      `sheet`, `runalyze`-type and any imported set are left alone.
-    - **Label**: a sheet-only proposal is currently written as
-      `source='classifier'`; write it as `source='sheet'` so re-derivation
-      cannot overwrite an input.
-    - **No proposal**: when the classifier has nothing to say, keep the stored
-      set (do not clear it) and count `stale_no_evidence`.
-    - **Visibility**: the run summary reports `reclassified`; a projection
-      update opens no review item, and the category change is visible in the
-      reports.
-    - **Acceptance**: the live 2026-11-14 activity becomes `intervals` + `lt1`
-      after a recompute; manual, sheet and Runalyze-type sets are untouched; a
-      second run is a no-op; four suites green.
-    - **Not**: re-deriving manual or imported sets; no classification log (the
-      edit log is for manual writes).
 
 ## Parked ideas
 

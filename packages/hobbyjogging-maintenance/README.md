@@ -129,7 +129,7 @@ Recomputes (idempotent, run every time):
 | `derived_zone_configs_current` | Build local HR/pace zone configs and lap zone times from manual threshold snapshots; Intervals wins. |
 | `training_periods_current` | Derive seasons, illness ranges and notes from the Intervals event notes. |
 | `race_links_current` | Match race events (and official results) to activities and derive the `race` method. |
-| `workout_sets_current` | Derive methods/targets for activities that have none (classifier + sheet + Runalyze type, disagreements left to the queue). |
+| `workout_sets_current` | Re-derive classifier-sourced methods/targets from the current name/RPE/intensity/reps and fill unclassified gaps; manual, sheet, Runalyze-type and imported sets are left alone (`sheet`-only proposals carry `source='sheet'`). |
 | `derived_intervals_current` | Infer WORK/RECOVERY reps from device laps when no measured set exists; `source='derived'`, never overwriting a measured set. |
 | `workout_classification_queue` | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply (`k` in triage). |
 | `verify_canonical` | Diff every owned canonical field against its manual value, owner patch or pointer without writing. |

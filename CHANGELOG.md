@@ -51,6 +51,16 @@ Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
 - Manual editing now covers `name`, `description`, `sub_sport`, `rpe` and
   `feel`; clearing a manual text value restores the column default.
 
+### Classification
+
+- `workout_sets_current` now re-derives sets whose rows are entirely
+  classifier-sourced from the current name, RPE, intensity and work reps, so
+  a rename cannot leave a stale classification. Manual, sheet, Runalyze-type
+  and imported sets are inputs and stay untouched; a sheet-only or merged
+  sheet proposal is written as `source='sheet'` so it cannot be overwritten.
+  With no classifier evidence the stored set is kept (`stale_no_evidence`).
+  A reclassification opens no review item; it is a projection update.
+
 ### Safety
 
 - `maintenance export-manual`/`import-manual` move the manual decisions as

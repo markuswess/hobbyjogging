@@ -333,7 +333,8 @@ changes.
 - `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
 - `backfills/drop_empty_intervals_v1.py` — `drop_empty_intervals_v1`.
 - `backfills/workout_classification.py` — `workout_classification_v1`.
-- `recompute/workout_sets_current.py` — `workout_sets_current`.
+- `recompute/workout_sets_current.py` — `workout_sets_current` (re-derives
+  classifier-sourced sets after a rename and fills unclassified gaps).
 - `recompute/workout_classification_queue.py` —
   `workout_classification_queue`.
 - `cli.py` — `list`, `status`, `run`.
@@ -588,7 +589,8 @@ uv run --env-file .env hobbyjogging-maintenance run --all
 Scope flags are `--from`, `--to`, `--entity`, and `--limit`. `--force` re-runs
 an applied backfill; `--all` runs every pending backfill. `sync.sh`
 runs the two idempotent classification recomputes
-(`workout_sets_current`, then `workout_classification_queue`) after a
+(`workout_sets_current`, which re-derives classifier-sourced sets and fills
+the remaining gaps, then `workout_classification_queue`) after a
 successful sync; `--no-classify` skips them. Backfills stay deliberate.
 
 ## Import pipeline

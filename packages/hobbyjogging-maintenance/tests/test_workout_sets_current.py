@@ -40,6 +40,7 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         sheet=True,
         avg_hr=None,
         intensity=None,
+        rpe=None,
         runalyze_type=None,
     ):
         self.counter += 1
@@ -63,6 +64,8 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             values["avg_hr"] = avg_hr
         if intensity is not None:
             values["intensity"] = intensity
+        if rpe is not None:
+            values["rpe"] = rpe
         self.writer.upsert_activity(
             activity_id,
             values,
@@ -120,6 +123,29 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             )
         ]
 
+    def _seed_sets(
+        self,
+        activity_id,
+        methods,
+        targets,
+        *,
+        source,
+        manual=False,
+    ):
+        self.writer.replace_activity_workout_methods(
+            activity_id,
+            methods,
+            source=source,
+            is_manual=manual,
+        )
+        self.writer.replace_activity_workout_targets(
+            activity_id,
+            targets,
+            source=source,
+            is_manual=manual,
+        )
+        self.conn.commit()
+
     def test_derives_the_classifier_sets(self):
         activity_id = self._activity(sheet=False)
 
@@ -144,6 +170,10 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             (["continuous"], ["threshold"]),
             self._sets(activity_id),
         )
+        self.assertEqual(
+            [("continuous", "sheet", 0)],
+            self._sources(activity_id),
+        )
 
     def test_agreeing_proposals_are_merged(self):
         activity_id = self._activity("Tempo", code="tdl")
@@ -155,6 +185,10 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         self.assertEqual(
             (["continuous"], ["threshold"]),
             self._sets(activity_id),
+        )
+        self.assertEqual(
+            [("continuous", "sheet", 0)],
+            self._sources(activity_id),
         )
 
     def test_disagreement_stays_empty_and_the_queue_records_it(self):
@@ -197,6 +231,96 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             self._sets(activity_id),
         )
 
+    def test_a_classifier_sourced_set_is_re_derived_after_a_rename(self):
+        activity_id = self._activity("3x9' LT1", sheet=False, rpe=5)
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["subthreshold"],
+            source="classifier",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["reclassified"])
+        self.assertEqual(
+            (["intervals"], ["lt1"]),
+            self._sets(activity_id),
+        )
+        self.assertEqual(
+            [("intervals", "classifier", 0)],
+            self._sources(activity_id),
+        )
+
+    def test_a_classifier_set_without_current_evidence_is_kept(self):
+        activity_id = self._activity("Morning Run", sheet=False)
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["subthreshold"],
+            source="classifier",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["stale_no_evidence"])
+        self.assertEqual(0, run.counts["reclassified"])
+        self.assertEqual(
+            (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_sheet_sourced_set_is_not_re_derived(self):
+        activity_id = self._activity("3x9' LT1", sheet=False, rpe=5)
+        self._seed_sets(
+            activity_id,
+            ["continuous"],
+            ["threshold"],
+            source="sheet",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["already_classified"])
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_runalyze_type_set_is_not_re_derived(self):
+        activity_id = self._activity("3x9' LT1", sheet=False, rpe=5)
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["subthreshold"],
+            source="runalyze",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["already_classified"])
+        self.assertEqual(
+            (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_dry_run_does_not_reclassify(self):
+        activity_id = self._activity("3x9' LT1", sheet=False, rpe=5)
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["subthreshold"],
+            source="classifier",
+        )
+
+        run = self._run(dry_run=True)
+
+        self.assertEqual(1, run.counts["reclassified"])
+        self.assertEqual(
+            (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+
     def test_easy_default_for_a_low_hr_sheet_run_without_a_code(self):
         activity_id = self._activity("", avg_hr=120, code="")
 
@@ -226,7 +350,8 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             second = self._run()
 
         self.assertEqual(0, second.counts["derived"])
-        self.assertEqual(1, second.counts["already_classified"])
+        self.assertEqual(0, second.counts["reclassified"])
+        self.assertEqual(1, second.counts["unchanged"])
 
     def test_dry_run_writes_nothing(self):
         activity_id = self._activity(sheet=False)
