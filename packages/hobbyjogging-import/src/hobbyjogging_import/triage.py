@@ -11,7 +11,6 @@ One open review item at a time, each decision written immediately:
 from __future__ import annotations
 
 import json
-import re
 import webbrowser
 from datetime import time
 from typing import Callable
@@ -21,13 +20,6 @@ from hobbyjogging_core.sports import (
     RIDE_SPORTS,
     RUN_SPORTS,
     WALK_SPORTS,
-    normalize_token,
-)
-from hobbyjogging_core.workouts import (
-    WORKOUT_METHODS,
-    WORKOUT_TARGETS,
-    canonical_method,
-    canonical_target,
 )
 
 from .causes import UNCLASSIFIED, item_cause, item_context
@@ -61,12 +53,13 @@ from .values import (
     format_pace,
     format_speed,
 )
+from .workout_classification_triage import WorkoutClassificationTriage
 
 KEYS_HELP = """\
 keys:
   (i)nspect        full item detail
   (v) pick value   field conflict: choose which source value stands
-  (k) classify     workout classification: pick, merge, edit, or none
+  (k) classify     workout classification: pick, merge, evidence, keep stored, edit, or none
   (t)rust Intervals  force re-import and take ownership of changed fields
   (o)pen           open all available activity links
   (ci)             copy the Intervals activity URL
@@ -80,45 +73,6 @@ keys:
   (s)kip / Enter   next item, leave it open
   (h)elp           this text
   (q)uit           stop and print a summary"""
-
-def _format_sets(methods, targets) -> str:
-    return (
-        f"methods={', '.join(methods) or '-'} "
-        f"targets={', '.join(targets) or '-'}"
-    )
-
-
-def _parse_workout_tokens(
-    text: str,
-    allowed: dict[str, str],
-    canonical: Callable[[object], str],
-    kind: str,
-) -> list[str]:
-    """Parse comma/space-separated workout tokens, rejecting typos.
-
-    Aliases are accepted through the canonical parser; values outside the
-    vocabulary raise ``ValueError`` instead of silently becoming "other".
-    """
-    tokens: list[str] = []
-    for raw in re.split(r"[,\s]+", text.strip()):
-        if not raw:
-            continue
-
-        token = canonical(raw)
-        if token == "other" and normalize_token(raw) != "other":
-            direct = normalize_token(raw)
-            if direct in allowed:
-                token = direct
-            else:
-                raise ValueError(
-                    f"unknown {kind} {raw!r}; choose from "
-                    + ", ".join(allowed)
-                )
-
-        if token not in tokens:
-            tokens.append(token)
-    return tokens
-
 
 def _activity_metrics(
     sport: object,
@@ -300,7 +254,7 @@ class AbortEdit(ValueError):
     """Raised when the user aborts value entry in the triage edit flow."""
 
 
-class TriageRunner:
+class TriageRunner(WorkoutClassificationTriage):
     """Walks open review items and applies per-item decisions."""
 
     def __init__(
@@ -688,123 +642,6 @@ class TriageRunner:
                 f"{application.describe_findings()}"
             )
         return True
-
-    def _classify_workout(self, item) -> bool:
-        """Workout classification: pick a proposal, merge, or type a set.
-
-        The decision is written as manual methods/targets, so no reimport or
-        backfill can overwrite it.
-        """
-        if item["category"] != WORKOUT_CLASSIFICATION:
-            self.print("  this item is not a workout classification")
-            return False
-
-        context = item_context(item)
-        classifier_methods = list(context.get("classifier_methods") or [])
-        classifier_targets = list(context.get("classifier_targets") or [])
-        sheet_methods = list(context.get("sheet_methods") or [])
-        sheet_targets = list(context.get("sheet_targets") or [])
-        code = context.get("sheet_code") or "-"
-
-        self.print(
-            "  classifier: "
-            + _format_sets(classifier_methods, classifier_targets)
-        )
-        self.print(
-            f"  sheet ({code}): "
-            + _format_sets(sheet_methods, sheet_targets)
-        )
-        self.print(
-            "  1) classifier  2) sheet  (m)erge  (n)one  "
-            "(3) manual  (blank=cancel)"
-        )
-
-        try:
-            answer = self.read("  pick: ").strip().lower()
-        except EOFError:
-            return False
-
-        if answer == "1":
-            methods, targets, label = (
-                classifier_methods,
-                classifier_targets,
-                "classifier",
-            )
-        elif answer == "2":
-            methods, targets, label = sheet_methods, sheet_targets, "sheet"
-        elif answer == "m":
-            methods = sorted(set(classifier_methods) | set(sheet_methods))
-            targets = sorted(set(classifier_targets) | set(sheet_targets))
-            label = "merged"
-        elif answer == "3":
-            manual = self._manual_workout_sets()
-            if manual is None:
-                return False
-            methods, targets = manual
-            label = "manual"
-        elif answer == "n":
-            methods, targets, label = [], [], "left unclassified"
-        else:
-            self.print("  cancelled")
-            return False
-
-        self.writer.replace_activity_workout_methods(
-            item["activity_id"],
-            methods,
-            source="manual",
-            is_manual=True,
-        )
-        self.writer.replace_activity_workout_targets(
-            item["activity_id"],
-            targets,
-            source="manual",
-            is_manual=True,
-        )
-        self.writer.set_review_status(
-            item["id"],
-            "resolved",
-            note=self.pending_note or f"triage: classification {label}",
-        )
-        self.writer.connection.commit()
-        self.pending_note = ""
-        self._count("classified")
-        self.print(f"  {label}: " + _format_sets(methods, targets))
-        self.print(f"  resolved #{item['id']}")
-        return True
-
-    def _manual_workout_sets(
-        self,
-    ) -> tuple[list[str], list[str]] | None:
-        """Read a hand-entered method/target set for one session."""
-        self.print("  methods: " + ", ".join(WORKOUT_METHODS))
-        self.print("  targets: " + ", ".join(WORKOUT_TARGETS))
-        try:
-            methods_text = self.read(
-                "  methods (comma/space separated, blank=none): "
-            )
-            targets_text = self.read(
-                "  targets (comma/space separated, blank=none): "
-            )
-        except EOFError:
-            return None
-
-        try:
-            methods = _parse_workout_tokens(
-                methods_text,
-                WORKOUT_METHODS,
-                canonical_method,
-                "method",
-            )
-            targets = _parse_workout_tokens(
-                targets_text,
-                WORKOUT_TARGETS,
-                canonical_target,
-                "target",
-            )
-        except ValueError as exc:
-            self.print(f"  {exc}")
-            return None
-        return methods, targets
 
     def _delete(self, item) -> bool:
         activity_id = item["activity_id"]

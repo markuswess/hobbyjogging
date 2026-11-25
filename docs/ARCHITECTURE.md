@@ -286,7 +286,9 @@ Source ingestion and the review queue.
   is an input and retire sets `retired_on`.
 - `activity_cli.py` — `activity edit`: the direct human write surface with
   explicit flags, `--clear`, `--dry-run`, `--history` and an interactive mode.
-- `triage.py` — interactive review walk.
+- `triage.py` — interactive review walk; the `(k)` classification decision
+  lives in `workout_classification_triage.py` as a runner mixin, including the
+  evidence/stored choices and the `edit_log` write.
 - `review_cli.py`, `cli.py` — `hobbyjogging-import` entry point.
 
 ### `hobbyjogging-reports`
@@ -356,7 +358,8 @@ changes.
 - `recompute/workout_sets_current.py` — `workout_sets_current` (re-derives
   classifier-sourced sets after a rename and fills unclassified gaps).
 - `recompute/workout_classification_queue.py` —
-  `workout_classification_queue`.
+  `workout_classification_queue` (classifier/sheet disagreements plus
+  tag/comment evidence that conflicts with a classified activity).
 - `recompute/evidence_candidates.py` — `illness_candidates_current` (opens
   `period_candidate` items for illness tags outside a stored period) and
   `trail_candidates_current` (opens `consistency` items suggesting
@@ -767,9 +770,11 @@ one row; resolution is exclusion, never a merge. Triage `(a)ccept suggestion`
 writes a `consistency` item's suggested sport as
 a manual value. `create_activity` holds a summary row the policy chose to
 review rather than create. Triage
-`(k)` shows the classifier and sheet proposals and writes the chosen sets as
-manual values (`1` classifier, `2` sheet, `m` merge, `n` leave unclassified).
-A resolved decision is not reopened; changed proposals supersede the old item.
+`(k)` shows the classifier and sheet proposals plus, for a classified
+activity, the tag/comment evidence and the stored set. It writes the chosen
+sets as manual values (`1` classifier, `2` sheet, `4` evidence, `m` merge,
+`n` leave unclassified) and resolves `s` kept stored without a write. A
+resolved decision is not reopened; changed proposals supersede the old item.
 
 - `review list`, `show`, `resolve`, `ignore`, `flag`, `scan` — non-interactive
   queue management and backfill.

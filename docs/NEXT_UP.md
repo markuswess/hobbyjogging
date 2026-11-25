@@ -47,6 +47,16 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   coverage; duplicate counts appear there once item 42 opens them. The eight
   existing seasons are already labeled with their goal race and no year lacks
   a start, so no season candidates are needed now.
+- **Evidence conflicts for classified activities (2026-11-25).**
+  `workout_classification_queue` now compares a mapped tag or explicit
+  description with the stored sets of an already-classified activity. It opens
+  one `workout_classification` item only when the evidence names a method or
+  target the stored set lacks; agreeing or absent evidence resolves stale
+  items. The item context carries the evidence source, its sets and the stored
+  sets, and triage `(k)` offers `4) evidence` and `s) kept stored` alongside
+  the classifier/sheet choices. Choosing a set writes manual values and logs
+  old/new through `edit_log`; `kept stored` resolves without a write. Nothing
+  is applied automatically, and a resolved decision is not reopened.
 - **Sheet leftovers (2026-11-25).** Activities display the recorded local
   start (`started_at_utc` + `tz_offset_min`) instead of UTC in the activity
   table and the session report; `local_date` already carries the local day for
@@ -222,12 +232,12 @@ proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (the gate). The write-surface follow-ups **58–60** are
-done; the metric charts **62** and the evidence follow-ups **63–64** slot
-alongside. The health report and dashboard card show the duplicate count now
-that 42 opens the items. Accepting a suggestion always writes a manual value
-and an `edit_log` row; nothing canonical is auto-applied except an empty,
-high-confidence classification. The corrections export (**57**) follows 37's
-audit as a small report; it is not a gate.
+done; the metric charts **62** and the pace/HR calibration follow-up **64**
+slot alongside. The health report and dashboard card show the duplicate count
+now that 42 opens the items. Accepting a suggestion always writes a manual
+value and an `edit_log` row; nothing canonical is auto-applied except an
+empty, high-confidence classification. The corrections export (**57**) follows
+37's audit as a small report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -425,15 +435,6 @@ reports item; 28 is the recurring cleanup.
     stored data. No schema change; follow the report parity rule (CLI and
     dashboard), and keep derived metrics (decoupling, efficiency, critical
     speed) in the lab with a card rather than adding them here.
-
-63. **Evidence conflicts for classified activities** (import + maintenance;
-    small, phase 3). The tag/comment proposals now fill an **empty**
-    classification, but a classified activity whose tag or description says
-    something different is left alone: `workout_classification_queue` and
-    triage `(k)` only know the classifier/sheet pair. Extend the existing
-    item's context with the tag/comment proposal, show it as an extra choice
-    in `(k)`, and let the queue open an item only when an evidence proposal
-    conflicts with the stored set. No new category and no automatic write.
 
 64. **Pace/HR outlier calibration** (lab + import; after the lab). The first
     pass at 3.5 MAD / 12 bpm flagged 37 gross points, many legitimate, so the

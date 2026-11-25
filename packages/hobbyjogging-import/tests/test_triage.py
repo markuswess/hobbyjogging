@@ -1020,6 +1020,44 @@ class WorkoutClassificationTriageTests(unittest.TestCase):
         ).fetchone()
         return methods, targets, manual["is_manual"] if manual else None
 
+    def _add_evidence(
+        self,
+        *,
+        evidence_source="tag",
+        evidence_methods=("intervals",),
+        evidence_targets=("lt1",),
+        stored_methods=("continuous",),
+        stored_targets=("base",),
+    ):
+        context = json.loads(self._item()["context_json"])
+        context.update(
+            {
+                "evidence_source": evidence_source,
+                "evidence_methods": list(evidence_methods),
+                "evidence_targets": list(evidence_targets),
+                "stored_methods": list(stored_methods),
+                "stored_targets": list(stored_targets),
+            }
+        )
+        self.conn.execute(
+            "UPDATE review_items SET context_json = ? WHERE id = ?",
+            (json.dumps(context), self.item_id),
+        )
+        self.writer.replace_activity_workout_methods(
+            "a1", list(stored_methods), source="classifier"
+        )
+        self.writer.replace_activity_workout_targets(
+            "a1", list(stored_targets), source="classifier"
+        )
+        self.conn.commit()
+
+    def _log(self):
+        return self.conn.execute(
+            "SELECT field, old_json, new_json, source, note FROM edit_log "
+            "WHERE entity_kind = 'activity' AND entity_id = 'a1' "
+            "ORDER BY id"
+        ).fetchall()
+
     def test_key_line_offers_classify(self):
         lines, _ = self._runner(["s"])
 
@@ -1057,6 +1095,71 @@ class WorkoutClassificationTriageTests(unittest.TestCase):
             self._sets(),
         )
         self.assertIn("merged", self._item()["resolved_note"])
+
+    def test_evidence_choice_writes_manual_sets_and_logs(self):
+        self._add_evidence()
+
+        lines, counters = self._runner(["k", "4"])
+
+        joined = "\n".join(lines)
+        self.assertIn("tag evidence: methods=intervals targets=lt1", joined)
+        self.assertIn("stored: methods=continuous targets=base", joined)
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual((["intervals"], ["lt1"], 1), self._sets())
+        self.assertEqual("resolved", self._item()["status"])
+        self.assertIn(
+            "classification tag evidence",
+            self._item()["resolved_note"],
+        )
+
+        logs = self._log()
+        self.assertEqual(["methods", "targets"], [row["field"] for row in logs])
+        self.assertEqual("triage", logs[0]["source"])
+        self.assertIn('"continuous"', logs[0]["old_json"])
+        self.assertIn('"intervals"', logs[0]["new_json"])
+        self.assertIn('"base"', logs[1]["old_json"])
+        self.assertIn('"lt1"', logs[1]["new_json"])
+
+    def test_kept_stored_resolves_without_writing_or_logging(self):
+        self._add_evidence()
+
+        lines, counters = self._runner(["k", "s"])
+
+        joined = "\n".join(lines)
+        self.assertIn("(s) kept stored", joined)
+        self.assertIn("kept stored", joined)
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual((["continuous"], ["base"], 0), self._sets())
+        self.assertEqual("resolved", self._item()["status"])
+        self.assertEqual("triage: kept stored", self._item()["resolved_note"])
+        self.assertEqual([], self._log())
+
+    def test_merge_includes_evidence(self):
+        self._add_evidence()
+
+        _, counters = self._runner(["k", "m"])
+
+        self.assertEqual(1, counters["classified"])
+        self.assertEqual(
+            (
+                ["intervals", "long_run"],
+                ["base", "lt1", "vo2max"],
+                1,
+            ),
+            self._sets(),
+        )
+
+    def test_evidence_choice_replaces_a_non_manual_stored_set(self):
+        self._add_evidence(stored_methods=("continuous", "strides"))
+
+        self._runner(["k", "4"])
+
+        self.assertEqual((["intervals"], ["lt1"], 1), self._sets())
+        leftovers = self.conn.execute(
+            "SELECT COUNT(*) FROM activity_workout_methods "
+            "WHERE activity_id = 'a1' AND is_manual = 0"
+        ).fetchone()[0]
+        self.assertEqual(0, leftovers)
 
     def test_none_leaves_it_unclassified_but_resolves(self):
         _, counters = self._runner(["k", "n"])

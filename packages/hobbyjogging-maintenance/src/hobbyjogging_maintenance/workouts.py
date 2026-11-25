@@ -53,7 +53,7 @@ class Proposal:
 
 @dataclass
 class Conflict:
-    """A classifier/sheet disagreement left for manual review."""
+    """A proposal that disagrees with what is stored or with another source."""
 
     activity_id: str
     local_date: str
@@ -61,9 +61,12 @@ class Conflict:
     classifier: Proposal
     sheet: Proposal
     sheet_code: str
+    evidence: Proposal | None = None
+    evidence_source: str = ""
+    stored: Proposal | None = None
 
     def as_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "activity_id": self.activity_id,
             "local_date": self.local_date,
             "name": self.name,
@@ -73,9 +76,20 @@ class Conflict:
             "sheet_methods": sorted(self.sheet.methods),
             "sheet_targets": sorted(self.sheet.targets),
         }
+        if self.evidence is not None:
+            payload["evidence_source"] = self.evidence_source
+            payload["evidence_methods"] = sorted(self.evidence.methods)
+            payload["evidence_targets"] = sorted(self.evidence.targets)
+            payload["stored_methods"] = (
+                sorted(self.stored.methods) if self.stored else []
+            )
+            payload["stored_targets"] = (
+                sorted(self.stored.targets) if self.stored else []
+            )
+        return payload
 
     def lines(self) -> list[str]:
-        return [
+        lines = [
             f"  {self.local_date} {self.name or '-'} [{self.activity_id}]",
             f"    classifier: methods={sorted(self.classifier.methods)} "
             f"targets={sorted(self.classifier.targets)}",
@@ -83,6 +97,18 @@ class Conflict:
             f"methods={sorted(self.sheet.methods)} "
             f"targets={sorted(self.sheet.targets)}",
         ]
+        if self.evidence is not None:
+            lines.append(
+                f"    {self.evidence_source or 'evidence'}: "
+                f"methods={sorted(self.evidence.methods)} "
+                f"targets={sorted(self.evidence.targets)}"
+            )
+        if self.stored is not None:
+            lines.append(
+                f"    stored: methods={sorted(self.stored.methods)} "
+                f"targets={sorted(self.stored.targets)}"
+            )
+        return lines
 
 
 def classifier_proposal(
@@ -305,6 +331,18 @@ def disagrees(classifier: Proposal, sheet: Proposal) -> bool:
     return methods_conflict or targets_conflict
 
 
+def evidence_conflicts(stored: Proposal, evidence: Proposal) -> bool:
+    """Whether tag/comment evidence claims something the stored set lacks.
+
+    Evidence is sparse: a tag names one method and perhaps one target. It
+    only conflicts when it names a value the stored classification does not
+    contain, so an extra ``strides`` method or a missing target stays quiet.
+    """
+    return bool(evidence.methods - stored.methods) or bool(
+        evidence.targets - stored.targets
+    )
+
+
 def conflict_from(
     activity: Activity,
     classifier: Proposal,
@@ -322,8 +360,49 @@ def conflict_from(
     )
 
 
+def evidence_conflict_from(
+    activity: Activity,
+    *,
+    evidence: Proposal,
+    evidence_source: str,
+    stored: Proposal,
+    classifier: Proposal,
+    sheet: Proposal | None,
+    sheet_code: str,
+) -> Conflict:
+    """Build the review payload for evidence that disagrees with the store."""
+    return Conflict(
+        activity_id=activity.id,
+        local_date=activity.date.isoformat(),
+        name=activity.name or "",
+        classifier=classifier,
+        sheet=sheet or Proposal(),
+        sheet_code=sheet_code,
+        evidence=evidence,
+        evidence_source=evidence_source,
+        stored=stored,
+    )
+
+
 def fingerprint(conflict: Conflict) -> str:
-    """Stable identity for a disagreement; a changed proposal is a new item."""
+    """Stable identity for a disagreement; a changed proposal is a new item.
+
+    An evidence item is about the evidence and the stored set, so a change in
+    the classifier or sheet does not reopen a decision about it.
+    """
+    if conflict.evidence is not None:
+        return review_fingerprint(
+            [
+                WORKOUT_CLASSIFICATION,
+                conflict.activity_id,
+                conflict.evidence_source,
+                sorted(conflict.evidence.methods),
+                sorted(conflict.evidence.targets),
+                sorted(conflict.stored.methods) if conflict.stored else [],
+                sorted(conflict.stored.targets) if conflict.stored else [],
+            ]
+        )
+
     return review_fingerprint(
         [
             WORKOUT_CLASSIFICATION,

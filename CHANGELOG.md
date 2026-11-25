@@ -13,6 +13,18 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
 
+### Evidence conflicts
+
+- `workout_classification_queue` compares a mapped tag or explicit description
+  with the stored sets of a classified activity. It opens one
+  `workout_classification` item only when the evidence names a method or
+  target the stored set lacks; agreeing or absent evidence resolves stale
+  items. Nothing is written automatically.
+- The item context carries `evidence_source`, the evidence sets and the stored
+  sets. Triage `(k)` offers `4) evidence` and `s) kept stored` alongside the
+  classifier/sheet choices; a chosen set is written as manual values and logs
+  old/new in `edit_log`, while `kept stored` resolves without a write.
+
 ### Manual write coverage
 
 - `race-result`, `threshold`, `period` and `equipment` now append one
