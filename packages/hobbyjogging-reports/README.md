@@ -732,8 +732,11 @@ stay actual-only.
 
 The report includes the activity id and date, category, review status,
 duration/moving/elapsed time, distance, elevation and pace, average/max HR,
-sub-sport when it is meaningful, load/RPE/feel/intensity, efficiency, tags,
-VO2max, equipment, device and route when known, social lines such as
+stored session metrics (cadence, stride, power, calories, training effect,
+GAP and altitude) and running dynamics (vertical oscillation, stance time and
+balance, vertical ratio, respiration), sub-sport when it is meaningful,
+load/RPE/feel/intensity, efficiency, tags, VO2max, equipment, device and
+route when known, social lines such as
 `Strava: title — description (link)`, pace and HR zones, a fenced description
 block, the day's planned workout and wellness, one raw segment table, and the
 subT/LT1 work-rep summary when applicable.

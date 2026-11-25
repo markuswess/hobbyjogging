@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 
 from hobbyjogging_core.model import (
+    ActivityMetrics,
     Event,
     EventZoneTime,
     Interval,
@@ -82,6 +83,40 @@ class SessionDetailTests(unittest.TestCase):
         self.assertIn("- Sub-sport: Treadmill", report)
         self.assertIn("- Device: dev-1", report)
         self.assertIn("- Route: Hill loop", report)
+
+    def test_activity_metrics_and_dynamics_are_shown(self):
+        source = FakeSource(
+            [activity(id="a", date=D1)],
+            metrics={
+                "a": ActivityMetrics(
+                    cadence=172.0,
+                    stride_m=1.29,
+                    vertical_oscillation_mm=94.0,
+                    stance_time_ms=239.0,
+                    stance_time_pct=35.0,
+                    stance_balance_pct=48.2,
+                    vertical_ratio_pct=7.4,
+                    respiration_bpm=34.0,
+                    power_w=326.0,
+                    calories_kcal=692.0,
+                    training_effect=3.7,
+                    gap_mps=3.78,
+                    altitude_avg_m=191.0,
+                )
+            },
+        )
+
+        report = session_report("a", source)
+
+        self.assertIn("- Metrics: Cadence 172 spm", report)
+        self.assertIn("Stride 1.29 m", report)
+        self.assertIn("Power 326 W", report)
+        self.assertIn("692 kcal", report)
+        self.assertIn("GAP 3.78 m/s", report)
+        self.assertIn("- Dynamics: VO 94 mm", report)
+        self.assertIn("GCT 239 ms", report)
+        self.assertIn("Balance 48.2 %", report)
+        self.assertIn("Resp 34 /min", report)
 
 
 class SegmentTableRuleTests(unittest.TestCase):

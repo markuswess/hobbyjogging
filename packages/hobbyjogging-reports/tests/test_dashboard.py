@@ -8,6 +8,7 @@ from unittest.mock import patch
 from urllib.parse import unquote, urlparse
 
 from hobbyjogging_core.model import (
+    ActivityMetrics,
     ActivitySocial,
     ActivityWeather,
     Equipment,
@@ -45,6 +46,25 @@ def _source():
 
     return FakeSource(
         equipment=[shoe],
+        metrics={
+            "run1": ActivityMetrics(
+                cadence=172.0,
+                stride_m=1.29,
+                vertical_oscillation_mm=94.0,
+                stance_time_ms=239.0,
+                stance_time_pct=35.0,
+                stance_balance_pct=48.2,
+                vertical_ratio_pct=7.4,
+                respiration_bpm=34.0,
+                power_w=326.0,
+                calories_kcal=692.0,
+                training_effect=3.7,
+                gap_mps=3.78,
+                altitude_avg_m=191.0,
+                altitude_min_m=185.0,
+                altitude_max_m=214.0,
+            ),
+        },
         activities=[
             activity(
                 id="run1",
@@ -542,6 +562,17 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn('href="../activities.html"', detail)
             self.assertIn('href="../event/ev-matched.html"', detail)
             self.assertIn("Weather: 12 °C, wind 3 m/s", detail)
+            self.assertIn(
+                "Metrics: Cadence 172 spm, Stride 1.29 m, Power 326 W, "
+                "692 kcal, TE 3.7, GAP 3.78 m/s, "
+                "Alt avg 191 m (185-214 m)",
+                detail,
+            )
+            self.assertIn(
+                "Dynamics: VO 94 mm, GCT 239 ms (35 %), Balance 48.2 %, "
+                "VR 7.4 %, Resp 34 /min",
+                detail,
+            )
             self.assertIn("Morning spin", detail)
             self.assertIn("Easy along the river", detail)
             self.assertIn("https://www.strava.com/activities/1", detail)

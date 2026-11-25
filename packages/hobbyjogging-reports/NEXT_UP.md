@@ -9,6 +9,15 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **Stored session metrics in the report.** The shared session renderer reads
+  `source.activity_metrics()` and prints `- Metrics:` (cadence in spm/rpm,
+  stride, power, calories, training effect, GAP, average/min/max altitude) and
+  `- Dynamics:` (vertical oscillation, GCT with percentage, balance, vertical
+  ratio, respiration) for runs. The CLI session report, the dashboard activity
+  page and the race page share the path, so all three show the same lines; a
+  ride gets rpm cadence and no running dynamics. Integration tests pin both
+  the CLI output and the dashboard page.
+
 - **The overview EWMAs stop at yesterday until today is run.** A missing run
   today is not a zero-training day, so the Training Overview EWMAs end on the
   last completed day and the report says "No run recorded today; the EWMAs end
