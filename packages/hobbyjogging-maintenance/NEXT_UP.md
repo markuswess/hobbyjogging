@@ -4,6 +4,10 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Pre-run snapshots.** A real `run` writes a `VACUUM INTO` snapshot beside
+  the database, keeps the last five and prints the path; a dry run and a
+  skipped backfill write none. A snapshot failure aborts the run. It protects
+  the minutes around one task, not the machine.
 - **Illness and trail candidates.** `illness_candidates_current` opens
   non-hiding `period_candidate` items for illness tags outside a period
   (7 on a copy; `wieder gesund` closes the range); `trail_candidates_current`

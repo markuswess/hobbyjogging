@@ -89,13 +89,19 @@ writes the report, otherwise it goes to stdout.
 | `--output PATH` | write the task's findings (e.g. conflicts) to a file |
 | `--database PATH` | use a database other than `HOBBYJOGGING_DB` |
 
-`run --all` runs every backfill that is not applied yet. `sync.sh` runs the six
+`run --all` runs every backfill that is not applied yet. `sync.sh` runs the
 idempotent recomputes after a successful sync — `workout_sets_current`,
 `workout_classification_queue`, `illness_candidates_current`,
 `trail_candidates_current`, `athlete_thresholds_current`,
 `activity_zone_configs_current`, `training_periods_current` and
 `race_links_current` — and skips them with `--no-classify`; backfills stay
 deliberate.
+
+A real run first writes a `VACUUM INTO` snapshot beside the database
+(`<db>.bak-YYYYmmddTHHMMSSZ`), keeps the last five, and prints the path. A dry
+run writes no snapshot. It protects the minutes around one task, not the
+machine: the periodic backup remains the durable copy. A snapshot failure
+fails the run instead of proceeding without a restore point.
 
 ## Shipped tasks
 

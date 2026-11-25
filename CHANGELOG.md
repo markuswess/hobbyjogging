@@ -97,6 +97,10 @@ Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
 
 ### Safety
 
+- A real maintenance run first writes a `VACUUM INTO` snapshot beside the
+  database (`<db>.bak-YYYYmmddTHHMMSSZ`), keeps the last five and prints the
+  path; a dry run writes no snapshot. It protects the minutes around one task,
+  not the machine, and a snapshot failure aborts the run.
 - `maintenance export-manual`/`import-manual` move the manual decisions as
   JSONL (manual fields, sets, tags, equipment links, exclusions, review
   answers); `maintenance rebuild --source DB` proves the canonical projection

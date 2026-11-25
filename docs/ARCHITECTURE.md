@@ -320,8 +320,9 @@ changes.
 - `registry.py` — task ids, kinds (`backfill` / `recompute`), registration.
 - `context.py` — `Scope` and `TaskContext` (connection, lazy repository and
   writer, counts, notes, output file).
-- `runner.py` — one transaction per run, dry run = run then roll back,
-  bookkeeping in `maintenance_runs`.
+- `runner.py` — one transaction per run, a pre-run `VACUUM INTO` snapshot for
+  a real run (last five kept), dry run = run then roll back, bookkeeping in
+  `maintenance_runs`.
 - `store.py` — reads and writes for `data_migrations` and `maintenance_runs`.
 - `workouts.py` — classifier, sheet, Runalyze-type, tag and comment proposals
   shared by the classification tasks.

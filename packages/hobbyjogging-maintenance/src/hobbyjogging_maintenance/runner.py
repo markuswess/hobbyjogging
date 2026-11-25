@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .context import Scope, TaskContext
 from .registry import Task
+from .snapshot import create_snapshot
 from .store import finish_run, is_applied, record_applied, start_run
 
 
@@ -23,6 +24,7 @@ class TaskRun:
     details: dict[str, object] = field(default_factory=dict)
     error: str | None = None
     output: Path | None = None
+    snapshot: Path | None = None
 
     @property
     def ok(self) -> bool:
@@ -51,6 +53,18 @@ def run_task(
     """
     if task.applied_once and not force and is_applied(connection, task.id):
         return TaskRun(task=task, status="skipped", dry_run=dry_run)
+
+    snapshot = None
+    if not dry_run:
+        try:
+            snapshot = create_snapshot(connection)
+        except (OSError, sqlite3.Error) as exc:
+            return TaskRun(
+                task=task,
+                status="failed",
+                dry_run=dry_run,
+                error=f"snapshot failed: {exc}",
+            )
 
     context = TaskContext(
         connection=connection,
@@ -86,6 +100,7 @@ def run_task(
             details=context.details,
             error=str(exc),
             output=output,
+            snapshot=snapshot,
         )
 
     finish_run(
@@ -103,4 +118,5 @@ def run_task(
         notes=context.notes,
         details=context.details,
         output=output,
+        snapshot=snapshot,
     )

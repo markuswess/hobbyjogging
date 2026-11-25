@@ -460,6 +460,8 @@ def _print_run(result: TaskRun) -> None:
 
     for name, value in result.counts.items():
         print(f"  {_label(name)}: {value}")
+    if result.snapshot is not None:
+        print(f"  snapshot: {result.snapshot}")
     for note in result.notes:
         print(f"  {note}")
     if result.output is not None:

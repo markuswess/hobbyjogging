@@ -9,6 +9,11 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Pre-run snapshots (2026-11-25).** A real maintenance run writes a
+  `VACUUM INTO` snapshot beside the database
+  (`<db>.bak-YYYYmmddTHHMMSSZ`), keeps the last five and prints the path; a dry
+  run and a skipped backfill write none. A snapshot failure aborts the run. On
+  the full copy the snapshot is 119 MB and takes about 0.35 s.
 - **Tag lexicon and evidence proposals (2026-11-25).** The one normalized
   tag -> meaning table now drives the audit and the proposals: 157 of 216
   stored tags are mapped (the 59 unmapped are places and people), and the
@@ -908,21 +913,6 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: four suites green, the demo dashboard renders
       identically, the public import paths still resolve, and a deliberately
       oversized new file fails CI.
-
-46. **Snapshot before a write task** (maintenance; small, before the phase-3
-    mass edits). `--dry-run` protects the decision, but a real run — a
-    backfill, the bulk duplicate cleanup (item 42) or a `--force` rerun — has
-    no automatic restore point; the backup is a manual `sqlite3 .backup`
-    habit.
-    - **Runner**: before any non-dry run, `VACUUM INTO` a timestamped snapshot
-      beside the database (`<db>.bak-YYYYmmddTHHMMSSZ`), keep the last five,
-      and print the path. A dry run writes nothing, not even a snapshot.
-    - **Not a backup replacement**: the snapshot protects the minutes around a
-      task; the periodic backup still protects the machine. A following
-      `verify_canonical` run is the check for a task that touched canonical
-      fields.
-    - **Acceptance**: a real run creates exactly one snapshot, a dry run none,
-      retention keeps five, and the printed path opens as a valid database.
 
 47. **Date and time-zone integrity** (core + import + reports; small, any
     time). `tz_offset_min` is stored but unused, and nothing checks that
