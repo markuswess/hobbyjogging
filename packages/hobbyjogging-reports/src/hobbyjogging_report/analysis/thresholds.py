@@ -8,6 +8,7 @@ from datetime import date
 from hobbyjogging_core.model import AthleteThreshold, RaceResult
 
 from .common import pace_s_per_km
+from .races import riegel_pace_at_duration
 
 RUN_THRESHOLD_SPORT = "run"
 
@@ -24,12 +25,17 @@ class ThresholdPoint:
 
 @dataclass(frozen=True)
 class RacePacePoint:
-    """One official race result's pace, for the threshold chart."""
+    """One official race result's pace, for the threshold chart.
+
+    ``pace_60_s_per_km`` is the Riegel-scaled pace for a 60-minute effort,
+    so the chart can show the race pace and its longer-effort equivalent.
+    """
 
     date: date
     pace_s_per_km: float
     name: str
     distance_m: float
+    pace_60_s_per_km: float | None = None
 
 
 def running_thresholds(
@@ -92,6 +98,10 @@ def race_pace_points(results: list[RaceResult]) -> list[RacePacePoint]:
                 pace_s_per_km=pace,
                 name=result.name or "Race",
                 distance_m=result.official_distance_m,
+                pace_60_s_per_km=riegel_pace_at_duration(
+                    result.official_distance_m,
+                    result.official_time_s,
+                ),
             )
         )
 

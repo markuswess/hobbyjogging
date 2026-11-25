@@ -91,7 +91,7 @@ Pages:
   182), with dashed projected volume/time lines that follow actual values
   through today and then the plan, a Garmin running VO2max line plot with one
   raw value per activity, a threshold chart with LTHR, max HR, the
-  threshold-pace steps and official race paces, a pace-vs-heart-rate scatter
+  threshold-pace steps and official race paces and their 60 min equivalents, a pace-vs-heart-rate scatter
   coloured by year with weather in its hover and one dashed steady-efficiency
   line per year (`HR = RHR + v·60/E`, with the yearly `E` values in the chart
   note), plus the year and month comparison reports (which include the period
@@ -423,7 +423,8 @@ stay compact (`1h02`).
 - **equipment / devices** — the Gear tab's two charts for all history:
   mileage grouped by gear category, and the recording-device timeline.
 - **threshold** — the run LTHR/max-HR/threshold-pace steps with official
-  race paces for all history.
+  race paces and, for each race, the 60 min pace derived from it by Riegel
+  scaling (open circles, exponent 1.06), for all history.
 - **races / pb** — the Performance tab's log-log race chart with the Riegel
   fit, and the PB progression chart in pace. Both use the official
   distance/time when the race result supplies both, and their hover shows

@@ -347,6 +347,32 @@ def riegel_time(
     ) ** fit.exponent
 
 
+RIEGEL_EXPONENT = 1.06
+
+
+def riegel_pace_at_duration(
+    distance_m: float,
+    time_s: float,
+    duration_s: float = 3600.0,
+    *,
+    exponent: float = RIEGEL_EXPONENT,
+) -> float | None:
+    """Pace (s/km) at a target duration, scaled from one race by Riegel.
+
+    The distance that takes ``duration_s`` at the race's effort is
+    ``d * (duration_s / time_s) ** (1 / exponent)``; the returned pace is
+    that duration divided by it.
+    """
+    if distance_m <= 0 or time_s <= 0 or duration_s <= 0:
+        return None
+
+    equivalent_distance = distance_m * (
+        duration_s / time_s
+    ) ** (1 / exponent)
+
+    return duration_s / equivalent_distance * 1000
+
+
 def riegel_reference(results: list[RaceResult]) -> RaceResult | None:
     """The race the predictions and their line are anchored to.
 

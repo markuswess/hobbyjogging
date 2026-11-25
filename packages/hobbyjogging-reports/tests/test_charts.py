@@ -1917,6 +1917,7 @@ class ThresholdChartTests(unittest.TestCase):
                 230.0,
                 "Autumn 10k",
                 10000.0,
+                242.0,
             )
         ]
 
@@ -1931,13 +1932,22 @@ class ThresholdChartTests(unittest.TestCase):
         traces = {trace.get("name"): trace for trace in data}
 
         self.assertEqual(
-            {"LTHR", "Max HR", "Threshold pace", "Official race pace"},
+            {
+                "LTHR",
+                "Max HR",
+                "Threshold pace",
+                "Official race pace",
+                "Race 60 min pace",
+            },
             set(traces),
         )
         self.assertEqual("y2", traces["Threshold pace"]["yaxis"])
         self.assertEqual("y2", traces["Official race pace"]["yaxis"])
         self.assertEqual([230.0], traces["Official race pace"]["y"])
+        self.assertEqual("y2", traces["Race 60 min pace"]["yaxis"])
+        self.assertEqual([242.0], traces["Race 60 min pace"]["y"])
         self.assertIn("Autumn 10k (10.0 km)", html)
+        self.assertIn("60 min %{customdata}", html)
         self.assertIn("3:42", html)
 
 

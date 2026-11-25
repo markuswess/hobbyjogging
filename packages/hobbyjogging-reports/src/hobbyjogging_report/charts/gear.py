@@ -205,6 +205,42 @@ def plot_thresholds(
             )
         )
 
+        sixty = [
+            point
+            for point in races
+            if point.pace_60_s_per_km is not None
+        ]
+
+        if sixty:
+            figure.add_trace(
+                go.Scatter(
+                    x=[point.date for point in sixty],
+                    y=[point.pace_60_s_per_km for point in sixty],
+                    mode="markers",
+                    name="Race 60 min pace",
+                    yaxis="y2",
+                    marker={
+                        "symbol": "circle-open",
+                        "size": 9,
+                        "color": "#9467bd",
+                        "line": {"color": "#9467bd", "width": 2},
+                    },
+                    text=[
+                        f"{point.name} "
+                        f"({point.distance_m / 1000:.1f} km)"
+                        for point in sixty
+                    ],
+                    customdata=[
+                        format_pace(point.pace_60_s_per_km)
+                        for point in sixty
+                    ],
+                    hovertemplate=(
+                        "%{x}<br>%{text}<br>60 min "
+                        "%{customdata}<extra></extra>"
+                    ),
+                )
+            )
+
     hr_values = [
         value
         for values in (lthr, max_hr)
@@ -229,6 +265,11 @@ def plot_thresholds(
 
         if races:
             race_values = [point.pace_s_per_km for point in races]
+            race_values += [
+                point.pace_60_s_per_km
+                for point in races
+                if point.pace_60_s_per_km is not None
+            ]
             low = min(low, min(race_values) - 8)
             high = max(high, max(race_values) + 8)
 

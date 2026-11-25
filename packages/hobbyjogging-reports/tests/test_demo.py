@@ -672,6 +672,7 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Year comparison",
                     "Threshold and official race pace",
                     "Official race pace",
+                    "Race 60 min pace",
                 ),
                 "recovery.html": ("Recovery Report", "Data completeness"),
                 "performance.html": (

@@ -23,9 +23,11 @@ from hobbyjogging_report.analysis import (
     effective_vo2max,
     garmin_vo2max_devices,
     official_by_activity,
+    race_pace_points,
     race_results,
     race_vdot,
     race_vdots,
+    riegel_pace_at_duration,
     runalyze_vo2max_points,
     threshold_max_hr,
     vo2max_methods,
@@ -1504,6 +1506,42 @@ class Vo2maxPointTests(unittest.TestCase):
 
     def test_no_samples_returns_nothing(self):
         self.assertEqual([], vo2max_points([], D, D))
+
+
+class RacePacePointTests(unittest.TestCase):
+
+    def test_the_60_min_pace_is_scaled_from_the_race(self):
+        official = OfficialRaceResult(
+            activity_id="a",
+            date=D,
+            name="Autumn 10k",
+            official_distance_m=10000,
+            official_time_s=2400,
+        )
+
+        points = race_pace_points([official])
+
+        self.assertEqual(1, len(points))
+        self.assertEqual(240, points[0].pace_s_per_km)
+
+        expected = (
+            3600 / (10000 * (3600 / 2400) ** (1 / 1.06)) * 1000
+        )
+        self.assertAlmostEqual(expected, points[0].pace_60_s_per_km)
+        self.assertAlmostEqual(
+            expected,
+            riegel_pace_at_duration(10000, 2400),
+        )
+
+    def test_a_race_without_a_pace_gets_no_60_min_value(self):
+        official = OfficialRaceResult(
+            activity_id="a",
+            date=D,
+            official_distance_m=10000,
+        )
+
+        self.assertEqual([], race_pace_points([official]))
+        self.assertIsNone(riegel_pace_at_duration(0, 2400))
 
 
 class Vo2maxComparisonTests(unittest.TestCase):

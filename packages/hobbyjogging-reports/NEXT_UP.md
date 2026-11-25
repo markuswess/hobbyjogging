@@ -9,6 +9,13 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **60 min race-pace dots.** The threshold/official-race-pace chart adds an
+  open circle per race with the Riegel-scaled 60 min pace from that result
+  (fixed exponent 1.06), beside the race-pace diamond. Both sit on the pace
+  axis, share the date, and appear in the hover; the axis bounds include the
+  derived values. `RacePacePoint` carries `pace_60_s_per_km`, computed in
+  `race_pace_points` from the official distance/time.
+
 - **Grouped session bullets.** The detailed session report's flat bullet list
   is now split into `### Session` (id, date, start, category, sub-sport,
   review), `### Workout` (methods, targets), `### Recording` (weather, device,
