@@ -9,6 +9,13 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **Grouped session bullets.** The detailed session report's flat bullet list
+  is now split into `### Session` (id, date, start, category, sub-sport,
+  review), `### Workout` (methods, targets), `### Recording` (weather, device,
+  route), `### Result` (stored metrics, duration through zones) and
+  `### Links` (Intervals, Garmin, social). The shared renderer groups the
+  CLI, dashboard activity page and race page the same way.
+
 - **Stored session metrics in the report.** The shared session renderer reads
   `source.activity_metrics()` and prints `- Metrics:` (cadence in spm/rpm,
   stride, power, calories, training effect, GAP, average/min/max altitude) and

@@ -935,45 +935,81 @@ def format_session_activity(
     else:
         title = activity_display_name(activity)
 
-    lines = [
-        f"\n## {title}",
+    lines = [f"\n## {title}"]
+
+    session_lines = [
         f"- ID: {activity.id}",
         f"- Date: {activity.date}",
     ]
 
     if activity.started_at_utc:
-        lines.append(f"- Started: {activity.started_at_utc} (UTC)")
+        session_lines.append(
+            f"- Started: {activity.started_at_utc} (UTC)"
+        )
 
+    if category:
+        session_lines.append(f"- Category: {category}")
+
+    sub_sport = _sub_sport_label(activity)
+
+    if sub_sport:
+        session_lines.append(f"- Sub-sport: {sub_sport}")
+
+    if review_items is not None:
+        session_lines.append(
+            f"- Review: {'open' if review_items else 'clear'}"
+        )
+
+    workout_lines = [
+        f"- Methods: {format_methods(activity)}",
+        f"- Targets: {format_targets(activity)}",
+    ]
+
+    recording_lines = []
     conditions = format_weather(weather)
 
     if conditions:
-        lines.append(f"- Weather: {conditions}")
-
-    metrics_line = format_metrics(metrics, sport=activity.type)
-    if metrics_line:
-        lines.append(f"- Metrics: {metrics_line}")
-
-    dynamics = format_dynamics(metrics, sport=activity.type)
-    if dynamics:
-        lines.append(f"- Dynamics: {dynamics}")
+        recording_lines.append(f"- Weather: {conditions}")
 
     if device is not None:
-        lines.append(f"- Device: {device_label(device)}")
+        recording_lines.append(f"- Device: {device_label(device)}")
     elif activity.device_id:
-        lines.append(f"- Device: {activity.device_id}")
+        recording_lines.append(f"- Device: {activity.device_id}")
 
     if activity.routes:
         names = ", ".join(
             route.name or route.external_ref or route.id
             for route in activity.routes
         )
-        lines.append(f"- Route: {names}")
+        recording_lines.append(f"- Route: {names}")
+
+    result_lines = []
+    metrics_line = format_metrics(metrics, sport=activity.type)
+
+    if metrics_line:
+        result_lines.append(f"- Metrics: {metrics_line}")
+
+    dynamics = format_dynamics(metrics, sport=activity.type)
+
+    if dynamics:
+        result_lines.append(f"- Dynamics: {dynamics}")
+
+    result_lines.extend(
+        _activity_metric_lines(
+            activity,
+            detailed=True,
+            resting_hr=resting_hr,
+            resting_hr_estimated=resting_hr_estimated,
+        )
+    )
+
+    link_lines = []
 
     if links is not None:
         if links.intervals:
-            lines.append(f"- Intervals: {_link(links.intervals)}")
+            link_lines.append(f"- Intervals: {_link(links.intervals)}")
         if links.garmin:
-            lines.append(f"- Garmin Connect: {_link(links.garmin)}")
+            link_lines.append(f"- Garmin Connect: {_link(links.garmin)}")
 
     for entry in social or []:
         # A Strava description can span lines; keep the one-line social format.
@@ -987,34 +1023,27 @@ def format_session_activity(
         line = f"- {entry.source.replace('_', ' ').title()}: {text}"
         if entry.url:
             line += f" ({_link(entry.url)})"
-        lines.append(line)
+        link_lines.append(line)
 
-    if category:
-        lines.append(f"- Category: {category}")
+    for heading, group in (
+        ("Session", session_lines),
+        ("Workout", workout_lines),
+        ("Recording", recording_lines),
+        ("Result", result_lines),
+        ("Links", link_lines),
+    ):
+        if not group:
+            continue
 
-    sub_sport = _sub_sport_label(activity)
+        lines.append(f"\n### {heading}")
+        lines.extend(group)
 
-    if sub_sport:
-        lines.append(f"- Sub-sport: {sub_sport}")
-
-    if review_items is not None:
-        lines.append(
-            f"- Review: {'open' if review_items else 'clear'}"
-        )
-
-    lines.append(f"- Methods: {format_methods(activity)}")
-    lines.append(f"- Targets: {format_targets(activity)}")
-
-    lines.extend(
-        _activity_metric_lines(
-            activity,
-            detailed=True,
-            resting_hr=resting_hr,
-            resting_hr_estimated=resting_hr_estimated,
-        )
-    )
     lines.extend(_activity_description_lines(activity, detailed=True))
-    lines.extend(format_review_items(review_items or []))
+
+    review_lines = format_review_items(review_items or [])
+
+    if review_lines:
+        lines.extend(review_lines)
 
     for event in planned_events or []:
         lines.extend(

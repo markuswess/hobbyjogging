@@ -84,6 +84,14 @@ class SessionDetailTests(unittest.TestCase):
         self.assertIn("- Device: dev-1", report)
         self.assertIn("- Route: Hill loop", report)
 
+        for heading in (
+            "### Session",
+            "### Workout",
+            "### Recording",
+            "### Result",
+        ):
+            self.assertIn(heading, report)
+
     def test_activity_metrics_and_dynamics_are_shown(self):
         source = FakeSource(
             [activity(id="a", date=D1)],

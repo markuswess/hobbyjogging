@@ -739,7 +739,8 @@ load/RPE/feel/intensity, efficiency, tags, VO2max, equipment, device and
 route when known, social lines such as
 `Strava: title — description (link)`, pace and HR zones, a fenced description
 block, the day's planned workout and wellness, one raw segment table, and the
-subT/LT1 work-rep summary when applicable.
+subT/LT1 work-rep summary when applicable. The bullets are grouped under
+Session, Workout, Recording, Result and Links headings.
 The segment table shows typed intervals when there is more than one; otherwise
 it falls back to device laps when there is more than one; a single segment on
 either side is skipped because it only restates the activity. Open review
