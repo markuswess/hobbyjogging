@@ -231,6 +231,9 @@ Cross-package changes must leave all four suites green.
   is steps/min, ride cadence is rpm, FIT owns device-measured dynamics,
   Intervals owns altitude, and Runalyze fills the gaps. Per-second streams
   stay in the FIT archive, never in SQLite.
+- `started_at_utc` is UTC, `tz_offset_min` is the recorded local offset and
+  `local_date` the local day. Reports display local time; never label a UTC
+  value as local.
 - Thresholds are per sport and dated in `athlete_thresholds`. A manual
   `threshold add` snapshot survives every recompute; `derived_zone_configs_current`
   builds local zone configs and lap zone times from it, and an Intervals config

@@ -51,7 +51,7 @@ def _optional(value, fmt: Callable[[object], str]) -> str:
 
 
 def _started(activity: Activity) -> str:
-    text = activity.started_at_utc
+    text = activity.started_local
     return text[11:16] if len(text) >= 16 else "-"
 
 
@@ -64,7 +64,7 @@ def _distance(activity: Activity) -> str:
 COLUMNS = {
     "id": _plain("id", lambda a: a.id),
     "date": _plain("date", lambda a: str(a.date)),
-    "started": _plain("started (UTC)", _started),
+    "started": _plain("started (local)", _started),
     "sport": _plain("sport", sport_label),
     "name": _plain("name", activity_display_name),
     "duration": _plain("duration", lambda a: fmt_clock(a.duration_s), True),

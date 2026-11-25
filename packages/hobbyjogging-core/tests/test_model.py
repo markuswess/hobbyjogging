@@ -31,6 +31,38 @@ class EquipmentModelTests(unittest.TestCase):
         self.assertEqual("manual", link.source)
         self.assertFalse(link.is_manual)
 
+    def test_started_local_uses_the_recorded_offset(self):
+        activity = Activity(
+            id="a1",
+            date=date(2026, 10, 1),
+            started_at_utc="2026-10-01T06:00:00Z",
+            tz_offset_min=120,
+        )
+
+        self.assertEqual(
+            "2026-10-01T08:00:00+02:00",
+            activity.started_local,
+        )
+
+    def test_started_local_falls_back_to_utc_without_an_offset(self):
+        activity = Activity(
+            id="a1",
+            date=date(2026, 10, 1),
+            started_at_utc="2026-10-01T06:00:00Z",
+        )
+
+        self.assertEqual("2026-10-01T06:00:00Z", activity.started_local)
+
+    def test_started_local_keeps_the_utc_string_when_unparseable(self):
+        activity = Activity(
+            id="a1",
+            date=date(2026, 10, 1),
+            started_at_utc="not-a-timestamp",
+            tz_offset_min=60,
+        )
+
+        self.assertEqual("not-a-timestamp", activity.started_local)
+
     def test_lap_defaults(self):
         lap = Lap(index=1)
 

@@ -7,7 +7,7 @@ these types. Analysis, charts, and reports depend only on this model.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from .workouts import is_quality
 
@@ -78,6 +78,7 @@ class Activity:
     id: str
     date: date
     started_at_utc: str = ""  # ISO timestamp, used for same-day ordering
+    tz_offset_min: int | None = None  # recorded local offset from UTC
     type: str = ""  # canonical: "run", "trail_run", "ride", ...
     sub_sport: str = ""
     name: str = ""
@@ -114,6 +115,32 @@ class Activity:
             if self.vo2max_garmin is not None
             else self.vo2max_runalyze
         )
+
+    @property
+    def started_local(self) -> str:
+        """The start timestamp in the recorded local zone.
+
+        Falls back to the stored UTC string when the activity has no offset
+        (an older row) or the timestamp cannot be parsed. The returned string
+        is ISO 8601 with the offset, e.g. ``2026-11-24T17:40:27+01:00``.
+        """
+        if not self.started_at_utc:
+            return ""
+        try:
+            moment = datetime.fromisoformat(
+                self.started_at_utc.replace("Z", "+00:00")
+            )
+        except ValueError:
+            return self.started_at_utc
+        if self.tz_offset_min is None:
+            return self.started_at_utc
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        try:
+            zone = timezone(timedelta(minutes=self.tz_offset_min))
+        except ValueError:
+            return self.started_at_utc
+        return moment.astimezone(zone).isoformat(timespec="seconds")
 
     @property
     def quality(self) -> bool | None:

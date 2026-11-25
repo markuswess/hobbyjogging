@@ -100,6 +100,46 @@ class ActivitiesReportTests(unittest.TestCase):
             ]
         )
 
+    def test_started_column_uses_the_recorded_local_offset(self):
+        source = FakeSource(
+            [
+                make_activity(
+                    id="a1",
+                    date=date(2026, 10, 1),
+                    started_at_utc="2026-10-01T06:00:00Z",
+                    tz_offset_min=120,
+                )
+            ]
+        )
+
+        report = activities_report(
+            source,
+            ActivityQuery(columns=("date", "started")),
+            today=TODAY,
+        )
+
+        self.assertIn("started (local)", report)
+        self.assertIn("08:00", data_rows(report)[0])
+
+    def test_started_column_falls_back_to_utc_without_an_offset(self):
+        source = FakeSource(
+            [
+                make_activity(
+                    id="a1",
+                    date=date(2026, 10, 1),
+                    started_at_utc="2026-10-01T06:00:00Z",
+                )
+            ]
+        )
+
+        report = activities_report(
+            source,
+            ActivityQuery(columns=("date", "started")),
+            today=TODAY,
+        )
+
+        self.assertIn("06:00", data_rows(report)[0])
+
     def test_default_shows_newest_twenty(self):
         report = activities_report(
             self.source,

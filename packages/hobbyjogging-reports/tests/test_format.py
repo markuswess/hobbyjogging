@@ -107,6 +107,32 @@ class MetricsLineTests(unittest.TestCase):
         self.assertIn("- Dynamics: GCT 238 ms", lines)
 
 
+class StartedLineTests(unittest.TestCase):
+
+    def test_started_line_uses_the_local_offset(self):
+        lines = format_session_activity(
+            activity(
+                started_at_utc="2026-10-01T06:00:00Z",
+                tz_offset_min=120,
+            ),
+            [],
+        )
+
+        self.assertIn(
+            "- Started: 2026-10-01T08:00:00+02:00 "
+            "(local; 2026-10-01T06:00:00Z UTC)",
+            lines,
+        )
+
+    def test_started_line_keeps_utc_without_an_offset(self):
+        lines = format_session_activity(
+            activity(started_at_utc="2026-10-01T06:00:00Z"),
+            [],
+        )
+
+        self.assertIn("- Started: 2026-10-01T06:00:00Z (UTC)", lines)
+
+
 class Vo2maxLabelTests(unittest.TestCase):
     """The Garmin estimate is per sport, so non-runs say which."""
 

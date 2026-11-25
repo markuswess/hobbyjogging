@@ -159,8 +159,10 @@ mtb_ride, `Schwimmen` → swim, `Wandern` → hike, `Laufband` → treadmill_run
 
 Upserts equipment keyed by the sheet id (`sheet:equipment:<id>`), parses
 `Kaufdatum`/`Entsorgungsdatum` (`D.M.YYYY`), and keeps size, price, colour,
-mileage, and remarks in `equipment.notes`. Mileage is descriptive; usage is
-derived from linked activities.
+mileage, and remarks in `equipment.notes`. These stay provenance text rather
+than typed columns: no report or rule consumes them, and the canonical
+mileage is derived from linked activities; the sheet's `gesamt km` is only a
+legacy total. Usage is derived from linked activities.
 
 Activity ids are stable: date + start time + route, with a content-hash suffix
 for duplicate keys. Reimports update the same source records and follow the

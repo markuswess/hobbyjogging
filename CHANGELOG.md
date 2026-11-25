@@ -61,6 +61,16 @@ Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
   With no classifier evidence the stored set is kept (`stale_no_evidence`).
   A reclassification opens no review item; it is a projection update.
 
+### Time and gear
+
+- The activity table and session report display the recorded local start
+  (`started_at_utc` + `tz_offset_min`) instead of UTC; `local_date` remains the
+  local day used by every chart and range. Every started activity on the real
+  DB has an offset.
+- The sheet's equipment size, price, colour, legacy total km and remarks stay
+  provenance text in `equipment.notes`; no typed columns, because no report or
+  rule consumes them and canonical mileage comes from activity links.
+
 ### Safety
 
 - `maintenance export-manual`/`import-manual` move the manual decisions as

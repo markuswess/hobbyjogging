@@ -9,6 +9,14 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Sheet leftovers (2026-11-25).** Activities display the recorded local
+  start (`started_at_utc` + `tz_offset_min`) instead of UTC in the activity
+  table and the session report; `local_date` already carries the local day for
+  every chart and range. Every started activity on the real DB has an offset
+  (4,093/4,093). The sheet's equipment size, price, colour, legacy total km
+  and remarks stay provenance text in `equipment.notes`: no report or rule
+  consumes typed fields, and the canonical mileage is derived from activity
+  links.
 - **Classifier-sourced workout sets are re-derived (2026-11-25).**
   `workout_sets_current` now re-derives an activity whose sets are entirely
   classifier-sourced from the current name/RPE/intensity/work reps, so a
@@ -165,20 +173,20 @@ passed; its two findings — **55** (subT selection and the derived table) and
 
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 (manual overlay + rebuild proof), **37**'s read-only audit, the CLI write
-surface and **38/35** (session metrics) are done; the next structural work is
-**21** (sheet leftovers), then the proposal rules.
+surface, **38/35** (session metrics) and **21** (sheet leftovers) are done; the
+next structural work is the proposal rules.
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit (read-only, done; the proposals
 wait for the landed edit surface) → the CLI write surface (done) → **38/35**
-(session metrics, done; charts are item 62) → **21** sheet leftovers →
+(session metrics, done; charts are item 62) → **21** sheet leftovers (done) →
 **37**'s rules and **43** tags → **42** duplicates → health score → browser.
 The write-surface follow-ups **58–60** (edit-log coverage, the equipment CLI,
-selection by date/name) slot before or alongside **21**. Accepting a
-suggestion always writes a manual value and an `edit_log` row; nothing
-canonical is auto-applied except an empty, high-confidence classification.
-The corrections export (**57**) follows 37's audit as a small report; it is
-not a gate.
+selection by date/name) slot before or alongside the proposal rules.
+Accepting a suggestion always writes a manual value and an `edit_log` row;
+nothing canonical is auto-applied except an empty, high-confidence
+classification. The corrections export (**57**) follows 37's audit as a small
+report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -366,14 +374,6 @@ reports item; 28 is the recurring cleanup.
     ours. Compare them with our efficiency and intensity on the same activities
     to catch a formula bug before adding another derived number. Follows the
     metrics gate: a lab script first, a card only if it earns one.
-
-21. **Sheet leftovers** (import + reports; phase 3, with item 38).
-    `equipment.notes`
-    holds size, price and colour from the sheet and is never parsed;
-    `tz_offset_min` is populated on the activities and unused. Parse the notes
-    into typed equipment fields (or leave them as text) and use
-    `tz_offset_min` where local time matters — chart day boundaries and session
-    times. Decide per field whether it earns a place.
 
 62. **Session metric charts** (reports; small, phase 3, after item 38).
     `activity_metrics` now carries cadence, stride, running dynamics, power,

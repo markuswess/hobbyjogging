@@ -943,9 +943,15 @@ def format_session_activity(
     ]
 
     if activity.started_at_utc:
-        session_lines.append(
-            f"- Started: {activity.started_at_utc} (UTC)"
-        )
+        local = activity.started_local
+        if local and local != activity.started_at_utc:
+            session_lines.append(
+                f"- Started: {local} (local; {activity.started_at_utc} UTC)"
+            )
+        else:
+            session_lines.append(
+                f"- Started: {activity.started_at_utc} (UTC)"
+            )
 
     if category:
         session_lines.append(f"- Category: {category}")

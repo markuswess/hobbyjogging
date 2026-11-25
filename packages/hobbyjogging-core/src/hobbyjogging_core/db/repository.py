@@ -81,8 +81,9 @@ class TrainingRepository:
         rows = self.connection.execute(
             """
             SELECT
-                id, local_date, started_at_utc, sport, sub_sport, name,
-                description, duration_s, elapsed_s, distance_m, avg_hr, max_hr,
+                id, local_date, started_at_utc, tz_offset_min, sport,
+                sub_sport, name, description, duration_s, elapsed_s,
+                distance_m, avg_hr, max_hr,
                 elevation_gain_m, elevation_loss_m, training_load,
                 rpe, feel, intensity, vo2max_garmin, vo2max_runalyze,
                 moving_s, device_id
@@ -110,6 +111,7 @@ class TrainingRepository:
                 id=row["id"],
                 date=date.fromisoformat(row["local_date"]),
                 started_at_utc=row["started_at_utc"] or "",
+                tz_offset_min=row["tz_offset_min"],
                 type=row["sport"],
                 sub_sport=row["sub_sport"] or "",
                 name=row["name"],

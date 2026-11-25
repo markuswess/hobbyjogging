@@ -347,7 +347,10 @@ SQLite, forward-only migrations. Schema version 28.
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
   elevation gain/loss (v12), heart rate (average and maximum, v12), training
   load, subjective fields, both VO2max values (`vo2max_garmin`,
-  `vo2max_runalyze`), exclusion timestamp.
+  `vo2max_runalyze`), exclusion timestamp. `started_at_utc` is UTC and
+  `tz_offset_min` the recorded local offset; `local_date` is the local day
+  used for every report bucket, and `Activity.started_local` derives the
+  display time (a row without a start time has no offset).
 - `source_records` — raw imported payloads with checksums and provenance
   (`source`, `record_type`, `external_id`, `raw_path`, `payload_json`,
   exclusion timestamp).
