@@ -33,8 +33,8 @@ passed the gate may land in its owning package at any time (see
 |---|---|---|
 | **1. Works for me** | canonical DB, review, every source, reports, dashboard and lab | done 2026-11-19: all imports are in and the reports/dashboard answer the daily questions |
 | **2. Works for someone else** | install and configuration for a second athlete (`init`/`doctor`, `sources.toml` + `.env`, first-run docs, CI, release versioning, lab detach), a declared source-capability matrix, and a usable dashboard without Intervals (source workout type, reps, thresholds/zones, wellness, fallback load) | done 2026-11-24: a fresh clone builds the demo with no credentials, `init`/`doctor`/`sync` cover every configured source, and a Runalyze+Garmin athlete's dashboard renders categories, laps/reps, zones, load, wellness and races — without editing code or SQL |
-| **3. Trustworthy data** | extraction, audit, evidence-gated suggestions, duplicate cleanup, the CLI write surface and finally a localhost UI | any activity can be audited and corrected without SQL, every suggestion has a recorded decision, a rebuild after the corrections yields an empty diff, and open items, duplicates and coverage gaps are trending down |
-| **4. Durable and more reach** | homelab, more sources, streams, platform independence, LLM coaching, performance | parked until phases 1–3 are complete |
+| **3. Trustworthy data** | extraction, audit, evidence-gated suggestions, duplicate cleanup and the CLI write surface | every pass in [DATA_BRUSH.md](DATA_BRUSH.md) can be done through the CLI: any activity audited and corrected without SQL, every suggestion recorded, a rebuild after the corrections yields an empty diff, and open items, duplicates and coverage gaps are trending down |
+| **4. Durable and more reach** | homelab, more sources, streams, platform independence, LLM coaching, performance, and the localhost write UI | parked until phases 1–3 are complete |
 
 **Phase 1 is complete (2026-11-19):** all sources are imported, the reports,
 dashboard and race pages answer the daily questions, and the lab promotes
@@ -42,7 +42,9 @@ metrics on demand. **Phase 2 is complete (2026-11-24):** the install path (2a),
 the usable Runalyze+Garmin dashboard (2b) and the capability matrix are in
 place, validated by the acceptance run; its two findings (subT selection and
 the derived table, threshold coverage) are fixed. **Phase 3 is current:** it
-makes the stored record trustworthy and correctable. **Phase 4** stays parked.
+makes the stored record trustworthy and correctable through the CLI, and
+closes when the [data brush](DATA_BRUSH.md) passes; the localhost write UI is
+phase 4. **Phase 4** stays parked.
 
 A platform is retired **per metadata type, never per platform**: the type gets
 a DB surface first (phase 3), the historical import keeps backfilling, and the

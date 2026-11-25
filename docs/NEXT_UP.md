@@ -212,14 +212,16 @@ passed; its two findings — **55** (subT selection and the derived table) and
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 (manual overlay + rebuild proof), **37**'s audit and evidence proposals,
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
-**21** (sheet leftovers) and **42** (duplicates) are done; the next structural
-work is the localhost write UI (phase 3's last piece).
+**21** (sheet leftovers) and **42** (duplicates) are done. The remaining work
+is the **CLI brush**: phase 3 is complete when every pass in
+[DATA_BRUSH.md](DATA_BRUSH.md) can be done through the CLI. The localhost
+browser moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
-(done) → the localhost browser. The write-surface follow-ups **58–60** are
+(done) → the CLI brush (the gate). The write-surface follow-ups **58–60** are
 done; the metric charts **62** and the evidence follow-ups **63–64** slot
 alongside. The health report and dashboard card show the duplicate count now
 that 42 opens the items. Accepting a suggestion always writes a manual value
@@ -230,7 +232,8 @@ audit as a small report; it is not a gate.
 ### Phase 4: durable and more reach
 
 Parked: 13 homelab, 14 platform independence, 25 coaching, 27 performance, the
-Strava API and the stream half of 38. Ordered only when phases 1–3 are done.
+Strava API, the stream half of 38, and the **localhost write UI** (65). Ordered
+only when phases 1–3 are done.
 
 Item 40 is closed (see its entry): the recording sources keep `enabled`, so
 there is no create policy to wire. Item 41 (device identity) landed as a bug
@@ -438,6 +441,30 @@ reports item; 28 is the recurring cleanup.
     trail, race and interval sessions and explaining heat/elevation, then add
     the review rule only if the steady subset is clean. Evidence belongs in a
     lab script and a metric card first.
+
+65. **Localhost write UI for the data brush** (reports + import; phase 4,
+    after the CLI brush). Phase 3 closes on the CLI; this is the comfort layer
+    for the recurring [data brush](DATA_BRUSH.md), not a general editor.
+    - **Scope**: queue-first triage (next/skip/resolve/ignore/exclude/accept
+      suggestion/pick value/trust source), filters by category/cause/source/
+      sport/year and date/name search (item 60), batch actions with a
+      confirmation and a manifest, a provenance dossier (side-by-side values,
+      derived markers, edit history, links), health drill-down and the
+      corrections list (item 57).
+    - **Shape**: server-rendered forms on `127.0.0.1`, one user, no auth, no
+      SPA, no client-side data fetching; reuse the existing HTML renderer and
+      the CLI's write functions. Every action appends `edit_log`; the CLI stays
+      the reference and the phone stays read-only.
+    - **Placement**: keep it in the import package until a second consumer
+      justifies `hobbyjogging-app` (item 1's placement rule). It must never run
+      its own SQL or analysis.
+    - **Build after a CLI-only brush** and implement only the friction that
+      brush exposes — most likely batch decisions, filtering and provenance.
+    - **Acceptance**: a 30-minute brush session with no terminal: duplicates,
+      conflicts and coverage gaps triaged; every action visible in `edit_log`;
+      the CLI and the browser agree on the numbers.
+    - **Not first**: a generic activity form, charts, planning, or write-back
+      to platforms.
 
 22. **Release versioning** (repo-level; no package; phase 2). Every
     `pyproject.toml` says

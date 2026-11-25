@@ -102,11 +102,12 @@ and columns enabled.
 
 Four phases, each with an exit test: **works for me** (done), **works for
 someone else** (done — install and configure on a fresh machine), **trustworthy
-data** (current: extract, audit, correct — CLI first, then a localhost UI) and
-**durable and more reach** (homelab, more sources, streams). The phase table
-and the structural rules are in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); small features and promoted
-lab metrics land whenever they are ready.
+data** (current: extract, audit, correct through the CLI) and **durable and
+more reach** (homelab, more sources, streams, the localhost write UI). The
+phase table and the structural rules are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the recurring data pass is
+[`docs/DATA_BRUSH.md`](docs/DATA_BRUSH.md); small features and promoted lab
+metrics land whenever they are ready.
 
 ## Layout
 
@@ -120,7 +121,8 @@ lab metrics land whenever they are ready.
 
 `docs/ARCHITECTURE.md` holds the design and the rules,
 `docs/SOURCE_NOTES.md` the source-specific field quirks, `docs/METRICS.md` the
-metric cards, and `docs/AGENTS.md` the working conventions. Experiments run
+metric cards, `docs/DATA_BRUSH.md` the recurring data pass, and
+`docs/AGENTS.md` the working conventions. Experiments run
 through `./lab.sh` and the private notebook at `$HOBBYJOGGING_LAB_DIR`.
 
 ## Tests
