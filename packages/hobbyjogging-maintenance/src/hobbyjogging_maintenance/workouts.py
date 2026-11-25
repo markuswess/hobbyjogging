@@ -8,11 +8,18 @@ backfill and the review-queue sync use these helpers, so they cannot drift.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import date
 
-from hobbyjogging_core.classify import classify
+from hobbyjogging_core.classify import (
+    LT1_WORDS,
+    RACE_WORDS,
+    SUBT_WORDS,
+    TEMPO_WORDS,
+    classify,
+)
 from hobbyjogging_core.model import Activity
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
@@ -24,6 +31,7 @@ from hobbyjogging_import.quality import (
 )
 from hobbyjogging_import.runalyze_types import classification_for_payload
 from hobbyjogging_import.sheet_codes import classification_for_sheet_code
+from hobbyjogging_import.tag_lexicon import workout_meanings
 
 from .context import TaskContext
 
@@ -153,6 +161,133 @@ def runalyze_proposal(
     if not methods and not targets:
         return None
     return Proposal(methods, targets)
+
+
+_METHOD_PRIORITY = (
+    "race",
+    "intervals",
+    "fartlek",
+    "progression",
+    "long_run",
+    "continuous",
+)
+_TARGET_PRIORITY = (
+    "lt1",
+    "subthreshold",
+    "threshold",
+    "marathon",
+    "vo2max",
+    "speed",
+    "base",
+    "recovery",
+    "other",
+)
+_LONG_WORDS = ("longjog", "long run", "longrun")
+_RECOVERY_WORDS = ("regeneration", "recovery", "regenerativ")
+_PROGRESSION_WORDS = ("progressiv", "progression")
+_FARTLEK_WORDS = ("fartlek", "fahrtspiel", "wechseltempo")
+_MARATHON_WORDS = ("marathontempo", "marathon pace", "marathon-pace")
+_INTERVAL_TEXT = re.compile(
+    r"\b\d+\s*[x×]\s*\d+\s*(?:m|km|min|minuten|minute|s|sek|sekunden)\b"
+    r"|\b\d+(?:\s*-\s*\d+){2,}\s*(?:min|minuten|km|m)\b"
+    r"|\b(?:intervalle?|intervals?|serien?|wiederholungen?|wdh)\b",
+    re.IGNORECASE,
+)
+
+
+def tag_proposal(tags: list[str] | None) -> Proposal | None:
+    """Propose a set from the mapped workout tags, or ``None``.
+
+    The method and target priorities mirror the classifier's content-first
+    rule: race and intervals beat a long run, LT1 beats subT, and a quality
+    target beats base/recovery. ``strides`` is additive unless the session is
+    a race.
+    """
+    meanings = workout_meanings(tags or [])
+    if not meanings:
+        return None
+
+    methods: set[str] = set()
+    targets: set[str] = set()
+    for meaning in meanings:
+        methods |= meaning.methods
+        targets |= meaning.targets
+
+    if "race" in methods:
+        return Proposal({"race"}, targets or {"other"})
+
+    method = _select(methods, _METHOD_PRIORITY)
+    if method is None:
+        return None
+    selected = {method}
+    if "strides" in methods:
+        selected.add("strides")
+    target = _select(targets, _TARGET_PRIORITY)
+    return Proposal(selected, {target} if target else set())
+
+
+def description_proposal(description: str | None) -> Proposal | None:
+    """Propose a set from an explicit description, or ``None``.
+
+    Only explicit target words and structured interval patterns count. A
+    generic note such as "easy run" stays without a proposal; the classifier
+    already uses RPE/intensity for that.
+    """
+    text = str(description or "").lower()
+    if not text:
+        return None
+
+    if any(word in text for word in LT1_WORDS):
+        return Proposal({"intervals"}, {"lt1"})
+    if any(word in text for word in SUBT_WORDS):
+        return Proposal({"intervals"}, {"subthreshold"})
+    if any(word in text for word in _MARATHON_WORDS):
+        return Proposal({"continuous"}, {"marathon"})
+    if any(word in text for word in TEMPO_WORDS):
+        return Proposal({"continuous"}, {"threshold"})
+    if any(word in text for word in RACE_WORDS):
+        return Proposal({"race"}, {"other"})
+    if any(word in text for word in _LONG_WORDS):
+        return Proposal({"long_run"}, {"base"})
+    if any(word in text for word in _FARTLEK_WORDS):
+        return Proposal({"fartlek"}, set())
+    if any(word in text for word in _PROGRESSION_WORDS):
+        return Proposal({"progression"}, {"base"})
+    if any(word in text for word in _RECOVERY_WORDS):
+        return Proposal({"continuous"}, {"recovery"})
+    if _INTERVAL_TEXT.search(text):
+        return Proposal({"intervals"}, {"other"})
+    return None
+
+
+def evidence_proposal(
+    activity: Activity,
+) -> tuple[Proposal | None, str]:
+    """Return the tag/comment proposal and its source label.
+
+    Tags are deliberate athlete input, so they win over a description; a
+    description is the fallback when there is no mapped workout tag. Only run
+    sports use the running vocabulary; a swim or ride tag stays context.
+    """
+    if activity.type not in RUN_SPORTS:
+        return None, ""
+
+    tags = tag_proposal(activity.tags)
+    if tags is not None and not tags.empty:
+        return tags, "tag"
+
+    comment = description_proposal(activity.description)
+    if comment is not None and not comment.empty:
+        return comment, "comment"
+
+    return None, ""
+
+
+def _select(values: set[str], priority: tuple[str, ...]) -> str | None:
+    for value in priority:
+        if value in values:
+            return value
+    return sorted(values)[0] if values else None
 
 
 def disagrees(classifier: Proposal, sheet: Proposal) -> bool:

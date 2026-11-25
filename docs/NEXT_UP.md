@@ -9,6 +9,20 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Tag lexicon and evidence proposals (2026-11-25).** The one normalized
+  tag -> meaning table now drives the audit and the proposals: 157 of 216
+  stored tags are mapped (the 59 unmapped are places and people), and the
+  audit accounts for every tag. An empty run classification is filled from a
+  mapped tag (`source='tag'`) or an explicit description (`source='comment'`)
+  after the classifier/sheet/Runalyze-type proposals; on a copy this filled 32
+  historical comments and rejected ambiguous strength reps and non-run tags.
+  `illness_candidates_current` and `trail_candidates_current` open
+  non-hiding `period_candidate`/`consistency` items (7 illness, 41 trail on a
+  copy), and triage `(a)ccept` writes a suggested sport as manual. The
+  `health` report and dashboard card already carry the review queue and
+  coverage; duplicate counts appear there once item 42 opens them. The eight
+  existing seasons are already labeled with their goal race and no year lacks
+  a start, so no season candidates are needed now.
 - **Sheet leftovers (2026-11-25).** Activities display the recorded local
   start (`started_at_utc` + `tz_offset_min`) instead of UTC in the activity
   table and the session report; `local_date` already carries the local day for
@@ -172,21 +186,21 @@ passed; its two findings — **55** (subT selection and the derived table) and
 ### Phase 3: trustworthy data
 
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
-(manual overlay + rebuild proof), **37**'s read-only audit, the CLI write
-surface, **38/35** (session metrics) and **21** (sheet leftovers) are done; the
-next structural work is the proposal rules.
+(manual overlay + rebuild proof), **37**'s audit and evidence proposals,
+**43**'s tag lexicon, the CLI write surface, **38/35** (session metrics) and
+**21** (sheet leftovers) are done; the next structural work is **42**
+duplicates.
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
-proof, the safety gate, done) → **37** audit (read-only, done; the proposals
-wait for the landed edit surface) → the CLI write surface (done) → **38/35**
-(session metrics, done; charts are item 62) → **21** sheet leftovers (done) →
-**37**'s rules and **43** tags → **42** duplicates → health score → browser.
-The write-surface follow-ups **58–60** (edit-log coverage, the equipment CLI,
-selection by date/name) slot before or alongside the proposal rules.
-Accepting a suggestion always writes a manual value and an `edit_log` row;
-nothing canonical is auto-applied except an empty, high-confidence
-classification. The corrections export (**57**) follows 37's audit as a small
-report; it is not a gate.
+proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
+write surface (done) → **38/35** (session metrics, done; charts are item 62) →
+**21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
+→ browser. The write-surface follow-ups **58–60** and the evidence follow-ups
+**63–64** slot alongside. The health report and dashboard card already exist;
+duplicate counts appear there once 42 opens them. Accepting a suggestion
+always writes a manual value and an `edit_log` row; nothing canonical is
+auto-applied except an empty, high-confidence classification. The corrections
+export (**57**) follows 37's audit as a small report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -383,6 +397,22 @@ reports item; 28 is the recurring cleanup.
     stored data. No schema change; follow the report parity rule (CLI and
     dashboard), and keep derived metrics (decoupling, efficiency, critical
     speed) in the lab with a card rather than adding them here.
+
+63. **Evidence conflicts for classified activities** (import + maintenance;
+    small, phase 3). The tag/comment proposals now fill an **empty**
+    classification, but a classified activity whose tag or description says
+    something different is left alone: `workout_classification_queue` and
+    triage `(k)` only know the classifier/sheet pair. Extend the existing
+    item's context with the tag/comment proposal, show it as an extra choice
+    in `(k)`, and let the queue open an item only when an evidence proposal
+    conflicts with the stored set. No new category and no automatic write.
+
+64. **Pace/HR outlier calibration** (lab + import; after the lab). The first
+    pass at 3.5 MAD / 12 bpm flagged 37 gross points, many legitimate, so the
+    rule is not enabled. Calibrate on steady easy/recovery runs, excluding
+    trail, race and interval sessions and explaining heat/elevation, then add
+    the review rule only if the steady subset is clean. Evidence belongs in a
+    lab script and a metric card first.
 
 22. **Release versioning** (repo-level; no package; phase 2). Every
     `pyproject.toml` says
@@ -736,69 +766,6 @@ reports item; 28 is the recurring cleanup.
       design claim if the project is handed over, and the empty diff makes
       every later phase confident in `recompute_canonical`.
 
-37. **Refurbish historical data from evidence already stored** (maintenance +
-    import + reports; phase 3, step 2). The log already contains
-    facts we do not use: tags carry workout targets, illness recovery and race
-    days, descriptions describe interval sessions, and big races anchor
-    seasons. The point is to fill empty fields and propose corrections, never
-    to invent facts.
-    - **Sequence**: the Runalyze import has landed, so the tags and comments are
-      complete; the audit is read-only and can start now. Proposals that need
-      the activity edit surface wait for the landed `activity edit` CLI.
-    - **Audit first (done 2026-11-24)**: `maintenance audit [--output FILE]`
-      writes the read-only Markdown report: field coverage per year, raw
-      payload keys without a canonical home, tag meanings, interval-like
-      descriptions, elevation/trail evidence, race evidence, classification
-      gaps, periods/illness and the review queue. On the real DB: 4,149
-      activities; 289 unmapped raw keys; 195 unmapped tags; 1,227 unclassified
-      activities; 41 NxM and 24 ladder interval descriptions; 41 trail
-      candidates (31 by elevation, 16 by tag); 65 `race`-method activities and
-      37 official results; 4 illness-tagged days outside an illness period;
-      19 open `ambiguous_match` items. Report: `/tmp/opencode/historical-audit.md`
-      (re-runnable; not committed). The proposal rules below wait for the
-      landed edit surface and the lab calibrations.
-    - **Workout classification** (import + maintenance): parse explicit
-      interval patterns in `description` and the Runalyze tags (`sub
-      threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`, rep lengths)
-      into method/target proposals. High-confidence proposals fill an empty
-      classification with a `comment`/`tag` source; conflicting or weaker ones
-      extend the existing `workout_classification` review item, never a new
-      queue. Do not reconstruct rep rows from text until the audit shows the
-      comments are structured enough.
-    - **Trail candidates** (maintenance): combine session and lap elevation
-      (the existing ≥40 m/km rule), `sub_sport` (`trail`, `mountain`), the
-      `Trail` tag and route names; open `consistency` review items instead of
-      changing the sport automatically. Calibrate the threshold on the 31
-      measured candidates first.
-    - **Pace/HR outliers** (import): fit the steady-run pace/HR relationship
-      (robust, per year or a rolling window) and open a review item for extreme
-      residuals. Exclude trail/race/interval sessions and heat/elevation
-      explanations; a first pass at 3.5 MAD / 12 bpm flagged 37 gross points,
-      many of them legitimate, so calibrate on the steady subset before
-      enabling it.
-    - **Illness candidates** (maintenance): `krank`, `verkühlt`, `Infekt`,
-      `Magen-Darm`, `Fieber`, `Grippe`, `erkältet` are active evidence;
-      `wieder gesund` closes a range; `schlapp` is ignored. Compare the
-      observed days with `training_periods` and open `period_candidate` review
-      items for gaps or extensions; never write a period automatically.
-    - **Season labels** (maintenance + reports): label the three existing
-      seasons with their goal race first. For years with no `SEASON_START`,
-      propose a season from the clear A-race (`RACE_A`/priority, `race`/
-      `Raceday` tags, distance/name) as a `season_candidate`; do not derive a
-      build start silently.
-    - **Manual surface**: accepted candidates write manual values through the
-      activity edit CLI or `period add` and land in `edit_log`.
-      Review is the default; auto-fill only for high-confidence empty
-      classifications.
-    - **Health score** (reports; rides on this audit): one view of data trust —
-      open review items by category, duplicate count, and per-field/per-year
-      coverage — as a dashboard card with a CLI equivalent, so phase 3 has a
-      number that can go down. It reads existing data; no schema change.
-    - **Separate**: Gmap route identity (931 rows, 528 IDs) is route coverage,
-      not classification; keep it as its own item if it is taken up.
-    - **Tag meaning** lives in item 43; this audit lists the unmapped tags
-      first, and the proposals read that lexicon instead of hard-coded words.
-
 39. **Running-only load card** (docs; done 2026-11-19). The card is in
     `docs/METRICS.md` under Promoted, with its load row in the reference
     catalogue; the reports code landed in `66dd91b` and the evidence is
@@ -901,31 +868,6 @@ reports item; 28 is the recurring cleanup.
       (item 37) show the remaining count.
     - **Acceptance**: a dry run lists the candidate pairs on a copy, the known
       sheet duplicates drop out of the totals, and a re-run is a no-op.
-
-43. **Tag lexicon** (core + import + maintenance; phase 3, after item 49).
-    Tags already carry facts the rules need — workout targets (`sub
-    threshold`, `LT1`, `Longjog`, `Regeneration`, `strides`), rep lengths
-    (`6'`, `3'`, `10'`), illness (`krank`, `verkühlt`, `Infekt`, `Magen-Darm`,
-    `wieder gesund`), race days (`Raceday`, `race`) and the sheet's
-    training-area labels (`w`, `m`, `wb`, `a`, `t`, `I`) — but their meaning
-    is implicit in code or prose. Athlete 2 is the tag-first case: tags on 19
-    of 30 runs, no names, empty notes.
-    - **Order**: item 49 maps the source's own workout type first — that is
-      the reliable classification signal. The lexicon then covers what the
-      type cannot say: rep lengths, illness, race day and context tags
-      (`Commute`, `Rucksack`, `GAT1`, people).
-    - **Shape**: one lexicon that maps a stored tag (normalized) to a meaning
-      and the rule it feeds, plus an audit that lists every stored tag as
-      mapped or **unmapped**. Start as a code-level module beside
-      `hobbyjogging_import.sheet_codes`; add a `tag_semantics` table only when a
-      second athlete's tags must be mapped without a release (the trigger, not
-      before).
-    - **Consumers**: item 37's classification, illness and season proposals
-      read the lexicon instead of hard-coded word lists; no rule invents a
-      meaning for an unmapped tag.
-    - **Acceptance**: the audit accounts for every stored tag, the proposals
-      use the lexicon, and adding a tag meaning is a one-line change with a
-      test.
 
 44. **Sync covers every configured source** (import + maintenance + reports;
     done 2026-11-24). `hobbyjogging-import sync` runs the whole configured

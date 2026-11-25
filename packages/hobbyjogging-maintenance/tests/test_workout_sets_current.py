@@ -38,9 +38,12 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         *,
         code=None,
         sheet=True,
+        sport="run",
         avg_hr=None,
         intensity=None,
         rpe=None,
+        description="",
+        tags=None,
         runalyze_type=None,
     ):
         self.counter += 1
@@ -56,10 +59,12 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         )
         values = {
             "local_date": "2026-10-01",
-            "sport": "run",
+            "sport": sport,
             "name": name,
             "duration_s": 3600,
         }
+        if description:
+            values["description"] = description
         if avg_hr is not None:
             values["avg_hr"] = avg_hr
         if intensity is not None:
@@ -74,6 +79,12 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         )
         if sheet:
             self.writer.link_activity_source(activity_id, record_id)
+        if tags:
+            self.writer.replace_activity_tags(
+                activity_id,
+                tags,
+                source="runalyze",
+            )
         if runalyze_type is not None:
             runalyze_record = self.writer.upsert_source_record(
                 source="runalyze",
@@ -318,6 +329,184 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
         self.assertEqual(1, run.counts["reclassified"])
         self.assertEqual(
             (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_longjog_tag_fills_an_empty_classification(self):
+        activity_id = self._activity("Easy", sheet=False, tags=["Longjog"])
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_tag"])
+        self.assertEqual(
+            (["long_run"], ["base"]),
+            self._sets(activity_id),
+        )
+        self.assertEqual(
+            [("long_run", "tag", 0)],
+            self._sources(activity_id),
+        )
+
+    def test_a_subthreshold_tag_fills_an_empty_classification(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            tags=["sub threshold"],
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_tag"])
+        self.assertEqual(
+            (["intervals"], ["subthreshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_an_explicit_interval_description_fills_an_empty_classification(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="5x1000 interval",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_comment"])
+        self.assertEqual(
+            (["intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+        self.assertEqual(
+            [("intervals", "comment", 0)],
+            self._sources(activity_id),
+        )
+
+    def test_a_ladder_description_is_recognized(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="Einlaufen, 3-6-9-6-3min Intervalle ~167",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_comment"])
+        self.assertEqual(
+            (["intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_tag_wins_over_a_description(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="Tempo run",
+            tags=["LT1"],
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_tag"])
+        self.assertEqual(0, run.counts["from_comment"])
+        self.assertEqual(
+            (["intervals"], ["lt1"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_classifier_proposal_wins_over_evidence(self):
+        activity_id = self._activity(
+            "Tempo",
+            sheet=False,
+            rpe=4,
+            tags=["Longjog"],
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["derived"])
+        self.assertEqual(0, run.counts["from_tag"])
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_an_unmapped_or_non_workout_tag_stays_empty(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            tags=["Wienerberg", "verkühlt"],
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["no_proposal"])
+        self.assertEqual(([], []), self._sets(activity_id))
+
+    def test_a_strength_rep_is_not_an_interval_description(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="Schlosspark-Stiegen +3x15 Liegestütz",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["no_proposal"])
+        self.assertEqual(([], []), self._sets(activity_id))
+
+    def test_marathon_pace_in_a_description_uses_the_marathon_target(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="7x700 Marathontempo ohne Pausen",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_comment"])
+        self.assertEqual(
+            (["continuous"], ["marathon"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_distance_rep_is_an_interval_description(self):
+        activity_id = self._activity(
+            "Easy",
+            sheet=False,
+            description="4x400m",
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_comment"])
+        self.assertEqual(
+            (["intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_non_run_tag_is_not_classified(self):
+        activity_id = self._activity(
+            "Swim",
+            sheet=False,
+            sport="swim",
+            tags=["progressiv"],
+        )
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["no_proposal"])
+        self.assertEqual(([], []), self._sets(activity_id))
+
+    def test_a_tag_sourced_set_is_an_input_on_the_second_run(self):
+        activity_id = self._activity("Easy", sheet=False, tags=["Longjog"])
+
+        self._run()
+        second = self._run()
+
+        self.assertEqual(1, second.counts["already_classified"])
+        self.assertEqual(0, second.counts["from_tag"])
+        self.assertEqual(
+            (["long_run"], ["base"]),
             self._sets(activity_id),
         )
 

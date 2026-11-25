@@ -44,6 +44,7 @@ from .links import (
 )
 from .quality import (
     CONFLICT,
+    CONSISTENCY,
     CREATE_ACTIVITY,
     WORKOUT_CLASSIFICATION,
     refresh_activity_quality,
@@ -435,6 +436,8 @@ class TriageRunner:
             keys.append("(k) classify")
         if item["category"] == CREATE_ACTIVITY:
             keys.append("(c)reate activity")
+        if item["category"] == CONSISTENCY:
+            keys.append("(a)ccept suggestion")
         if self._candidates(item):
             keys.append(f"(1-{len(self._candidates(item))}) choose")
         keys.extend(["(i)nspect", "(o)pen"])
@@ -496,6 +499,9 @@ class TriageRunner:
 
         if answer == "c" and item["category"] == CREATE_ACTIVITY:
             return self._create_activity(item)
+
+        if answer == "a" and item["category"] == CONSISTENCY:
+            return self._accept_consistency(item)
 
         if answer == "t":
             return self._force_intervals(item)
@@ -640,6 +646,47 @@ class TriageRunner:
             self.print(
                 f"  quality: still flagged — {application.describe_findings()}"
             )
+
+    def _accept_consistency(self, item) -> bool:
+        """Accept a consistency suggestion by writing it as a manual value."""
+        if item["category"] != CONSISTENCY:
+            self.print("  this item has no suggestion")
+            return False
+        if not item["activity_id"]:
+            self.print("  this item has no linked activity")
+            return False
+
+        suggested = str(item_context(item).get("suggested") or "")
+        if not suggested:
+            self.print("  no suggested value in this item")
+            return False
+
+        try:
+            application = apply_manual_edit(
+                self.writer,
+                activity_id=item["activity_id"],
+                field="sport",
+                value=suggested,
+                resolve_item_id=item["id"],
+                note=self.pending_note or "triage: accepted evidence suggestion",
+                source="triage",
+            )
+        except ValueError as exc:
+            self.print(f"  error: {exc}")
+            return False
+
+        self.writer.connection.commit()
+        self._count("edited")
+        self.print(f"  {application.describe()}")
+        self.print(f"  resolved #{item['id']}")
+        if application.okay:
+            self.print("  quality: ok")
+        else:
+            self.print(
+                f"  quality: still flagged — "
+                f"{application.describe_findings()}"
+            )
+        return True
 
     def _classify_workout(self, item) -> bool:
         """Workout classification: pick a proposal, merge, or type a set.

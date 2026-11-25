@@ -91,7 +91,8 @@ writes the report, otherwise it goes to stdout.
 
 `run --all` runs every backfill that is not applied yet. `sync.sh` runs the six
 idempotent recomputes after a successful sync — `workout_sets_current`,
-`workout_classification_queue`, `athlete_thresholds_current`,
+`workout_classification_queue`, `illness_candidates_current`,
+`trail_candidates_current`, `athlete_thresholds_current`,
 `activity_zone_configs_current`, `training_periods_current` and
 `race_links_current` — and skips them with `--no-classify`; backfills stay
 deliberate.
@@ -129,9 +130,11 @@ Recomputes (idempotent, run every time):
 | `derived_zone_configs_current` | Build local HR/pace zone configs and lap zone times from manual threshold snapshots; Intervals wins. |
 | `training_periods_current` | Derive seasons, illness ranges and notes from the Intervals event notes. |
 | `race_links_current` | Match race events (and official results) to activities and derive the `race` method. |
-| `workout_sets_current` | Re-derive classifier-sourced methods/targets from the current name/RPE/intensity/reps and fill unclassified gaps; manual, sheet, Runalyze-type and imported sets are left alone (`sheet`-only proposals carry `source='sheet'`). |
+| `workout_sets_current` | Re-derive classifier-sourced methods/targets from the current name/RPE/intensity/reps and fill unclassified gaps from the classifier, sheet, Runalyze type, tag lexicon or an explicit description; manual, sheet, Runalyze-type and imported sets are left alone (`sheet`-only proposals carry `source='sheet'`, tag/comment proposals `tag`/`comment`). |
 | `derived_intervals_current` | Infer WORK/RECOVERY reps from device laps when no measured set exists; `source='derived'`, never overwriting a measured set. |
 | `workout_classification_queue` | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply (`k` in triage). |
+| `illness_candidates_current` | Open non-hiding `period_candidate` items for illness-tagged days not covered by a stored illness period; `wieder gesund` closes the range. Never writes a period. |
+| `trail_candidates_current` | Open non-hiding `consistency` items suggesting `trail_run` from elevation (≥40 m/km), sub-sport, the `Trail` tag and a supporting route name. Never changes the sport. |
 | `verify_canonical` | Diff every owned canonical field against its manual value, owner patch or pointer without writing. |
 | `recompute_canonical` | Re-project every owned canonical field from its inputs; never re-decides ownership. |
 | `runalyze_load_current` | Fill an empty `training_load` from Runalyze's `fit_trimp`/`trimp`; Intervals always wins in a mixed database. |

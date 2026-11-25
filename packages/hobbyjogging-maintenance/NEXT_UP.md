@@ -4,6 +4,12 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Illness and trail candidates.** `illness_candidates_current` opens
+  non-hiding `period_candidate` items for illness tags outside a period
+  (7 on a copy; `wieder gesund` closes the range); `trail_candidates_current`
+  opens non-hiding `consistency` items suggesting `trail_run` from elevation,
+  sub-sport, the `Trail` tag and a supporting route name (41 on a copy).
+  Neither writes the proposed value.
 - **Session metrics.** `activity_metrics_v1` fills the session-average row
   from the stored payloads and the FIT archive (the archive is re-read for the
   old FIT payloads). The audit gained a coverage/unit/conflict section with a

@@ -61,6 +61,30 @@ Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
   With no classifier evidence the stored set is kept (`stale_no_evidence`).
   A reclassification opens no review item; it is a projection update.
 
+### Historical evidence
+
+- `hobbyjogging_import.tag_lexicon` is the one normalized tag → meaning table:
+  workout sets, illness/recovery, race/trail evidence, rep lengths, sheet area
+  codes, context and deliberate ignores. The audit now accounts for every
+  stored tag as mapped or unmapped (157 mapped / 59 unmapped on the real DB;
+  the rest are places and people), and adding a meaning is one entry.
+- `workout_sets_current` fills an empty run classification from a mapped tag
+  (`source='tag'`) or an explicit description (`source='comment'`) after the
+  classifier/sheet/Runalyze-type proposals; a tag wins over a comment, and
+  generic notes or ambiguous strength reps do not propose. On a copy this
+  filled 32 historical descriptions, none of the false `3x15 Liegestütz` or
+  non-run kinds.
+- `illness_candidates_current` opens non-hiding `period_candidate` items for
+  illness tags not covered by a stored period; `wieder gesund` closes the
+  range and overlapping ranges merge. On a copy: 7 candidates from the
+  `verkühlt` tags, none written as a period.
+- `trail_candidates_current` opens non-hiding `consistency` items suggesting
+  `trail_run` from elevation (≥40 m/km), sub-sport, the `Trail` tag and a
+  supporting route name; a route name alone is not enough. On a copy: 41
+  candidates. Triage `(a)ccept suggestion` writes the sport as manual.
+- `consistency` and `period_candidate` are new review categories; both are
+  non-hiding, so a suggestion never removes an activity from reports.
+
 ### Time and gear
 
 - The activity table and session report display the recorded local start

@@ -108,6 +108,38 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(1, counters["ignored"])
         self.assertEqual("ignored", self._item()["status"])
 
+    def test_consistency_accept_writes_the_suggested_sport(self):
+        item_id, _ = self.writer.record_review_item(
+            category="consistency",
+            detail="run looks like a trail run: 50 m/km",
+            context={
+                "rule": "trail_candidate",
+                "suggested": "trail_run",
+                "current_sport": "run",
+                "evidence": ["50 m/km"],
+            },
+            severity="info",
+            fingerprint="fp-trail",
+            activity_id="a1",
+        )
+        self.conn.commit()
+
+        runner, lines, counters = self._runner(
+            ["a"],
+            run_kwargs={"category": "consistency"},
+        )
+
+        self.assertEqual(1, counters["edited"])
+        self.assertEqual(
+            "resolved", self.writer.review_item(item_id)["status"]
+        )
+        sport = self.conn.execute(
+            "SELECT sport FROM activities WHERE id = 'a1'"
+        ).fetchone()["sport"]
+        self.assertEqual("trail_run", sport)
+        self.assertIn("set sport: run → trail_run (manual)", "\n".join(lines))
+        self.assertIn("(a)ccept suggestion", "\n".join(lines))
+
     def test_pending_note_is_attached_to_next_close(self):
         self._runner(["n", "looks bogus", "r"])
 

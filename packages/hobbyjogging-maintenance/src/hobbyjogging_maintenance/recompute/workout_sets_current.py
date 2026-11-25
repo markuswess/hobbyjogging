@@ -18,6 +18,7 @@ from ..registry import task
 from ..workouts import (
     classifier_proposal,
     disagrees,
+    evidence_proposal,
     is_easy_default,
     runalyze_proposal,
     scoped_activities,
@@ -34,6 +35,8 @@ _COUNT_ORDER = (
     "already_classified",
     "stale_no_evidence",
     "from_runalyze_type",
+    "from_tag",
+    "from_comment",
     "conflict",
     "no_proposal",
 )
@@ -105,12 +108,22 @@ def workout_sets_current(context: TaskContext) -> None:
                 methods, targets = runalyze.methods, runalyze.targets
                 proposal_source = "runalyze"
                 context.count("from_runalyze_type")
-            elif is_easy_default(activity, sheet):
-                methods, targets = {"continuous"}, {"base"}
-                proposal_source = SOURCE
             else:
-                context.count("no_proposal")
-                continue
+                evidence, evidence_source = evidence_proposal(activity)
+                if evidence is not None and not evidence.empty:
+                    methods, targets = evidence.methods, evidence.targets
+                    proposal_source = evidence_source
+                    context.count(
+                        "from_tag"
+                        if evidence_source == "tag"
+                        else "from_comment"
+                    )
+                elif is_easy_default(activity, sheet):
+                    methods, targets = {"continuous"}, {"base"}
+                    proposal_source = SOURCE
+                else:
+                    context.count("no_proposal")
+                    continue
         elif classifier_has and not sheet_has:
             methods, targets = classifier.methods, classifier.targets
             proposal_source = SOURCE

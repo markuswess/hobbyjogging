@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Tag lexicon and evidence proposals.** `tag_lexicon.py` maps stored tags to
+  workout sets, illness/recovery, race/trail, rep lengths, area codes and
+  context; the audit accounts for every tag (157 mapped / 59 unmapped on the
+  real DB). `workout_sets_current` fills an empty run classification from a
+  tag (`source='tag'`) or an explicit description (`source='comment'`), and
+  triage `(a)ccept` writes a consistency suggestion.
 - **Session metrics.** FIT, Intervals, Runalyze and sheet session averages are
   extracted into `activity_metrics` (cadence, stride, dynamics, respiration,
   power, calories, training effect, GAP, altitude), normalized to canonical

@@ -883,12 +883,47 @@ the row's first source cannot undo a higher-authority value.
 Metrics: cadence 172, stride 1.29 m, VO 94 mm, GCT 239 ms (35 %), balance 48.2 %, VR 7.4 %, respiration 33.7, TE 3.7
 ```
 
+## Tags and evidence
+
+`hobbyjogging_import.tag_lexicon` is the one table that turns a stored tag into
+a meaning: a workout set (`sub threshold` → intervals + subthreshold, `LT1`,
+`Longjog`, `Regeneration`, `strides`, `Intervalle`, `Tempolauf`, …), illness
+and recovery, a race or trail marker, a rep length (`6'`, `400m`, `1km`), a
+sheet area code, context (gear, weather, fatigue, people) or a deliberate
+ignore (`schlapp`). The audit's tag table lists every stored tag as mapped or
+`unmapped`; an unmapped tag is never guessed. Adding a meaning is one entry in
+`TAG_MEANINGS` plus a test. Unmapped place and person tags are expected.
+
+The lexicon feeds the evidence proposals:
+
+- `workout_sets_current` fills an **empty** run classification from a mapped
+  tag (`source='tag'`) or an explicit description (`source='comment'`, e.g.
+  `5x1000 interval` or `3-6-9-6-3min Intervalle`). A tag wins over a
+  description, a classifier/sheet/Runalyze-type proposal wins over both, and a
+  manual, sheet, Runalyze-type or imported set is never overwritten. A
+  generic note ("easy run") or an ambiguous rep such as `3x15 Liegestütz` is
+  not enough.
+- `illness_candidates_current` groups illness-tagged days, lets
+  `wieder gesund` close a range, and opens a non-hiding `period_candidate`
+  item when the range is not covered by a stored illness period. It never
+  writes a period; use `period add`.
+- `trail_candidates_current` combines session/lap elevation (≥40 m/km),
+  `sub_sport` trail/mountain, the `Trail` tag and a supporting route name into
+  a non-hiding `consistency` item suggesting `trail_run`; a route name alone is
+  not enough. It never changes the sport.
+
+Both recomputes run in `sync.sh` (`--no-classify` also skips them) and close
+their items when the underlying evidence disappears or the period/sport is
+decided.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*
 in the canonical `review_items` table. Categories are `ambiguous_match`,
-`ambiguous_race`, `ambiguous_equipment`, `create_activity`, `field_conflict`,
-`quality`, `duplicate`, `manual_flag`, and `workout_classification`. Every importer
+`ambiguous_race`, `ambiguous_equipment`, `create_activity`, `consistency`,
+`field_conflict`, `period_candidate`, `quality`, `duplicate`, `manual_flag`,
+and `workout_classification`. `consistency` and `period_candidate` are
+non-hiding suggestions: they never remove an activity from reports. Every importer
 runs a small canonical quality rule set (zero duration, missing distance for
 run/ride sports, implied pace outside a plausible per-sport window, and
 moving time differing from recording time by more than
@@ -1001,6 +1036,11 @@ written to the database immediately; quitting (or Ctrl-C) prints a summary.
   activities, by matching the manifest's `beginTimestamp` to the canonical
   start; items without a manifest say "no Garmin activity linked".
   `review show` prints the same links.
+- `(a)` appears on `consistency` items and writes the suggested value (for
+  example `trail_run`) as a manual sport, resolving the item and re-running
+  the quality rules. A `period_candidate` item carries an illness range; add
+  it with `period add --kind illness --start ... --end ...` and then resolve
+  the item.
 - `(e)` manually fixes one value. The field prompt suggests the rule's field
   (`zero_duration` → duration, `zero_distance` → distance, `implied_pace` →
   sport); values parse as `46:20`, `1:02:03`, or seconds / `8.2km`, `8200m`,

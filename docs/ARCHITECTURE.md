@@ -265,6 +265,10 @@ Source ingestion and the review queue.
 - `metrics.py` — session-average extraction from Intervals, Runalyze and the
   sheet payloads, normalized to the canonical units the FIT parser already
   emits; the importer and the backfill share it.
+- `tag_lexicon.py` — the one tag → meaning table: workout sets, illness and
+  recovery, race/trail evidence, rep lengths, sheet area codes, context and
+  ignored notes. The audit, classification, illness and trail proposals read
+  it; an unmapped tag stays unmapped and no rule invents a meaning.
 - `editing.py` — shared manual-edit application used by `review edit`,
   `activity edit` and triage: scalar values, whole sets, clears, conflict and
   classification closure, the `edit_log` row and the quality re-check.
@@ -319,8 +323,8 @@ changes.
 - `runner.py` — one transaction per run, dry run = run then roll back,
   bookkeeping in `maintenance_runs`.
 - `store.py` — reads and writes for `data_migrations` and `maintenance_runs`.
-- `workouts.py` — classifier/sheet proposals shared by the classification
-  tasks.
+- `workouts.py` — classifier, sheet, Runalyze-type, tag and comment proposals
+  shared by the classification tasks.
 - `backfills/activity_weather_v1.py` — `activity_weather` from the stored
   payloads.
 - `backfills/activity_metrics_v1.py` — `activity_metrics` from the stored
@@ -337,6 +341,10 @@ changes.
   classifier-sourced sets after a rename and fills unclassified gaps).
 - `recompute/workout_classification_queue.py` —
   `workout_classification_queue`.
+- `recompute/evidence_candidates.py` — `illness_candidates_current` (opens
+  `period_candidate` items for illness tags outside a stored period) and
+  `trail_candidates_current` (opens `consistency` items suggesting
+  `trail_run`). Both are non-hiding and never write the proposed value.
 - `cli.py` — `list`, `status`, `run`.
 
 ## Canonical data model
@@ -489,6 +497,11 @@ Workout classification is set-based and orthogonal:
   `vo2max`, `speed`, `marathon`) makes a session quality;
   base/recovery only is non-quality; no values is unknown. Strides never make
   a session quality by themselves.
+- **Sources and evidence** — importer, sheet and Runalyze-type sets are
+  inputs; a classifier-sourced set is re-derived. An empty run classification
+  may be filled from a mapped workout tag or an explicit description, with
+  `source='tag'` or `source='comment'`. Manual, sheet, Runalyze-type and
+  imported sets are never overwritten.
 
 Text fields have fixed roles:
 
@@ -718,13 +731,17 @@ instead of a duplicate.
 ## Review workflow
 
 Review categories: `ambiguous_match`, `ambiguous_race`,
-`ambiguous_equipment`, `create_activity`, `field_conflict`, `quality`,
-`duplicate`, `manual_flag`, `workout_classification`.
+`ambiguous_equipment`, `create_activity`, `consistency`, `field_conflict`,
+`period_candidate`, `quality`, `duplicate`, `manual_flag`,
+`workout_classification`.
 
-`workout_classification` and `ambiguous_equipment` items are `info`-level: the
-activity's data is fine, it just has no decided workout method/target or an
-uncertain gear identity. Neither hides an activity from reports (unlike the
-other categories). `create_activity` holds a summary row the policy chose to
+`workout_classification`, `ambiguous_equipment`, `consistency` and
+`period_candidate` items are `info`-level: the activity's data is fine, it
+just has no decided workout method/target, an uncertain gear identity, a
+trail-evidence suggestion, or an illness range that is not yet a stored
+period. None hides an activity from reports (unlike the other categories).
+Triage `(a)ccept suggestion` writes a `consistency` item's suggested sport as
+a manual value. `create_activity` holds a summary row the policy chose to
 review rather than create. Triage
 `(k)` shows the classifier and sheet proposals and writes the chosen sets as
 manual values (`1` classifier, `2` sheet, `m` merge, `n` leave unclassified).

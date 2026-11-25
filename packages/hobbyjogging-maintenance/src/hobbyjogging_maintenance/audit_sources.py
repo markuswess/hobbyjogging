@@ -6,23 +6,10 @@ import json
 import sqlite3
 from collections import Counter
 
-from hobbyjogging_core.classify import (
-    COOLDOWN_WORDS,
-    LT1_WORDS,
-    RACE_WORDS,
-    SUBT_WORDS,
-    TEMPO_WORDS,
-    WARMUP_WORDS,
-)
 from hobbyjogging_import.derive import FIELD_MAPS, SHEET_MAPS
+from hobbyjogging_import.tag_lexicon import meaning_label
 
-from .audit_common import (
-    IGNORED_WORDS,
-    INJURY_WORDS,
-    RECOVERED_WORDS,
-    SHEET_AREA_TAGS,
-    cell,
-)
+from .audit_common import cell
 
 KNOWN_KEYS = {
     "intervals": {
@@ -239,45 +226,7 @@ def tag_audit(connection: sqlite3.Connection) -> list[dict]:
 
 
 def _tag_meaning(tag: str) -> str:
-    token = " ".join(str(tag or "").strip().lower().split())
-    if token in SHEET_AREA_TAGS:
-        return "sheet area code"
-    if (
-        token in SUBT_WORDS
-        or token in LT1_WORDS
-        or token == "sub threshold"
-        or token.startswith("subt")
-    ):
-        return "subT / LT1"
-    if token in {"longjog", "long run", "longrun"}:
-        return "long run"
-    if token in {"regeneration", "recovery", "regenerativ"}:
-        return "recovery"
-    if token in {"strides", "stride"}:
-        return "strides"
-    if token in RACE_WORDS or token in {"raceday", "race day"}:
-        return "race"
-    if token in {"intervalle", "intervals", "interval"}:
-        return "intervals"
-    if token in TEMPO_WORDS or token in {"tempolauf"}:
-        return "tempo / threshold"
-    if token == "fartlek":
-        return "fartlek"
-    if "trail" in token:
-        return "trail"
-    if token in INJURY_WORDS:
-        return "illness"
-    if token in RECOVERED_WORDS:
-        return "recovered"
-    if token in IGNORED_WORDS:
-        return "ignored (fatigue)"
-    for word in WARMUP_WORDS:
-        if word in token:
-            return "warm-up"
-    for word in COOLDOWN_WORDS:
-        if word in token:
-            return "cool-down"
-    return "unmapped"
+    return meaning_label(tag)
 
 
 def tag_section(tags: list[dict]) -> list[str]:

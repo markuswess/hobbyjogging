@@ -34,6 +34,8 @@ from hobbyjogging_core.model import (
 NON_HIDING_REVIEW_CATEGORIES = (
     "workout_classification",
     "ambiguous_equipment",
+    "consistency",
+    "period_candidate",
 )
 
 

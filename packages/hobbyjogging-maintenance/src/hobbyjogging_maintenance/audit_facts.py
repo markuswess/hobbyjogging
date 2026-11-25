@@ -8,8 +8,9 @@ from collections import Counter
 
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_import.runalyze_types import audit_types
+from hobbyjogging_import.tag_lexicon import lookup_tag, normalize_tag
 
-from .audit_common import RECOVERED_WORDS, INJURY_WORDS, cell, shorten
+from .audit_common import cell, shorten
 
 TRAIL_M_PER_KM = 40.0
 TRAIL_SAMPLE = 40
@@ -530,10 +531,14 @@ def period_audit(connection: sqlite3.Connection) -> dict:
     tagged_days: dict[str, set[str]] = {}
     recovered_days: set[str] = set()
     for row in tag_rows:
-        token = " ".join(str(row["tag"]).strip().lower().split())
-        if token in INJURY_WORDS:
-            tagged_days.setdefault(token, set()).add(row["local_date"])
-        elif token in RECOVERED_WORDS:
+        meaning = lookup_tag(row["tag"])
+        if meaning is None:
+            continue
+        if meaning.kind == "illness":
+            tagged_days.setdefault(
+                normalize_tag(row["tag"]), set()
+            ).add(row["local_date"])
+        elif meaning.kind == "recovered":
             recovered_days.add(row["local_date"])
 
     def inside_illness(day: str) -> bool:
