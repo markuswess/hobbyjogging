@@ -191,10 +191,11 @@ class Vo2maxSample:
 
 @dataclass
 class Vo2maxPoint:
-    """Daily effective VO2max plus its 42- and 182-day EWMAs."""
+    """Daily effective VO2max plus its 7-, 42- and 182-day EWMAs."""
 
     date: date
     value: float | None = None
+    avg_7: float | None = None
     avg_42: float | None = None
     avg_182: float | None = None
 

@@ -974,8 +974,8 @@ class OverviewChartTests(unittest.TestCase):
             ]
         )
         vo2max = [
-            Vo2maxPoint(D, 65.0, 65.0, 65.0),
-            Vo2maxPoint(date(2026, 1, 2), 65.5, 65.2, 65.2),
+            Vo2maxPoint(D, 65.0, 65.0, 65.0, 65.0),
+            Vo2maxPoint(date(2026, 1, 2), 65.5, 65.4, 65.2, 65.2),
         ]
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1148,7 +1148,7 @@ class CrosshairTests(unittest.TestCase):
             start=D,
             end=D,
             today=D,
-            vo2max_points=[Vo2maxPoint(D, 52.0, 52.0, 52.0)],
+            vo2max_points=[Vo2maxPoint(D, 52.0, 52.0, 52.0, 52.0)],
             as_html=True,
         )
         layout = _layout_of(html)
@@ -2611,8 +2611,8 @@ def vo2max_methods():
     latest = date(2026, 1, 2)
     return Vo2maxMethods(
         all_runs=[
-            Vo2maxPoint(D, 60.0, 59.5, 59.0),
-            Vo2maxPoint(latest, None, 59.6, 59.1),
+            Vo2maxPoint(D, 60.0, 59.7, 59.5, 59.0),
+            Vo2maxPoint(latest, None, 59.65, 59.6, 59.1),
         ],
         garmin=[
             GarminVo2maxDevice(
@@ -2631,8 +2631,8 @@ def vo2max_methods():
             ),
         ],
         runalyze=[
-            Vo2maxPoint(D, None, 61.0, 60.5),
-            Vo2maxPoint(latest, None, 61.2, 60.6),
+            Vo2maxPoint(D, None, 61.0, 60.5, 60.2),
+            Vo2maxPoint(latest, None, 61.2, 60.6, 60.3),
         ],
         races=[(D, 62.0)],
     )

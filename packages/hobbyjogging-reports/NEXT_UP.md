@@ -14,7 +14,9 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
   last completed day and the report says "No run recorded today; the EWMAs end
   <date>." A run today keeps the window through today; a ride today does not
   end it. The efficiency and VO2max figures use the same end date, and the
-  heading and trailing notes name it.
+  heading and trailing notes name it. The effective VO2max is a row of the
+  same table with 7/42/182-day EWMAs (it was a sentence below the table) and
+  no planned value.
 
 - **Marathon build comparison.** `reports.sh marathon-builds` (and a
   Performance-tab card) puts the N calendar weeks (default 18) before each

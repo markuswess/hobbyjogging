@@ -200,6 +200,8 @@ def _ewma_cell(row: EwmaRow, tau: int) -> str:
         return f"{value:.0f}"
     if row.kind == "efficiency":
         return f"{value:.2f}"
+    if row.kind == "vo2max":
+        return f"{value:.1f}"
 
     return f"{value:g}"
 
@@ -209,7 +211,7 @@ def _planned_cell(
     planned: PlannedOverview,
     weeks: float,
 ) -> str:
-    if row.kind == "efficiency" or weeks <= 0:
+    if row.kind in ("efficiency", "vo2max") or weeks <= 0:
         return "-"
 
     value = getattr(planned, row.key) / weeks
@@ -284,6 +286,20 @@ def overview_report(
             )
         )
 
+    if latest_vo2max is not None and latest_vo2max.avg_42 is not None:
+        rows.append(
+            EwmaRow(
+                "vo2max",
+                "Effective VO2max",
+                "vo2max",
+                {
+                    7: latest_vo2max.avg_7,
+                    42: latest_vo2max.avg_42,
+                    182: latest_vo2max.avg_182,
+                },
+            )
+        )
+
     planned_start = today + timedelta(days=1)
     planned_end = today + timedelta(days=future_days)
     events = [
@@ -343,14 +359,9 @@ def overview_report(
         "Steady efficiency is the trailing weighted sum(distance) / "
         f"sum(excess beats), in {EFFICIENCY_UNIT}, for non-quality runs "
         f"in the {STEADY_BAND_LABEL} band; it has no planned value.",
+        "",
+        "Effective VO2max (mL/kg/min) is the pace × HR/HRmax estimate over "
+        "all runs; it has no planned value.",
     ])
-
-    if latest_vo2max is not None and latest_vo2max.avg_42 is not None:
-        lines.extend([
-            "",
-            "Effective VO2max (pace × HR/HRmax, all runs): "
-            f"42-day EWMA {latest_vo2max.avg_42:.1f}, "
-            f"182-day EWMA {latest_vo2max.avg_182:.1f}.",
-        ])
 
     return "\n".join(lines)

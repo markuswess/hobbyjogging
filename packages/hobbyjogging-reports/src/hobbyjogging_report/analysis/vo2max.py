@@ -7,7 +7,7 @@ max-HR snapshot in force on the day, and is guarded to a physiological
 fraction and a running speed.
 
 The daily value is the mean of that day's runs, carried forward between run
-days so the 42- and 182-day EWMAs describe the metric's standing value.
+days so the 7-, 42- and 182-day EWMAs describe the metric's standing value.
 Garmin and Runalyze values are comparison series, never blended in: both are
 smoothed with the same 42/182-day EWMAs, while Garmin keeps its raw readings
 as well.
@@ -38,6 +38,7 @@ from .common import RUN_TYPES
 from .devices import device_label
 from .races import RaceResult, official_pair
 
+VO2MAX_WEEK_DAYS = 7
 VO2MAX_SHORT_DAYS = 42
 VO2MAX_LONG_DAYS = 182
 VO2MAX_WARMUP_DAYS = 5 * VO2MAX_LONG_DAYS
@@ -174,7 +175,7 @@ def vo2max_points(
     start: date,
     end: date,
 ) -> list[Vo2maxPoint]:
-    """Daily estimate with its 42- and 182-day EWMAs from ``start`` to ``end``.
+    """Daily estimate with its 7-, 42- and 182-day EWMAs.
 
     Days without a run carry the previous value forward, so the averages
     describe the metric's standing value rather than a zero-filled gap.
@@ -194,12 +195,18 @@ def vo2max_points(
         return []
 
     daily, days, carried = series
+    week = ewma(
+        carried,
+        alpha_from_time_constant(VO2MAX_WEEK_DAYS),
+        initial=carried[0],
+    )
     short, long = _ewma_pair(carried)
 
     return [
         Vo2maxPoint(
             date=day,
             value=daily.get(day),
+            avg_7=week[index],
             avg_42=short[index],
             avg_182=long[index],
         )

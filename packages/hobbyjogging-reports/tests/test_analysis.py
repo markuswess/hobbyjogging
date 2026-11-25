@@ -1469,12 +1469,14 @@ class Vo2maxPointTests(unittest.TestCase):
 
         self.assertEqual([D, D + timedelta(days=1)], [p.date for p in points])
         self.assertEqual(50, points[0].value)
+        self.assertEqual(50, points[0].avg_7)
         self.assertEqual(50, points[0].avg_42)
         self.assertIsNone(points[1].value)
+        self.assertEqual(50, points[1].avg_7)
         self.assertEqual(50, points[1].avg_42)
         self.assertEqual(50, points[1].avg_182)
 
-    def test_the_short_average_moves_faster_than_the_long(self):
+    def test_the_week_average_moves_fastest(self):
         points = vo2max_points(
             [
                 Vo2maxSample(D, 50),
@@ -1484,6 +1486,7 @@ class Vo2maxPointTests(unittest.TestCase):
             D + timedelta(days=30),
         )
 
+        self.assertGreater(points[-1].avg_7, points[-1].avg_42)
         self.assertGreater(points[-1].avg_42, points[-1].avg_182)
 
     def test_starts_at_start_when_history_exists(self):

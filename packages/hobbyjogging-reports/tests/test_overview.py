@@ -1,7 +1,12 @@
 import unittest
 from datetime import date, timedelta
 
-from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
+from hobbyjogging_core.model import (
+    AthleteThreshold,
+    Event,
+    EventZoneTime,
+    WellnessDay,
+)
 from hobbyjogging_report.analysis import average_warmup_days
 from hobbyjogging_report.overview import overview_ewma, overview_report
 from support import FakeSource, activity_factory
@@ -133,6 +138,24 @@ class OverviewReportTests(unittest.TestCase):
 
         self.assertIn("Next period (avg/week)", report)
         self.assertEqual("-", _row(report, "Runs / week")[-1])
+
+    def test_vo2max_is_a_table_row_with_three_ewmas(self):
+        source = _source()
+        source._thresholds = [
+            AthleteThreshold(
+                effective_from=TODAY - timedelta(days=100),
+                sport="run",
+                max_hr=192,
+            )
+        ]
+
+        report = overview_report(source, today=TODAY, future_days=14)
+
+        self.assertEqual(
+            ["Effective VO2max", "47.1", "47.1", "47.1", "-"],
+            _row(report, "Effective VO2max"),
+        )
+        self.assertIn("Effective VO2max (mL/kg/min)", report)
 
     def test_ewmas_end_yesterday_when_today_has_no_run(self):
         source = _source_without_today_run()
