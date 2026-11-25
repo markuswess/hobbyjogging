@@ -23,7 +23,7 @@ from ..analysis import (
 from ..command_support import activity_start, resting_hr_lookup
 from ..defaults import ANALYSIS_DAYS, NSA_DAYS, RACE_DAYS, RECOVERY_DAYS
 from ..format import format_event
-from ..html import markdown_to_html
+from ..html import collapse_tables, markdown_to_html
 from ..model import AverageWindows
 from ..overview import overview_report
 from ..race_report import race_report
@@ -528,6 +528,10 @@ def build_dashboard(
                     for event in planned_events
                     if event.id and event.type
                 },
+                review_hrefs={
+                    item.id: "../../health.html"
+                    for item in open_review
+                },
             )
         )
         detail_pages[
@@ -538,7 +542,10 @@ def build_dashboard(
             demo_label=demo_label,
             include_review=include_review,
             activity=activity,
-            report_html=markdown_to_html(report, demote=1),
+            report_html=collapse_tables(
+                markdown_to_html(report, demote=1),
+                prefix=f"activity-{activity_filename(activity.id)}",
+            ),
         )
 
     page_events = {

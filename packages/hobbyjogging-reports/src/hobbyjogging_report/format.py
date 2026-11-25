@@ -14,6 +14,7 @@ from hobbyjogging_core.model import (
     ActivityWeather,
     Device,
     Event,
+    FieldProvenance,
     Interval,
     Lap,
     ReviewItem,
@@ -97,6 +98,134 @@ def format_methods(item) -> str:
 def format_targets(item) -> str:
     """Format an activity's or event's workout targets, in vocabulary order."""
     return _workout_labels(item.workout_targets, WORKOUT_TARGETS) or "-"
+
+
+# The fields the session report explains, in reading order. VO2max has two
+# owners, so both rows are possible.
+PROVENANCE_FIELDS = (
+    ("distance_m", "Distance"),
+    ("duration_s", "Duration"),
+    ("avg_hr", "Avg HR"),
+    ("max_hr", "Max HR"),
+    ("elevation_gain_m", "Elevation"),
+    ("sport", "Sport"),
+    ("training_load", "Load"),
+    ("vo2max_garmin", "VO2max (Garmin)"),
+    ("vo2max_runalyze", "VO2max (Runalyze)"),
+    ("device_id", "Device"),
+)
+
+_PROVENANCE_LABELS = dict(PROVENANCE_FIELDS)
+
+
+def format_canonical_value(field: str, value) -> str:
+    """Format one canonical field value for a provenance or corrections row."""
+    if value is None:
+        return "-"
+
+    if field in ("duration_s", "moving_s", "elapsed_s"):
+        return "0:00" if not value else fmt_clock(value)
+
+    if field == "distance_m":
+        return f"{float(value) / 1000:.2f} km"
+
+    if field == "pace_s_per_km":
+        return f"{format_pace(value)} /km"
+
+    if field in ("elevation_gain_m", "elevation_loss_m"):
+        return f"{float(value):.0f} m"
+
+    if field in ("avg_hr", "max_hr"):
+        return f"{float(value):.0f} bpm"
+
+    if field == "training_load":
+        return f"{float(value):.0f}"
+
+    if field.startswith("vo2max"):
+        return f"{float(value):.1f}"
+
+    if field == "tz_offset_min":
+        return f"{int(value):+d} min"
+
+    return str(value)
+
+
+def format_field_provenance(
+    provenance: list[FieldProvenance] | None,
+    review_items: list[ReviewItem] | None = None,
+    *,
+    review_hrefs: dict[int, str] | None = None,
+) -> list[str]:
+    """Explain who owns each canonical field and where a source disagrees.
+
+    A single-source activity gets one summary line; a mixed or disputed one
+    gets a table. The owner is the recorded decision; an open
+    ``field_conflict`` item supplies the losing source and its value.
+    """
+    rows = [
+        row
+        for row in provenance or []
+        if row.field in _PROVENANCE_LABELS
+    ]
+    if not rows:
+        return []
+
+    conflicts: dict[str, ReviewItem] = {}
+    for item in review_items or []:
+        if item.category != "field_conflict":
+            continue
+        field = item.context.get("field")
+        if isinstance(field, str) and field not in conflicts:
+            conflicts[field] = item
+
+    sources = {row.source for row in rows}
+    if len(sources) == 1 and not conflicts:
+        source = next(iter(sources))
+        return [
+            "\n### Provenance",
+            f"- All {len(rows)} owned field(s) from {source}; "
+            "no open disagreement.",
+        ]
+
+    order = {
+        field: index
+        for index, (field, _label) in enumerate(PROVENANCE_FIELDS)
+    }
+    lines = [
+        "\n### Provenance",
+        "| Field | Owner | Value | Agreement |",
+        "|---|---|---|---|",
+    ]
+
+    for row in sorted(rows, key=lambda entry: order.get(entry.field, 99)):
+        label = _PROVENANCE_LABELS[row.field]
+        owner = row.source + (" (manual)" if row.is_manual else "")
+        agreement = "agrees"
+
+        item = conflicts.get(row.field)
+        if item is not None:
+            incoming = item.context.get("incoming") or {}
+            source = incoming.get("source") or "?"
+            value = format_canonical_value(
+                row.field,
+                incoming.get("value"),
+            )
+            cause = item.context.get("cause") or "unknown"
+            reference = f"review #{item.id}"
+            href = (review_hrefs or {}).get(item.id)
+            if href:
+                reference = f"[{reference}]({href})"
+            agreement = (
+                f"disagrees: {source} {value} ({cause}); {reference}"
+            )
+
+        lines.append(
+            f"| {label} | {owner} | "
+            f"{format_canonical_value(row.field, row.value)} | "
+            f"{agreement} |"
+        )
+
+    return lines
 
 
 def fmt_time(seconds):
@@ -926,6 +1055,8 @@ def format_session_activity(
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
     social: list[ActivitySocial] | None = None,
+    provenance: list[FieldProvenance] | None = None,
+    review_hrefs: dict[int, str] | None = None,
 ):
     """Render one activity as a detailed, standalone session report."""
     title = sport_label(activity)
@@ -1017,6 +1148,12 @@ def format_session_activity(
         if links.garmin:
             link_lines.append(f"- Garmin Connect: {_link(links.garmin)}")
 
+    provenance_lines = format_field_provenance(
+        provenance,
+        review_items,
+        review_hrefs=review_hrefs,
+    )
+
     for entry in social or []:
         # A Strava description can span lines; keep the one-line social format.
         text = " — ".join(
@@ -1036,6 +1173,7 @@ def format_session_activity(
         ("Workout", workout_lines),
         ("Recording", recording_lines),
         ("Result", result_lines),
+        ("Provenance", provenance_lines),
         ("Links", link_lines),
     ):
         if not group:

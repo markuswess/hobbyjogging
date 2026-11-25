@@ -18,6 +18,7 @@ from hobbyjogging_core.model import (
     Device,
     Equipment,
     Event,
+    FieldProvenance,
     Interval,
     Lap,
     RaceResult,
@@ -122,6 +123,12 @@ class DatabaseSource:
 
     def activity_social(self, activity_id: str) -> list[ActivitySocial]:
         return self.repository.activity_social(activity_id)
+
+    def activity_field_sources(
+        self,
+        activity_id: str,
+    ) -> list[FieldProvenance]:
+        return self.repository.activity_field_sources(activity_id)
 
     def equipment(self) -> list[Equipment]:
         return self.repository.equipment()

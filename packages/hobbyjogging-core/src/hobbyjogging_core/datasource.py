@@ -17,6 +17,7 @@ from .model import (
     ActivityMetrics,
     AthleteThreshold,
     Device,
+    FieldProvenance,
     RaceResult,
     TrainingPeriod,
     Equipment,
@@ -57,6 +58,13 @@ class DataSource(Protocol):
 
     def activity_social(self, activity_id: str) -> list[ActivitySocial]:
         """Return social text rows for one activity, manual first."""
+        ...
+
+    def activity_field_sources(
+        self,
+        activity_id: str,
+    ) -> list[FieldProvenance]:
+        """Return the recorded owner of each canonical field, by field."""
         ...
 
     def athlete_thresholds(self) -> list[AthleteThreshold]:

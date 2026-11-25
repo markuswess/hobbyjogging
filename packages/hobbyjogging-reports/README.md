@@ -103,9 +103,9 @@ Pages:
   (currently 2022–2026 only, because resting HR starts in Sep 2022).
 - `activity/<id>.html` — the session report body (metrics, weather and
   recording device when recorded, route and social lines, workout methods and
-  targets, zone times, description, the raw segment table, and subT/LT1 work
-  reps), exactly as `reports.sh session` renders it. Its planned block links
-  to the day's event page.
+  targets, zone times, description, the field-provenance block, the raw
+  segment table, and subT/LT1 work reps), exactly as `reports.sh session`
+  renders it. Its planned block links to the day's event page.
 - `event/<id>.html` — one planned session: date, sport, planned time, distance
   and load, methods and targets, the planned zone distribution, and the
   description. When an activity matches the event by date and sport, the page
@@ -371,10 +371,18 @@ stay compact (`1h02`).
   Garmin keeps one estimate per sport), review status and open items, totals
   including moving and elapsed time, elevation, average and max HR,
   efficiency (m/excess beat), zones, description, the day's planned workout
-  and wellness, one raw segment table (typed intervals when there is more
-  than one, otherwise device laps when there is more than one), subT/LT1 work
-  reps, Intervals/Garmin Connect links and the social lines (Strava and other
-  sources) when they exist.
+  and wellness, a field-provenance block (owner source, value and any open
+  disagreement after the metrics), one raw segment table (typed intervals
+  when there is more than one, otherwise device laps when there is more than
+  one), subT/LT1 work reps, Intervals/Garmin Connect links and the social
+  lines (Strava and other sources) when they exist.
+- **corrections [--days N|--from DATE|--to DATE] [--format markdown|csv|json]**
+  — Read-only source-side checklist from open `field_conflict` items, grouped
+  by the platform whose value disagrees: date, activity, field, canonical value
+  and owner, that source's value, cause, suggested action and a deep link
+  (Intervals, Garmin or Strava when known), plus the open quality findings that
+  carry a source. With no range it covers every open item. `markdown` is the
+  default; `csv` and `json` are flat checklists.
 - **debug** — Dump raw API data (activities, wellness, events,
   intervals).
 - **overview-chart** — the main training chart (`./charts.sh overview`):
@@ -501,6 +509,8 @@ Run:
     uv run --env-file .env python -m hobbyjogging_report session
     uv run --env-file .env python -m hobbyjogging_report session 2026-02-22
     uv run --env-file .env python -m hobbyjogging_report session 7a2bf884-2b25-585f-8430-530749f80afa
+    uv run --env-file .env python -m hobbyjogging_report corrections --days 90
+    uv run --env-file .env python -m hobbyjogging_report corrections --format csv
     uv run --env-file .env python -m hobbyjogging_report debug
     uv run --env-file .env python -m hobbyjogging_report volume [output.png]
     uv run --env-file .env python -m hobbyjogging_report overview-chart [output.png]
@@ -537,6 +547,8 @@ and tables for the terminal:
     ./reports.sh session 2026-10-22
     ./reports.sh session 7a2bf884-2b25-585f-8430-530749f80afa
     ./reports.sh session last
+    ./reports.sh corrections --days 90
+    NO_PRETTY=1 ./reports.sh corrections --format csv
 
 The static dashboard has its own wrapper:
 

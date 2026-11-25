@@ -221,6 +221,37 @@ def parse_marathon_builds_args(argv: list[str]) -> int:
     return args.weeks
 
 
+def parse_corrections_args(
+    argv: list[str],
+    today: date | None = None,
+) -> tuple[date | None, date | None, str]:
+    """Parse the optional range and output format for `corrections`.
+
+    Without a range every open item is included; that is the useful default
+    for a source-side checklist.
+    """
+    from .corrections import FORMATS
+
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("--days", dest="days_option", type=int)
+    parser.add_argument("--from", dest="start", type=date_arg)
+    parser.add_argument("--to", dest="end", type=date_arg)
+    parser.add_argument("--format", choices=FORMATS, default="markdown")
+    args = parser.parse_args(argv)
+
+    if args.days_option is None and args.start is None and args.end is None:
+        return None, None, args.format
+
+    days = args.days_option if args.days_option is not None else 0
+    start, end = resolve_range(
+        days,
+        args.start,
+        args.end,
+        today=today,
+    )
+    return start, end, args.format
+
+
 def parse_planned_args(
     argv: list[str],
     default_days: int = DEFAULT_PLANNED_DAYS,

@@ -92,6 +92,7 @@ def session_activity_lines(
     laps: list[Lap],
     planned_events: list[Event],
     planned_hrefs: dict[str, str] | None = None,
+    review_hrefs: dict[int, str] | None = None,
 ) -> list[str]:
     """Render one activity's detailed Markdown block.
 
@@ -118,6 +119,8 @@ def session_activity_lines(
         ],
         laps=laps,
         social=source.activity_social(activity.id),
+        provenance=source.activity_field_sources(activity.id),
+        review_hrefs=review_hrefs,
     )
 
 

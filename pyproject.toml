@@ -1,6 +1,6 @@
 [project]
 name = "hobbyjogging"
-version = "0.2.0"
+version = "0.3.0"
 description = "Training data, imports, and reports"
 requires-python = ">=3.12"
 dependencies = [

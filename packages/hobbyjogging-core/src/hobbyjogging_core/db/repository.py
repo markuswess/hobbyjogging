@@ -21,6 +21,7 @@ from hobbyjogging_core.model import (
     Event,
     EventActivityLink,
     EventZoneTime,
+    FieldProvenance,
     Interval,
     Lap,
     ReviewItem,
@@ -494,6 +495,32 @@ class TrainingRepository:
                 description=row["description"] or "",
                 external_id=row["external_id"] or "",
                 url=row["url"] or "",
+                is_manual=bool(row["is_manual"]),
+            )
+            for row in rows
+        ]
+
+    def activity_field_sources(
+        self,
+        activity_id: str,
+    ) -> list[FieldProvenance]:
+        """Return the recorded owner of each canonical field, by field."""
+        rows = self.connection.execute(
+            """
+            SELECT field_name, source, value_json, is_manual
+            FROM activity_field_sources
+            WHERE activity_id = ?
+            ORDER BY field_name
+            """,
+            (activity_id,),
+        ).fetchall()
+
+        return [
+            FieldProvenance(
+                activity_id=activity_id,
+                field=row["field_name"],
+                source=row["source"],
+                value=_decode_json(row["value_json"]),
                 is_manual=bool(row["is_manual"]),
             )
             for row in rows

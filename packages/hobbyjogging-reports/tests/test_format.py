@@ -26,7 +26,9 @@ from hobbyjogging_core.model import (
     ActivityWeather,
     Event,
     EventZoneTime,
+    FieldProvenance,
     Interval,
+    ReviewItem,
     WellnessDay,
 )
 from support import FakeSource, activity_factory
@@ -316,6 +318,115 @@ class WeatherTests(unittest.TestCase):
     def test_missing_weather_is_blank(self):
         self.assertEqual("", format_weather(None))
         self.assertEqual("", format_weather(ActivityWeather()))
+
+
+class FieldProvenanceTests(unittest.TestCase):
+
+    def test_a_dispute_names_the_owner_and_the_losing_source(self):
+        provenance = [
+            FieldProvenance(
+                activity_id="a",
+                field="distance_m",
+                source="intervals",
+                value=10000.0,
+            ),
+            FieldProvenance(
+                activity_id="a",
+                field="duration_s",
+                source="fit",
+                value=3600.0,
+            ),
+            FieldProvenance(
+                activity_id="a",
+                field="avg_hr",
+                source="manual",
+                value=145,
+                is_manual=True,
+            ),
+        ]
+        item = ReviewItem(
+            id=7,
+            category="field_conflict",
+            activity_id="a",
+            context={
+                "field": "distance_m",
+                "current": {"source": "intervals", "value": 10000.0},
+                "incoming": {"source": "fit", "value": 10500.0},
+                "cause": "distance_estimate",
+            },
+        )
+
+        lines = format_session_activity(
+            activity(),
+            [],
+            provenance=provenance,
+            review_items=[item],
+            review_hrefs={7: "../../health.html"},
+        )
+        report = "\n".join(lines)
+
+        self.assertIn("### Provenance", report)
+        self.assertIn(
+            "| Distance | intervals | 10.00 km | "
+            "disagrees: fit 10.50 km (distance_estimate); "
+            "[review #7](../../health.html) |",
+            report,
+        )
+        self.assertIn("| Duration | fit | 1:00:00 | agrees |", report)
+        self.assertIn("| Avg HR | manual (manual) | 145 bpm | agrees |", report)
+
+    def test_a_single_source_activity_gets_one_short_line(self):
+        provenance = [
+            FieldProvenance(
+                activity_id="a",
+                field="distance_m",
+                source="fit",
+                value=10000.0,
+            ),
+            FieldProvenance(
+                activity_id="a",
+                field="duration_s",
+                source="fit",
+                value=3600.0,
+            ),
+        ]
+
+        report = "\n".join(
+            format_session_activity(
+                activity(),
+                [],
+                provenance=provenance,
+            )
+        )
+
+        self.assertIn(
+            "- All 2 owned field(s) from fit; no open disagreement.",
+            report,
+        )
+        self.assertNotIn("| Field | Owner |", report)
+
+    def test_mixed_sources_without_a_conflict_are_clear(self):
+        provenance = [
+            FieldProvenance(
+                activity_id="a",
+                field="distance_m",
+                source="intervals",
+                value=10000.0,
+            ),
+            FieldProvenance(
+                activity_id="a",
+                field="duration_s",
+                source="fit",
+                value=3600.0,
+            ),
+        ]
+
+        report = "\n".join(
+            format_session_activity(activity(), [], provenance=provenance)
+        )
+
+        self.assertIn("| Distance | intervals | 10.00 km | agrees |", report)
+        self.assertIn("| Duration | fit | 1:00:00 | agrees |", report)
 
 
 class EstimatedBaselineTests(unittest.TestCase):

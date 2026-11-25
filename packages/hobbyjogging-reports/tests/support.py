@@ -63,6 +63,7 @@ class FakeSource:
         thresholds=None,
         race_results=None,
         devices=None,
+        provenance=None,
     ):
         self._activities = list(activities or [])
         self._equipment = list(equipment or [])
@@ -74,6 +75,7 @@ class FakeSource:
         self._weather = dict(weather or {})
         self._metrics = dict(metrics or {})
         self._social = dict(social or {})
+        self._provenance = dict(provenance or {})
         self._review_items = list(review_items or [])
         self._periods = list(periods or [])
         self._thresholds = list(thresholds or [])
@@ -117,6 +119,9 @@ class FakeSource:
 
     def activity_social(self, activity_id):
         return list(self._social.get(activity_id, []))
+
+    def activity_field_sources(self, activity_id):
+        return list(self._provenance.get(activity_id, []))
 
     def equipment(self):
         return list(self._equipment)

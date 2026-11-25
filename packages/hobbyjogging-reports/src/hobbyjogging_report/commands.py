@@ -31,6 +31,7 @@ from .cli import (
     parse_classify_args,
     parse_compare_args,
     parse_compare_chart_args,
+    parse_corrections_args,
     parse_dashboard_args,
     parse_demo_args,
     parse_load_args,
@@ -56,6 +57,7 @@ from .report_commands import (
     run_all_command,
     run_classify_command,
     run_compare_command,
+    run_corrections_command,
     run_daily_command,
     run_equipment_command,
     run_health_command,
@@ -283,6 +285,19 @@ COMMANDS = {
         "health",
         ("reports.sh health",),
         run=run_health_command,
+    ),
+    "corrections": Command(
+        "corrections",
+        "Source-side corrections checklist from open conflicts",
+        "corrections [--days N] [--from DATE] [--to DATE] "
+        "[--format markdown|csv|json]",
+        (
+            "reports.sh corrections",
+            "reports.sh corrections --days 90",
+            "NO_PRETTY=1 reports.sh corrections --format csv",
+        ),
+        parse=parse_corrections_args,
+        run=run_corrections_command,
     ),
     "recovery-report": Command(
         "recovery-report",

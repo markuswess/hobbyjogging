@@ -228,7 +228,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 26).
+  (`SCHEMA_VERSION`, currently 29).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits and the append-only `edit_log`,
   exclusions, review items, laps, intervals, zone times, tags.
@@ -236,7 +236,8 @@ Canonical model, schema, and read/write access.
   model.
 - `datasource.py` — the `DataSource` protocol every report consumer depends
   on: activities, wellness, events, intervals, weather, session metrics,
-  equipment, and the review queue (`review_items`, read-only).
+  field provenance, equipment, and the review queue (`review_items`,
+  read-only).
 - `db/connection.py` — database path resolution and connection setup.
 
 Core owns the rules that must not drift between packages: field ownership,
@@ -312,8 +313,12 @@ Analysis, views, and rendering.
   `overview.py`, `recovery_report.py`, `race_report.py`, `sickness_report.py`,
   `streak_report.py`, `equipment_report.py`, `health_report.py` — one Markdown
   report per file; `report_commands.py` dispatches them.
-- `sessions.py`, `recent.py`, `review.py`, `debug.py` — session detail, shared
-  lookback search, the review view, and a dump of the stored raw payloads.
+- `sessions.py`, `recent.py`, `review.py`, `debug.py` — session detail (with
+  the field-provenance block), shared lookback search, the review view, and a
+  dump of the stored raw payloads.
+- `corrections.py` — the read-only source-side checklist from open
+  `field_conflict` items and source-attributable quality findings; Markdown,
+  CSV or JSON, grouped by the platform that disagrees.
 - `activity_list.py` — the activities table (selection, columns, rendering).
 - `summary.py` — period totals, quality-session lists, recovery averages.
 - `charts/` (split by family), `chart_commands.py` — plotly figures over

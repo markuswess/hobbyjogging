@@ -8,6 +8,7 @@ from .activity_list import activities_report
 from .builds_report import marathon_builds_report
 from .command_support import reviewed_range
 from .compare import compare_report
+from .corrections import corrections_report
 from .daily import daily
 from .equipment_report import equipment_report
 from .health_report import health_report
@@ -100,6 +101,16 @@ def run_session_command(parsed, source, include_review):
         parsed,
         source,
         include_review=include_review,
+    )
+
+
+def run_corrections_command(parsed, source, include_review):
+    start, end, fmt = parsed
+    return corrections_report(
+        source,
+        start,
+        end,
+        fmt=fmt,
     )
 
 

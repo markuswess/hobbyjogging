@@ -530,6 +530,30 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual([], self.repository.activity_social("a2"))
 
 
+    def test_activity_field_sources_map_the_owner_and_value(self):
+        self.conn.executemany(
+            """
+            INSERT INTO activity_field_sources (
+                activity_id, field_name, source, value_json, is_manual
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                ("a1", "distance_m", "intervals", "10000.0", 0),
+                ("a1", "avg_hr", "manual", "145", 1),
+            ],
+        )
+
+        rows = self.repository.activity_field_sources("a1")
+
+        self.assertEqual(["avg_hr", "distance_m"], [row.field for row in rows])
+        self.assertEqual("manual", rows[0].source)
+        self.assertEqual(145, rows[0].value)
+        self.assertTrue(rows[0].is_manual)
+        self.assertEqual("intervals", rows[1].source)
+        self.assertEqual(10000.0, rows[1].value)
+        self.assertFalse(rows[1].is_manual)
+        self.assertEqual([], self.repository.activity_field_sources("a2"))
+
     def test_devices_hide_excluded_rows(self):
         self.conn.executemany(
             "INSERT INTO devices (id, name, excluded_at) VALUES (?, ?, ?)",

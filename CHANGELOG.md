@@ -9,12 +9,42 @@ Compatibility is stated as "requires schema ≥ N, migrates to M". The database
 records its own `PRAGMA user_version`, migrations are forward-only, and
 `migrate()` refuses a database newer than the code.
 
-## Unreleased — phase 3: trustworthy data
+## 0.3.0 — 2026-11-25 (phase 3: trustworthy data)
 
 Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
 
-### Evidence conflicts
+### Surface
 
+- Schema 26–29: `edit_log`, `activity_metrics` (and its per-field source map),
+  and `equipment.is_manual`.
+- New data tasks: `activity_metrics_v1`; the classification/evidence tasks
+  `workout_classification_v1`, `workout_sets_current` and
+  `workout_classification_queue`; duplicate detection and cleanup
+  (`duplicate_candidates_current`, `sheet_duplicates_v1`); and the evidence
+  candidates `illness_candidates_current` and `trail_candidates_current`.
+- New write surface: `activity edit`, `equipment`, `race-result`, `threshold`,
+  `period`, the shared id/date/`last`/name resolver, and an `edit_log` row for
+  every manual write.
+- New report surface: field provenance in the session report and the
+  read-only `reports.sh corrections` checklist (Markdown, CSV, JSON).
+
+### Provenance and corrections
+
+- The session report (CLI and dashboard) now explains each owned field:
+  distance, duration, average/max HR, elevation, sport, load, both VO2max
+  owners and device, with the owner source and its value. An open
+  `field_conflict` adds the losing source, its value, the cause and a review
+  link; a single-source activity collapses to one line. The block reads
+  `activity_field_sources` through the new `DataSource.activity_field_sources`
+  method; no schema change.
+- `reports.sh corrections [--days|--from|--to] [--format markdown|csv|json]`
+  is the read-only source-side checklist. It groups open conflicts by the
+  platform whose value disagrees and also lists source-attributable quality
+  findings: date, activity, field, canonical value and owner, source value,
+  cause, suggested action and a deep link where one exists. It never writes,
+  calls an API or resolves an item.
+
+### Evidence conflicts
 - `workout_classification_queue` compares a mapped tag or explicit description
   with the stored sets of a classified activity. It opens one
   `workout_classification` item only when the evidence names a method or

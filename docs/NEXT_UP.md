@@ -9,6 +9,10 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
+  `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
+  the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
+  state. The user pushes the tag.
 - **Manual writes, equipment and selectors (2026-11-25).** Every manual write
   now appends one `edit_log` row per changed field: `race-result`, `threshold`,
   `period`, `equipment`, triage `(v)`/`(t)` and the existing activity edits.
@@ -65,6 +69,21 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   Intervals and the sheet imports feed the same check; `review scan` and
   `refresh_activity_quality` re-run it over stored rows. Correct rows and
   missing evidence stay quiet, and a re-run is a no-op.
+- **Field provenance in the session report (2026-11-25).** `DataSource`
+  exposes `activity_field_sources`, and the session block lists each owned
+  field (distance, duration, avg/max HR, elevation, sport, load, both VO2max
+  owners and device) with its source and value. An open `field_conflict`
+  supplies the losing source, its value, the cause and a link; a single-source
+  activity collapses to one line. The CLI and the dashboard share the block,
+  and the dashboard applies the usual collapsible-table treatment.
+- **Corrections export (2026-11-25).** `reports.sh corrections
+  [--days|--from|--to] [--format markdown|csv|json]` lists open
+  `field_conflict` items grouped by the platform whose value disagrees, with
+  the canonical value and owner, that source's value, cause, suggested action
+  and a deep link (Intervals, Garmin or Strava when known), plus
+  source-attributable quality findings. It is read-only: it never writes,
+  calls a source API or resolves an item. With no range it covers every open
+  item; CSV and JSON are flat checklists.
 - **Sheet leftovers (2026-11-25).** Activities display the recorded local
   start (`started_at_utc` + `tz_offset_min`) instead of UTC in the activity
   table and the session report; `local_date` already carries the local day for
@@ -230,10 +249,11 @@ passed; its two findings — **55** (subT selection and the derived table) and
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 (manual overlay + rebuild proof), **37**'s audit and evidence proposals,
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
-**21** (sheet leftovers) and **42** (duplicates) are done. The remaining work
-is the **CLI brush**: phase 3 is complete when every pass in
-[DATA_BRUSH.md](DATA_BRUSH.md) can be done through the CLI. The localhost
-browser moved to phase 4 (item 65).
+**21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
+**48** (field provenance), **57** (corrections export) and **22** (release
+0.3.0) are done. The remaining work is the **CLI brush**: phase 3 is complete
+when every pass in [DATA_BRUSH.md](DATA_BRUSH.md) can be done through the CLI.
+The localhost browser moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
@@ -244,8 +264,8 @@ done; the metric charts **62** and the pace/HR calibration follow-up **64**
 slot alongside. The health report and dashboard card show the duplicate count
 now that 42 opens the items. Accepting a suggestion always writes a manual
 value and an `edit_log` row; nothing canonical is auto-applied except an
-empty, high-confidence classification. The corrections export (**57**) follows
-37's audit as a small report; it is not a gate.
+empty, high-confidence classification. The corrections export (**57**) and the
+session provenance block (**48**) are the read-only source-side pair.
 
 ### Phase 4: durable and more reach
 
@@ -474,29 +494,6 @@ reports item; 28 is the recurring cleanup.
       the CLI and the browser agree on the numbers.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
-
-22. **Release versioning** (repo-level; no package; phase 2). Every
-    `pyproject.toml` says
-    `0.1.0` and never changes, and there are no tags, so "which code built this
-    database" is unanswerable. The *data* contract already exists — `PRAGMA
-    user_version`, immutable ordered migrations, and `migrate()` refusing a
-    database newer than the code — so only the code version is missing.
-    - **Triggers**: the homelab cutover (item 13), where scheduled syncs and
-      ad-hoc reports can run two code versions against one DB; a second
-      installation; any destructive migration; and the published demo, which
-      already ships output without provenance.
-    - **Shape**: one repo-level semver tag (the four packages move together),
-      a `CHANGELOG.md` with schema/data-task/report sections and a
-      compatibility line ("v0.4 requires schema ≥10, migrates to 10"), and a
-      GitHub release note. **No PyPI** — private workspace, no consumer.
-      Pre-1.0 while the schema moves; 1.0 only once a second person's data is
-      on it.
-    - **Cadence**: not time-based — `v0.1.0` tags the phase-1 state now (local
-      tag; the user pushes), `v0.2.0` the phase-2 exit, then each schema bump
-      and milestone.
-    - **Not versioned**: experiments, report output, docs.
-    - **Checklist instead of tests**: suites green, changelog written, DB
-      backed up before the migration, tag created locally (the user pushes).
 
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
@@ -943,22 +940,6 @@ reports item; 28 is the recurring cleanup.
       identically, the public import paths still resolve, and a deliberately
       oversized new file fails CI.
 
-48. **Field provenance in the session report** (reports; small, any time).
-    `activity_field_sources` records who owns each value and what it wrote, but
-    the session page shows only review status. The obvious question — "why is
-    distance 42.45 and not 42.19?" — needs SQL today.
-    - **Block**: per owned field (distance, duration, avg/max HR, elevation,
-      sport, load, VO2max, device), the owner source, its value, and whether a
-      later source agrees within tolerance; a conflict links to its review
-      item.
-    - **Placement**: after the metrics block, collapsed on the dashboard (the
-      same native toggle as the long tables); the CLI prints the same lines,
-      per the parity rule.
-    - **No schema change**; it reads the existing provenance rows.
-    - **Acceptance**: a disputed activity names the winning source and the
-      losing value, a single-source activity stays short, and the CLI and the
-      dashboard print the same list.
-
 49. **Runalyze workout type → canonical sets** (import + maintenance; done
     2026-11-24). Runalyze's `type` object is the one classification signal a
     name-less, RPE-less athlete has.
@@ -1144,35 +1125,6 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: `threshold add --from first` anchors on the earliest
       activity; the message names the coverage; an Intervals config still wins;
       four suites green.
-
-57. **Corrections export** (reports; small feature, after 37's audit). The
-    companion to the no-write-back rule: the DB knows where a value disagrees
-    and often why, so it can list the fixes to apply by hand in the platform.
-    - **Input**: open `field_conflict` items with their causes, plus quality
-      findings whose owner source is identifiable (a zero distance, an
-      implausible pace, the same upload arriving twice). It is not a merge, a
-      new queue or a second review surface.
-    - **Output**: one table per platform (Intervals, Runalyze, Strava, Garmin
-      Connect) grouped by the source whose value disagrees with the canonical
-      one: date, activity, field, canonical value, that source's value, cause,
-      suggested action, and a deep link. Markdown for reading, CSV/JSON for
-      ticking off. Start with `reports.sh corrections [--days|--from|--to]`;
-      the dashboard can embed the same report later.
-    - **Links**: `links.py` resolves Intervals and Garmin Connect; Strava's
-      activity id is in `activity_social`; confirm the Runalyze activity URL
-      pattern before relying on it.
-    - **Caveat**: it shows a disagreement and the canonical choice, not which
-      side is true. A human decides at the source; the export never writes,
-      never calls an API and never auto-resolves.
-    - **Trigger**: build it once 37's audit starts producing source-side
-      findings (a wrong distance, a missing sport, a duplicate upload), or
-      earlier if the review queue becomes noisy. It is not a phase gate.
-    - **Acceptance**: every open conflict appears once under the source that
-      disagrees (or "unknown source"), the links open the right activity where
-      one exists, the CSV is usable as a checklist, and no database row
-      changes.
-    - **Not**: write-back or platform auth (item 14), an auto-fix, or a second
-      identity model.
 
 ## Parked ideas
 

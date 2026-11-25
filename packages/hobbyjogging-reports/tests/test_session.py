@@ -5,6 +5,7 @@ from hobbyjogging_core.model import (
     ActivityMetrics,
     Event,
     EventZoneTime,
+    FieldProvenance,
     Interval,
     Lap,
     ReviewItem,
@@ -91,6 +92,66 @@ class SessionDetailTests(unittest.TestCase):
             "### Result",
         ):
             self.assertIn(heading, report)
+
+    def test_session_report_carries_field_provenance(self):
+        source = FakeSource(
+            [activity(id="a", date=D1, distance_m=10000)],
+            provenance={
+                "a": [
+                    FieldProvenance(
+                        activity_id="a",
+                        field="distance_m",
+                        source="fit",
+                        value=10000.0,
+                    ),
+                ]
+            },
+        )
+
+        report = session_report("a", source)
+
+        self.assertIn(
+            "- All 1 owned field(s) from fit; no open disagreement.",
+            report,
+        )
+
+    def test_session_report_links_a_field_conflict(self):
+        source = FakeSource(
+            [activity(id="a", date=D1, distance_m=10000)],
+            provenance={
+                "a": [
+                    FieldProvenance(
+                        activity_id="a",
+                        field="distance_m",
+                        source="intervals",
+                        value=10000.0,
+                    ),
+                ]
+            },
+            review_items=[
+                ReviewItem(
+                    id=9,
+                    category="field_conflict",
+                    activity_id="a",
+                    context={
+                        "field": "distance_m",
+                        "incoming": {
+                            "source": "fit",
+                            "value": 10500.0,
+                        },
+                        "cause": "distance_estimate",
+                    },
+                )
+            ],
+        )
+
+        report = session_report("a", source, include_review=True)
+
+        self.assertIn(
+            "disagrees: fit 10.50 km (distance_estimate)",
+            report,
+        )
+        self.assertIn("review #9", report)
 
     def test_activity_metrics_and_dynamics_are_shown(self):
         source = FakeSource(

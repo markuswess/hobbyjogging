@@ -92,7 +92,7 @@ wheels = [
 
 [[package]]
 name = "hobbyjogging"
-version = "0.2.0"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "hobbyjogging-core" },
@@ -111,12 +111,12 @@ requires-dist = [
 
 [[package]]
 name = "hobbyjogging-core"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/hobbyjogging-core" }
 
 [[package]]
 name = "hobbyjogging-import"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/hobbyjogging-import" }
 dependencies = [
     { name = "fitdecode" },
@@ -133,7 +133,7 @@ requires-dist = [
 
 [[package]]
 name = "hobbyjogging-maintenance"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/hobbyjogging-maintenance" }
 dependencies = [
     { name = "hobbyjogging-core" },
@@ -148,7 +148,7 @@ requires-dist = [
 
 [[package]]
 name = "hobbyjogging-reports"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/hobbyjogging-reports" }
 dependencies = [
     { name = "hobbyjogging-core" },

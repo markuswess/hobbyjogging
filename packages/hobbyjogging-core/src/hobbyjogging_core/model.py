@@ -75,6 +75,17 @@ class ActivitySocial:
 
 
 @dataclass
+class FieldProvenance:
+    """The recorded owner of one canonical activity field."""
+
+    activity_id: str
+    field: str
+    source: str
+    value: object | None = None
+    is_manual: bool = False
+
+
+@dataclass
 class Activity:
     id: str
     date: date

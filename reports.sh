@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./reports.sh [daily|overview|recovery-report|equipment|races|race|streaks|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities|settings] [args...]
+  ./reports.sh [daily|overview|recovery-report|equipment|races|race|streaks|subt-ewma-report|weekly|monthly|yearly|all|report|compare|subt-report|planned|session|classify|activities|health|corrections|settings] [args...]
   ./reports.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the daily report. The generated Markdown is copied to
@@ -40,6 +40,9 @@ Examples:
   ./reports.sh session last
   ./reports.sh session 2026-10-22
   ./reports.sh session <activity-id>
+  ./reports.sh health
+  ./reports.sh corrections --days 90
+  NO_PRETTY=1 ./reports.sh corrections --format csv
   ./reports.sh weekly --source intervals
 
 Environment:
@@ -52,6 +55,32 @@ EOF
 env_args=()
 if [[ -f .env ]]; then
     env_args=(--env-file .env)
+fi
+
+# The corrections export can emit CSV or JSON. Keep those machine-readable
+# instead of sending them through the Markdown pretty-printer or clipboard.
+if [[ "${1:-}" == "corrections" ]]; then
+    shift
+    raw=0
+    previous=""
+    for arg in "$@"; do
+        case "$arg" in
+            --format=csv|--format=json)
+                raw=1
+                ;;
+            csv|json)
+                if [[ "$previous" == "--format" ]]; then
+                    raw=1
+                fi
+                ;;
+        esac
+        previous="$arg"
+    done
+    if (( raw )); then
+        NO_PRETTY=1 NO_COPY=1 uv run "${env_args[@]}" python -m hobbyjogging_report corrections "$@"
+        exit $?
+    fi
+    set -- corrections "$@"
 fi
 
 args=("$@")
