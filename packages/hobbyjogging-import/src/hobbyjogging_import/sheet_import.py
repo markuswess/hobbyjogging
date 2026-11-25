@@ -472,6 +472,9 @@ class SheetImporter:
                 duration_s=float(values.get("duration_s") or 0),
                 elapsed_s=float(values.get("duration_s") or 0),
                 distance_m=float(values.get("distance_m") or 0),
+                local_date=values.get("local_date"),
+                started_at_utc=values.get("started_at_utc"),
+                tz_offset_min=values.get("tz_offset_min"),
             )
             if shoe is not None:
                 equipment = self._resolve_equipment(shoe)

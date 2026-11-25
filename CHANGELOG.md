@@ -131,6 +131,10 @@ Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
 
 ### Time and gear
 
+- The canonical quality rules check that `started_at_utc` plus
+  `tz_offset_min` lands on `local_date` and that the offset is within
+  −12..+14 h. A mismatch opens one `quality` item and rewrites nothing; FIT,
+  Intervals, the sheet, `review scan` and the post-edit refresh all run it.
 - The activity table and session report display the recorded local start
   (`started_at_utc` + `tz_offset_min`) instead of UTC; `local_date` remains the
   local day used by every chart and range. Every started activity on the real

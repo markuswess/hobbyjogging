@@ -57,6 +57,14 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   the classifier/sheet choices. Choosing a set writes manual values and logs
   old/new through `edit_log`; `kept stored` resolves without a write. Nothing
   is applied automatically, and a resolved decision is not reopened.
+- **Date and time-zone integrity (2026-11-25).** The canonical quality rules
+  now parse `started_at_utc`, require `tz_offset_min` to be within −12..+14 h,
+  and check that the UTC start plus the offset lands on `local_date`. A
+  mismatch opens one `quality` item (`local_date_mismatch`,
+  `tz_offset_out_of_range` or `started_at_invalid`) and rewrites nothing. FIT,
+  Intervals and the sheet imports feed the same check; `review scan` and
+  `refresh_activity_quality` re-run it over stored rows. Correct rows and
+  missing evidence stay quiet, and a re-run is a no-op.
 - **Sheet leftovers (2026-11-25).** Activities display the recorded local
   start (`started_at_utc` + `tz_offset_min`) instead of UTC in the activity
   table and the session report; `local_date` already carries the local day for
@@ -934,23 +942,6 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: four suites green, the demo dashboard renders
       identically, the public import paths still resolve, and a deliberately
       oversized new file fails CI.
-
-47. **Date and time-zone integrity** (core + import + reports; small, any
-    time). `tz_offset_min` is stored but unused, and nothing checks that
-    `started_at_utc + tz_offset_min` lands on `local_date`. A bad offset or a
-    midnight/DST edge moves a session to the wrong day, and streaks, illness
-    periods and race matches all read dates.
-    - **Rule**: a quality check against the invariant plus a plausible range
-      (−12..+14 h); it opens a `quality` item instead of rewriting, because the
-      date stays owner-tracked.
-    - **Import**: FIT, Intervals and the sheet offsets feed the same check;
-      the Strava export's account timezone stays a per-import choice, and the
-      chosen reading is already recorded.
-    - **Reports**: use the offset wherever a day boundary matters (item 21) —
-      no new column.
-    - **Acceptance**: a synthetic midnight/DST case and a bad offset each
-      produce one item, a correct activity produces none, and a re-run is a
-      no-op.
 
 48. **Field provenance in the session report** (reports; small, any time).
     `activity_field_sources` records who owns each value and what it wrote, but

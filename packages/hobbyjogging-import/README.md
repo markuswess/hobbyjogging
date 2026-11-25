@@ -980,10 +980,11 @@ in the canonical `review_items` table. Categories are `ambiguous_match`,
 and `workout_classification`. `consistency` and `period_candidate` are
 non-hiding suggestions: they never remove an activity from reports. Every importer
 runs a small canonical quality rule set (zero duration, missing distance for
-run/ride sports, implied pace outside a plausible per-sport window, and
-moving time differing from recording time by more than
-`max(10 min, 25% of recording)`), persists ambiguous matches with their
-candidate lists, and records cross-source field disagreements
+run/ride sports, implied pace outside a plausible per-sport window, moving
+time differing from recording time by more than
+`max(10 min, 25% of recording)`, and a start/offset pair that does not land on
+`local_date` or an offset outside −12..+14 h), persists ambiguous matches with
+their candidate lists, and records cross-source field disagreements
 (`field_conflict`) without touching the stored value. Detection is idempotent
 by `(category, fingerprint, activity_id)`: reimporting never duplicates items
 and never reopens resolved ones. The source record stays on the item for

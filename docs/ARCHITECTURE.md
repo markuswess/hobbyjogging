@@ -259,8 +259,9 @@ Source ingestion and the review queue.
 - `runalyze.py` — Runalyze enrichment import (comments, tags, gear, race
   results, VO2max, wellness); never writes timing or distance.
 - `matching.py` — temporal activity matching across sources.
-- `quality.py` — canonical quality rules, field-conflict recording, review
-  fingerprints, quality refresh after edits.
+- `quality.py` — canonical quality rules (zero duration, distance, implied
+  pace, moving time, start/offset vs `local_date`), field-conflict recording,
+  review fingerprints, quality refresh after edits.
 - `values.py` — parsers/formatters for manual entry (`46:20`, `8.2km`,
   RPE/feel/text) and the one prompt/parser table shared by triage and the edit
   command.

@@ -46,6 +46,7 @@ def scan_quality(
         rows = writer.connection.execute(
             """
             SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s,
+                   local_date, started_at_utc, tz_offset_min,
                    excluded_at
             FROM activities WHERE id = ?
             """,
@@ -58,6 +59,7 @@ def scan_quality(
         rows = writer.connection.execute(
             """
             SELECT id, sport, duration_s, elapsed_s, distance_m, moving_s,
+                   local_date, started_at_utc, tz_offset_min,
                    excluded_at
             FROM activities
             ORDER BY local_date, id
@@ -76,6 +78,9 @@ def scan_quality(
                 elapsed_s=row["elapsed_s"] or 0,
                 distance_m=row["distance_m"] or 0,
                 moving_s=row["moving_s"],
+                local_date=row["local_date"],
+                started_at_utc=row["started_at_utc"],
+                tz_offset_min=row["tz_offset_min"],
             )
             current[row["id"]] = {
                 review_fingerprint(
@@ -108,6 +113,9 @@ def scan_quality(
                 elapsed_s=row["elapsed_s"] or 0,
                 distance_m=row["distance_m"] or 0,
                 moving_s=row["moving_s"],
+                local_date=row["local_date"],
+                started_at_utc=row["started_at_utc"],
+                tz_offset_min=row["tz_offset_min"],
             )
 
         if prune:

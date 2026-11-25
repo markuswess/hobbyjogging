@@ -483,6 +483,9 @@ class IntervalsImporter:
                 if values.get("moving_s") is not None
                 else None
             ),
+            local_date=values.get("local_date"),
+            started_at_utc=values.get("started_at_utc"),
+            tz_offset_min=values.get("tz_offset_min"),
         )
 
         if interval_payload is None:

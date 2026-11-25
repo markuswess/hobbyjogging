@@ -210,6 +210,68 @@ class MovingTimeMismatchTests(unittest.TestCase):
         )
 
 
+class TimezoneRuleTests(unittest.TestCase):
+
+    def _findings(self, **overrides):
+        values = {
+            "local_date": "2026-10-01",
+            "started_at_utc": "2026-10-01T10:00:00Z",
+            "tz_offset_min": 120,
+        }
+        values.update(overrides)
+        return quality_findings(
+            sport="run",
+            duration_s=3600,
+            elapsed_s=3600,
+            distance_m=10000,
+            **values,
+        )
+
+    def _rules(self, **overrides):
+        return {finding.rule: finding for finding in self._findings(**overrides)}
+
+    def test_a_consistent_offset_and_date_is_quiet(self):
+        self.assertEqual({}, self._rules())
+
+    def test_a_negative_offset_is_quiet_when_it_matches(self):
+        self.assertEqual(
+            {},
+            self._rules(
+                local_date="2026-10-01",
+                started_at_utc="2026-10-02T02:00:00Z",
+                tz_offset_min=-300,
+            ),
+        )
+
+    def test_a_midnight_crossing_is_flagged(self):
+        findings = self._rules(
+            local_date="2026-10-01",
+            started_at_utc="2026-10-01T22:30:00Z",
+            tz_offset_min=120,
+        )
+
+        self.assertEqual({"local_date_mismatch"}, set(findings))
+        finding = findings["local_date_mismatch"]
+        self.assertIn("2026-10-02", finding.detail)
+        self.assertEqual("2026-10-02", finding.context["computed_local_date"])
+
+    def test_an_out_of_range_offset_is_flagged(self):
+        findings = self._rules(tz_offset_min=900)
+
+        self.assertEqual({"tz_offset_out_of_range"}, set(findings))
+        self.assertIn("900", findings["tz_offset_out_of_range"].detail)
+
+    def test_an_invalid_timestamp_is_flagged(self):
+        findings = self._rules(started_at_utc="not-a-timestamp")
+
+        self.assertEqual({"started_at_invalid"}, set(findings))
+
+    def test_missing_evidence_stays_quiet(self):
+        self.assertEqual({}, self._rules(tz_offset_min=None))
+        self.assertEqual({}, self._rules(started_at_utc=None))
+        self.assertEqual({}, self._rules(local_date=None))
+
+
 class RecordQualityFindingsTests(unittest.TestCase):
 
     def setUp(self):
@@ -250,6 +312,48 @@ class RecordQualityFindingsTests(unittest.TestCase):
         self.assertEqual(1, len(items))
         self.assertEqual("quality", items[0]["category"])
         self.assertEqual("a1", items[0]["activity_id"])
+
+    def test_a_bad_timezone_opens_one_item_and_is_idempotent(self):
+        kwargs = {
+            "local_date": "2026-10-01",
+            "started_at_utc": "2026-10-01T22:30:00Z",
+            "tz_offset_min": 120,
+        }
+
+        self.assertEqual(1, self._record(**kwargs))
+        self.assertEqual(0, self._record(**kwargs))
+
+        items = self.writer.review_items(status="open", category=QUALITY)
+        self.assertEqual(1, len(items))
+        self.assertEqual(
+            "local_date_mismatch",
+            json.loads(items[0]["context_json"])["rule"],
+        )
+
+    def test_a_correct_timezone_opens_nothing(self):
+        recorded = self._record(
+            local_date="2026-10-01",
+            started_at_utc="2026-10-01T10:00:00Z",
+            tz_offset_min=120,
+        )
+
+        self.assertEqual(0, recorded)
+        self.assertEqual([], self.writer.review_items(status="open"))
+
+    def test_an_out_of_range_offset_opens_one_item(self):
+        recorded = self._record(
+            local_date="2026-10-01",
+            started_at_utc="2026-10-01T10:00:00Z",
+            tz_offset_min=900,
+        )
+
+        self.assertEqual(1, recorded)
+        items = self.writer.review_items(status="open", category=QUALITY)
+        self.assertEqual(1, len(items))
+        self.assertEqual(
+            "tz_offset_out_of_range",
+            json.loads(items[0]["context_json"])["rule"],
+        )
 
     def test_source_record_does_not_create_a_duplicate(self):
         source_id = self.writer.upsert_source_record(
@@ -511,6 +615,46 @@ class RefreshActivityQualityTests(unittest.TestCase):
         self.assertEqual(1, len(findings))
         self.assertEqual("implied_pace", findings[0].rule)
         self.assertEqual(1, len(self.writer.review_items(status="open")))
+
+    def test_an_open_timezone_item_survives_an_unrelated_edit(self):
+        self.writer.upsert_activity(
+            "a2",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "duration_s": 3600,
+                "elapsed_s": 3600,
+                "distance_m": 10000,
+                "started_at_utc": "2026-10-01T22:30:00Z",
+                "tz_offset_min": 120,
+            },
+            source="test",
+            source_record_id=None,
+        )
+        record_quality_findings(
+            self.writer,
+            activity_id="a2",
+            source_record_id=None,
+            import_run_id=None,
+            sport="run",
+            duration_s=3600,
+            elapsed_s=3600,
+            distance_m=10000,
+            local_date="2026-10-01",
+            started_at_utc="2026-10-01T22:30:00Z",
+            tz_offset_min=120,
+        )
+        [item] = [
+            item
+            for item in self.writer.review_items(status="open")
+            if item["activity_id"] == "a2"
+        ]
+
+        self.writer.set_manual_field("a2", "duration_s", 3500)
+        findings = refresh_activity_quality(self.writer, activity_id="a2")
+
+        self.assertEqual(["local_date_mismatch"], [f.rule for f in findings])
+        self.assertEqual("open", self.writer.review_item(item["id"])["status"])
 
     def test_unknown_activity_raises(self):
         with self.assertRaises(ValueError):

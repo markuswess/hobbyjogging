@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.import_rules import (
@@ -41,6 +41,11 @@ MAX_RIDE_PACE_S_PER_KM = 900.0  # 15:00 /km walking pace
 MOVING_TIME_MISMATCH_RATIO = 0.25
 MOVING_TIME_MISMATCH_FLOOR_S = 600.0
 MOVING_EXCEEDS_RECORDING_S = 60.0
+
+# A recorded local offset must be a real UTC offset. The west/east extremes
+# are UTC-12:00 and UTC+14:00.
+MIN_TZ_OFFSET_MIN = -12 * 60
+MAX_TZ_OFFSET_MIN = 14 * 60
 
 AMBIGUOUS_MATCH = "ambiguous_match"
 AMBIGUOUS_EQUIPMENT = "ambiguous_equipment"
@@ -92,6 +97,9 @@ def quality_findings(
     elapsed_s: float,
     distance_m: float,
     moving_s: float | None = None,
+    local_date: str | None = None,
+    started_at_utc: str | None = None,
+    tz_offset_min: int | None = None,
 ) -> list[Finding]:
     """Apply the canonical quality rule set to one activity's values."""
     findings: list[Finding] = []
@@ -198,7 +206,106 @@ def quality_findings(
                 )
             )
 
+    findings.extend(
+        _timezone_findings(
+            local_date=local_date,
+            started_at_utc=started_at_utc,
+            tz_offset_min=tz_offset_min,
+        )
+    )
+
     return findings
+
+
+def _timezone_findings(
+    *,
+    local_date: str | None,
+    started_at_utc: str | None,
+    tz_offset_min: int | None,
+) -> list[Finding]:
+    """Check that the UTC start plus the recorded offset lands on the day.
+
+    The date stays owner-tracked: a disagreement opens a review item instead
+    of rewriting anything. A missing start or offset is not evidence, so it
+    stays quiet.
+    """
+    if not started_at_utc or tz_offset_min is None:
+        return []
+
+    moment = _parse_utc(started_at_utc)
+    if moment is None:
+        return [
+            Finding(
+                rule="started_at_invalid",
+                detail=(
+                    f"started_at_utc {started_at_utc!r} is not an ISO "
+                    "timestamp"
+                ),
+                context={"started_at_utc": str(started_at_utc)},
+            )
+        ]
+
+    # A normalised stamp keeps the fingerprint stable between an import (which
+    # may hold a pretty-printed timestamp) and a later scan of the stored row.
+    timestamp = moment.isoformat()
+
+    try:
+        offset: int | None = int(tz_offset_min)
+    except (TypeError, ValueError):
+        offset = None
+
+    if offset is None or not (
+        MIN_TZ_OFFSET_MIN <= offset <= MAX_TZ_OFFSET_MIN
+    ):
+        return [
+            Finding(
+                rule="tz_offset_out_of_range",
+                detail=(
+                    f"tz offset {tz_offset_min} min is outside the plausible "
+                    f"{MIN_TZ_OFFSET_MIN}..{MAX_TZ_OFFSET_MIN} min range"
+                ),
+                context={
+                    "started_at_utc": timestamp,
+                    "tz_offset_min": tz_offset_min,
+                    "min_offset_min": MIN_TZ_OFFSET_MIN,
+                    "max_offset_min": MAX_TZ_OFFSET_MIN,
+                },
+            )
+        ]
+
+    if not local_date:
+        return []
+
+    computed = (moment + timedelta(minutes=offset)).date()
+    recorded = str(local_date)[:10]
+    if computed.isoformat() == recorded:
+        return []
+
+    return [
+        Finding(
+            rule="local_date_mismatch",
+            detail=(
+                "started_at_utc + tz_offset_min is "
+                f"{computed.isoformat()}, not local_date {recorded}"
+            ),
+            context={
+                "started_at_utc": timestamp,
+                "tz_offset_min": offset,
+                "local_date": recorded,
+                "computed_local_date": computed.isoformat(),
+            },
+        )
+    ]
+
+
+def _parse_utc(value: str) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
 
 
 def record_quality_findings(
@@ -212,6 +319,9 @@ def record_quality_findings(
     elapsed_s: float,
     distance_m: float,
     moving_s: float | None = None,
+    local_date: str | None = None,
+    started_at_utc: str | None = None,
+    tz_offset_min: int | None = None,
 ) -> int:
     """Run the quality rules and record findings as review items.
 
@@ -226,6 +336,9 @@ def record_quality_findings(
         elapsed_s=elapsed_s,
         distance_m=distance_m,
         moving_s=moving_s,
+        local_date=local_date,
+        started_at_utc=started_at_utc,
+        tz_offset_min=tz_offset_min,
     ):
         # The source record stays on the item for provenance, but it must not
         # be part of the identity: an import and a later `review scan` detect
@@ -305,7 +418,8 @@ def refresh_activity_quality(
     """
     row = writer.connection.execute(
         """
-        SELECT sport, duration_s, elapsed_s, distance_m, moving_s
+        SELECT sport, duration_s, elapsed_s, distance_m, moving_s,
+               local_date, started_at_utc, tz_offset_min
         FROM activities WHERE id = ?
         """,
         (activity_id,),
@@ -319,6 +433,9 @@ def refresh_activity_quality(
     elapsed_s = row["elapsed_s"] or 0
     distance_m = row["distance_m"] or 0
     moving_s = row["moving_s"]
+    local_date = row["local_date"]
+    started_at_utc = row["started_at_utc"]
+    tz_offset_min = row["tz_offset_min"]
 
     findings = quality_findings(
         sport=sport,
@@ -326,6 +443,9 @@ def refresh_activity_quality(
         elapsed_s=elapsed_s,
         distance_m=distance_m,
         moving_s=moving_s,
+        local_date=local_date,
+        started_at_utc=started_at_utc,
+        tz_offset_min=tz_offset_min,
     )
     current_fingerprints = {
         review_fingerprint([finding.rule, activity_id, finding.context])
@@ -361,6 +481,9 @@ def refresh_activity_quality(
         elapsed_s=elapsed_s,
         distance_m=distance_m,
         moving_s=moving_s,
+        local_date=local_date,
+        started_at_utc=started_at_utc,
+        tz_offset_min=tz_offset_min,
     )
 
     return findings
