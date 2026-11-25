@@ -25,6 +25,7 @@ class Equipment:
     retired_on: date | None = None
     target_distance_m: float | None = None
     notes: str = ""
+    is_manual: bool = False
 
 
 @dataclass

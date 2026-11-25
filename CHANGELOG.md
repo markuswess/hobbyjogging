@@ -11,7 +11,23 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — phase 3: trustworthy data
 
-Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
+Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
+
+### Manual write coverage
+
+- `race-result`, `threshold`, `period` and `equipment` now append one
+  `edit_log` row per changed field, in the same transaction; `--dry-run` writes
+  none and each has a `history` command. Triage `(v)` and `(t)` log their
+  manual value and owner patch too.
+- `equipment add|list|edit|retire|history` is the manual gear surface. Schema
+  29 adds `equipment.is_manual`; a manual row keeps its fields when a later
+  sheet, Runalyze or Strava import links to it. Retire sets `retired_on`; a
+  duplicate normalized name is refused with the existing row named.
+- `activity edit`, `race-result`, `threshold history`, `period remove|history`,
+  `equipment edit|retire|history` and the review commands that take an activity
+  accept an id, ISO date, `last` or a name substring. An ambiguous date or name
+  lists the candidates and refuses to guess; interactive `activity edit`
+  prompts for the choice.
 
 ### Session metrics
 

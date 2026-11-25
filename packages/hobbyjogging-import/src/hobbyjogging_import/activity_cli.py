@@ -20,6 +20,12 @@ from .editing import (
     apply_manual_set_edit,
     format_change,
 )
+from .history import history_lines
+from .select import (
+    SelectionError,
+    prompt_candidate,
+    resolve_activity,
+)
 from .values import (
     VALUE_PROMPTS,
     parse_feel,
@@ -102,18 +108,38 @@ def run_activity(
 
 
 def _run_edit(args, writer, parser, *, read, print) -> int:
+    interactive = args.interactive or (
+        not _has_changes(args) and not args.history
+    )
+    choose = None
+    if interactive:
+        choose = lambda candidates: prompt_candidate(
+            candidates,
+            read=read,
+            print=print,
+        )
+
+    try:
+        activity_id = resolve_activity(
+            writer.connection,
+            args.activity_id,
+            choose=choose,
+        )
+    except SelectionError as exc:
+        parser.error(str(exc))
+
     row = writer.connection.execute(
         "SELECT id, local_date, sport, name, excluded_at "
         "FROM activities WHERE id = ?",
-        (args.activity_id,),
+        (activity_id,),
     ).fetchone()
     if row is None:
-        parser.error(f"unknown activity: {args.activity_id}")
+        parser.error(f"unknown activity: {activity_id}")
 
     if args.history:
         if _has_changes(args):
             parser.error("--history cannot be combined with edits")
-        return _print_history(writer, args.activity_id, print)
+        return _print_history(writer, activity_id, print)
 
     if args.item is not None and writer.review_item(args.item) is None:
         parser.error(f"unknown review item: {args.item}")
@@ -123,6 +149,7 @@ def _run_edit(args, writer, parser, *, read, print) -> int:
             args,
             writer,
             parser,
+            activity_id,
             read=read,
             print=print,
         )
@@ -143,7 +170,7 @@ def _run_edit(args, writer, parser, *, read, print) -> int:
         for field in clears:
             application = apply_manual_clear(
                 writer,
-                activity_id=args.activity_id,
+                activity_id=activity_id,
                 field=field,
                 resolve_item_id=args.item,
                 note=args.note,
@@ -160,7 +187,7 @@ def _run_edit(args, writer, parser, *, read, print) -> int:
                 continue
             application = apply_manual_set_edit(
                 writer,
-                activity_id=args.activity_id,
+                activity_id=activity_id,
                 field=field,
                 values=sets[field],
                 resolve_item_id=args.item,
@@ -173,7 +200,7 @@ def _run_edit(args, writer, parser, *, read, print) -> int:
         for field, value in scalars.items():
             application = apply_manual_edit(
                 writer,
-                activity_id=args.activity_id,
+                activity_id=activity_id,
                 field=field,
                 value=value,
                 resolve_item_id=args.item,
@@ -218,11 +245,11 @@ def _has_changes(args) -> bool:
     )
 
 
-def _collect_changes(args, writer, parser, *, read, print):
+def _collect_changes(args, writer, parser, activity_id, *, read, print):
     interactive = args.interactive or not _has_changes(args)
     if interactive:
         return _interactive_changes(
-            args.activity_id,
+            activity_id,
             writer,
             read=read,
             print=print,
@@ -373,13 +400,9 @@ def _print_history(writer, activity_id: str, print) -> int:
     if not entries:
         print(f"No edits recorded for {activity_id}.")
         return 0
-
-    for entry in entries:
-        print(
-            f"#{entry.id} {entry.created_at} [{entry.source}] "
-            f"{entry.field}: {format_change(entry.field, entry.old)} → "
-            f"{format_change(entry.field, entry.new)}"
-        )
-        if entry.note:
-            print(f"    {entry.note}")
+    for line in history_lines(
+        entries,
+        field_formatter=format_change,
+    ):
+        print(line)
     return 0

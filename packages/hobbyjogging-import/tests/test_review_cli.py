@@ -156,6 +156,17 @@ class ReviewCliTests(unittest.TestCase):
             ).fetchone()["excluded_at"],
         )
 
+    def test_exclude_by_name(self):
+        code, output = self._run(
+            [
+                "review", "--database", str(self.database),
+                "exclude", "Morning run",
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Excluded a1", output)
+
     def test_edit_sets_manual_value_resolves_item_and_reports_quality(self):
         conn = self.seed_writer.connection
         # Recreate the zero-distance situation the seed item describes.

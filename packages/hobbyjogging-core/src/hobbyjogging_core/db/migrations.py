@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 28
+SCHEMA_VERSION = 29
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -580,6 +580,14 @@ ADD COLUMN field_sources_json TEXT NOT NULL DEFAULT '{}';
 """
 
 
+MIGRATION_29_SQL = """
+-- A hand-created or hand-edited equipment row is an input: a later sheet or
+-- gear import may attach a source link, but it never rewrites the row's fields.
+ALTER TABLE equipment ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0
+    CHECK (is_manual IN (0, 1));
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -609,6 +617,7 @@ MIGRATIONS: dict[int, str] = {
     26: MIGRATION_26_SQL,
     27: MIGRATION_27_SQL,
     28: MIGRATION_28_SQL,
+    29: MIGRATION_29_SQL,
 }
 
 

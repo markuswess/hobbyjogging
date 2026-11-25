@@ -62,22 +62,41 @@ class TrainingRepository:
             (entity_kind, entity_id),
         ).fetchall()
 
-        entries = []
-        for row in rows:
-            entries.append(
-                EditLogEntry(
-                    id=row["id"],
-                    entity_kind=row["entity_kind"],
-                    entity_id=row["entity_id"],
-                    field=row["field"],
-                    old=_decode_json(row["old_json"]),
-                    new=_decode_json(row["new_json"]),
-                    source=row["source"],
-                    note=row["note"],
-                    created_at=row["created_at"],
-                )
-            )
-        return entries
+        return [self._edit_entry(row) for row in rows]
+
+    def edit_history_prefix(
+        self,
+        entity_kind: str,
+        entity_prefix: str = "",
+    ) -> list[EditLogEntry]:
+        """Return the edit log for entities whose id starts with a prefix."""
+        rows = self.connection.execute(
+            """
+            SELECT id, entity_kind, entity_id, field, old_json, new_json,
+                   source, note, created_at
+            FROM edit_log
+            WHERE entity_kind = ? AND entity_id LIKE ?
+            ORDER BY id
+            """,
+            (entity_kind, f"{entity_prefix}%"),
+        ).fetchall()
+
+        return [self._edit_entry(row) for row in rows]
+
+    @staticmethod
+    def _edit_entry(row: sqlite3.Row) -> EditLogEntry:
+        return EditLogEntry(
+            id=row["id"],
+            entity_kind=row["entity_kind"],
+            entity_id=row["entity_id"],
+            field=row["field"],
+            old=_decode_json(row["old_json"]),
+            new=_decode_json(row["new_json"]),
+            source=row["source"],
+            note=row["note"],
+            created_at=row["created_at"],
+        )
+
 
     def activities(self, start: date, end: date) -> list[Activity]:
         rows = self.connection.execute(
@@ -511,7 +530,7 @@ class TrainingRepository:
             """
             SELECT
                 id, type, name, brand, model,
-                acquired_on, retired_on, target_distance_m, notes
+                acquired_on, retired_on, target_distance_m, notes, is_manual
             FROM equipment
             ORDER BY type, name, id
             """
@@ -791,7 +810,8 @@ class TrainingRepository:
             SELECT
                 ae.activity_id,
                 e.id, e.type, e.name, e.brand, e.model,
-                e.acquired_on, e.retired_on, e.target_distance_m, e.notes
+                e.acquired_on, e.retired_on, e.target_distance_m, e.notes,
+                e.is_manual
             FROM activity_equipment ae
             JOIN equipment e ON e.id = ae.equipment_id
             WHERE ae.activity_id IN ({placeholders})
@@ -857,6 +877,7 @@ class TrainingRepository:
             retired_on=_parse_optional_date(row["retired_on"]),
             target_distance_m=row["target_distance_m"],
             notes=row["notes"],
+            is_manual=bool(row["is_manual"]),
         )
 
 

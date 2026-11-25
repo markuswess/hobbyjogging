@@ -2,7 +2,9 @@
 
 Runalyze supplies race results for the races it knows; this fills the gaps and
 lets a result be entered the day it happens, before any import sees it. The row
-is keyed by activity and a manual row is never overwritten by a source.
+is keyed by activity and a manual row is never overwritten by a source. Every
+change appends an ``edit_log`` row; the activity selector accepts an id, date,
+``last`` or a name.
 """
 
 from __future__ import annotations
@@ -11,9 +13,12 @@ import argparse
 
 from hobbyjogging_core import TrainingRepository, TrainingWriter, open_database
 
+from .history import history_lines, record_changes
+from .select import SelectionError, resolve_activity
 from .values import format_duration_s, parse_distance_m, parse_duration_s
 
 SOURCE = "manual"
+ENTITY = "race_result"
 
 
 def run_race_result(args, parser: argparse.ArgumentParser) -> int:
@@ -25,6 +30,8 @@ def run_race_result(args, parser: argparse.ArgumentParser) -> int:
         return _list(args, parser)
     if action == "remove":
         return _remove(args, parser)
+    if action == "history":
+        return _history(args, parser)
 
     parser.error(f"unknown race-result command: {action}")
     return 1
@@ -66,29 +73,38 @@ def _add(args, parser: argparse.ArgumentParser) -> int:
 
     connection = open_database(args.database)
     try:
+        try:
+            activity_id = resolve_activity(connection, args.activity)
+        except SelectionError as exc:
+            parser.error(str(exc))
+        old = _row(connection, activity_id)
         writer = TrainingWriter(connection)
-
-        row = connection.execute(
-            "SELECT 1 FROM activities WHERE id = ?",
-            (args.activity,),
-        ).fetchone()
-        if row is None:
-            parser.error(f"unknown activity: {args.activity}")
-
         written = writer.upsert_race_result(
-            args.activity,
+            activity_id,
             source=SOURCE,
             **fields,
         )
-        connection.commit()
+        if not written:
+            connection.rollback()
+            print("no change: the existing row is not replaceable")
+            return 1
+        record_changes(
+            writer,
+            entity_kind=ENTITY,
+            entity_id=activity_id,
+            old=old,
+            new=fields,
+            source=SOURCE,
+            note=args.note or "race-result add",
+        )
+        if args.dry_run:
+            connection.rollback()
+            print(f"Dry run: race result for {activity_id} not written.")
+        else:
+            connection.commit()
+            print(f"race result saved for {activity_id}")
     finally:
         connection.close()
-
-    if not written:
-        print("no change: the existing row is not replaceable")
-        return 1
-
-    print(f"race result saved for {args.activity}")
     return 0
 
 
@@ -134,20 +150,67 @@ def _list(args, parser: argparse.ArgumentParser) -> int:
 def _remove(args, parser: argparse.ArgumentParser) -> int:
     connection = open_database(args.database)
     try:
+        try:
+            activity_id = resolve_activity(connection, args.activity)
+        except SelectionError as exc:
+            parser.error(str(exc))
+        old = _row(connection, activity_id)
+        if not old:
+            parser.error(f"no race result for {activity_id}")
+
         cursor = connection.execute(
             "UPDATE race_results SET excluded_at = CURRENT_TIMESTAMP, "
             "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ? "
             "AND excluded_at IS NULL",
-            (args.activity,),
+            (activity_id,),
         )
-        connection.commit()
-        removed = cursor.rowcount
+        if not cursor.rowcount:
+            parser.error(f"no race result for {activity_id}")
+
+        record_changes(
+            TrainingWriter(connection),
+            entity_kind=ENTITY,
+            entity_id=activity_id,
+            old={"excluded_at": False},
+            new={"excluded_at": True},
+            source=SOURCE,
+            note=args.note or "race-result remove",
+        )
+        if args.dry_run:
+            connection.rollback()
+            print(f"Dry run: race result for {activity_id} not excluded.")
+        else:
+            connection.commit()
+            print(f"race result excluded for {activity_id}")
+    finally:
+        connection.close()
+    return 0
+
+
+def _history(args, parser: argparse.ArgumentParser) -> int:
+    connection = open_database(args.database)
+    try:
+        try:
+            activity_id = resolve_activity(connection, args.activity)
+        except SelectionError as exc:
+            parser.error(str(exc))
+        entries = TrainingRepository(connection).edit_history(
+            ENTITY, activity_id
+        )
     finally:
         connection.close()
 
-    if not removed:
-        parser.error(f"no race result for {args.activity}")
-
-    print(f"race result excluded for {args.activity}")
+    for line in history_lines(entries):
+        print(line)
     return 0
 
+
+def _row(connection, activity_id: str) -> dict[str, object]:
+    row = connection.execute(
+        f"SELECT {', '.join(TrainingWriter.RACE_RESULT_FIELDS)} "
+        "FROM race_results WHERE activity_id = ?",
+        (activity_id,),
+    ).fetchone()
+    if row is None:
+        return {}
+    return {field: row[field] for field in TrainingWriter.RACE_RESULT_FIELDS}

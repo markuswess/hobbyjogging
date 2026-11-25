@@ -5,6 +5,12 @@ on.
 
 ## Done
 
+- **Manual write coverage, equipment and selectors.** `race-result`,
+  `threshold`, `period` and `equipment` append an `edit_log` row per changed
+  field and have a `history` command; triage `(v)`/`(t)` log too.
+  `equipment add|list|edit|retire` uses schema 29 `is_manual` and retire never
+  deletes. One resolver accepts id/ISO date/`last`/name across the manual
+  commands; ambiguity lists candidates.
 - **Duplicate detection.** `duplicates.py` finds same-session pairs (sport/day,
   distance 2 %, duration 5 %, HR 5 bpm) and links the weaker copy; the
   maintenance recompute opens one `duplicate` item per pair. The sheet cleanup

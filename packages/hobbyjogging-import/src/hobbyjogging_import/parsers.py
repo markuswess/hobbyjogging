@@ -532,6 +532,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--threshold-pace",
         help="threshold pace as 4:30 (min/km) or 3.70mps",
     )
+    threshold_add.add_argument("--note", help="edit-log note")
+    threshold_add.add_argument("--dry-run", action="store_true")
+    threshold_history = threshold_sub.add_parser(
+        "history",
+        help="show the manual threshold edit history",
+    )
+    threshold_history.add_argument("--sport")
+    threshold_history.add_argument("--from", dest="effective_from")
     threshold_list = threshold_sub.add_parser(
         "list",
         help="list stored threshold snapshots",
@@ -555,6 +563,8 @@ def build_parser() -> argparse.ArgumentParser:
     period_add.add_argument("--end")
     period_add.add_argument("--label")
     period_add.add_argument("--notes")
+    period_add.add_argument("--note", help="edit-log note")
+    period_add.add_argument("--dry-run", action="store_true")
     period_list = period_sub.add_parser("list", help="list stored periods")
     period_list.add_argument("--limit", type=int)
     period_remove = period_sub.add_parser(
@@ -562,6 +572,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="soft-exclude one period",
     )
     period_remove.add_argument("period")
+    period_remove.add_argument("--note", help="edit-log note")
+    period_remove.add_argument("--dry-run", action="store_true")
+    period_history = period_sub.add_parser(
+        "history",
+        help="show one period's manual edit history",
+    )
+    period_history.add_argument("period")
 
     race_result = subparsers.add_parser(
         "race-result",
@@ -595,6 +612,8 @@ def build_parser() -> argparse.ArgumentParser:
     race_result_add.add_argument("--status", default="completed")
     race_result_add.add_argument("--notes")
     race_result_add.add_argument("--event-id")
+    race_result_add.add_argument("--note", help="edit-log note")
+    race_result_add.add_argument("--dry-run", action="store_true")
 
     race_result_list = race_result_sub.add_parser(
         "list",
@@ -607,6 +626,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="soft-exclude one activity's race result",
     )
     race_result_remove.add_argument("activity")
+    race_result_remove.add_argument("--note", help="edit-log note")
+    race_result_remove.add_argument("--dry-run", action="store_true")
+    race_result_history = race_result_sub.add_parser(
+        "history",
+        help="show one activity's race-result edit history",
+    )
+    race_result_history.add_argument("activity")
 
     activity = subparsers.add_parser(
         "activity",
@@ -621,7 +647,11 @@ def build_parser() -> argparse.ArgumentParser:
         "edit",
         help="edit activity fields as manual overrides (no review item needed)",
     )
-    activity_edit.add_argument("activity_id", metavar="ACTIVITY_ID")
+    activity_edit.add_argument(
+        "activity_id",
+        metavar="ACTIVITY",
+        help="activity id, ISO date, 'last', or a name substring",
+    )
     activity_edit.add_argument("--name")
     activity_edit.add_argument("--description")
     activity_edit.add_argument(
@@ -709,6 +739,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="prompt field by field (also the default with no flags)",
     )
+
+    from .equipment_cli import add_equipment_parser
+
+    add_equipment_parser(subparsers)
 
     review = subparsers.add_parser(
         "review",

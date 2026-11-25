@@ -91,6 +91,43 @@ class PeriodCliTests(unittest.TestCase):
         self.assertIn("open", out)
         self.assertIn("Spring block", out)
 
+    def test_add_logs_and_history_shows_the_changes(self):
+        self._run(
+            "period", "--database", str(self.database),
+            "add", "--kind", "illness", "--start", "2026-05-01",
+            "--label", "Flu", "--note", "from triage",
+        )
+        code, out = self._run(
+            "period", "--database", str(self.database),
+            "history", "Flu",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("kind", out)
+        self.assertIn("from triage", out)
+
+    def test_remove_by_label_and_dry_run(self):
+        self._run(
+            "period", "--database", str(self.database),
+            "add", "--kind", "illness", "--start", "2026-05-01",
+            "--label", "Flu",
+        )
+
+        code, out = self._run(
+            "period", "--database", str(self.database),
+            "remove", "Flu", "--dry-run",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Dry run", out)
+        self.assertIsNone(self._periods()[0]["excluded_at"])
+
+        self._run(
+            "period", "--database", str(self.database),
+            "remove", "2026-05-01",
+        )
+        self.assertIsNotNone(self._periods()[0]["excluded_at"])
+
     def test_remove_soft_excludes(self):
         self._run(
             "period", "--database", str(self.database),

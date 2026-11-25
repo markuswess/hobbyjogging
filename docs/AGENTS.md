@@ -149,6 +149,9 @@ Cross-package changes must leave all four suites green.
 - Duplicate detection is review-only; resolution is exclusion, never a merge.
   The sheet-pair cleanup copies the sheet text to the device row before
   excluding the sheet row.
+- A hand-created or hand-edited equipment row is `is_manual=1`; a later sheet,
+  Runalyze or Strava import links to it but never rewrites its fields. Retire
+  sets `retired_on`; nothing is hard-deleted.
 - Events are Intervals-authoritative: fields are replaced (including NULLs),
   removed events are soft-excluded, and manual/other-source events are left
   alone.

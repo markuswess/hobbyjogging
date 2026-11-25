@@ -902,6 +902,11 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_activity(args, parser)
 
+    if args.command == "equipment":
+        from .equipment_cli import run_equipment
+
+        return run_equipment(args, parser)
+
     if args.command != "intervals":
         parser.error(f"unknown command: {args.command}")
 

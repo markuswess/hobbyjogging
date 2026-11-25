@@ -916,6 +916,40 @@ Both recomputes run in `sync.sh` (`--no-classify` also skips them) and close
 their items when the underlying evidence disappears or the period/sport is
 decided.
 
+## Equipment
+
+`equipment add|list|edit|retire|history` is the manual gear surface:
+
+```bash
+uv run --env-file .env hobbyjogging-import equipment add "Pegasus 40" \
+  --brand Nike --model "Pegasus 40" --acquired 2026-01-02 \
+  --target-distance 800km --notes daily
+uv run --env-file .env hobbyjogging-import equipment edit "Pegasus 40" \
+  --notes "retired from daily"
+uv run --env-file .env hobbyjogging-import equipment retire "Pegasus 40" \
+  --on 2026-11-01
+```
+
+A manual row is an input (`is_manual=1`): a later sheet, Runalyze or Strava
+import may attach a source link but never rewrites its name, brand, model,
+dates, target or notes. Retire sets `retired_on`; nothing is deleted. Adding a
+normalized duplicate name prints the existing row and refuses to create a
+second one.
+
+## Selectors and edit history
+
+Manual commands accept an entity id, an ISO date, `last`, or a name substring:
+`activity edit`, `race-result add|remove|history`, `threshold history`,
+`period remove|history`, `equipment edit|retire|history`, and the review
+commands that take an activity. An ambiguous date or name lists the
+candidates and refuses to guess; `activity edit` in interactive mode prompts
+for the choice.
+
+Every manual write appends one `edit_log` row per changed field in the same
+transaction: `activity edit`, `race-result`, `threshold`, `period`, `equipment`,
+triage `(v)` and `(t)`. `--dry-run` writes none. `activity --history` and the
+entity `history` commands print old → new, source and note.
+
 ## Duplicates
 
 `duplicate_candidates_current` scans the whole database for the same session

@@ -633,6 +633,7 @@ class TriageRunner:
                 value=value,
                 resolve_item_id=item["id"],
                 note=f"triage: {note}",
+                source="triage",
             )
         except ValueError as exc:
             self.print(f"  error: {exc}")
@@ -1164,6 +1165,17 @@ class TriageRunner:
         for field, (source, _value, is_manual) in after.items():
             if source == "intervals" and not is_manual:
                 self.writer.set_manual_owner(activity_id, field, "intervals")
+                previous = before.get(field)
+                self.writer.record_edit_log(
+                    entity_kind="activity",
+                    entity_id=activity_id,
+                    field=f"owner:{field}",
+                    old=previous[0] if previous is not None else None,
+                    new="intervals",
+                    source="triage",
+                    note=self.pending_note
+                    or "triage: trusted Intervals",
+                )
         changed = []
         owned = 0
         for field in sorted(after):

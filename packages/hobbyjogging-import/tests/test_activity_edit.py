@@ -123,6 +123,85 @@ class ActivityEditTests(unittest.TestCase):
         self.assertEqual(1, self._star("name")["is_manual"])
         self.assertEqual(5, len(self._edit_log()))
 
+    def _second_activity(self):
+        self.writer.upsert_activity(
+            "a2",
+            {
+                "local_date": "2026-10-01",
+                "sport": "run",
+                "name": "Evening run",
+                "duration_s": 1800,
+                "distance_m": 5000,
+            },
+            source="fit",
+            source_record_id=None,
+        )
+        self.conn.commit()
+
+    def test_selector_accepts_a_unique_name_or_date(self):
+        code, _ = self._run(
+            [
+                "activity", "--database", str(self.database),
+                "edit", "Morning run", "--rpe", "7",
+            ]
+        )
+        self.assertEqual(0, code)
+        self.assertEqual(7.0, self._value("rpe"))
+
+        code, _ = self._run(
+            [
+                "activity", "--database", str(self.database),
+                "edit", "2026-10-01", "--name", "Morning edit",
+            ]
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("Morning edit", self._value("name"))
+
+    def test_ambiguous_selector_with_flags_errors(self):
+        self._second_activity()
+        with self.assertRaises(SystemExit):
+            self._run(
+                [
+                    "activity", "--database", str(self.database),
+                    "edit", "run", "--rpe", "7",
+                ]
+            )
+
+    def test_interactive_ambiguous_selector_prompts(self):
+        self._second_activity()
+        answers = iter(["2"] + [""] * 12)
+
+        def read(prompt):
+            try:
+                return next(answers)
+            except StopIteration:
+                return ""
+
+        code, output = self._run(
+            [
+                "activity", "--database", str(self.database),
+                "edit", "run",
+            ],
+            read=read,
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Matched several records", output)
+        self.assertIn("Nothing to change.", output)
+
+    def test_history_by_name(self):
+        self._edit("--rpe", "7")
+
+        code, output = self._run(
+            [
+                "activity", "--database", str(self.database),
+                "edit", "Morning run", "--history",
+            ]
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("rpe", output)
+
     def test_manual_edit_survives_a_reimport(self):
         self._edit("--name", "Edited name", "--sub-sport", "trail")
 

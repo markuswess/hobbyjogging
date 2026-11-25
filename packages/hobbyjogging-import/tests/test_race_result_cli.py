@@ -119,6 +119,60 @@ class RaceResultCliTests(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIsNotNone(self._rows()[0]["excluded_at"])
 
+    def test_a_dry_run_writes_nothing(self):
+        code, out = self._run(
+            "race-result", "--database", str(self.database),
+            "add", "a1", "--time", "2:37:49", "--dry-run",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Dry run", out)
+        self.assertEqual([], self._rows())
+        self.assertEqual(0, self._log_count())
+
+    def test_history_shows_the_added_and_removed_fields(self):
+        self._run(
+            "race-result", "--database", str(self.database),
+            "add", "a1", "--time", "2:37:49", "--note", "official",
+        )
+        code, out = self._run(
+            "race-result", "--database", str(self.database),
+            "history", "a1",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("official_time_s", out)
+        self.assertIn("9469", out)
+        self.assertIn("official", out)
+
+        self._run(
+            "race-result", "--database", str(self.database),
+            "remove", "a1",
+        )
+        code, out = self._run(
+            "race-result", "--database", str(self.database),
+            "history", "a1",
+        )
+        self.assertIn("excluded_at: no → yes", out)
+
+    def test_the_activity_can_be_selected_by_name_or_date(self):
+        code, _ = self._run(
+            "race-result", "--database", str(self.database),
+            "add", "Linz Marathon", "--time", "2:37:49",
+        )
+
+        self.assertEqual(0, code)
+        self.assertEqual("a1", self._rows()[0]["activity_id"])
+
+    def _log_count(self):
+        connection = open_database(self.database)
+        try:
+            return connection.execute(
+                "SELECT COUNT(*) FROM edit_log"
+            ).fetchone()[0]
+        finally:
+            connection.close()
+
     def test_an_unknown_activity_is_an_error(self):
         with self.assertRaises(SystemExit):
             self._run(

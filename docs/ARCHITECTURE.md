@@ -275,6 +275,13 @@ Source ingestion and the review queue.
 - `editing.py` — shared manual-edit application used by `review edit`,
   `activity edit` and triage: scalar values, whole sets, clears, conflict and
   classification closure, the `edit_log` row and the quality re-check.
+- `history.py` — shared edit-log writer (one row per changed field) and
+  renderer for the entity commands.
+- `select.py` — the id / ISO date / `last` / name-substring resolver for
+  activities, equipment and periods; ambiguity lists candidates and refuses to
+  guess.
+- `equipment_cli.py` — `equipment add|list|edit|retire|history`; a manual row
+  is an input and retire sets `retired_on`.
 - `activity_cli.py` — `activity edit`: the direct human write surface with
   explicit flags, `--clear`, `--dry-run`, `--history` and an interactive mode.
 - `triage.py` — interactive review walk.
@@ -359,7 +366,7 @@ changes.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 28.
+SQLite, forward-only migrations. Schema version 29.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -475,7 +482,10 @@ SQLite, forward-only migrations. Schema version 28.
   column. Writes are fill-only: Garmin's daily feed fills only the NULL fields
   of a day Intervals already wrote, so the first source keeps its values.
 - `equipment`, `activity_equipment`,
-  `equipment_source_links`, `zone_configs` — supporting canonical data.
+  `equipment_source_links`, `zone_configs` — supporting canonical data. An
+  equipment row carries `is_manual` (v29): a hand-created or hand-edited item
+  keeps its name, brand, model, dates and notes when a later source links to
+  it.
 - `events` — planned workouts and races: local date, type, description,
   planned moving duration (`duration_s`), distance, training load, planned
   zone kind (`zone_kind`), and an exclusion timestamp. Intervals is
@@ -774,6 +784,14 @@ A resolved decision is not reopened; changed proposals supersede the old item.
   default, and a blank answer keeps it. This is the reference write surface:
   the later localhost UI binds to the same functions rather than reimplementing
   them.
+- `race-result`, `threshold`, `period add|remove` and
+  `equipment add|edit|retire` write their own entity rows and append one
+  `edit_log` row per changed field; their `history` command shows old/new.
+  `equipment` writes `is_manual=1`, so a later sheet or gear import only links
+  and never rewrites the row; retire sets `retired_on`. These commands, plus
+  `activity edit` and the review commands that take an activity, resolve an id,
+  ISO date, `last` or a name substring; an ambiguous selector lists the
+  candidates and refuses to guess.
 - `review exclude` / `review restore` — durable soft delete of an activity and
   its source records, or undo.
 - `review triage` — interactive walk with per-item decisions committed

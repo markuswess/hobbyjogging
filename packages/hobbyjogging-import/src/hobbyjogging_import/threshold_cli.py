@@ -13,7 +13,11 @@ from datetime import date
 
 from hobbyjogging_core import TrainingRepository, TrainingWriter, open_database
 
+from .history import history_lines, record_changes
 from .values import format_duration_s, parse_pace_mps, parse_sport
+
+SOURCE = "manual"
+ENTITY = "athlete_threshold"
 
 
 def run_threshold(args, parser: argparse.ArgumentParser) -> int:
@@ -23,6 +27,8 @@ def run_threshold(args, parser: argparse.ArgumentParser) -> int:
         return _add(args, parser)
     if action == "list":
         return _list(args, parser)
+    if action == "history":
+        return _history(args, parser)
 
     parser.error(f"unknown threshold command: {action}")
     return 1
@@ -62,11 +68,31 @@ def _add(args, parser: argparse.ArgumentParser) -> int:
             sport,
             parser,
         )
-        TrainingWriter(connection).set_manual_threshold(
+        writer = TrainingWriter(connection)
+        old = _row(connection, sport, effective)
+        new = {
+            "max_hr": values.get("max_hr"),
+            "lthr": values.get("lthr"),
+            "threshold_pace_mps": values.get("threshold_pace_mps"),
+        }
+        writer.set_manual_threshold(
             effective,
             sport,
             **values,
         )
+        record_changes(
+            writer,
+            entity_kind=ENTITY,
+            entity_id=f"{sport}:{effective.isoformat()}",
+            old=old,
+            new=new,
+            source=SOURCE,
+            note=args.note or "threshold add",
+        )
+        if args.dry_run:
+            connection.rollback()
+            print(f"Dry run: threshold {sport} from {effective} not written.")
+            return 0
         connection.commit()
         earlier = _earlier_unzoned(connection, sport, effective)
     finally:
@@ -129,6 +155,62 @@ def _earlier_unzoned(connection, sport: str, effective: date) -> int:
         (sport, effective.isoformat()),
     ).fetchone()
     return row[0] if row is not None else 0
+
+
+def _history(args, parser: argparse.ArgumentParser) -> int:
+    sport = None
+    if args.sport:
+        try:
+            sport = parse_sport(args.sport)
+        except ValueError as exc:
+            parser.error(str(exc))
+
+    effective = None
+    if args.effective_from:
+        try:
+            effective = date.fromisoformat(args.effective_from)
+        except ValueError as exc:
+            parser.error(f"invalid date: {exc}")
+        if sport is None:
+            parser.error("--from needs --sport")
+
+    connection = open_database(args.database)
+    try:
+        repository = TrainingRepository(connection)
+        if sport is not None and effective is not None:
+            entries = repository.edit_history(
+                ENTITY, f"{sport}:{effective.isoformat()}"
+            )
+        elif sport is not None:
+            entries = repository.edit_history_prefix(
+                ENTITY, f"{sport}:"
+            )
+        else:
+            entries = repository.edit_history_prefix(ENTITY)
+    finally:
+        connection.close()
+
+    for line in history_lines(entries):
+        print(line)
+    return 0
+
+
+def _row(connection, sport: str, effective: date) -> dict[str, object]:
+    row = connection.execute(
+        """
+        SELECT max_hr, lthr, threshold_pace_mps
+        FROM athlete_thresholds
+        WHERE source = 'manual' AND sport = ? AND effective_from = ?
+        """,
+        (sport, effective.isoformat()),
+    ).fetchone()
+    if row is None:
+        return {}
+    return {
+        "max_hr": row["max_hr"],
+        "lthr": row["lthr"],
+        "threshold_pace_mps": row["threshold_pace_mps"],
+    }
 
 
 def _list(args, parser: argparse.ArgumentParser) -> int:

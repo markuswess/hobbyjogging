@@ -93,6 +93,38 @@ class ThresholdCommandTests(unittest.TestCase):
         self.assertIn("4:30 /km", text)
         self.assertIn("manual", text)
 
+    def test_add_logs_and_history_by_sport(self):
+        self._run(
+            "add", "--sport", "run", "--from", "2026-01-01",
+            "--lthr", "170", "--note", "lab test",
+        )
+
+        code, text = self._run("history", "--sport", "run")
+
+        self.assertEqual(0, code)
+        self.assertIn("lthr", text)
+        self.assertIn("lab test", text)
+
+    def test_dry_run_writes_nothing(self):
+        code, text = self._run(
+            "add", "--sport", "run", "--from", "2026-01-01",
+            "--lthr", "170", "--dry-run",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Dry run", text)
+
+        connection = open_database(self.database)
+        try:
+            thresholds = TrainingRepository(connection).athlete_thresholds()
+            logs = connection.execute(
+                "SELECT COUNT(*) FROM edit_log"
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual([], thresholds)
+        self.assertEqual(0, logs)
+
     def test_from_first_anchors_on_the_earliest_activity_of_the_sport(self):
         self._activity("2020-01-01")
         self._activity("2019-06-01")

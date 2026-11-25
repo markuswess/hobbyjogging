@@ -1857,6 +1857,37 @@ class EquipmentTests(unittest.TestCase):
         ).fetchall()
         self.assertEqual(["sheet:equipment:1"], [r[0] for r in linked])
 
+    def test_manual_equipment_is_not_overwritten_by_a_source(self):
+        self.writer.upsert_equipment(
+            "manual:equipment:1",
+            type="shoe",
+            name="Manual shoe",
+            notes="size 42",
+            is_manual=True,
+        )
+
+        created = self.writer.upsert_equipment(
+            "manual:equipment:1",
+            type="shoe",
+            name="Source shoe",
+            source_record_id=self.sheet_source,
+        )
+
+        self.assertFalse(created)
+        row = self.conn.execute(
+            "SELECT name, notes, is_manual FROM equipment WHERE id = ?",
+            ("manual:equipment:1",),
+        ).fetchone()
+        self.assertEqual("Manual shoe", row["name"])
+        self.assertEqual("size 42", row["notes"])
+        self.assertEqual(1, row["is_manual"])
+        linked = self.conn.execute(
+            "SELECT equipment_id FROM equipment_source_links "
+            "WHERE source_record_id = ?",
+            (self.sheet_source,),
+        ).fetchone()
+        self.assertEqual("manual:equipment:1", linked["equipment_id"])
+
     def test_link_equipment_source_does_not_change_the_row(self):
         self._equipment()
         self.writer.upsert_equipment(

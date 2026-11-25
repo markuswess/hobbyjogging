@@ -1540,12 +1540,14 @@ class TrainingWriter:
         target_distance_m: float | None = None,
         notes: str = "",
         source_record_id: int | None = None,
+        is_manual: bool = False,
     ) -> bool:
         """Create or update one piece of equipment.
 
         Equipment is keyed by a stable id, so reimporting the same source row
-        refreshes it instead of duplicating it. Returns ``True`` when the row
-        was created.
+        refreshes it instead of duplicating it. A manual row is an input: a
+        source only attaches its link and never rewrites the fields. Returns
+        ``True`` when the row was created.
         """
         if not str(equipment_id).strip():
             raise ValueError("equipment id must not be empty")
@@ -1553,16 +1555,20 @@ class TrainingWriter:
             raise ValueError("equipment name must not be empty")
 
         existing = self.connection.execute(
-            "SELECT 1 FROM equipment WHERE id = ?",
+            "SELECT is_manual FROM equipment WHERE id = ?",
             (equipment_id,),
         ).fetchone()
+
+        if existing is not None and existing["is_manual"] and not is_manual:
+            self._link_equipment_record(equipment_id, source_record_id)
+            return False
 
         self.connection.execute(
             """
             INSERT INTO equipment (
                 id, type, name, brand, model,
-                acquired_on, retired_on, target_distance_m, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                acquired_on, retired_on, target_distance_m, notes, is_manual
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 type = excluded.type,
                 name = excluded.name,
@@ -1572,6 +1578,7 @@ class TrainingWriter:
                 retired_on = excluded.retired_on,
                 target_distance_m = excluded.target_distance_m,
                 notes = excluded.notes,
+                is_manual = excluded.is_manual,
                 updated_at = CURRENT_TIMESTAMP
             """,
             (
@@ -1584,27 +1591,35 @@ class TrainingWriter:
                 _iso_date(retired_on),
                 target_distance_m,
                 str(notes or ""),
+                1 if is_manual else 0,
             ),
         )
 
-        if source_record_id is not None:
-            self.connection.execute(
-                """
-                DELETE FROM equipment_source_links
-                WHERE source_record_id = ?
-                """,
-                (source_record_id,),
-            )
-            self.connection.execute(
-                """
-                INSERT OR IGNORE INTO equipment_source_links (
-                    equipment_id, source_record_id
-                ) VALUES (?, ?)
-                """,
-                (str(equipment_id), source_record_id),
-            )
-
+        self._link_equipment_record(equipment_id, source_record_id)
         return existing is None
+
+    def _link_equipment_record(
+        self,
+        equipment_id: str,
+        source_record_id: int | None,
+    ) -> None:
+        if source_record_id is None:
+            return
+        self.connection.execute(
+            """
+            DELETE FROM equipment_source_links
+            WHERE source_record_id = ?
+            """,
+            (source_record_id,),
+        )
+        self.connection.execute(
+            """
+            INSERT OR IGNORE INTO equipment_source_links (
+                equipment_id, source_record_id
+            ) VALUES (?, ?)
+            """,
+            (str(equipment_id), source_record_id),
+        )
 
     def link_equipment_source(
         self,

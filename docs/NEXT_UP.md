@@ -9,6 +9,16 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Manual writes, equipment and selectors (2026-11-25).** Every manual write
+  now appends one `edit_log` row per changed field: `race-result`, `threshold`,
+  `period`, `equipment`, triage `(v)`/`(t)` and the existing activity edits.
+  `equipment add|list|edit|retire|history` lands with schema 29
+  (`equipment.is_manual`), so a later import links to a manual row without
+  rewriting it; retire sets `retired_on`. `activity edit`, `race-result`,
+  `threshold history`, `period remove|history`, `equipment edit|retire|history`
+  and the review activity commands accept an id, ISO date, `last` or a name
+  substring; ambiguity lists candidates and refuses to guess, and interactive
+  edit prompts.
 - **Duplicate detection and sheet cleanup (2026-11-25).**
   `duplicate_candidates_current` scans the whole database for same-session
   pairs (sport/day, distance 2 %, duration 5 %, HR 5 bpm) and opens one hiding
@@ -209,11 +219,11 @@ Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
-(done) → the localhost browser. The write-surface follow-ups **58–60**, the
-metric charts **62** and the evidence follow-ups **63–64** slot alongside. The
-health report and dashboard card show the duplicate count now that 42 opens
-the items. Accepting a suggestion always writes a manual value and an
-`edit_log` row; nothing canonical is auto-applied except an empty,
+(done) → the localhost browser. The write-surface follow-ups **58–60** are
+done; the metric charts **62** and the evidence follow-ups **63–64** slot
+alongside. The health report and dashboard card show the duplicate count now
+that 42 opens the items. Accepting a suggestion always writes a manual value
+and an `edit_log` row; nothing canonical is auto-applied except an empty,
 high-confidence classification. The corrections export (**57**) follows 37's
 audit as a small report; it is not a gate.
 
@@ -1144,53 +1154,6 @@ reports item; 28 is the recurring cleanup.
       changes.
     - **Not**: write-back or platform auth (item 14), an auto-fix, or a second
       identity model.
-
-58. **Edit log for every manual write** (core + import; small, phase 3). The
-    append-only `edit_log` exists and `activity edit` writes it, but
-    `race-result`, `threshold` and `period` write entity rows without a log
-    row, while the convention says every manual write appends one.
-    - **Write**: each command records `entity_kind`, `entity_id`, the field,
-      old/new JSON, `source='manual'` and the note in the same transaction;
-      `--dry-run` writes nothing. Audit the remaining paths too — triage
-      `(v)`/`(t)`, and equipment once item 59 lands — so no manual write is
-      silent.
-    - **Read**: `--history` on the three commands, resolved by activity,
-      sport/date or period id; the activity `--history` keeps its shape.
-    - **Acceptance**: each command writes one row per changed field,
-      `--history` shows old/new, a dry run writes none, and the log stays
-      append-only.
-
-59. **Equipment write surface** (core + import; small, phase 3). Gear is
-    imported from the sheet, Runalyze and Strava, but nothing creates or edits
-    an equipment row by hand; `activity edit --equipment` only links existing
-    rows. That is the last hard dependency on Runalyze for this athlete.
-    - **Commands**: `equipment add|list|edit|retire` — name, type
-      (shoe/bike/other), brand, model, acquired/retired dates, target distance
-      and notes. A normalized-name match warns and points at the existing row
-      instead of creating a duplicate; the gear identity rule never guesses a
-      name tie.
-    - **Rules**: manual values win; a source link attaches to the row and never
-      overwrites its fields; retire sets `retired_on`, never deletes.
-    - **Acceptance**: add/edit/retire round-trips, the gear report shows the
-      row, a later Runalyze/Strava import links without rewriting it, and a
-      duplicate name is refused or disambiguated.
-
-60. **Select entities by date or name, not only id** (import + core; small,
-    phase 3). `activity edit`, `race-result`, `equipment edit|retire` and
-    `period remove` take an id; the reports' `session` already accepts a date,
-    `last` or a name.
-    - **Resolver**: one shared function accepting an id, an ISO date, `last`,
-      or a name substring (casefold). A date with more than one session, or an
-      ambiguous name, prints the candidates (id, date, sport, name) and refuses
-      to guess; interactive edit may prompt to pick, non-interactive commands
-      error with the list.
-    - **Coverage**: `activity edit` first, then `race-result add|remove`,
-      `equipment edit|retire`, `period remove`, and `review` where it takes an
-      activity. Events keep `events sync` (no manual edit).
-    - **Not**: fuzzy matching, writing names, or a schema change.
-    - **Acceptance**: id, date, `last` and a unique name each resolve; a
-      two-session day and an ambiguous name list candidates; an unknown value
-      errors clearly; nothing is picked silently.
 
 ## Parked ideas
 

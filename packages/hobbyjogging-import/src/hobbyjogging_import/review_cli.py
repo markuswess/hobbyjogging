@@ -20,6 +20,7 @@ from .quality import (
     record_manual_flag,
 )
 from .scan import scan_quality
+from .select import SelectionError, resolve_activity
 
 
 def run_review(args, parser) -> int:
@@ -74,7 +75,11 @@ def _run_scan(args, writer: TrainingWriter, parser) -> int:
     try:
         summary = scan_quality(
             writer,
-            activity_id=args.activity,
+            activity_id=(
+                _activity_id(writer, args.activity, parser)
+                if args.activity is not None
+                else None
+            ),
             dry_run=args.dry_run,
             prune=args.prune,
             on_finding=on_finding,
@@ -280,11 +285,12 @@ def _run_resolve(args, writer: TrainingWriter, parser) -> int:
         parser.error(f"unknown review item: {args.id}")
 
     if args.activity is not None:
+        activity_id = _activity_id(writer, args.activity, parser)
         try:
-            writer.resolve_review_match(args.id, args.activity, note=args.note)
+            writer.resolve_review_match(args.id, activity_id, note=args.note)
             connection = writer.connection
             connection.commit()
-            print(f"Resolved #{args.id}: linked to {args.activity}")
+            print(f"Resolved #{args.id}: linked to {activity_id}")
             print(
                 "Re-run the matching importer over the record "
                 "(e.g. hobbyjogging-import fit <file>) to apply the record's "
@@ -312,9 +318,10 @@ def _run_ignore(args, writer: TrainingWriter, parser) -> int:
 
 def _run_flag(args, writer: TrainingWriter, parser) -> int:
     detail = args.note or "manually flagged"
+    activity_id = _activity_id(writer, args.activity_id, parser)
     created = record_manual_flag(
         writer,
-        activity_id=args.activity_id,
+        activity_id=activity_id,
         category=args.category,
         detail=detail,
         severity=args.severity,
@@ -322,22 +329,18 @@ def _run_flag(args, writer: TrainingWriter, parser) -> int:
     writer.connection.commit()
 
     if created:
-        print(f"Flagged {args.category}: {args.activity_id}")
+        print(f"Flagged {args.category}: {activity_id}")
     else:
-        print(f"Already flagged ({args.category}): {args.activity_id}")
+        print(f"Already flagged ({args.category}): {activity_id}")
 
     return 0
 
 
 def _run_exclude(args, writer: TrainingWriter, parser) -> int:
-    if not writer.connection.execute(
-        "SELECT 1 FROM activities WHERE id = ?", (args.activity,)
-    ).fetchone():
-        parser.error(f"unknown activity: {args.activity}")
-
-    resolved = writer.exclude_activity(args.activity, resolve_note=args.note)
+    activity_id = _activity_id(writer, args.activity, parser)
+    resolved = writer.exclude_activity(activity_id, resolve_note=args.note)
     writer.connection.commit()
-    print(f"Excluded {args.activity}")
+    print(f"Excluded {activity_id}")
     print(f"Review items resolved: {resolved}")
     return 0
 
@@ -347,12 +350,7 @@ def _run_edit(args, writer: TrainingWriter, parser) -> int:
     from .editing import apply_manual_edit
     from .values import parse_distance_m, parse_duration_s, parse_sport
 
-    row = writer.connection.execute(
-        "SELECT 1 FROM activities WHERE id = ?",
-        (args.activity,),
-    ).fetchone()
-    if row is None:
-        parser.error(f"unknown activity: {args.activity}")
+    activity_id = _activity_id(writer, args.activity, parser)
 
     planned = []
     for text, field, parse in (
@@ -381,7 +379,7 @@ def _run_edit(args, writer: TrainingWriter, parser) -> int:
             try:
                 application = apply_manual_edit(
                     writer,
-                    activity_id=args.activity,
+                    activity_id=activity_id,
                     field=field,
                     value=value,
                     resolve_item_id=args.item,
@@ -409,14 +407,12 @@ def _run_edit(args, writer: TrainingWriter, parser) -> int:
 
 
 def _run_restore(args, writer: TrainingWriter, parser) -> int:
-    if not writer.connection.execute(
-        "SELECT 1 FROM activities WHERE id = ?", (args.activity,)
-    ).fetchone():
-        parser.error(f"unknown activity: {args.activity}")
-
-    writer.restore_activity(args.activity)
+    activity_id = _activity_id(
+        writer, args.activity, parser, include_excluded=True
+    )
+    writer.restore_activity(activity_id)
     writer.connection.commit()
-    print(f"Restored {args.activity} (review items stay resolved)")
+    print(f"Restored {activity_id} (review items stay resolved)")
     return 0
 
 
@@ -424,15 +420,37 @@ def _run_triage(args, writer: TrainingWriter, parser) -> int:
     """Interactive walk over open review items."""
     from .triage import TriageRunner
 
+    activity_id = (
+        _activity_id(writer, args.activity_id, parser)
+        if args.activity_id is not None
+        else None
+    )
     runner = TriageRunner(writer)
     runner.run(
         limit=args.limit,
         category=args.category,
         severity=args.severity,
-        activity_id=args.activity_id,
+        activity_id=activity_id,
         cause=args.cause,
     )
     return 0
+
+
+def _activity_id(
+    writer: TrainingWriter,
+    selector,
+    parser,
+    *,
+    include_excluded: bool = False,
+) -> str:
+    try:
+        return resolve_activity(
+            writer.connection,
+            selector,
+            include_excluded=include_excluded,
+        )
+    except SelectionError as exc:
+        parser.error(str(exc))
 
 
 def _format_summary_line(item) -> str:
