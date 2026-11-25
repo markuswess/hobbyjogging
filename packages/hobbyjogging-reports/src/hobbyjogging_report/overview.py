@@ -247,10 +247,17 @@ def overview_report(
         source.activities(warm_start, today),
         include_review=include_review,
     )
+    # A missing run today is not a zero-training day yet: end the averages at
+    # the last completed day instead of letting an unfinished day drag them.
+    ran_today = any(
+        activity.type in RUN_TYPES and activity.date == today
+        for activity in activities
+    )
+    end = today if ran_today else today - timedelta(days=1)
     rows = overview_ewma(
         activities,
         warm_start,
-        today,
+        end,
         windows=windows,
     )
     baseline = resting_hr_baselines(
@@ -259,11 +266,11 @@ def overview_report(
             today,
         )
     )
-    efficiency = efficiency_averages(activities, today, baseline)
+    efficiency = efficiency_averages(activities, end, baseline)
     vo2max = vo2max_points(
         vo2max_samples(activities, source.athlete_thresholds()),
         warm_start,
-        today,
+        end,
     )
     latest_vo2max = vo2max[-1] if vo2max else None
 
@@ -299,8 +306,14 @@ def overview_report(
 
     lines = [
         "# Training Overview — EWMA",
-        f"EWMA ending {today}",
+        f"EWMA ending {end}",
     ]
+
+    if not ran_today:
+        lines.append(
+            f"No run recorded today; the EWMAs end {end}."
+        )
+
     note = review_note(excluded)
     if note:
         lines.append(f"\n> {note}")
@@ -321,7 +334,7 @@ def overview_report(
 
     lines.extend([
         "",
-        "Weekly equivalents of the daily EWMA ending today; the last column "
+        f"Weekly equivalents of the daily EWMA ending {end}; the last column "
         f"is {planned_note}.",
         "",
         "Load counts running only; cross load is context in the load "

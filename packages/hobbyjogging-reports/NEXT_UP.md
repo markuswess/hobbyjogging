@@ -9,6 +9,13 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 
 ## Done
 
+- **The overview EWMAs stop at yesterday until today is run.** A missing run
+  today is not a zero-training day, so the Training Overview EWMAs end on the
+  last completed day and the report says "No run recorded today; the EWMAs end
+  <date>." A run today keeps the window through today; a ride today does not
+  end it. The efficiency and VO2max figures use the same end date, and the
+  heading and trailing notes name it.
+
 - **Marathon build comparison.** `reports.sh marathon-builds` (and a
   Performance-tab card) puts the N calendar weeks (default 18) before each
   marathon side by side. Each cell is volume · time · fast (Z3+Z4) · quality

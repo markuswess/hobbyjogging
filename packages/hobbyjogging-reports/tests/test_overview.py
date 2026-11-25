@@ -2,7 +2,8 @@ import unittest
 from datetime import date, timedelta
 
 from hobbyjogging_core.model import Event, EventZoneTime, WellnessDay
-from hobbyjogging_report.overview import overview_report
+from hobbyjogging_report.analysis import average_warmup_days
+from hobbyjogging_report.overview import overview_ewma, overview_report
 from support import FakeSource, activity_factory
 
 TODAY = date(2026, 11, 10)
@@ -54,6 +55,24 @@ def _source():
                 type="ride",
                 duration_s=1800,
                 training_load=20,
+            ),
+        ],
+    )
+
+
+def _source_without_today_run():
+    return FakeSource(
+        activities=[
+            activity(
+                id="run",
+                date=TODAY - timedelta(days=1),
+                duration_s=3600,
+                distance_m=10000,
+                avg_hr=150,
+                training_load=50,
+                workout_methods=["continuous"],
+                workout_targets=["base"],
+                pace_zone_times=[600, 600, 600, 600],
             ),
         ],
     )
@@ -114,6 +133,48 @@ class OverviewReportTests(unittest.TestCase):
 
         self.assertIn("Next period (avg/week)", report)
         self.assertEqual("-", _row(report, "Runs / week")[-1])
+
+    def test_ewmas_end_yesterday_when_today_has_no_run(self):
+        source = _source_without_today_run()
+        yesterday = TODAY - timedelta(days=1)
+
+        report = overview_report(source, today=TODAY, future_days=14)
+
+        self.assertIn(f"EWMA ending {yesterday}", report)
+        self.assertIn(
+            f"No run recorded today; the EWMAs end {yesterday}.",
+            report,
+        )
+        self.assertNotIn(f"EWMA ending {TODAY}", report)
+        self.assertIn(f"EWMA ending {yesterday}; the last column", report)
+
+        warm_start = TODAY - timedelta(days=average_warmup_days())
+        rows = overview_ewma(
+            source.activities(warm_start, TODAY),
+            warm_start,
+            yesterday,
+        )
+
+        self.assertEqual(
+            f"{rows[0].values[7]:.1f}",
+            _row(report, "Runs / week")[1],
+        )
+
+    def test_a_ride_today_does_not_end_the_window(self):
+        source = _source_without_today_run()
+        source._activities.append(
+            activity(
+                id="ride",
+                date=TODAY,
+                type="ride",
+                duration_s=1800,
+            )
+        )
+        yesterday = TODAY - timedelta(days=1)
+
+        report = overview_report(source, today=TODAY, future_days=14)
+
+        self.assertIn(f"EWMA ending {yesterday}", report)
 
     def test_review_items_are_noted_and_excluded(self):
         source = _source()

@@ -274,7 +274,9 @@ stay compact (`1h02`).
   km, running load, and Z3+4, plus the planned weekly average for the next 14
   days, plus an Efficiency row in the same table using the trailing
   7/42/182-day weighted steady efficiency (40–75 min, no planned value), plus
-  the latest effective-VO2max 42/182-day values.
+  the latest effective-VO2max 42/182-day values. When today has no run yet
+  the averages end yesterday (and the report says so), so an unfinished day
+  does not drag them down.
 - **weekly** — Aggregated running and cross-training stats,
   quality sessions and recovery over the last 7 days, including weighted
   steady efficiency (40–75 min) in the running block and category table.
