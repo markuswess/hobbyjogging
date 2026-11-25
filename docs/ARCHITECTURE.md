@@ -269,6 +269,9 @@ Source ingestion and the review queue.
   recovery, race/trail evidence, rep lengths, sheet area codes, context and
   ignored notes. The audit, classification, illness and trail proposals read
   it; an unmapped tag stays unmapped and no rule invents a meaning.
+- `duplicates.py` — the same-session pair rule (sport/day, distance 2 %,
+  duration 5 %, HR 5 bpm) and the stable choice of the weaker copy. Detection
+  opens a review item; resolution is exclusion, never merge.
 - `editing.py` — shared manual-edit application used by `review edit`,
   `activity edit` and triage: scalar values, whole sets, clears, conflict and
   classification closure, the `edit_log` row and the quality re-check.
@@ -330,6 +333,9 @@ changes.
   payloads.
 - `backfills/activity_metrics_v1.py` — `activity_metrics` from the stored
   payloads and the FIT archive (the archive is re-read for the old FIT rows).
+- `backfills/sheet_duplicates_v1.py` — copy a sheet-only duplicate's
+  description to the device row and exclude the sheet row (exclusion, never a
+  merge).
 - `audit*.py` — the read-only historical evidence report: coverage, raw keys,
   tags, descriptions, trail/race evidence, classification, periods and
   session-average metrics. It never opens a review item.
@@ -346,6 +352,9 @@ changes.
   `period_candidate` items for illness tags outside a stored period) and
   `trail_candidates_current` (opens `consistency` items suggesting
   `trail_run`). Both are non-hiding and never write the proposed value.
+- `recompute/duplicate_candidates_current.py` — opens one `duplicate` item per
+  same-session pair and closes stale ones; the sheet cleanup is the separate
+  backfill.
 - `cli.py` — `list`, `status`, `run`.
 
 ## Canonical data model
@@ -741,7 +750,9 @@ Review categories: `ambiguous_match`, `ambiguous_race`,
 just has no decided workout method/target, an uncertain gear identity, a
 trail-evidence suggestion, or an illness range that is not yet a stored
 period. None hides an activity from reports (unlike the other categories).
-Triage `(a)ccept suggestion` writes a `consistency` item's suggested sport as
+`duplicate` links the likely weaker copy and is hiding until a human excludes
+one row; resolution is exclusion, never a merge. Triage `(a)ccept suggestion`
+writes a `consistency` item's suggested sport as
 a manual value. `create_activity` holds a summary row the policy chose to
 review rather than create. Triage
 `(k)` shows the classifier and sheet proposals and writes the chosen sets as

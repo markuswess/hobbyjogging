@@ -135,6 +135,7 @@ if (( generate_maintenance )); then
         workout_classification_queue \
         illness_candidates_current \
         trail_candidates_current \
+        duplicate_candidates_current \
         athlete_thresholds_current \
         activity_zone_configs_current \
         derived_zone_configs_current \

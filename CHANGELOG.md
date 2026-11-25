@@ -61,6 +61,22 @@ Schema: **28**. Compatibility: requires schema ≥ 1, migrates to 28.
   With no classifier evidence the stored set is kept (`stale_no_evidence`).
   A reclassification opens no review item; it is a projection update.
 
+### Duplicates
+
+- `duplicate_candidates_current` scans the whole database for the same session
+  recorded twice (same sport/day, distance within 2 %, duration within 5 %,
+  average HR within 5 bpm) and opens one `duplicate` review item per pair with
+  both ids. The start time is recorded but is not a gate: the sheet's minute
+  time is approximate. The item is hiding until resolved.
+- `sheet_duplicates_v1` is the deliberate historical cleanup: for a unique
+  device candidate it copies the sheet description to a blank device row (as a
+  manual value with an `edit_log` entry) and excludes the sheet row. It never
+  touches a non-sheet pair; ambiguous candidates stay in review. Resolution is
+  exclusion, never a merge.
+- On a copy: 33 pairs (30 sheet/device, 3 other); the sheet cleanup filled 23
+  descriptions, kept the device text where present, excluded 30 sheet rows and
+  left 3 non-sheet duplicates for review. `verify_canonical` stayed at 0 drift.
+
 ### Historical evidence
 
 - `hobbyjogging_import.tag_lexicon` is the one normalized tag → meaning table:

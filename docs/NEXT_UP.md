@@ -9,6 +9,15 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Duplicate detection and sheet cleanup (2026-11-25).**
+  `duplicate_candidates_current` scans the whole database for same-session
+  pairs (sport/day, distance 2 %, duration 5 %, HR 5 bpm) and opens one hiding
+  `duplicate` item per pair; `sheet_duplicates_v1` copies a sheet-only
+  duplicate's description to a blank device row and excludes the sheet row.
+  On a copy: 33 pairs (30 sheet/device, 3 other); the cleanup filled 23
+  descriptions, excluded 30 sheet rows, left 3 non-sheet duplicates for review,
+  and `verify_canonical` stayed at 0 drift. Resolution is exclusion, never a
+  merge.
 - **Pre-run snapshots (2026-11-25).** A real maintenance run writes a
   `VACUUM INTO` snapshot beside the database
   (`<db>.bak-YYYYmmddTHHMMSSZ`), keeps the last five and prints the path; a dry
@@ -192,20 +201,21 @@ passed; its two findings — **55** (subT selection and the derived table) and
 
 Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 (manual overlay + rebuild proof), **37**'s audit and evidence proposals,
-**43**'s tag lexicon, the CLI write surface, **38/35** (session metrics) and
-**21** (sheet leftovers) are done; the next structural work is **42**
-duplicates.
+**43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
+**21** (sheet leftovers) and **42** (duplicates) are done; the next structural
+work is the localhost write UI (phase 3's last piece).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
-→ browser. The write-surface follow-ups **58–60** and the evidence follow-ups
-**63–64** slot alongside. The health report and dashboard card already exist;
-duplicate counts appear there once 42 opens them. Accepting a suggestion
-always writes a manual value and an `edit_log` row; nothing canonical is
-auto-applied except an empty, high-confidence classification. The corrections
-export (**57**) follows 37's audit as a small report; it is not a gate.
+(done) → the localhost browser. The write-surface follow-ups **58–60**, the
+metric charts **62** and the evidence follow-ups **63–64** slot alongside. The
+health report and dashboard card show the duplicate count now that 42 opens
+the items. Accepting a suggestion always writes a manual value and an
+`edit_log` row; nothing canonical is auto-applied except an empty,
+high-confidence classification. The corrections export (**57**) follows 37's
+audit as a small report; it is not a gate.
 
 ### Phase 4: durable and more reach
 
@@ -846,33 +856,6 @@ reports item; 28 is the recurring cleanup.
       device rows, and a re-import leaves the stored ids and names unchanged.
     - **Reports**: no change; the hover id stays for a genuinely provider-only
       device.
-
-42. **Duplicate detection and cleanup** (maintenance + import + reports;
-    phase 3, after the rules). Two activities that are the same session
-    double-count every total, and the historical log has a known class of them:
-    1,272 sheet-only rows, 38 of which mirror a device (FIT/Intervals) row on
-    the same day with the duration within 5%. The sheet row often holds the
-    only description (`mit Vicky`, `Oberwolfach am Ende gas`).
-    - **Detection** (import): a dataset-wide rule for same sport, start within
-      ±15 min or the same day, distance within ~2%, and HR within 5 bpm when
-      both carry it; emit one `duplicate` review item carrying both activity
-      ids, idempotent by a fingerprint over the sorted pair.
-    - **Athlete-2 finding**: the Runalyze-only test left 10 of 40 rows in
-      review, each with exactly one same-day candidate — mostly rides and one
-      other sport. Before a broad rule runs, check whether the candidate is a
-      different sport or duration; the same-day guard is currently too strict
-      for a legitimate second session on the same day.
-    - **Sheet pairs** (maintenance): a task that blank-fills the description
-      from the sheet row and then excludes it, so the session keeps its text
-      and stops counting twice. It rewrites existing rows, so it is a
-      registered task with a dry run, not an import write.
-    - **Resolution is exclusion, never merge**: "delete" stays a durable soft
-      exclude, and there stays one identity model. A true merge is not a
-      feature — the canonical row and its payloads are the record.
-    - **Surface**: triage today; the bulk review surface and the health score
-      (item 37) show the remaining count.
-    - **Acceptance**: a dry run lists the candidate pairs on a copy, the known
-      sheet duplicates drop out of the totals, and a re-run is a no-op.
 
 44. **Sync covers every configured source** (import + maintenance + reports;
     done 2026-11-24). `hobbyjogging-import sync` runs the whole configured

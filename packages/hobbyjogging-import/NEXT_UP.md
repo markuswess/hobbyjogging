@@ -5,6 +5,10 @@ on.
 
 ## Done
 
+- **Duplicate detection.** `duplicates.py` finds same-session pairs (sport/day,
+  distance 2 %, duration 5 %, HR 5 bpm) and links the weaker copy; the
+  maintenance recompute opens one `duplicate` item per pair. The sheet cleanup
+  is a maintenance backfill, not an import write.
 - **Tag lexicon and evidence proposals.** `tag_lexicon.py` maps stored tags to
   workout sets, illness/recovery, race/trail, rep lengths, area codes and
   context; the audit accounts for every tag (157 mapped / 59 unmapped on the

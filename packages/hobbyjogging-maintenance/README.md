@@ -92,10 +92,10 @@ writes the report, otherwise it goes to stdout.
 `run --all` runs every backfill that is not applied yet. `sync.sh` runs the
 idempotent recomputes after a successful sync — `workout_sets_current`,
 `workout_classification_queue`, `illness_candidates_current`,
-`trail_candidates_current`, `athlete_thresholds_current`,
-`activity_zone_configs_current`, `training_periods_current` and
-`race_links_current` — and skips them with `--no-classify`; backfills stay
-deliberate.
+`trail_candidates_current`, `duplicate_candidates_current`,
+`athlete_thresholds_current`, `activity_zone_configs_current`,
+`training_periods_current` and `race_links_current` — and skips them with
+`--no-classify`; backfills stay deliberate.
 
 A real run first writes a `VACUUM INTO` snapshot beside the database
 (`<db>.bak-YYYYmmddTHHMMSSZ`), keeps the last five, and prints the path. A dry
@@ -113,6 +113,7 @@ Backfills (one-time, recorded, skipped once applied):
 | `activity_elevation_v1` | Fill elevation gain/loss from the stored payloads. |
 | `activity_max_hr_v1` | Fill `max_hr` from the stored payloads. |
 | `activity_routes_v1` | Resolve the sheet's `Strecke`/`Streckennummer` into routes and link the activity. |
+| `sheet_duplicates_v1` | Copy a sheet-only duplicate's description to the device row and exclude the sheet row (exclusion, never merge). |
 | `activity_weather_v1` | Create `activity_weather` rows from the stored payloads. |
 | `activity_metrics_v1` | Create `activity_metrics` rows from the stored payloads and the FIT archive. |
 | `device_identity_v1` | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
@@ -141,6 +142,7 @@ Recomputes (idempotent, run every time):
 | `workout_classification_queue` | Turn those disagreements into `workout_classification` review items and close the ones that no longer apply (`k` in triage). |
 | `illness_candidates_current` | Open non-hiding `period_candidate` items for illness-tagged days not covered by a stored illness period; `wieder gesund` closes the range. Never writes a period. |
 | `trail_candidates_current` | Open non-hiding `consistency` items suggesting `trail_run` from elevation (≥40 m/km), sub-sport, the `Trail` tag and a supporting route name. Never changes the sport. |
+| `duplicate_candidates_current` | Open one hiding `duplicate` item per same-session pair (sport/day, distance 2 %, duration 5 %, HR 5 bpm) and close stale ones. Never excludes or merges. |
 | `verify_canonical` | Diff every owned canonical field against its manual value, owner patch or pointer without writing. |
 | `recompute_canonical` | Re-project every owned canonical field from its inputs; never re-decides ownership. |
 | `runalyze_load_current` | Fill an empty `training_load` from Runalyze's `fit_trimp`/`trimp`; Intervals always wins in a mixed database. |

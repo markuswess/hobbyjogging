@@ -4,6 +4,12 @@ This file records what the package is still waiting on.
 
 ## Done
 
+- **Duplicate detection and sheet cleanup.** `duplicate_candidates_current`
+  opens one hiding item per same-session pair and closes stale ones;
+  `sheet_duplicates_v1` copies a sheet-only duplicate's description to a blank
+  device row and excludes the sheet row. On a copy: 30 sheet pairs cleaned,
+  23 descriptions filled, 3 non-sheet duplicates left for review, 0 canonical
+  drift.
 - **Pre-run snapshots.** A real `run` writes a `VACUUM INTO` snapshot beside
   the database, keeps the last five and prints the path; a dry run and a
   skipped backfill write none. A snapshot failure aborts the run. It protects

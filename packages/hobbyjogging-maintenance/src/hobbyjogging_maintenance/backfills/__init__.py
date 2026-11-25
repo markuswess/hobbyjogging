@@ -17,6 +17,7 @@ from . import (
     fartlek_from_fs_v1,
     interval_source_v1,
     remove_tempo_method_v1,
+    sheet_duplicates_v1,
     wellness_extras_v1,
     workout_classification,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "fartlek_from_fs_v1",
     "interval_source_v1",
     "remove_tempo_method_v1",
+    "sheet_duplicates_v1",
     "wellness_extras_v1",
     "workout_classification",
 ]

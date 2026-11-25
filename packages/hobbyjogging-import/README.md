@@ -916,6 +916,27 @@ Both recomputes run in `sync.sh` (`--no-classify` also skips them) and close
 their items when the underlying evidence disappears or the period/sport is
 decided.
 
+## Duplicates
+
+`duplicate_candidates_current` scans the whole database for the same session
+recorded twice: the same sport and local day, distance within 2 %, duration
+within 5 % and average HR within 5 bpm when both carry it. The start time is
+recorded but is not a gate — the historical sheet's minute-precision start is
+often approximate and can differ by hours while distance and duration match.
+Each pair becomes one `duplicate` review item with both activity ids; the
+likely weaker copy (a sheet-only row, then the row with fewer sources) is
+linked so triage can inspect and exclude it. The category is hiding until
+resolved, and resolution is always durable exclusion, never a merge.
+
+`sheet_duplicates_v1` is the deliberate cleanup for the historical sheet/device
+class: for a unique device candidate it copies the sheet description to the
+device row when that row is blank (a manual value with an `edit_log` entry) and
+then excludes the sheet row. It never touches a non-sheet pair and leaves
+ambiguous candidates to the review item. Run it with `--dry-run --output
+FILE` first; the file lists every pair, its distance/duration delta, and the
+text action. On a copy it found 30 pairs (23 descriptions filled, 7 without
+text) and left 3 non-sheet duplicates for review.
+
 ## Import review
 
 Import conflicts and questionable activities are recorded as *review items*

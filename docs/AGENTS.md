@@ -146,6 +146,9 @@ Cross-package changes must leave all four suites green.
   `~/projects/laufen_private/data/db/hobbyjogging.db`.
 - Imports write; reports read only (`DataSource` + canonical model).
 - "Delete" means durable soft delete via `excluded_at`, never a hard delete.
+- Duplicate detection is review-only; resolution is exclusion, never a merge.
+  The sheet-pair cleanup copies the sheet text to the device row before
+  excluding the sheet row.
 - Events are Intervals-authoritative: fields are replaced (including NULLs),
   removed events are soft-excluded, and manual/other-source events are left
   alone.
