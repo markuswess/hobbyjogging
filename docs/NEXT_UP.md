@@ -757,8 +757,9 @@ reports item; 28 is the recurring cleanup.
     (primary/secondary, each linking to the activity page), co-used gear (e.g.
     Bob with Katy), target/wear and retirement status.
     - **Shape**: reuse `equipment_usage` and `DataSource`; no new SQL; a
-      retired or zero-use item still gets a page with an empty state; the page
-      shows the subcategory once item 81 lands.
+      retired or zero-use item still gets a page with an empty state.
+    - **CLI parity**: `reports.sh equipment [item]` prints the same totals,
+      mileage trend and activity list for one item; nothing is dashboard-only.
     - **Acceptance**: every gear row links to its page; the totals match the
       Gear tab; the demo builds; the pages are static files beside `gear.html`.
 
@@ -767,9 +768,11 @@ reports item; 28 is the recurring cleanup.
     recovery page plots only HRV, resting HR and sleep. Add a body-weight card:
     points and a 7-day mean on their own kg axis, with the gap left as a gap;
     no readiness bands.
-    - **Surfaces**: the recovery tab and the recovery report summary; add a
-      reference-catalogue row in `docs/METRICS.md` (definition, source, gap),
-      not a promoted card unless weight becomes a metric.
+    - **Surfaces**: the recovery tab and the recovery report summary, with the
+      reports README documenting the card. Weight is descriptive, not a
+      promoted metric.
+    - **CLI parity**: the card's numbers are also in `reports.sh
+      recovery-report`, and the chart is part of `charts.sh recovery`.
     - **Acceptance**: the points match `wellness_days`; a window without weight
       shows an empty state; the gap is not interpolated; the HRV/RHR panels
       keep their scale.

@@ -571,7 +571,8 @@ per-activity zone config ids (item 4). Item 11 has its data
 (`event_activity_links`, schema v21); 12's series needs the lab gate in root
 item 31. Item 10 stays parked on its page-coverage cost, 9 is recurring
 upkeep, 13 is the event-page parity follow-up, and 14 is an open idea. Item
-15 is retired by the effective-VO2max metric.
+15 is retired by the effective-VO2max metric. Root items 79 (gear pages) and
+80 (weight card) are reports-only and unblocked.
 
 Numbers are stable identifiers and are not reused:
 `docs/ARCHITECTURE.md` and the import queue point at "reports item 15", so a
@@ -587,7 +588,7 @@ pointer. Items 1 and 15 are such gaps.
 3. **Wellness extras.** The columns are exposed on `WellnessDay` (schema v19:
    weight, sleep score and quality, SpO2, steps, floors, CTL/ATL; readiness
    and stress are empty in the payloads), so this is reports-only: a
-   readiness view and a weight trend.
+   readiness view. The body-weight card is root item 80.
 
 4. **Era-correct zone times.** Normalizing zone times through each
    activity's own config needs that config id on the model first: the
