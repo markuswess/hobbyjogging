@@ -260,8 +260,10 @@ proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (the gate). The write-surface follow-ups **58–60** are
-done; the metric charts **62** and the pace/HR calibration follow-up **64**
-slot alongside. The health report and dashboard card show the duplicate count
+done; the secondary equipment link **66** follows the brush, and the duplicate
+start-time gate **67** comes after the polish. The metric charts **62** and the
+pace/HR calibration follow-up **64** slot alongside. The health report and
+dashboard card show the duplicate count
 now that 42 opens the items. Accepting a suggestion always writes a manual
 value and an `edit_log` row; nothing canonical is auto-applied except an
 empty, high-confidence classification. The corrections export (**57**) and the
@@ -494,6 +496,28 @@ reports item; 28 is the recurring cleanup.
       the CLI and the browser agree on the numbers.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
+
+66. **Secondary equipment link** (import + core; small, any time). `activity
+    edit --equipment` replaces the manual set and makes the first id primary,
+    so a trailer cannot be appended without promoting the bike to a manual
+    link. Add `equipment link <activity> <equipment> [--role secondary|primary]`
+    with `--note` and `--dry-run`, plus `equipment unlink <activity>
+    <equipment>`; a manual link wins, a secondary append leaves the primary
+    untouched, and the role is explicit. Resolve the activity by id, date,
+    `last` or name (item 60).
+    - **Acceptance**: Bob can be appended to a ride that already has Katy
+      primary; the primary is unchanged; a re-run is a no-op; an unknown
+      activity or equipment fails clearly; the link survives a reimport.
+
+67. **Duplicate start-time gate** (import + maintenance; after the brush). The
+    detector pairs same-day activities within the distance/duration/HR
+    tolerances without requiring close starts, so a morning and an evening
+    commute can pair. Live examples: item 1353 (two rides 8 h apart) and 1352
+    (two runs 8.6 h apart). Require a start within ±15 min, or a missing
+    precise start on one side (sheet rows), before an item opens; keep the
+    same-day fallback only for the missing-start case.
+    - **Acceptance**: 1352/1353 are not created, the true surf pair (delta 0)
+      is, a sheet row without a start still matches, and the re-run is a no-op.
 
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
