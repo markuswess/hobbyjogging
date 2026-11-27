@@ -164,36 +164,21 @@ class QueueTests(unittest.TestCase):
         )
         return methods, targets
 
-    def test_evidence_conflict_opens_one_item_for_a_classified_activity(self):
+    def test_classified_evidence_never_opens_an_item(self):
         activity_id = self._activity("Steady run", tags=["LT1"])
         self._classify_manually(activity_id, ["continuous"], ["base"])
 
         with patch(CLASSIFY, return_value=UNKNOWN):
             run = self._run()
 
-        self.assertEqual(1, run.counts["opened"])
-        items = self._items()
-        self.assertEqual(1, len(items))
-        self.assertEqual(activity_id, items[0]["activity_id"])
-        self.assertEqual(
-            "tag evidence vs stored classification",
-            items[0]["detail"],
-        )
-
-        context = json.loads(items[0]["context_json"])
-        self.assertEqual("tag", context["evidence_source"])
-        self.assertEqual(["intervals"], context["evidence_methods"])
-        self.assertEqual(["lt1"], context["evidence_targets"])
-        self.assertEqual(["continuous"], context["stored_methods"])
-        self.assertEqual(["base"], context["stored_targets"])
-
-        # Opening an item never rewrites the stored classification.
+        self.assertEqual(0, run.counts["opened"])
+        self.assertEqual([], self._items())
         self.assertEqual(
             (["continuous"], ["base"]),
             self._sets(activity_id),
         )
 
-    def test_a_description_evidence_conflict_uses_the_comment_source(self):
+    def test_comment_evidence_never_opens_an_item(self):
         activity_id = self._activity(
             "Steady run",
             description="Tempo run",
@@ -203,11 +188,35 @@ class QueueTests(unittest.TestCase):
         with patch(CLASSIFY, return_value=UNKNOWN):
             run = self._run()
 
-        self.assertEqual(1, run.counts["opened"])
-        context = json.loads(self._items()[0]["context_json"])
-        self.assertEqual("comment", context["evidence_source"])
-        self.assertEqual(["continuous"], context["evidence_methods"])
-        self.assertEqual(["threshold"], context["evidence_targets"])
+        self.assertEqual(0, run.counts["opened"])
+        self.assertEqual([], self._items())
+
+    def test_an_open_evidence_item_is_resolved(self):
+        activity_id = self._activity("Steady run", tags=["LT1"])
+        self._classify_manually(activity_id, ["continuous"], ["base"])
+        item_id, _ = self.writer.record_review_item(
+            category="workout_classification",
+            detail="tag evidence vs stored classification",
+            context={
+                "evidence_source": "tag",
+                "evidence_methods": ["intervals"],
+                "evidence_targets": ["lt1"],
+                "stored_methods": ["continuous"],
+                "stored_targets": ["base"],
+            },
+            severity="info",
+            fingerprint="fp-stale-evidence",
+            activity_id=activity_id,
+        )
+        self.conn.commit()
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["resolved"])
+        self.assertEqual("resolved", self.writer.review_item(item_id)["status"])
+        self.assertEqual("classified", self.writer.review_item(item_id)["resolved_note"])
+        self.assertEqual([], self._items())
 
     def test_agreeing_evidence_creates_nothing(self):
         activity_id = self._activity("Steady run", tags=["LT1"])
@@ -219,57 +228,6 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(0, run.counts["opened"])
         self.assertEqual([], self._items())
 
-    def test_evidence_conflict_is_idempotent(self):
-        activity_id = self._activity("Steady run", tags=["LT1"])
-        self._classify_manually(activity_id, ["continuous"], ["base"])
-
-        with patch(CLASSIFY, return_value=UNKNOWN):
-            self._run()
-            second = self._run()
-
-        self.assertEqual(0, second.counts["opened"])
-        self.assertEqual(1, second.counts["unchanged"])
-        self.assertEqual(1, len(self._items()))
-
-    def test_a_resolved_evidence_decision_is_not_reopened(self):
-        activity_id = self._activity("Steady run", tags=["LT1"])
-        self._classify_manually(activity_id, ["continuous"], ["base"])
-
-        with patch(CLASSIFY, return_value=UNKNOWN):
-            self._run()
-
-        self.writer.set_review_status(
-            self._items()[0]["id"],
-            "resolved",
-            note="triage: kept stored",
-        )
-        self.conn.commit()
-
-        with patch(CLASSIFY, return_value=UNKNOWN):
-            run = self._run()
-
-        self.assertEqual([], self._items())
-        self.assertEqual(1, run.counts["unchanged"])
-
-    def test_a_changed_classifier_does_not_reopen_evidence_decision(self):
-        activity_id = self._activity("Steady run", tags=["LT1"])
-        self._classify_manually(activity_id, ["continuous"], ["base"])
-
-        with patch(CLASSIFY, return_value=UNKNOWN):
-            self._run()
-
-        self.writer.set_review_status(
-            self._items()[0]["id"],
-            "resolved",
-            note="triage: kept stored",
-        )
-        self.conn.commit()
-
-        with patch(CLASSIFY, return_value=LONGRUN):
-            run = self._run()
-
-        self.assertEqual([], self._items())
-        self.assertEqual(1, run.counts["unchanged"])
     def test_evidence_is_ignored_for_a_non_run_sport(self):
         activity_id = self._activity("Ride", tags=["LT1"], sport="ride")
         self._classify_manually(activity_id, ["intervals"], ["lt1"])

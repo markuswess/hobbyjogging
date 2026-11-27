@@ -228,7 +228,7 @@ Canonical model, schema, and read/write access.
   stored sets; the heuristic runs only for unclassified ones, and the
   classification tasks call it with `use_stored=False`.
 - `db/schema.py`, `db/migrations.py` — SQL schema and forward-only migrations
-  (`SCHEMA_VERSION`, currently 29).
+  (`SCHEMA_VERSION`, currently 30).
 - `db/writer.py` — `TrainingWriter`: import runs, source records, activity
   upserts, field provenance, manual edits and the append-only `edit_log`,
   exclusions, review items, laps, intervals, zone times, tags.
@@ -368,11 +368,19 @@ changes.
 - `backfills/remove_tempo_method_v1.py` — `remove_tempo_method_v1`.
 - `backfills/drop_empty_intervals_v1.py` — `drop_empty_intervals_v1`.
 - `backfills/workout_classification.py` — `workout_classification_v1`.
+- `backfills/drills_from_tags_v1.py` — add the drills method to the
+  non-manual sets tagged LTT/Lauftechnik.
+- `backfills/workout_classification_evidence_v1.py` — accept specific tag
+  evidence on classifier/backfill projections once and close the remaining
+  evidence items by policy.
 - `recompute/workout_sets_current.py` — `workout_sets_current` (re-derives
-  classifier-sourced sets after a rename and fills unclassified gaps).
+  classifier-sourced sets after a rename, refines a classifier/backfill
+  projection from a specific tag, unions drills/strides into non-manual sets
+  and fills unclassified gaps).
 - `recompute/workout_classification_queue.py` —
-  `workout_classification_queue` (classifier/sheet disagreements plus
-  tag/comment evidence that conflicts with a classified activity).
+  `workout_classification_queue` (classifier/sheet disagreements; a classified
+  activity is closed, because tag refinement and input precedence happen in
+  `workout_sets_current`).
 - `recompute/evidence_candidates.py` — `illness_candidates_current` (opens
   `period_candidate` items for illness tags outside a stored period) and
   `trail_candidates_current` (opens `consistency` items suggesting
@@ -531,23 +539,26 @@ SQLite, forward-only migrations. Schema version 30.
 Workout classification is set-based and orthogonal:
 
 - **Methods** — `continuous`, `intervals`, `fartlek`, `long_run`,
-  `progression`, `race`, `strides`, `other`. A tempo run is `continuous` with a
-  `threshold` target; the retired `tempo` token normalizes to `continuous`.
-  `fartlek` means *never structured*: `intervals` means reps were intended,
-  even when the device data is missing.
+  `progression`, `race`, `strides`, `drills`, `other`. A tempo run is
+  `continuous` with a `threshold` target; the retired `tempo` token normalizes
+  to `continuous`. `fartlek` means *never structured*: `intervals` means reps
+  were intended, even when the device data is missing. `strides` and `drills`
+  are additive, never a replacement.
 - **Targets** — `base`, `lt1`, `subthreshold`, `threshold`, `vo2max`, `speed`,
   `marathon`, `recovery`, `other`.
 - **Quality** is derived: any quality method (`intervals`, `fartlek`,
   `long_run`, `progression`, `race`) or target (`lt1`, `subthreshold`,
   `threshold`,
   `vo2max`, `speed`, `marathon`) makes a session quality;
-  base/recovery only is non-quality; no values is unknown. Strides never make
-  a session quality by themselves.
+  base/recovery only is non-quality; no values is unknown. Strides or drills
+  never make a session quality by themselves.
 - **Sources and evidence** — importer, sheet and Runalyze-type sets are
-  inputs; a classifier-sourced set is re-derived. An empty run classification
-  may be filled from a mapped workout tag or an explicit description, with
-  `source='tag'` or `source='comment'`. Manual, sheet, Runalyze-type and
-  imported sets are never overwritten.
+  inputs; a classifier/backfill set is a re-derivable projection. A specific
+  tag refines a projection in place (`source='tag'`); a sheet or manual set
+  wins over tag and comment evidence; a comment only fills an empty
+  classification; generic `other` never overrides a specific target. Strides
+  and drills are unioned into any non-manual set, never replacing the run
+  method.
 
 Text fields have fixed roles:
 
@@ -791,8 +802,8 @@ one row; resolution is exclusion, never a merge. Triage `(a)ccept suggestion`
 writes a `consistency` item's suggested sport as
 a manual value. `create_activity` holds a summary row the policy chose to
 review rather than create. Triage
-`(k)` shows the classifier and sheet proposals plus, for a classified
-activity, the tag/comment evidence and the stored set. It writes the chosen
+`(k)` shows the classifier and sheet proposals; a legacy evidence item also
+carries its tag/comment evidence and the stored set. It writes the chosen
 sets as manual values (`1` classifier, `2` sheet, `4` evidence, `m` merge,
 `n` leave unclassified) and resolves `s` kept stored without a write. A
 resolved decision is not reopened; changed proposals supersede the old item.

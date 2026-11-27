@@ -49,6 +49,21 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
     a secondary trailer contributes its sessions and km; Thule now shows 125
     activities and its distance in the gear report. Primary-only gear is
     unchanged.
+- **Brush classification block 71/72 (2026-11-27).**
+  - `drills` is a workout method beside `strides`; it is additive and never
+    makes a session quality. `LTT`, `Lauftechnik` and `Lauf-ABC` map to drills
+    instead of threshold. Reports show `Drills`.
+  - `drills_from_tags_v1` adds drills to non-manual LTT/Lauftechnik sets.
+    On the real-DB copy: 32 tagged, 31 added, 1 manual set skipped.
+  - A specific tag now refines a classifier/backfill projection in place
+    (`source='tag'`); a sheet or manual set wins over tag and comment
+    evidence; a comment only fills an empty classification; generic `other`
+    never overrides a specific target; `Raceday` stays context, not a race
+    method; drills/strides are unioned into a non-manual set.
+    `workout_classification_queue` opens no evidence item.
+  - `workout_classification_evidence_v1` applied the policy once on the copy:
+    276 tag refinements accepted, 273 items closed, 0 open
+    `workout_classification` items, and a second run is a no-op.
 - **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
   `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
   the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
@@ -291,19 +306,20 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
 **21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
 **48** (field provenance), **57** (corrections export) and **22** (release
-0.3.0) are done, the first brush bug block **67/68/75** is done, and the gear
-block **66/69/70** is done. The CLI brush ran on 2026-11-27: every pass in
-[DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and the gaps it
-exposed are queued as **71–78** (handover below). Phase 3 closes when those
-land and the pass-9 close (overlay export, rebuild proof, baseline, tag
-0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
+0.3.0) are done, the first brush bug block **67/68/75** is done, the gear
+block **66/69/70** is done, and the classification block **71/72** is done.
+The CLI brush ran on 2026-11-27: every pass in [DATA_BRUSH.md](DATA_BRUSH.md)
+is workable through the CLI, and the gaps it exposed are queued as **73–78**
+(handover below). Phase 3 closes when those land and the pass-9 close (overlay
+export, rebuild proof, baseline, tag 0.3.1) is recorded. The localhost browser
+moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (run 2026-11-27). The remaining brush follow-ups are
-**71–78**;
+**73–78**;
 the handover block below gives their grouping, dependencies and the manual
 work that stays with the athlete. The metric charts **62** and the pace/HR
 calibration follow-up **64** slot alongside.
@@ -319,18 +335,17 @@ takes these root items:
 2. **Gear (done)**: **66** secondary link, **69** Thule from tags, **70**
    usage counts every link; 66 and 68 unblock the manual Bob/bike pass in
    **77**.
-3. **Classification**: **72** drills first, then **71** (accept the 303 tag
-   refinements, close the 246 noise items, and stop the task reopening them).
-   The 11 tag-vs-sheet method differences are the only ones worth a human
-   look; the rest close by policy.
+3. **Classification (done)**: **72** drills first, then **71** (accept the
+   tag-specific refinements, close the rest by policy, and stop the task
+   reopening them).
 4. **Tags and comments**: **73** place tags → routes, then **74** Strava
-   comment evidence (after 71).
-5. **Sources**: **76** ambient weather (after 75), **78** Leistungstests
-   (schema + backfill; the largest item, last).
+   comment evidence.
+5. **Sources**: **76** ambient weather, **78** Leistungstests (schema +
+   backfill; the largest item, last).
 
 Manual work stays with the athlete: the bike period mapping for 77, the
 pre-2019 threshold snapshots (`threshold add`), the 41 trail and 7 illness
-decisions, item 739, and the 11 tag-vs-sheet method differences after 71.
+decisions, and item 739.
 Close the brush with session 5: `export-manual`, `rebuild --source DB`,
 `verify_canonical`, the new baseline, tag 0.3.1.
 
@@ -562,53 +577,6 @@ reports item; 28 is the recurring cleanup.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
 
-71. **Resolve the evidence classification backlog** (maintenance + import;
-    small, after the brush). The 549 open `workout_classification` items break
-    down as 303 tag evidence refining a **classifier-stored** set (211 a
-    different method, 92 a more specific target), 17 generic tag-vs-classifier
-    (`other`), 37 tag-vs-sheet and 192 comment evidence. Only the first group
-    is a real improvement; the rest are noise because a comment or a generic
-    tag cannot outrank a stored set.
-    - **Order**: after item 72 (the drills mapping), so the LTT evidence is
-      not resolved as threshold.
-    - **Policy**: a specific tag refines a **classifier projection** (write
-      `source='tag'`); a sheet or manual input wins over tag and comment
-      evidence; a comment only fills an empty classification; `other` evidence
-      never overrides a specific target.
-    - **Race-day tags are context**: `Raceday` is used on 28 of its 29
-      activities as the warm-up or cool-down around a race, not on the race
-      itself; the race session gets `race` from the event/result link
-      (`race_link`), so a race-day tag must not set `race` on a warm-up.
-    - **One-time task** `workout_classification_evidence_v1`: accept the 303
-      tag-specific sets, close the 246 with a policy note, dry run first.
-    - **Rule fix**: the evidence task stops opening these items — a specific
-      tag refines a classifier set in place, comments only fill empty.
-    - **Acceptance**: open `workout_classification` is 0; only
-      classifier-stored activities change; sheet/manual sets are untouched; a
-      re-run is a no-op.
-
-72. **Drills method and running-technique tags** (core + import + maintenance;
-    small, before 71). The live tags `LTT` (28, 2021–2025) and `Lauftechnik`
-    (5) describe running drills, but `LTT` is currently mapped to
-    `continuous` + `threshold` in the tag lexicon, and there is no `drills`
-    method. `Lauf-ABC` is not in the data yet but belongs to the same family.
-    - **Vocabulary**: add `drills` to `WORKOUT_METHODS` beside `strides`; it is
-      not a quality method by itself (a drills-only session stays non-quality;
-      drills plus intervals stays intervals). Include the aliases `drill`,
-      `lauf-abc`, `lauf abc`, `lauftechnik` and fix `ltt`.
-    - **Additive**: drills (and strides) are additions to a session, never a
-      replacement. The evidence proposal unions them into the stored methods
-      and opens no conflict item for the additive method alone; a manual set is
-      left for the human.
-    - **Backfill** `drills_from_tags_v1`: add the method to the 33 tagged
-      activities with non-manual sets (28 LTT + 5 Lauftechnik; the one manual
-      set is skipped), source `tag`, idempotent; the LTT tag must no longer
-      propose threshold.
-    - **Acceptance**: the LTT/Lauftechnik runs carry `drills` plus their run
-      method, the category is unchanged (easy/interval), the reports show
-      `Drills`, a re-run is a no-op, and the 549 queue no longer contains a
-      threshold proposal from `LTT`.
-
 73. **Place tags become routes** (core + import + maintenance; small-medium,
     after the brush). 393 active activities (2021–2026) carry one of 30
     geographic tags — `Wienerberg` 44, `kanal` 43, `hauptallee` 34, `Arsenal`
@@ -627,7 +595,8 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: modern route coverage is non-zero and the session report
       shows the place; the sheet routes are untouched; a re-run is a no-op.
 
-74. **Strava comment evidence** (import + maintenance; small, after 71). The
+74. **Strava comment evidence** (import + maintenance; small, after the
+    classification policy). The
     evidence task reads only `activities.description`; the 538 Strava
     `activity_social` descriptions (2021–2026) are ignored. 83 carry an
     interval pattern, 22 LT/subT and 19 tempo/threshold; they yield 103

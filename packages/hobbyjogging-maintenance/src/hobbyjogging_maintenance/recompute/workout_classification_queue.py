@@ -3,10 +3,9 @@
 The backfill writes the agreed classifications and leaves disagreements
 unclassified. This recompute turns those disagreements into review items so
 they can be resolved with `hobbyjogging-import review triage`, and closes
-items that no longer apply. A classified activity is left alone unless a
-mapped tag or an explicit description claims a method or target its stored set
-does not contain; that evidence becomes a choice in triage, never an automatic
-write.
+items that no longer apply. A classified activity is left alone: tag evidence
+refines a classifier projection in ``workout_sets_current``, and a sheet or
+manual set wins over a tag or comment, so no evidence item is opened here.
 """
 
 from __future__ import annotations
@@ -18,13 +17,9 @@ from hobbyjogging_import.quality import WORKOUT_CLASSIFICATION
 from ..context import TaskContext
 from ..registry import task
 from ..workouts import (
-    Proposal,
     classifier_proposal,
     conflict_from,
     disagrees,
-    evidence_conflict_from,
-    evidence_conflicts,
-    evidence_proposal,
     fingerprint,
     scoped_activities,
     sheet_proposal,
@@ -37,9 +32,8 @@ _COUNT_ORDER = ("opened", "unchanged", "superseded", "resolved")
     "workout_classification_queue",
     kind="recompute",
     description=(
-        "Record classifier/sheet disagreements and tag/comment evidence "
-        "conflicts as workout-classification review items and close the ones "
-        "that no longer apply."
+        "Record classifier/sheet disagreements as workout-classification "
+        "review items and close the ones that no longer apply."
     ),
 )
 def workout_classification_queue(context: TaskContext) -> None:
@@ -52,52 +46,11 @@ def workout_classification_queue(context: TaskContext) -> None:
 
     for activity in activities:
         items = open_items.pop(activity.id, [])
-        evidence, evidence_source = evidence_proposal(activity)
 
-        # A classified activity needs a decision only when the tag or
-        # description claims a method or target the stored set lacks.
+        # A classified activity needs no review item: tag evidence either
+        # refined the classifier set already or lost to a sheet/manual input.
         if activity.quality is not None:
-            stored = Proposal(
-                set(activity.workout_methods),
-                set(activity.workout_targets),
-            )
-            if (
-                evidence is None
-                or evidence.empty
-                or not evidence_conflicts(stored, evidence)
-            ):
-                _resolve(context, items, "classified")
-                continue
-
-            intervals = context.repository.activity_intervals(activity.id)
-            classifier = classifier_proposal(activity, intervals)
-            sheet, _, _, code = sheet_proposal(
-                context.connection,
-                activity.id,
-            )
-            conflict = evidence_conflict_from(
-                activity,
-                evidence=evidence,
-                evidence_source=evidence_source,
-                stored=stored,
-                classifier=classifier,
-                sheet=sheet,
-                sheet_code=code,
-            )
-            wanted = fingerprint(conflict)
-            _supersede(context, items, wanted)
-
-            _, created = context.writer.record_review_item(
-                category=WORKOUT_CLASSIFICATION,
-                detail=(
-                    f"{evidence_source} evidence vs stored classification"
-                ),
-                context=conflict.as_dict(),
-                severity="info",
-                fingerprint=wanted,
-                activity_id=activity.id,
-            )
-            context.count("opened" if created else "unchanged")
+            _resolve(context, items, "classified")
             continue
 
         intervals = context.repository.activity_intervals(activity.id)

@@ -61,9 +61,10 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
     "erkältet": TagMeaning("illness", "illness"),
     "wieder gesund": TagMeaning("recovered", "recovered"),
     "schlapp": TagMeaning("ignored (fatigue)", "ignore"),
-    # Race and trail evidence.
-    "raceday": TagMeaning("race", "race"),
-    "race day": TagMeaning("race", "race"),
+    # Race and trail evidence. "Raceday" often marks the warm-up or cool-down
+    # around a race, so it is context, not a race method.
+    "raceday": _context("race-day context"),
+    "race day": _context("race-day context"),
     "race": TagMeaning("race", "race"),
     "wettkampf": TagMeaning("race", "race"),
     "virtual race": TagMeaning("race", "race"),
@@ -84,7 +85,11 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
     "subt": _workout("subT / LT1", ("intervals",), ("subthreshold",)),
     "lt1": _workout("subT / LT1", ("intervals",), ("lt1",)),
     "lt 1": _workout("subT / LT1", ("intervals",), ("lt1",)),
-    "ltt": _workout("threshold", ("continuous",), ("threshold",)),
+    "ltt": _workout("running drills", ("drills",)),
+    "drill": _workout("running drills", ("drills",)),
+    "drills": _workout("running drills", ("drills",)),
+    "lauf-abc": _workout("running drills", ("drills",)),
+    "lauf abc": _workout("running drills", ("drills",)),
     "lactate threshhold": _workout(
         "threshold", ("continuous",), ("threshold",)
     ),
@@ -251,7 +256,7 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
     "koppeltraining": _context("brick session"),
     "badminton": _context("badminton"),
     "videoanalyse": _context("video analysis"),
-    "lauftechnik": _context("running technique"),
+    "lauftechnik": _workout("running drills", ("drills",)),
     "hüftstreckung": _context("hip extension"),
     "kraultechnik": _context("front-crawl technique"),
     "plyometrics": _context("plyometrics"),

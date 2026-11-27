@@ -44,6 +44,7 @@ from .sports import (
     is_known_sport,
 )
 from .workouts import (
+    ADDITIVE_METHODS,
     QUALITY_METHODS,
     QUALITY_TARGETS,
     WORKOUT_METHODS,
@@ -60,6 +61,7 @@ __all__ = [
     "Activity",
     "ActivityEquipment",
     "ActivityMetrics",
+    "ADDITIVE_METHODS",
     "CANONICAL_SPORTS",
     "CROSS_TRAINING",
     "Category",

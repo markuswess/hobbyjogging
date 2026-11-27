@@ -10,6 +10,7 @@ from . import (
     activity_weather_v1,
     device_identity_orphans_v1,
     device_identity_v1,
+    drills_from_tags_v1,
     drop_classification_tags_v1,
     drop_empty_intervals_v1,
     drop_ride_shoe_links_v1,
@@ -22,6 +23,7 @@ from . import (
     weather_ambient_v1,
     wellness_extras_v1,
     workout_classification,
+    workout_classification_evidence_v1,
 )
 
 __all__ = [
@@ -32,6 +34,7 @@ __all__ = [
     "activity_weather_v1",
     "device_identity_orphans_v1",
     "device_identity_v1",
+    "drills_from_tags_v1",
     "drop_classification_tags_v1",
     "drop_empty_intervals_v1",
     "drop_ride_shoe_links_v1",
@@ -44,4 +47,5 @@ __all__ = [
     "weather_ambient_v1",
     "wellness_extras_v1",
     "workout_classification",
+    "workout_classification_evidence_v1",
 ]

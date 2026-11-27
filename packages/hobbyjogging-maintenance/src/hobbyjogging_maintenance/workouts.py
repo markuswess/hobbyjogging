@@ -23,6 +23,7 @@ from hobbyjogging_core.classify import (
 from hobbyjogging_core.model import Activity
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_core.workouts import (
+    ADDITIVE_METHODS,
     classification_for_category,
 )
 from hobbyjogging_import.quality import (
@@ -123,6 +124,79 @@ def classifier_proposal(
         category.detail,
     )
     return Proposal(methods, targets)
+
+
+CLASSIFIER_SOURCE = "classifier"
+
+
+def stored_provenance(
+    connection: sqlite3.Connection,
+    activity_id: str,
+) -> str:
+    """Classify the stored sets: none, manual, input or classifier.
+
+    ``input`` is any non-manual set that came from a source other than the
+    classifier (sheet, Runalyze type, the one-time backfill, an importer).
+    Mixed sources are treated as input, so a re-derivation never overwrites
+    part of an imported decision.
+    """
+    rows = connection.execute(
+        """
+        SELECT source, is_manual FROM activity_workout_methods
+        WHERE activity_id = ?
+        UNION ALL
+        SELECT source, is_manual FROM activity_workout_targets
+        WHERE activity_id = ?
+        """,
+        (activity_id, activity_id),
+    ).fetchall()
+
+    if not rows:
+        return "none"
+    if any(row["is_manual"] for row in rows):
+        return "manual"
+    if all(row["source"] == CLASSIFIER_SOURCE for row in rows):
+        return "classifier"
+    return "input"
+
+
+def write_tag_refinement(
+    writer,
+    activity_id: str,
+    *,
+    methods: set[str],
+    targets: set[str],
+) -> None:
+    """Replace the derivations of a set with tag evidence.
+
+    ``classifier`` and the historical ``backfill`` source are both
+    projections; a specific tag replaces their contribution.
+    """
+    for source in (CLASSIFIER_SOURCE, "backfill"):
+        if methods:
+            writer.replace_activity_workout_methods(
+                activity_id,
+                [],
+                source=source,
+            )
+        if targets:
+            writer.replace_activity_workout_targets(
+                activity_id,
+                [],
+                source=source,
+            )
+    if methods:
+        writer.replace_activity_workout_methods(
+            activity_id,
+            sorted(methods),
+            source="tag",
+        )
+    if targets:
+        writer.replace_activity_workout_targets(
+            activity_id,
+            sorted(targets),
+            source="tag",
+        )
 
 
 def sheet_proposal(
@@ -226,8 +300,9 @@ def tag_proposal(tags: list[str] | None) -> Proposal | None:
 
     The method and target priorities mirror the classifier's content-first
     rule: race and intervals beat a long run, LT1 beats subT, and a quality
-    target beats base/recovery. ``strides`` is additive unless the session is
-    a race.
+    target beats base/recovery. ``strides`` and ``drills`` are additive unless
+    the session is a race; a drills-only tag still proposes the additive
+    method so a drills session is visible.
     """
     meanings = workout_meanings(tags or [])
     if not meanings:
@@ -243,11 +318,11 @@ def tag_proposal(tags: list[str] | None) -> Proposal | None:
         return Proposal({"race"}, targets or {"other"})
 
     method = _select(methods, _METHOD_PRIORITY)
+    additive = methods & ADDITIVE_METHODS
     if method is None:
-        return None
-    selected = {method}
-    if "strides" in methods:
-        selected.add("strides")
+        return Proposal(additive, set()) if additive else None
+
+    selected = {method} | additive
     target = _select(targets, _TARGET_PRIORITY)
     return Proposal(selected, {target} if target else set())
 
@@ -336,11 +411,12 @@ def evidence_conflicts(stored: Proposal, evidence: Proposal) -> bool:
 
     Evidence is sparse: a tag names one method and perhaps one target. It
     only conflicts when it names a value the stored classification does not
-    contain, so an extra ``strides`` method or a missing target stays quiet.
+    contain, so an extra ``strides`` or ``drills`` method or a missing target
+    stays quiet.
     """
-    return bool(evidence.methods - stored.methods) or bool(
-        evidence.targets - stored.targets
-    )
+    return bool(
+        evidence.methods - stored.methods - ADDITIVE_METHODS
+    ) or bool(evidence.targets - stored.targets)
 
 
 def conflict_from(

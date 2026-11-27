@@ -890,12 +890,13 @@ Metrics: cadence 172, stride 1.29 m, VO 94 mm, GCT 239 ms (35 %), balance 48.2 %
 
 `hobbyjogging_import.tag_lexicon` is the one table that turns a stored tag into
 a meaning: a workout set (`sub threshold` → intervals + subthreshold, `LT1`,
-`Longjog`, `Regeneration`, `strides`, `Intervalle`, `Tempolauf`, …), illness
-and recovery, a race or trail marker, a rep length (`6'`, `400m`, `1km`), a
-sheet area code, context (gear, weather, fatigue, people) or a deliberate
-ignore (`schlapp`). The audit's tag table lists every stored tag as mapped or
-`unmapped`; an unmapped tag is never guessed. Adding a meaning is one entry in
-`TAG_MEANINGS` plus a test. Unmapped place and person tags are expected.
+`Longjog`, `Regeneration`, `strides`, `drills`/`LTT`/`Lauftechnik`,
+`Intervalle`, `Tempolauf`, …), illness and recovery, a race or trail marker, a
+rep length (`6'`, `400m`, `1km`), a sheet area code, context (gear, weather,
+fatigue, people) or a deliberate ignore (`schlapp`). The audit's tag table
+lists every stored tag as mapped or `unmapped`; an unmapped tag is never
+guessed. Adding a meaning is one entry in `TAG_MEANINGS` plus a test. Unmapped
+place and person tags are expected.
 
 A separate `EQUIPMENT_TAGS` map turns a gear tag into an equipment name:
 `Thule` and `thule half half` resolve to the `Thule` trailer.
@@ -907,11 +908,16 @@ The lexicon feeds the evidence proposals:
 
 - `workout_sets_current` fills an **empty** run classification from a mapped
   tag (`source='tag'`) or an explicit description (`source='comment'`, e.g.
-  `5x1000 interval` or `3-6-9-6-3min Intervalle`). A tag wins over a
-  description, a classifier/sheet/Runalyze-type proposal wins over both, and a
-  manual, sheet, Runalyze-type or imported set is never overwritten. A
-  generic note ("easy run") or an ambiguous rep such as `3x15 Liegestütz` is
-  not enough.
+  `5x1000 interval` or `3-6-9-6-3min Intervalle`). A specific tag also refines
+  a classifier/backfill projection in place (`source='tag'`); a sheet or
+  manual set wins over tag and comment evidence; a comment only fills an
+  empty classification; generic `other` never overrides a specific target.
+  `strides` and `drills` are additive and are unioned into any non-manual set.
+  `Raceday` is context, not a race method, so a warm-up around a race stays
+  a warm-up. A generic note ("easy run") or an ambiguous rep such as
+  `3x15 Liegestütz` is not enough. `drills_from_tags_v1` handled the
+  LTT/Lauftechnik backlog, and `workout_classification_evidence_v1` applied
+  the policy once.
 - `illness_candidates_current` groups illness-tagged days, lets
   `wieder gesund` close a range, and opens a non-hiding `period_candidate`
   item when the range is not covered by a stored illness period. It never

@@ -75,6 +75,14 @@ class WorkoutVocabularyTests(unittest.TestCase):
     def test_strides_do_not_make_a_base_run_quality(self):
         self.assertFalse(is_quality(["continuous", "strides"], ["base"]))
 
+    def test_drills_aliases_and_labels(self):
+        for token in ("drill", "lauf-abc", "lauf abc", "lauftechnik"):
+            with self.subTest(token=token):
+                self.assertEqual("drills", canonical_method(token))
+        self.assertEqual("Drills", method_label("drills"))
+        self.assertFalse(is_quality(["continuous", "drills"], ["base"]))
+        self.assertTrue(is_quality(["intervals", "drills"], ["other"]))
+
     def test_category_mapping(self):
         self.assertEqual(
             ({"intervals"}, {"subthreshold"}),

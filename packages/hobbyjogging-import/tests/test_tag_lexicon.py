@@ -34,10 +34,23 @@ class TagLexiconTests(unittest.TestCase):
     def test_illness_recovery_race_trail_and_area_kinds(self):
         self.assertEqual("illness", lookup_tag("verkühlt").kind)
         self.assertEqual("recovered", lookup_tag("wieder gesund").kind)
-        self.assertEqual("race", lookup_tag("Raceday").kind)
+        self.assertEqual("race", lookup_tag("Wettkampf").kind)
         self.assertEqual("trail", lookup_tag("Trail").kind)
         self.assertEqual("area", lookup_tag("w").kind)
         self.assertEqual("ignore", lookup_tag("schlapp").kind)
+
+    def test_race_day_tag_is_context_not_a_race_method(self):
+        meaning = lookup_tag("Raceday")
+        self.assertEqual("context", meaning.kind)
+        self.assertEqual(set(), set(meaning.methods))
+
+    def test_drill_tags_carry_the_drills_method_only(self):
+        for tag in ("LTT", "Lauftechnik", "Lauf-ABC", "drills"):
+            with self.subTest(tag=tag):
+                meaning = lookup_tag(tag)
+                self.assertEqual("workout", meaning.kind)
+                self.assertEqual({"drills"}, set(meaning.methods))
+                self.assertEqual(set(), set(meaning.targets))
 
     def test_rep_time_and_distance_tags(self):
         self.assertEqual(360.0, lookup_tag("6'").value)

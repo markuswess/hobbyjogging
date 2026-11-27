@@ -28,6 +28,22 @@ Schema: **30**. Compatibility: requires schema ≥ 1, migrates to 30.
   rows. A weather row without ambient temperature renders no weather line;
   health coverage counts ambient temperature only.
 
+### Classification
+
+- `drills` is a workout method beside `strides`; it never makes a session
+  quality by itself and is additive. `LTT`, `Lauftechnik` and `Lauf-ABC` map
+  to drills instead of threshold.
+- `drills_from_tags_v1` adds drills to the non-manual sets of LTT/Lauftechnik
+  activities. On the real-DB copy: 32 tagged, 31 added, 1 manual set skipped.
+- Evidence policy: a specific tag refines a classifier/backfill projection in
+  place (`source='tag'`); a sheet or manual set wins over tag and comment
+  evidence; a comment only fills an empty classification; generic `other`
+  never overrides a specific target; `Raceday` is context, not a race method.
+  The queue no longer opens evidence items.
+- `workout_classification_evidence_v1` applies that policy once. On the copy
+  it accepted 276 tag refinements, closed 273 items by policy, and left 0
+  open `workout_classification` items; a second run is a no-op.
+
 ### Gear
 
 - `equipment link <activity> <equipment> [--role primary|secondary]` appends a

@@ -17,6 +17,7 @@ CLASSIFY = "hobbyjogging_maintenance.workouts.classify"
 UNKNOWN = Category("unknown")
 LONGRUN = Category("quality", "longrun")
 TEMPO = Category("quality", "tempo")
+INTERVALS = Category("quality", "intervals")
 
 
 class WorkoutSetsCurrentTests(unittest.TestCase):
@@ -425,6 +426,143 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
 
         self.assertEqual(1, run.counts["derived"])
         self.assertEqual(0, run.counts["from_tag"])
+        self.assertEqual(
+            (["continuous"], ["threshold"]),
+            self._sets(activity_id),
+        )
+
+    def test_ltt_no_longer_proposes_threshold(self):
+        from hobbyjogging_maintenance.workouts import tag_proposal
+
+        proposal = tag_proposal(["LTT"])
+
+        self.assertIsNotNone(proposal)
+        self.assertEqual({"drills"}, proposal.methods)
+        self.assertEqual(set(), proposal.targets)
+
+    def test_a_specific_tag_refines_a_classifier_set(self):
+        activity_id = self._activity(
+            "Tempo",
+            sheet=False,
+            tags=["LT1"],
+        )
+        self._seed_sets(
+            activity_id,
+            ["continuous"],
+            ["threshold"],
+            source="classifier",
+        )
+
+        with patch(CLASSIFY, return_value=TEMPO):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["refined"])
+        self.assertEqual(
+            (["intervals"], ["lt1"]),
+            self._sets(activity_id),
+        )
+        self.assertEqual(
+            [("intervals", "tag", 0)],
+            self._sources(activity_id),
+        )
+        self.assertEqual(
+            [("lt1", "tag", 0)],
+            [
+                (row["target"], row["source"], row["is_manual"])
+                for row in self.conn.execute(
+                    "SELECT target, source, is_manual "
+                    "FROM activity_workout_targets WHERE activity_id = ?",
+                    (activity_id,),
+                )
+            ],
+        )
+
+    def test_a_drills_tag_is_added_to_a_classifier_set(self):
+        activity_id = self._activity(
+            "Intervals",
+            sheet=False,
+            tags=["LTT"],
+        )
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["other"],
+            source="classifier",
+        )
+
+        with patch(CLASSIFY, return_value=INTERVALS):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["additive"])
+        self.assertEqual(
+            (["drills", "intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+        self.assertIn(
+            ("drills", "tag", 0),
+            self._sources(activity_id),
+        )
+
+    def test_a_manual_set_does_not_get_drills(self):
+        activity_id = self._activity(
+            "Intervals",
+            sheet=False,
+            tags=["LTT"],
+        )
+        self._seed_sets(
+            activity_id,
+            ["intervals"],
+            ["other"],
+            source="manual",
+            manual=True,
+        )
+
+        self._run()
+
+        self.assertEqual(
+            (["intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_sheet_set_gets_drills_but_keeps_its_method(self):
+        activity_id = self._activity(
+            "Easy",
+            code="i",
+            tags=["Lauftechnik"],
+        )
+        self._seed_sets(
+            activity_id,
+            ["continuous"],
+            ["base"],
+            source="sheet",
+        )
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["additive"])
+        self.assertEqual(
+            (["continuous", "drills"], ["base"]),
+            self._sets(activity_id),
+        )
+
+    def test_a_comment_does_not_refine_a_classifier_set(self):
+        activity_id = self._activity(
+            "Tempo",
+            sheet=False,
+            description="Tempo run",
+        )
+        self._seed_sets(
+            activity_id,
+            ["continuous"],
+            ["threshold"],
+            source="classifier",
+        )
+
+        with patch(CLASSIFY, return_value=TEMPO):
+            run = self._run()
+
+        self.assertEqual(0, run.counts.get("refined", 0))
         self.assertEqual(
             (["continuous"], ["threshold"]),
             self._sets(activity_id),

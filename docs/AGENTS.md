@@ -227,11 +227,18 @@ Cross-package changes must leave all four suites green.
 - Workout methods/targets are set-based (`activity_workout_*`,
   `event_workout_*`). Quality is derived: base/recovery only is non-quality;
   intervals, fartlek, long_run, progression, race, and the quality targets
-  are quality; strides never make a session quality by itself. A tempo run is
+  are quality; strides or drills never make a session quality by themselves.
+  Strides and drills are additive, never a replacement. A tempo run is
   `continuous` with a `threshold` target (there is no `tempo` method).
   Runalyze's activity type is a gap-filler only — Jogging, Long Slow Distance
   and SubThreshold map in `runalyze_types`, existing sets win, and unknown
   types are audited, never guessed.
+- Classification evidence follows one policy: a specific tag refines a
+  classifier/backfill projection in place (`source='tag'`), a sheet or manual
+  set wins over tag and comment evidence, a comment only fills an empty
+  classification, generic `other` never overrides a specific target, and
+  drills/strides are unioned into any non-manual set. `Raceday` is context,
+  not a race method. The queue opens no evidence item.
 - Interval sets carry provenance in `activity_intervals.source`: `intervals`
   for measured typed reps, `derived` for reps inferred from device laps. A
   derived set never replaces a measured one, is run-only, and is labelled in

@@ -16,6 +16,7 @@ WORKOUT_METHODS = {
     "progression": "Progression",
     "race": "Race",
     "strides": "Strides",
+    "drills": "Drills",
     "other": "Other",
 }
 
@@ -40,6 +41,11 @@ QUALITY_TARGETS = frozenset(
     {"lt1", "subthreshold", "threshold", "vo2max", "speed", "marathon"}
 )
 
+# Additions to a session, never a replacement. They do not make a session
+# quality by themselves and an evidence proposal unions them into the stored
+# methods.
+ADDITIVE_METHODS = frozenset({"strides", "drills"})
+
 METHOD_ALIASES = {
     "easy": "continuous",
     "steady": "continuous",
@@ -59,6 +65,10 @@ METHOD_ALIASES = {
     "progression_run": "progression",
     "competition": "race",
     "stride": "strides",
+    "drill": "drills",
+    "lauf_abc": "drills",
+    "lauftechnik": "drills",
+    "running_drills": "drills",
     "unknown": "other",
 }
 
