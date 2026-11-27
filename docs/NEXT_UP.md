@@ -702,6 +702,23 @@ reports item; 28 is the recurring cleanup.
       few degrees; a January run reads a plausible ambient value; an indoor
       ride stays empty; a rebuild reproduces the rows from the cache.
 
+77. **Manual bike assignment for rides without one** (import + maintenance;
+    small, after 66). 236 active rides have no bike link: 2013 3, 2019 23,
+    2020 61, 2021 11, 2022 15, 2023 53, 2024 60, 2025 5, 2026 5. Two carry
+    only the Lunge Fis shoe (item 68 removes it). The sheet ends 2021, the
+    Strava gear field is empty for 2022–2023, and Runalyze has no 2023 links,
+    so the usual bike is the athlete's knowledge, not a payload.
+    - **Command**: `equipment assign <bike> --from <date> --to <date>
+      [--sport ride|mtb_ride|…] [--dry-run]`, plus an explicit id list. It
+      links the bike as primary and manual only where the activity has no
+      bike; an existing bike or manual link is untouched; a shoe-only ride is
+      left for item 68.
+    - **Mapping**: filled per period in the private curation list (e.g.
+      2023-05-05..2023-11-24 → Mery); the command prints the affected rides
+      and skips the rest.
+    - **Acceptance**: a dry run lists the rides per period; only gaps change;
+      `is_manual=1`; a re-run is a no-op; a trailer ride keeps Bob secondary.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
