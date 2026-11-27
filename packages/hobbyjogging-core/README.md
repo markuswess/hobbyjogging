@@ -165,7 +165,9 @@ an event's planned zone distribution.
   classification (`hobbyjogging_core.workouts`).
 - `review_items` — import conflicts and questionable activities, with a
   fingerprint for idempotent detection and an open/ignored/resolved status.
-- `activity_laps`, `activity_intervals` — FIT laps and structured intervals.
+- `activity_laps`, `activity_intervals` — device laps and structured
+  intervals; a performance-test split uses `source='sheet_test'` (v31) and
+  stays out of the device-lap read.
 - `activity_zone_times`, `zone_configs` — zone times and their definitions.
 - `equipment`, `activity_equipment`, `equipment_source_links` — gear and
   activity assignments.

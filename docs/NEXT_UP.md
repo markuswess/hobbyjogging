@@ -9,6 +9,19 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Leistungstests race history and splits (2026-11-27).** The sheet importer
+  stores each `Leistungstests` block as a `sheet` `performance_test` source
+  record; `leistungstests_v1` matches it by local date and distance (3 % or
+  250 m, start time only to break a tie) and never guesses. A race block
+  creates or completes a `race_results` row (`source='sheet'`,
+  `officially_measured=0`) with the block distance/time, place and result
+  note, without touching a Runalyze or manual row; a non-race test adds the
+  `time trial` tag. Splits land in `activity_laps` under
+  `source='sheet_test'` (schema 31 rebuilds the table with the wider key), so
+  device laps and derived intervals are unchanged, and the session report
+  renders the test splits with their total. The real-DB copy found 39 blocks,
+  27 matches, 22 new results (20 pre-2019), 447 split rows and 9 reported
+  unmatched blocks; the 2019+ Runalyze results were kept.
 - **Gear pages and body weight (2026-11-27).** Every gear row links to a
   `gear/<item>.html` page with its totals, target/wear, monthly and
   cumulative mileage chart, activities and co-used gear;
@@ -331,7 +344,7 @@ block **66/69/70** is done, the classification block **71/72** is done,
 comment evidence **74** is done, and Open-Meteo ambient weather **76** is
 done; place tags **73** are back in planning. The CLI brush ran on 2026-11-27:
 every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and
-the gaps it exposed are queued as **73, 77–78** (handover below). Phase 3
+the gaps it exposed are queued as **73, 77** (handover below). Phase 3
 closes when those land and the pass-9 close (overlay export, rebuild proof,
 baseline, tag 0.3.1) is recorded. The localhost browser moved to phase 4
 (item 65).
@@ -341,7 +354,7 @@ proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (run 2026-11-27). The remaining brush follow-ups are
-**73, 77–78**;
+**73, 77**;
 the handover block below gives their grouping, dependencies and the manual
 work that stays with the athlete. The metric charts **62** and the pace/HR
 calibration follow-up **64** slot alongside.
@@ -362,8 +375,7 @@ takes these root items:
    reopening them).
 4. **Tags and comments**: **73** place tags → routes (needs a plan first),
    then **74** Strava comment evidence (done).
-5. **Sources**: **76** ambient weather (done), **78** Leistungstests (schema
-   + backfill; the largest item, last).
+5. **Sources (done)**: **76** ambient weather, **78** Leistungstests.
 
 Manual work stays with the athlete: the bike period mapping for 77, the
 pre-2019 threshold snapshots (`threshold add`), the 41 trail and 7 illness
@@ -639,36 +651,6 @@ reports item; 28 is the recurring cleanup.
       and skips the rest.
     - **Acceptance**: a dry run lists the rides per period; only gaps change;
       `is_manual=1`; a re-run is a no-op; a trailer ride keeps Bob secondary.
-
-78. **Import the Leistungstests sheet** (core + import + maintenance; schema +
-    backfill, not small). The sheet importer supports only `Rohdaten`,
-    `Alternativtraining` and `Material`. The `Leistungstests` tab is unused and
-    holds 37 test/race blocks (2011–2021): 538 per-km splits, 143 with HR, and
-    18 blocks with a place/result comment ("Gesamt 5.", "Gesamt 173."). The
-    general comments already sit in `activities.description` from `Rohdaten`;
-    the new value is the pre-2019 race history, the places and the splits. 27
-    blocks match an activity by date/distance; 10 need a manual mapping (a test
-    inside a longer activity). The tab is uneven: 16 blocks have date cells, the
-    rest text dates, one relay block is a 5-row placeholder, and two blocks have
-    broken formulas (`#DIV/0!`, `/`, zero times).
-    - **Input**: store each block as a `sheet` source record
-      (`performance_test`) with the raw date, distance, target, comments and
-      splits, so the sheet stays an input and a rebuild reproduces it.
-    - **Race results**: for a race block, create or complete a `race_results`
-      row (source `sheet`, `officially_measured=0`), with the official
-      distance/time from the block, the place from "Gesamt N." and the result
-      comment as notes; never overwrite a Runalyze row. This fills 2011–2018,
-      where `race_results` is empty (the 37 rows start in 2019-04-07).
-    - **Splits**: project the per-km rows as laps with `source='sheet_test'`.
-      `activity_laps` is device-only and `replace_activity_laps` deletes all
-      rows, so make the lap write source-scoped (add `source`, migration) or
-      use a separate test-splits table; the session report already renders a
-      lap table.
-    - **Tests**: tag a non-race block `leistungstest` (context) so it stays out
-      of race stats; a block that matches no activity is reported, not guessed.
-    - **Acceptance**: 2011–2018 races and places appear; existing 2019+ race
-      results are unchanged; the splits show in the session report and total the
-      block time; broken blocks are skipped and listed; a re-run is a no-op.
 
 81. **Gear subcategories and target mileage** (core + import + reports;
     schema migration, not small). `equipment.type` is only shoe/bike/other, and

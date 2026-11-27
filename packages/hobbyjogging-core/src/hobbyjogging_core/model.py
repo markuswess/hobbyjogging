@@ -362,6 +362,14 @@ class Lap:
     avg_hr: float | None = None
     max_hr: float | None = None
     elevation_gain_m: float | None = None
+    # Provenance: "" is the device recording, "sheet_test" a performance-test
+    # split from the historical sheet.
+    source: str = ""
+
+
+# A performance test's per-split rows share the lap table but never mix with
+# the device laps in derivation or the default lap read.
+TEST_SPLIT_SOURCE = "sheet_test"
 
 
 @dataclass

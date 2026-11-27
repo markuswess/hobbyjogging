@@ -660,6 +660,74 @@ class MaterialImportTests(SheetImportTestCase):
         self.assertEqual([], self.repository.equipment())
 
 
+    def test_imports_performance_test_blocks_as_raw_input(self):
+        header = ["Datum", "Startzeit", "Distanz", "Zielzeit"]
+        rows = [
+            header,
+            [
+                date(2016, 4, 10),
+                timedelta(hours=9),
+                42195.0,
+                timedelta(hours=3),
+                "Start",
+                None,
+            ],
+            [None, None, None, None, 1.0, "Km 1", 1000.0, 1000.0,
+             None, None, None, timedelta(minutes=4, seconds=10), None, None,
+             150.0],
+            ["Ergebnis: Gesamt 173., M-30: 34.", None, None, None, 2.0,
+             "Km 2", 1000.0, 2000.0, None, None, None,
+             timedelta(minutes=4, seconds=20), None, None, 152.0],
+        ]
+        self._write([("Leistungstests", rows)])
+
+        summary = self.importer.import_sheet(self.path, "Leistungstests")
+
+        self.assertEqual(1, summary.performance_tests)
+        self.assertEqual(0, summary.activities_imported)
+        record = self.connection.execute(
+            "SELECT payload_json FROM source_records "
+            "WHERE source = 'sheet' AND record_type = 'performance_test'"
+        ).fetchone()
+        payload = json.loads(record["payload_json"])
+        self.assertEqual("2016-04-10", payload["block"]["date"])
+        self.assertEqual(173, payload["block"]["place_total"])
+        self.assertEqual(34, payload["block"]["place_ageclass"])
+        self.assertEqual(2, len(payload["splits"]))
+        self.assertEqual(
+            0,
+            self.connection.execute(
+                "SELECT COUNT(*) FROM activities"
+            ).fetchone()[0],
+        )
+
+    def test_dry_run_stores_no_performance_test_blocks(self):
+        rows = [
+            ["Datum", "Startzeit", "Distanz", "Zielzeit"],
+            [date(2016, 4, 10), timedelta(hours=9), 42195.0,
+             timedelta(hours=3), "Start", None],
+            [None, None, None, None, 1.0, "Km 1", 1000.0, 1000.0,
+             None, None, None, timedelta(minutes=4), None, None, 150.0],
+        ]
+        self._write([("Leistungstests", rows)])
+
+        summary = self.importer.import_sheet(
+            self.path,
+            "Leistungstests",
+            dry_run=True,
+        )
+
+        self.assertEqual(1, summary.performance_tests)
+        self.assertEqual(1, summary.performance_tests_new)
+        self.assertEqual(
+            0,
+            self.connection.execute(
+                "SELECT COUNT(*) FROM source_records "
+                "WHERE record_type = 'performance_test'"
+            ).fetchone()[0],
+        )
+
+
 class SheetCliTests(unittest.TestCase):
 
     def setUp(self):

@@ -385,8 +385,9 @@ stay compact (`1h02`).
   efficiency (m/excess beat), zones, description, the day's planned workout
   and wellness, a field-provenance block (owner source, value and any open
   disagreement after the metrics), one raw segment table (typed intervals
-  when there is more than one, otherwise device laps when there is more than
-  one), subT/LT1 work reps, Intervals/Garmin Connect links and the social
+  when there is more than one, otherwise the measured test splits with their
+  block total, otherwise device laps when there is more than one), subT/LT1
+  work reps, Intervals/Garmin Connect links and the social
   lines (Strava and other sources) when they exist.
 - **corrections [--days N|--from DATE|--to DATE] [--format markdown|csv|json]**
   — Read-only source-side checklist from open `field_conflict` items, grouped
@@ -784,8 +785,9 @@ route when known, social lines such as
 block, the day's planned workout and wellness, one raw segment table, and the
 subT/LT1 work-rep summary when applicable. The bullets are grouped under
 Session, Workout, Recording, Result and Links headings.
-The segment table shows typed intervals when there is more than one; otherwise
-it falls back to device laps when there is more than one; a single segment on
+The segment table shows typed intervals when there is more than one;
+otherwise it shows the measured test splits with their block total; otherwise
+it falls back to device laps when there is more than one. A single segment on
 either side is skipped because it only restates the activity. Open review
 items for the session are listed with their severity and detail.
 

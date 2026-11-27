@@ -72,6 +72,7 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
     "trail": TagMeaning("trail", "trail"),
     "trailrun": TagMeaning("trail", "trail"),
     "trail run": TagMeaning("trail", "trail"),
+    "time trial": _context("time trial"),
     # Workout sets. Threshold/quality tags are the highest-confidence kind.
     "sub threshold": _workout(
         "subT / LT1", ("intervals",), ("subthreshold",)

@@ -44,6 +44,11 @@ class TagLexiconTests(unittest.TestCase):
         self.assertEqual("context", meaning.kind)
         self.assertEqual(set(), set(meaning.methods))
 
+    def test_time_trial_is_context(self):
+        meaning = lookup_tag("Time Trial")
+        self.assertEqual("time trial", meaning.label)
+        self.assertEqual("context", meaning.kind)
+
     def test_drill_tags_carry_the_drills_method_only(self):
         for tag in ("LTT", "Lauftechnik", "Lauf-ABC", "drills"):
             with self.subTest(tag=tag):

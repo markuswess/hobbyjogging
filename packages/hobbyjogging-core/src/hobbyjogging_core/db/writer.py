@@ -1187,10 +1187,16 @@ class TrainingWriter:
         laps: list[Lap],
         *,
         source_record_id: int | None = None,
+        source: str = "",
     ) -> None:
+        """Replace one provenance's laps for an activity.
+
+        ``source`` names the batch: ``""`` is the device recording,
+        ``"sheet_test"`` a performance-test split set.
+        """
         self.connection.execute(
-            "DELETE FROM activity_laps WHERE activity_id = ?",
-            (activity_id,),
+            "DELETE FROM activity_laps WHERE activity_id = ? AND source = ?",
+            (activity_id, source),
         )
         rows = [
             (
@@ -1202,6 +1208,7 @@ class TrainingWriter:
                 lap.avg_hr,
                 lap.max_hr,
                 lap.elevation_gain_m,
+                source,
                 source_record_id,
             )
             for lap in laps
@@ -1212,8 +1219,8 @@ class TrainingWriter:
                 INSERT INTO activity_laps (
                     activity_id, lap_index, start_time_utc,
                     duration_s, distance_m, avg_hr, max_hr,
-                    elevation_gain_m, source_record_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    elevation_gain_m, source, source_record_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )
@@ -1224,8 +1231,13 @@ class TrainingWriter:
         laps: list[Lap],
         *,
         source_record_id: int,
+        source: str = "",
     ) -> None:
-        """Replace one source's laps while preserving laps from other sources."""
+        """Replace one provenance's laps while preserving other provenances.
+
+        Device laps from several recordings still interleave by start time;
+        a performance-test split set stays in its own partition.
+        """
         existing = self.connection.execute(
             """
             SELECT
@@ -1233,9 +1245,10 @@ class TrainingWriter:
                 avg_hr, max_hr, elevation_gain_m, source_record_id
             FROM activity_laps
             WHERE activity_id = ?
+              AND source = ?
               AND (source_record_id IS NULL OR source_record_id != ?)
             """,
-            (activity_id, source_record_id),
+            (activity_id, source, source_record_id),
         ).fetchall()
 
         combined = [
@@ -1265,14 +1278,15 @@ class TrainingWriter:
         combined.sort(key=lambda lap: (not bool(lap[0]), lap[0]))
 
         self.connection.execute(
-            "DELETE FROM activity_laps WHERE activity_id = ?",
-            (activity_id,),
+            "DELETE FROM activity_laps WHERE activity_id = ? AND source = ?",
+            (activity_id, source),
         )
         rows = [
             (
                 activity_id,
                 index,
                 *lap,
+                source,
             )
             for index, lap in enumerate(combined, start=1)
         ]
@@ -1282,8 +1296,8 @@ class TrainingWriter:
                 INSERT INTO activity_laps (
                     activity_id, lap_index, start_time_utc,
                     duration_s, distance_m, avg_hr, max_hr,
-                    elevation_gain_m, source_record_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    elevation_gain_m, source_record_id, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )
@@ -1346,6 +1360,30 @@ class TrainingWriter:
             )
 
         return len(cleaned)
+
+    def add_activity_tag(
+        self,
+        activity_id: str,
+        tag: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+    ) -> bool:
+        """Add one non-manual tag without touching the source's other tags."""
+        cleaned = _clean_tags([tag])
+        if not cleaned:
+            return False
+        self.connection.execute(
+            """
+            INSERT INTO activity_tags (
+                activity_id, tag, source, source_record_id, is_manual
+            ) VALUES (?, ?, ?, ?, 0)
+            ON CONFLICT(activity_id, tag, source) DO UPDATE SET
+                source_record_id = excluded.source_record_id
+            """,
+            (activity_id, cleaned[0], source, source_record_id),
+        )
+        return True
 
     def upsert_route(
         self,

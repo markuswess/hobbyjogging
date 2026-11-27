@@ -22,7 +22,13 @@ DEFAULT_TIMEZONE = "Europe/Vienna"
 ROHDATEN = "Rohdaten"
 ALTERNATIVTRAINING = "Alternativtraining"
 MATERIAL = "Material"
-SUPPORTED_SHEETS = (ROHDATEN, ALTERNATIVTRAINING, MATERIAL)
+LEISTUNGSTESTS = "Leistungstests"
+SUPPORTED_SHEETS = (
+    ROHDATEN,
+    ALTERNATIVTRAINING,
+    MATERIAL,
+    LEISTUNGSTESTS,
+)
 
 MISSING_MARKERS = frozenset(
     {"/", "n/a", "#ref!", "#n/a", "-", "–", "—", "?"}

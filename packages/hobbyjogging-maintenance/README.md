@@ -119,6 +119,7 @@ Backfills (one-time, recorded, skipped once applied):
 | `device_identity_v1` | Re-point activities on a provider fallback device at the FIT device they claim, or clear an app-name fallback. |
 | `device_identity_orphans_v1` | Soft-exclude the provider device rows left unused after the FIT claim (never delete). |
 | `interval_source_v1` | Stamp the interval rows that predate schema v25 with `source='intervals'`. |
+| `leistungstests_v1` | Match the stored `performance_test` blocks by date/distance, write their `sheet` race results and `sheet_test` laps, or tag a time trial; report unmatched and broken blocks. |
 | `drop_classification_tags_v1` | Remove the sheet's `Trainigstyp` codes from `activity_tags`, keeping area labels and manual tags. |
 | `drop_empty_intervals_v1` | Drop the empty 1 s / 0 m Intervals artifact from stored interval sets. |
 | `event_race_method_v1` | Re-derive the `race` method for existing Intervals events from their payload category. |

@@ -445,6 +445,7 @@ def race_report(
             context,
             intervals=intervals,
             laps=laps,
+            test_splits=source.activity_test_splits(activity.id),
             planned_events=events,
         )
     )

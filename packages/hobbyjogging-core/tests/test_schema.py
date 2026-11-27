@@ -152,6 +152,47 @@ class SchemaMigrationTests(unittest.TestCase):
         }
         self.assertIn("source", interval_columns)
 
+        lap_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(activity_laps)")
+        }
+        self.assertIn("source", lap_columns)
+
+    def test_migrates_v30_laps_to_a_sourced_key(self):
+        from hobbyjogging_core.db.migrations import MIGRATIONS
+
+        self.conn.executescript(INITIAL_SCHEMA_SQL)
+        for version in range(2, 31):
+            self.conn.executescript(MIGRATIONS[version])
+        self.conn.execute("PRAGMA user_version = 30")
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.conn.execute(
+            "INSERT INTO activity_laps (activity_id, lap_index, duration_s) "
+            "VALUES ('a1', 1, 60)"
+        )
+        self.conn.commit()
+
+        version = migrate(self.conn)
+
+        self.assertEqual(SCHEMA_VERSION, version)
+        row = self.conn.execute(
+            "SELECT lap_index, duration_s, source FROM activity_laps"
+        ).fetchone()
+        self.assertEqual((1, 60, ""), tuple(row))
+        self.conn.execute(
+            "INSERT INTO activity_laps "
+            "(activity_id, lap_index, duration_s, source) "
+            "VALUES ('a1', 1, 30, 'sheet_test')"
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.conn.execute(
+                "INSERT INTO activity_laps (activity_id, lap_index) "
+                "VALUES ('a1', 1)"
+            )
+
     def test_migrates_v1_activity_rows_to_elapsed_time(self):
         self.conn.executescript(INITIAL_SCHEMA_SQL)
         self.conn.execute(

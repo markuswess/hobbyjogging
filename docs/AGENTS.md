@@ -244,6 +244,20 @@ Cross-package changes must leave all four suites green.
   for measured typed reps, `derived` for reps inferred from device laps. A
   derived set never replaces a measured one, is run-only, and is labelled in
   the session report.
+- Laps carry provenance in `activity_laps.source`: an empty source is the
+  device recording, `sheet_test` a `Leistungstests` split. The device-lap
+  read excludes `sheet_test`, so derived intervals, zone times and evidence
+  never see a paper split; the session report renders the test splits (with
+  their block total) instead of the device table.
+- The `Leistungstests` worksheet is stored as one `sheet` `performance_test`
+  source record per block; `leistungstests_v1` matches by local date and
+  distance (3 % or 250 m, start time only as a tie-break), never guesses, and
+  reports unmatched, ambiguous and broken blocks. A race block creates or
+  completes a `race_results` row (`source='sheet'`, `officially_measured=0`)
+  and never touches a Runalyze or manual row; a non-race test adds the
+  context tag `time trial`. A second block without a date inherits the
+  previous block's date and a `29.9.` date borrows the neighboring year; both
+  assumptions are reported, not silent.
 - Session averages live in `activity_metrics` (one nullable row); run cadence
   is steps/min, ride cadence is rpm, FIT owns device-measured dynamics,
   Intervals owns altitude, and Runalyze fills the gaps. Per-second streams

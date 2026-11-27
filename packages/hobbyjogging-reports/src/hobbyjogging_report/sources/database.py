@@ -115,6 +115,9 @@ class DatabaseSource:
     def activity_laps(self, activity_id: str) -> list[Lap]:
         return self.repository.activity_laps(activity_id)
 
+    def activity_test_splits(self, activity_id: str) -> list[Lap]:
+        return self.repository.activity_test_splits(activity_id)
+
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         return self.repository.activity_weather(activity_id)
 

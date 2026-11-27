@@ -27,6 +27,10 @@ from hobbyjogging_core.sports import RIDE_SPORTS
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
 from .metrics import derive_metrics
 from .ods import Sheet, read_sheet
+from .performance_tests import (
+    RECORD_TYPE as PERFORMANCE_TEST_RECORD,
+    parse_performance_tests,
+)
 from .quality import (
     record_ambiguous_match,
     record_field_conflicts,
@@ -37,6 +41,7 @@ from .routes import numbers_by_name, route_identity
 from .sheet import (
     ALTERNATIVTRAINING,
     DEFAULT_TIMEZONE,
+    LEISTUNGSTESTS,
     MATERIAL,
     ROHDATEN,
     SOURCE,
@@ -57,6 +62,7 @@ REQUIRED_HEADERS = {
     ROHDATEN: ("Datum", "Distanz in m"),
     ALTERNATIVTRAINING: ("Datum", "Was"),
     MATERIAL: ("Id", "Marke"),
+    LEISTUNGSTESTS: ("Datum", "Distanz"),
 }
 
 MATERIAL_BLANK_HEADERS = {4: "Farbe"}
@@ -83,6 +89,8 @@ class SheetImportSummary:
     tags_written: int = 0
     routes_linked: int = 0
     review_recorded: int = 0
+    performance_tests: int = 0
+    performance_tests_new: int = 0
     ambiguous_matches: list[tuple[str, list[MatchCandidate]]] = field(
         default_factory=list
     )
@@ -150,6 +158,14 @@ class SheetImporter:
                         summary,
                         header_index=header_index,
                     )
+                elif sheet_name == LEISTUNGSTESTS:
+                    self._import_performance_tests(
+                        sheet,
+                        summary,
+                        start=start,
+                        end=end,
+                        limit=limit,
+                    )
                 else:
                     self._import_activities(
                         sheet,
@@ -171,6 +187,7 @@ class SheetImporter:
                         summary.activities_imported
                         + summary.equipment_created
                         + summary.equipment_updated
+                        + summary.performance_tests
                     ),
                     records_skipped=summary.rows_skipped,
                 )
@@ -187,6 +204,7 @@ class SheetImporter:
                         summary.activities_imported
                         + summary.equipment_created
                         + summary.equipment_updated
+                        + summary.performance_tests
                     ),
                     records_skipped=summary.rows_skipped,
                     error=str(exc),
@@ -254,6 +272,52 @@ class SheetImporter:
                 summary.equipment_created += 1
             else:
                 summary.equipment_updated += 1
+
+    def _import_performance_tests(
+        self,
+        sheet: Sheet,
+        summary: SheetImportSummary,
+        *,
+        start: date | None,
+        end: date | None,
+        limit: int | None,
+    ) -> None:
+        """Store each test block as a raw input, never as a canonical row."""
+        blocks = parse_performance_tests(sheet)
+        stored = 0
+        for block in blocks:
+            summary.rows_seen += 1
+            if block.date is not None and (
+                (start is not None and block.date < start)
+                or (end is not None and block.date > end)
+            ):
+                summary.rows_filtered += 1
+                continue
+            if limit is not None and stored >= limit:
+                summary.rows_limited += 1
+                continue
+            stored += 1
+            summary.performance_tests += 1
+            payload = block.payload()
+            external_id = block.external_id
+            if summary.dry_run:
+                if (
+                    self._source_record_id(
+                        PERFORMANCE_TEST_RECORD,
+                        external_id,
+                    )
+                    is None
+                ):
+                    summary.performance_tests_new += 1
+                continue
+            self.writer.upsert_source_record(
+                source=SOURCE,
+                record_type=PERFORMANCE_TEST_RECORD,
+                external_id=external_id,
+                checksum=_checksum(payload),
+                payload_json=payload,
+                import_run_id=summary.run_id,
+            )
 
     def _import_activities(
         self,
@@ -667,6 +731,17 @@ def format_sheet_summary(
             f"{summary.sheet}, {summary.rows_seen} rows seen, "
             f"{summary.equipment_created} equipment created, "
             f"{summary.equipment_updated} updated"
+        )
+    elif summary.sheet == LEISTUNGSTESTS:
+        lines[0] = (
+            f"{label}: "
+            f"{summary.sheet}, {summary.performance_tests} test blocks "
+            f"stored"
+            + (
+                f" ({summary.performance_tests_new} new)"
+                if summary.dry_run
+                else ""
+            )
         )
 
     if summary.tags_written:

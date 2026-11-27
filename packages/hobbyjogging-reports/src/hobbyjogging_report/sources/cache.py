@@ -19,8 +19,8 @@ class CachedDataSource:
     """Memoize the queries a dashboard build repeats.
 
     ``activities`` caches whole ranges and serves narrower requests from a
-    cached range that covers them. Intervals and laps are cached by activity
-    id, which is where most of the duplicate queries come from.
+    cached range that covers them. Intervals, laps and test splits are cached
+    by activity id, which is where most of the duplicate queries come from.
     """
 
     def __init__(self, source: DataSource):
@@ -28,6 +28,7 @@ class CachedDataSource:
         self._ranges: list[tuple[date, date, list[Activity]]] = []
         self._intervals: dict[str, list[Interval]] = {}
         self._laps: dict[str, list[Lap]] = {}
+        self._test_splits: dict[str, list[Lap]] = {}
         self._weather: dict[str, ActivityWeather | None] = {}
         self._metrics: dict[str, ActivityMetrics | None] = {}
         self.query_counts: Counter[str] = Counter()
@@ -59,6 +60,15 @@ class CachedDataSource:
             self.query_counts["activity_laps"] += 1
 
         return list(self._laps[activity_id])
+
+    def activity_test_splits(self, activity_id: str) -> list[Lap]:
+        if activity_id not in self._test_splits:
+            self._test_splits[activity_id] = list(
+                self._source.activity_test_splits(activity_id)
+            )
+            self.query_counts["activity_test_splits"] += 1
+
+        return list(self._test_splits[activity_id])
 
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         if activity_id not in self._weather:

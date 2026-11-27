@@ -28,6 +28,7 @@ from hobbyjogging_core.model import (
     EventZoneTime,
     FieldProvenance,
     Interval,
+    Lap,
     ReviewItem,
     WellnessDay,
 )
@@ -109,8 +110,32 @@ class MetricsLineTests(unittest.TestCase):
         self.assertIn("- Dynamics: GCT 238 ms", lines)
 
 
-class StartedLineTests(unittest.TestCase):
+class TestSplitsTests(unittest.TestCase):
 
+    def test_test_splits_replace_device_laps_and_show_a_total(self):
+        splits = [
+            Lap(index=1, duration_s=270, distance_m=1000, avg_hr=150),
+            Lap(index=2, duration_s=270, distance_m=1000),
+        ]
+        device = [Lap(index=1, duration_s=260, distance_m=1000)]
+
+        lines = format_session_activity(
+            activity(),
+            [],
+            laps=device,
+            test_splits=splits,
+        )
+        text = "\n".join(lines)
+
+        self.assertIn("### Test splits", text)
+        self.assertNotIn("### Laps", text)
+        self.assertIn(
+            "| **Total** | **2.00 km** | **9:00** | **4:30/km** | |",
+            text,
+        )
+
+
+class StartedLineTests(unittest.TestCase):
     def test_started_line_uses_the_local_offset(self):
         lines = format_session_activity(
             activity(

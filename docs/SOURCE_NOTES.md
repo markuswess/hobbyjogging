@@ -240,6 +240,29 @@ The keyless archive is the historical ambient-weather source.
   fills an empty row or keeps its value as the fallback.
 - An indoor sport is skipped even when its file carries a stale coordinate.
 
+## Leistungstests
+
+The legacy performance-test tab is a block layout, not a row-per-activity
+table. A block starts at a `Start` row (or a date-only heading) and runs to
+the next block.
+
+- The main header gives `Datum`, `Startzeit`, `Distanz`, `Zielzeit`,
+  `CP Nr`, `Distanz`, `Ges. D.`, `Zeit`, `Puls` and `Gesamtzeit`. The
+  `Geschw/Puls Test` block overrides the middle columns with `Strecke`,
+  `Puls` and `Zeit`; the reader detects it.
+- A split is a row with a positive segment `Distanz` and a positive `Zeit`.
+  `Ges. D.` supplies the cumulative distance and the run's last valid
+  `Gesamtzeit` the official total time.
+- `Datum` may be a date cell, a text date (`26.3.2017`), a date without a
+  year (`29.9.`), or absent on a second block on the same day. The year is
+  borrowed from the neighboring block and the date from the previous block;
+  both assumptions are recorded.
+- A result comment in the first two columns carries the place: `Gesamt N.`,
+  `Gesamtstaffel N.`, `Klasse N.` / `Klassen N.`, `M-30: N.` and `Sieg`.
+- The relay block (`Vienna City Marathon Staffel`, 15.9 km) is a normal race
+  result, not a special status. The `Wien Rundumadum` placeholder and
+  `VCM 10K` have no usable splits; `Paris Marathon` is empty.
+
 ## Code references
 
 - `packages/hobbyjogging-import/src/hobbyjogging_import/fit.py` — FIT parsing

@@ -522,6 +522,11 @@ def build_dashboard(
         except Exception:
             laps = []
 
+        try:
+            test_splits = source.activity_test_splits(activity.id)
+        except Exception:
+            test_splits = []
+
         planned_events = context.events_for(source, activity.date)
 
         report = "\n".join(
@@ -531,6 +536,7 @@ def build_dashboard(
                 context,
                 intervals=intervals,
                 laps=laps,
+                test_splits=test_splits,
                 planned_events=planned_events,
                 planned_hrefs={
                     event.id: f"../event/{event_filename(event.id)}"

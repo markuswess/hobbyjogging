@@ -49,6 +49,9 @@ class DataSource(Protocol):
     def activity_laps(self, activity_id: str) -> list[Lap]:
         ...
 
+    def activity_test_splits(self, activity_id: str) -> list[Lap]:
+        ...
+
     def activity_weather(self, activity_id: str) -> ActivityWeather | None:
         ...
 

@@ -883,6 +883,60 @@ class TrainingWriterTests(unittest.TestCase):
             ],
         )
 
+    def test_test_split_laps_live_beside_device_laps(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        second_source = self._source("fit-2", "checksum-2")
+        self.writer.merge_activity_laps(
+            "a1",
+            [Lap(index=1, start_time_utc="2026-10-01T06:00:00Z", duration_s=60)],
+            source_record_id=self.source_id,
+        )
+        self.writer.replace_activity_laps(
+            "a1",
+            [Lap(index=1, duration_s=30, distance_m=1000)],
+            source_record_id=second_source,
+            source="sheet_test",
+        )
+        self.writer.merge_activity_laps(
+            "a1",
+            [Lap(index=1, start_time_utc="2026-10-01T06:01:00Z", duration_s=70)],
+            source_record_id=self.source_id,
+        )
+
+        rows = self.conn.execute(
+            "SELECT source, lap_index, duration_s FROM activity_laps "
+            "WHERE activity_id = 'a1' ORDER BY source, lap_index"
+        ).fetchall()
+        self.assertEqual(
+            [("", 1, 70), ("sheet_test", 1, 30)],
+            [tuple(row) for row in rows],
+        )
+
+    def test_add_activity_tag_keeps_the_source_tags(self):
+        self.conn.execute(
+            "INSERT INTO activities (id, local_date, sport) "
+            "VALUES ('a1', '2026-10-01', 'run')"
+        )
+        self.writer.replace_activity_tags("a1", ["w"], source="sheet")
+
+        self.writer.add_activity_tag(
+            "a1",
+            "time trial",
+            source="sheet",
+            source_record_id=self.source_id,
+        )
+
+        tags = {
+            row["tag"]
+            for row in self.conn.execute(
+                "SELECT tag FROM activity_tags WHERE activity_id = 'a1'"
+            )
+        }
+        self.assertEqual({"w", "time trial"}, tags)
+
     def test_wellness_and_event_upserts(self):
         self.writer.upsert_wellness(
             local_date="2026-10-01",

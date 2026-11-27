@@ -487,6 +487,21 @@ class TrainingRepositoryTests(unittest.TestCase):
         self.assertEqual(1, laps[0].elevation_gain_m)
         self.assertEqual(120, laps[1].duration_s)
 
+    def test_activity_test_splits_are_read_separately(self):
+        self.conn.execute(
+            "INSERT INTO activity_laps "
+            "(activity_id, lap_index, duration_s, distance_m, source) "
+            "VALUES ('a1', 1, 30, 1000, 'sheet_test')"
+        )
+
+        laps = self.repository.activity_laps("a1")
+        splits = self.repository.activity_test_splits("a1")
+
+        self.assertEqual([1, 2], [lap.index for lap in laps])
+        self.assertEqual(1, len(splits))
+        self.assertEqual("sheet_test", splits[0].source)
+        self.assertEqual(30, splits[0].duration_s)
+
     def test_equipment_is_sorted_and_mapped(self):
         equipment = self.repository.equipment()
 

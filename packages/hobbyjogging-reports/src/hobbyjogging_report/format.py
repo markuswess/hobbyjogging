@@ -1020,6 +1020,38 @@ def format_laps_table(laps: list[Lap]) -> list[str]:
     return lines
 
 
+def format_test_splits_table(splits: list[Lap]) -> list[str]:
+    """Render performance-test splits with their block total."""
+    if not splits:
+        return []
+
+    lines = [
+        "\n### Test splits",
+        "| # | Distance | Time | Pace | Avg HR |",
+        "|---:|---:|---:|---:|---:|",
+    ]
+
+    for split in splits:
+        split_pace = pace_s_per_km(split.duration_s, split.distance_m)
+        avg_hr = "-" if split.avg_hr is None else f"{split.avg_hr:.0f}"
+        lines.append(
+            f"| {split.index} | {split.distance_m / 1000:.2f} km | "
+            f"{fmt_clock(split.duration_s)} | "
+            f"{format_pace(split_pace)}/km | {avg_hr} |"
+        )
+
+    total_s = sum(split.duration_s for split in splits)
+    total_m = sum(split.distance_m for split in splits)
+    total_pace = pace_s_per_km(total_s, total_m)
+    lines.append(
+        f"| **Total** | **{total_m / 1000:.2f} km** | "
+        f"**{fmt_clock(total_s)}** | "
+        f"**{format_pace(total_pace)}/km** | |"
+    )
+
+    return lines
+
+
 def format_review_items(items: list[ReviewItem]) -> list[str]:
     """Render open review items attached to one session."""
     if not items:
@@ -1052,6 +1084,7 @@ def format_session_activity(
     wellness: WellnessDay | None = None,
     review_items: list[ReviewItem] | None = None,
     laps: list[Lap] | None = None,
+    test_splits: list[Lap] | None = None,
     social: list[ActivitySocial] | None = None,
     provenance: list[FieldProvenance] | None = None,
     review_hrefs: dict[int, str] | None = None,
@@ -1200,8 +1233,9 @@ def format_session_activity(
         lines.append(format_wellness_summary(wellness))
 
     # One raw segment table per activity: typed reps when there is more
-    # than one, otherwise device splits. A single segment just restates
-    # the activity; the subT work-reps section below is independent.
+    # than one, otherwise the measured test splits, otherwise device splits.
+    # A single segment just restates the activity; the subT work-reps section
+    # below is independent.
     if len(intervals) > 1:
         lines.append("\n### Intervals")
         if any(interval.source == "derived" for interval in intervals):
@@ -1210,7 +1244,10 @@ def format_session_activity(
             )
             lines.append("")
         lines.extend(format_interval_table(intervals))
-    elif len(laps or []) > 1:
+
+    if test_splits:
+        lines.extend(format_test_splits_table(test_splits))
+    elif len(intervals) <= 1 and len(laps or []) > 1:
         lines.extend(format_laps_table(laps or []))
 
     points = []

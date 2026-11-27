@@ -6,6 +6,7 @@ import re
 import sqlite3
 from collections import Counter
 
+from hobbyjogging_core.model import TEST_SPLIT_SOURCE
 from hobbyjogging_core.sports import RUN_SPORTS
 from hobbyjogging_import.runalyze_types import audit_types
 from hobbyjogging_import.tag_lexicon import lookup_tag, normalize_tag
@@ -149,14 +150,14 @@ def trail_audit(connection: sqlite3.Connection) -> dict:
         SELECT a.id, a.local_date, a.sport, a.sub_sport, a.distance_m,
                a.elevation_gain_m,
                (SELECT SUM(l.elevation_gain_m) FROM activity_laps l
-                WHERE l.activity_id = a.id) AS lap_gain
+                WHERE l.activity_id = a.id AND l.source != ?) AS lap_gain
         FROM activities a
         WHERE a.excluded_at IS NULL
           AND a.sport IN ({placeholders})
           AND a.distance_m > 0
         ORDER BY a.local_date
         """,
-        tuple(sorted(RUN_SPORTS)),
+        (TEST_SPLIT_SOURCE, *tuple(sorted(RUN_SPORTS))),
     ).fetchall()
     ids = {row["id"] for row in rows}
     tags = {}

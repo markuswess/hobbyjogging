@@ -64,6 +64,16 @@ class CachedDataSourceTests(unittest.TestCase):
         self.assertEqual(1, cached.query_counts["activity_intervals"])
         self.assertEqual(1, cached.query_counts["activity_laps"])
 
+    def test_test_splits_are_cached_by_activity_id(self):
+        cached = CachedDataSource(self._source())
+
+        first = cached.activity_test_splits("missing")
+        second = cached.activity_test_splits("missing")
+
+        self.assertEqual([], first)
+        self.assertEqual([], second)
+        self.assertEqual(1, cached.query_counts["activity_test_splits"])
+
     def test_other_queries_delegate(self):
         cached = CachedDataSource(self._source())
 

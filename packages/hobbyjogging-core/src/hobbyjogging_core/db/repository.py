@@ -26,6 +26,7 @@ from hobbyjogging_core.model import (
     Lap,
     ReviewItem,
     Route,
+    TEST_SPLIT_SOURCE,
     WellnessDay,
     ZoneConfig,
 )
@@ -527,30 +528,36 @@ class TrainingRepository:
         ]
 
     def activity_laps(self, activity_id: str) -> list[Lap]:
+        """Return the device laps, excluding performance-test splits."""
         rows = self.connection.execute(
             """
             SELECT
                 lap_index, start_time_utc, duration_s, distance_m,
-                avg_hr, max_hr, elevation_gain_m
+                avg_hr, max_hr, elevation_gain_m, source
             FROM activity_laps
-            WHERE activity_id = ?
+            WHERE activity_id = ? AND source != ?
             ORDER BY lap_index
             """,
-            (activity_id,),
+            (activity_id, TEST_SPLIT_SOURCE),
         ).fetchall()
 
-        return [
-            Lap(
-                index=row["lap_index"],
-                start_time_utc=row["start_time_utc"] or "",
-                duration_s=row["duration_s"],
-                distance_m=row["distance_m"],
-                avg_hr=row["avg_hr"],
-                max_hr=row["max_hr"],
-                elevation_gain_m=row["elevation_gain_m"],
-            )
-            for row in rows
-        ]
+        return [_lap_from_row(row) for row in rows]
+
+    def activity_test_splits(self, activity_id: str) -> list[Lap]:
+        """Return the performance-test splits for one activity."""
+        rows = self.connection.execute(
+            """
+            SELECT
+                lap_index, start_time_utc, duration_s, distance_m,
+                avg_hr, max_hr, elevation_gain_m, source
+            FROM activity_laps
+            WHERE activity_id = ? AND source = ?
+            ORDER BY lap_index
+            """,
+            (activity_id, TEST_SPLIT_SOURCE),
+        ).fetchall()
+
+        return [_lap_from_row(row) for row in rows]
 
     def equipment(self) -> list[Equipment]:
         rows = self.connection.execute(
@@ -910,6 +917,19 @@ class TrainingRepository:
 
 def _parse_optional_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
+
+
+def _lap_from_row(row: sqlite3.Row) -> Lap:
+    return Lap(
+        index=row["lap_index"],
+        start_time_utc=row["start_time_utc"] or "",
+        duration_s=row["duration_s"],
+        distance_m=row["distance_m"],
+        avg_hr=row["avg_hr"],
+        max_hr=row["max_hr"],
+        elevation_gain_m=row["elevation_gain_m"],
+        source=row["source"],
+    )
 
 
 def _context(raw: str | None) -> dict[str, object]:

@@ -58,7 +58,8 @@ The canonical database consolidates data that used to live in several places:
 
 - **FIT files** — raw recordings from the devices, plus the Garmin Connect
   archive.
-- **A spreadsheet** — the legacy log (2009–2021): activities, shoes, tags.
+- **A spreadsheet** — the legacy log (2009–2021): activities, shoes, tags and
+  the performance-test blocks.
 - **Runalyze** — tags, comments, equipment, and its VO2max estimate.
 - **Intervals.icu** — intervals, names, zones, and the planned calendar.
 - **Strava** — CSV bulk export: titles, social descriptions and gear; not used
@@ -278,6 +279,10 @@ Source ingestion and the review queue.
   recovery, race/trail evidence, rep lengths, sheet area codes, context and
   ignored notes. The audit, classification, illness and trail proposals read
   it; an unmapped tag stays unmapped and no rule invents a meaning.
+- `performance_tests.py` — split the `Leistungstests` worksheet into blocks
+  and parse their date, start, distance, splits, place and result text. The
+  importer stores each block as a raw `sheet` `performance_test` record; the
+  maintenance backfill is what matches and projects it.
 - `duplicates.py` — the same-session pair rule (sport/day, distance 2 %,
   duration 5 %, HR 5 bpm, start within ±15 min when both carry one) and the
   stable choice of the weaker copy. A missing start on one side keeps the
@@ -365,6 +370,10 @@ changes.
 - `backfills/sheet_duplicates_v1.py` — copy a sheet-only duplicate's
   description to the device row and exclude the sheet row (exclusion, never a
   merge).
+- `backfills/leistungstests_v1.py` — match a stored `performance_test` block
+  by local date and distance, write its race result and `sheet_test` laps, or
+  tag a non-race test `time trial`; unmatched, ambiguous and broken blocks are
+  reported.
 - `audit*.py` — the read-only historical evidence report: coverage, raw keys,
   tags, descriptions, trail/race evidence, classification, periods and
   session-average metrics. It never opens a review item.
@@ -497,14 +506,16 @@ SQLite, forward-only migrations. Schema version 30.
   archive.
 - `activity_laps`, `activity_intervals`, `activity_zone_times` — detail data
   attached to activities, tagged by source record. Laps are device splits
-  (auto-lap or manual); intervals are typed reps (`WORK` / `RECOVERY`, with
-  group ids). An interval row's `source` (v25) is `intervals` for
-  Intervals.icu's measured set or `derived` for one inferred from device laps;
-  a derived set never replaces a measured one, and the session report labels
-  it. They are complementary, not duplicates: the session report prints one
-  raw segment table — intervals when there is more than one, otherwise laps
-  when there is more than one — and the subT work-reps section is derived
-  separately.
+  (auto-lap or manual) by default; a performance-test split carries
+  `source='sheet_test'` (v31) and stays out of the device-lap read and every
+  derivation. Intervals are typed reps (`WORK` / `RECOVERY`, with group ids).
+  An interval row's `source` (v25) is `intervals` for Intervals.icu's measured
+  set or `derived` for one inferred from device laps; a derived set never
+  replaces a measured one, and the session report labels it. They are
+  complementary, not duplicates: the session report prints one raw segment
+  table — intervals when there is more than one, otherwise the measured test
+  splits (with their block total), otherwise laps when there is more than
+  one — and the subT work-reps section is derived separately.
 - `activity_tags` (v5) — activity labels with their source. The sheet writes
   its training-area code (`Trainingsgebiet`); the classification code is not a
   tag, because the method/target sets already carry it.

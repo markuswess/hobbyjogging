@@ -198,7 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--sheet",
         dest="sheet_name",
         metavar="NAME",
-        help="worksheet to import: Rohdaten, Alternativtraining, or Material",
+        help="worksheet: Rohdaten, Alternativtraining, Material, Leistungstests",
     )
     sheet.add_argument("--timezone", default="Europe/Vienna")
     sheet.add_argument("--from", dest="start", type=date_arg)

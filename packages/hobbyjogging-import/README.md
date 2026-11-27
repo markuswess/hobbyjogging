@@ -113,6 +113,7 @@ gitignored user data):
 hobbyjogging-import sheet data/laufen.ods --sheet Material
 hobbyjogging-import sheet data/laufen.ods --sheet Rohdaten
 hobbyjogging-import sheet data/laufen.ods --sheet Alternativtraining
+hobbyjogging-import sheet data/laufen.ods --sheet Leistungstests
 hobbyjogging-import sheet --inspect data/laufen.ods
 ```
 
@@ -171,6 +172,31 @@ Activity ids are stable: date + start time + route, with a content-hash suffix
 for duplicate keys. Reimports update the same source records and follow the
 normal owner/manual/conflict rules; disagreements become `field_conflict`
 review items.
+
+### Leistungstests
+
+The performance-test tab is a sequence of blocks, not a per-row activity
+table. The importer splits it at a `Start` row (or a date-only heading),
+stores each block as one `sheet` / `performance_test` source record with its
+raw date, start, distance, target, title, result text and splits, and writes
+no canonical activity, lap or race result. The `Geschw/Puls Test` block uses
+`Strecke` / `Puls` / `Zeit` in place of the main `Distanz` / `Ges. D.` /
+`Puls` columns; the reader detects that layout.
+
+A text date may omit its year (`29.9.`); the parser borrows the neighboring
+block's year. A second block on the same day may have no date cell at all; it
+inherits the previous block's date. Both assumptions are recorded in the
+payload and reported by the maintenance backfill. A block with no distance,
+no splits or no total time is stored but marked broken.
+
+The projection is `maintenance run leistungstests_v1`: it matches a block by
+local date and distance (3 % or 250 m, start time only as a tie-break),
+creates or completes a `sheet` race result, stores the splits as
+`activity_laps` with `source='sheet_test'`, or tags a non-race block
+`time trial`. A Runalyze or manual race result is never overwritten, and
+unmatched, ambiguous and broken blocks are reported instead of guessed. The
+normal `sync.sh` maintenance then derives the `race` method from the new
+result.
 
 ## Garmin Personal API
 

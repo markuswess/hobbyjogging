@@ -91,6 +91,7 @@ def session_activity_lines(
     intervals: list[Interval],
     laps: list[Lap],
     planned_events: list[Event],
+    test_splits: list[Lap] | None = None,
     planned_hrefs: dict[str, str] | None = None,
     review_hrefs: dict[int, str] | None = None,
 ) -> list[str]:
@@ -118,6 +119,7 @@ def session_activity_lines(
             if item.activity_id == activity.id
         ],
         laps=laps,
+        test_splits=test_splits,
         social=source.activity_social(activity.id),
         provenance=source.activity_field_sources(activity.id),
         review_hrefs=review_hrefs,
@@ -259,6 +261,7 @@ def session_report(
                 context,
                 intervals=intervals,
                 laps=source.activity_laps(activity.id),
+                test_splits=source.activity_test_splits(activity.id),
                 planned_events=context.events_for(
                     source,
                     activity.date,

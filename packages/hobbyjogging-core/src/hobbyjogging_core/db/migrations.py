@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 30
+SCHEMA_VERSION = 31
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -613,6 +613,41 @@ GROUP BY e.id;
 """
 
 
+MIGRATION_31_SQL = """
+-- Laps now carry a provenance. An empty source is the device recording;
+-- a performance-test split carries its own source so it can share the lap
+-- index space without colliding with the device lap of the same number.
+-- SQLite cannot drop the old inline UNIQUE (activity_id, lap_index), so the
+-- table is rebuilt with the wider key.
+CREATE TABLE activity_laps_v31 (
+    id INTEGER PRIMARY KEY,
+    activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+    lap_index INTEGER NOT NULL,
+    start_time_utc TEXT,
+    duration_s REAL NOT NULL DEFAULT 0,
+    distance_m REAL NOT NULL DEFAULT 0,
+    avg_hr REAL,
+    max_hr REAL,
+    elevation_gain_m REAL,
+    source TEXT NOT NULL DEFAULT '',
+    source_record_id INTEGER REFERENCES source_records(id) ON DELETE SET NULL,
+    UNIQUE (activity_id, source, lap_index)
+);
+
+INSERT INTO activity_laps_v31 (
+    id, activity_id, lap_index, start_time_utc, duration_s, distance_m,
+    avg_hr, max_hr, elevation_gain_m, source, source_record_id
+)
+SELECT
+    id, activity_id, lap_index, start_time_utc, duration_s, distance_m,
+    avg_hr, max_hr, elevation_gain_m, '', source_record_id
+FROM activity_laps;
+
+DROP TABLE activity_laps;
+ALTER TABLE activity_laps_v31 RENAME TO activity_laps;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -644,6 +679,7 @@ MIGRATIONS: dict[int, str] = {
     28: MIGRATION_28_SQL,
     29: MIGRATION_29_SQL,
     30: MIGRATION_30_SQL,
+    31: MIGRATION_31_SQL,
 }
 
 

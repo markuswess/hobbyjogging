@@ -11,7 +11,25 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — 0.3.1
 
-Schema: **30**. Compatibility: requires schema ≥ 1, migrates to 30.
+Schema: **31**. Compatibility: requires schema ≥ 1, migrates to 31.
+
+### Leistungstests
+
+- The sheet importer accepts the `Leistungstests` worksheet and stores each
+  block as a `sheet` / `performance_test` source record; it writes no
+  canonical row itself.
+- `leistungstests_v1` matches a block by local date and distance (3 % or
+  250 m, start time only to break a tie), creates or completes a
+  `sheet` race result (`officially_measured=0`) with its place and result
+  note, and never overwrites a Runalyze or manual result. A non-race block
+  gets the `time trial` context tag.
+- Schema 31 adds `activity_laps.source`; a performance-test split is stored
+  under `source='sheet_test'` and is excluded from the device-lap read, so
+  derived intervals, zone times and evidence are unchanged. The session
+  report renders the test splits and their block total.
+- On the real-DB copy: 39 blocks, 27 matches, 22 new results (20 before
+  2019), 447 split rows and 9 reported unmatched blocks; the 2019+ Runalyze
+  results were kept.
 
 ### Brush bug fixes
 

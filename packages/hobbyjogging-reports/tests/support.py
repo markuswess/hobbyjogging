@@ -55,6 +55,7 @@ class FakeSource:
         links=None,
         review_items=None,
         laps=None,
+        test_splits=None,
         equipment=None,
         weather=None,
         metrics=None,
@@ -69,6 +70,7 @@ class FakeSource:
         self._equipment = list(equipment or [])
         self._intervals = dict(intervals or {})
         self._laps = dict(laps or {})
+        self._test_splits = dict(test_splits or {})
         self._wellness = list(wellness or [])
         self._events = list(events or [])
         self._links = dict(links or {})
@@ -110,6 +112,9 @@ class FakeSource:
 
     def activity_laps(self, activity_id):
         return self._laps.get(activity_id, [])
+
+    def activity_test_splits(self, activity_id):
+        return self._test_splits.get(activity_id, [])
 
     def activity_weather(self, activity_id):
         return self._weather.get(activity_id)
