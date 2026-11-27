@@ -564,6 +564,25 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: Thule and Bob show their activity counts and km; a
       primary-only equipment is unchanged; `verify_canonical` is unaffected.
 
+71. **Resolve the evidence classification backlog** (maintenance + import;
+    small, after the brush). The 549 open `workout_classification` items break
+    down as 303 tag evidence refining a **classifier-stored** set (211 a
+    different method, 92 a more specific target), 17 generic tag-vs-classifier
+    (`other`), 37 tag-vs-sheet and 192 comment evidence. Only the first group
+    is a real improvement; the rest are noise because a comment or a generic
+    tag cannot outrank a stored set.
+    - **Policy**: a specific tag refines a **classifier projection** (write
+      `source='tag'`); a sheet or manual input wins over tag and comment
+      evidence; a comment only fills an empty classification; `other` evidence
+      never overrides a specific target.
+    - **One-time task** `workout_classification_evidence_v1`: accept the 303
+      tag-specific sets, close the 246 with a policy note, dry run first.
+    - **Rule fix**: the evidence task stops opening these items — a specific
+      tag refines a classifier set in place, comments only fill empty.
+    - **Acceptance**: open `workout_classification` is 0; only
+      classifier-stored activities change; sheet/manual sets are untouched; a
+      re-run is a no-op.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
