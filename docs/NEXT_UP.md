@@ -261,23 +261,47 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
 **21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
 **48** (field provenance), **57** (corrections export) and **22** (release
-0.3.0) are done. The remaining work is the **CLI brush**: phase 3 is complete
-when every pass in [DATA_BRUSH.md](DATA_BRUSH.md) can be done through the CLI.
-The localhost browser moved to phase 4 (item 65).
+0.3.0) are done. The CLI brush ran on 2026-11-27: every pass in
+[DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and the gaps it
+exposed are queued as **66–78** (handover below). Phase 3 closes when those
+land and the pass-9 close (overlay export, rebuild proof, baseline, tag
+0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
-(done) → the CLI brush (the gate). The write-surface follow-ups **58–60** are
-done; the secondary equipment link **66** follows the brush, and the duplicate
-start-time gate **67** comes after the polish. The metric charts **62** and the
-pace/HR calibration follow-up **64** slot alongside. The health report and
-dashboard card show the duplicate count
-now that 42 opens the items. Accepting a suggestion always writes a manual
-value and an `edit_log` row; nothing canonical is auto-applied except an
-empty, high-confidence classification. The corrections export (**57**) and the
-session provenance block (**48**) are the read-only source-side pair.
+(done) → the CLI brush (run 2026-11-27). The brush follow-ups are **66–78**;
+the handover block below gives their grouping, dependencies and the manual
+work that stays with the athlete. The metric charts **62** and the pace/HR
+calibration follow-up **64** slot alongside.
+
+**Data brush handover (2026-11-27).** The brush baseline is recorded, the
+coverage/weather/gear/illness decisions are accepted in the private curation
+list, and the Intervals zones for 2019–2022 were updated. Before the code
+items, sync that zone update: re-import 2019–2022, then run
+`athlete_thresholds_current`, `activity_zone_configs_current` and
+`derived_zone_configs_current`. The cross-package coding session then takes
+these root items:
+
+1. **Bugs first**: **67** duplicate start gate, **68** shoes on rides, **75**
+   watch temperature (clear the device-only rows, keep the 739 sheet values).
+2. **Gear**: **66** secondary link, **69** Thule from tags, **70** usage counts
+   every link; 66 and 68 unblock the manual Bob/bike pass in **77**.
+3. **Classification**: **72** drills first, then **71** (accept the 303 tag
+   refinements, close the 246 noise items, and stop the task reopening them).
+   The 11 tag-vs-sheet method differences are the only ones worth a human
+   look; the rest close by policy.
+4. **Tags and comments**: **73** place tags → routes, then **74** Strava
+   comment evidence (after 71).
+5. **Sources**: **76** ambient weather (after 75), **78** Leistungstests
+   (schema + backfill; the largest item, last).
+
+Manual work stays with the athlete: the bike period mapping for 77, the
+pre-2019 threshold snapshots (`threshold add`), the 41 trail and 7 illness
+decisions, item 739, and the 11 tag-vs-sheet method differences after 71.
+Close the brush with session 5: `export-manual`, `rebuild --source DB`,
+`verify_canonical`, the new baseline, tag 0.3.1.
 
 ### Phase 4: durable and more reach
 
