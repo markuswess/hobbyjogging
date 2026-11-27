@@ -533,6 +533,37 @@ reports item; 28 is the recurring cleanup.
       hiking only, a re-enabled sheet import does not recreate them, and the
       hike link stays.
 
+69. **Equipment from tags** (core + maintenance; small). 124 activities carry
+    a `Thule` tag (121 `Thule`, 3 `thule half half`), but only 74 link the
+    Thule trailer; 43 have no equipment at all and 7 have only a shoe or bike.
+    The tag is the evidence that the trailer was used, on runs and rides.
+    - **Mapping**: tag → equipment, starting with `Thule` and
+      `thule half half` → the `Thule` trailer (resolved by normalized name),
+      code-level beside the tag lexicon until a second athlete needs it
+      data-driven.
+    - **Recompute** `equipment_from_tags_current`: for each activity carrying a
+      mapped tag, link the equipment as **secondary** when another item exists,
+      **primary** only when it is the only item; source `tag`, idempotent,
+      never displacing a manual or existing primary; skip excluded activities.
+    - **Audit**: list tags that look like gear but have no mapping, so a new
+      trailer or tag is visible.
+    - **Acceptance**: all 124 tagged activities link Thule; a shoe-primary run
+      gets Thule secondary; a no-equipment run gets Thule primary; a manual
+      link is untouched; a re-run is a no-op.
+
+70. **Equipment usage counts every link** (core; bug, small migration). The
+    `equipment_usage` view joins `activity_equipment` with `role='primary'`, so
+    secondary equipment shows zero usage: the Thule trailer has 75 secondary
+    links and Bob 21, both appear with no activities or km in the gear report.
+    - **Fix**: count every link per equipment (the role is identity, not
+      usage); replace the view in a migration (schema v30) and update the
+      tests and gear-report expectations.
+    - **Check**: the only secondary links today are trailers (`other`: Thule
+      75, Bob 21), so no shoe or bike usage changes; a future secondary shoe
+      would count too, which is correct for "times used".
+    - **Acceptance**: Thule and Bob show their activity counts and km; a
+      primary-only equipment is unchanged; `verify_canonical` is unaffected.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
