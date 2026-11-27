@@ -5,6 +5,7 @@ from hobbyjogging_import.tag_lexicon import (
     lookup_tag,
     meaning_label,
     normalize_tag,
+    place_names_for,
     tags_with_kind,
     unmapped_equipment_tags,
     workout_meanings,
@@ -61,8 +62,19 @@ class TagLexiconTests(unittest.TestCase):
         self.assertEqual(1609.34, lookup_tag("Meile").value)
 
     def test_unmapped_tags_stay_unmapped(self):
-        self.assertIsNone(lookup_tag("Wienerberg"))
-        self.assertEqual("unmapped", meaning_label("Wienerberg"))
+        self.assertIsNone(lookup_tag("Yvette"))
+        self.assertEqual("unmapped", meaning_label("Yvette"))
+
+    def test_place_tags_normalize_to_one_route_name(self):
+        self.assertEqual("place", lookup_tag("Prater").kind)
+        self.assertEqual(
+            ["Donaukanal"],
+            place_names_for(["kanal", "donaukanal"]),
+        )
+        self.assertEqual(
+            ["Wienerberg"],
+            place_names_for(["Wienerberg", "Wienerbergteich"]),
+        )
 
     def test_equipment_tags_resolve_to_the_trailer(self):
         self.assertEqual(

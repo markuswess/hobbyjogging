@@ -75,7 +75,10 @@ def workout_sets_current(context: TaskContext) -> None:
             context.count("already_classified")
             continue
 
-        evidence, evidence_source = evidence_proposal(activity)
+        evidence, evidence_source = evidence_proposal(
+            activity,
+            context.connection,
+        )
         additive = (
             evidence.methods & ADDITIVE_METHODS
             if evidence is not None and not evidence.empty

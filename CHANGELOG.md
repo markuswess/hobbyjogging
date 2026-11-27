@@ -44,6 +44,24 @@ Schema: **30**. Compatibility: requires schema ≥ 1, migrates to 30.
   it accepted 276 tag refinements, closed 273 items by policy, and left 0
   open `workout_classification` items; a second run is a no-op.
 
+### Routes and comments
+
+- Geographic tags now carry the `place` kind. `routes_from_place_tags_v1`
+  creates one source-scoped route per canonical place (`runalyze:tag:<slug>`,
+  aliases `kanal`/`donaukanal` and `Wienerberg`/`Wienerbergteich` merge) and
+  links the activity with `source='tag'`; an existing manual or sheet route
+  wins. On the real-DB copy: 387 tagged activities, 439 links, 28 routes; a
+  re-run is a no-op, and the session report shows the place.
+- `description_proposal` now ignores recap/PB sentences, negated or
+  alternative clauses (`statt`, `instead of`, `not`, `ohne`, `zu hügelig`),
+  and race-as-a-verb; Wechseltempo/Fahrtspiel is fartlek, a structured
+  interval with a target is intervals, and `Wohlfühltempo` is not a threshold
+  session.
+- Comment evidence reads the per-source `activity_social.description` as well
+  as the canonical field. A structured comment on a classifier/backfill
+  projection opens one review item; a manual or sheet set never changes. On
+  the copy the queue opened 11 material comment items and kept prior decisions.
+
 ### Gear
 
 - `equipment link <activity> <equipment> [--role primary|secondary]` appends a

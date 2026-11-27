@@ -270,9 +270,11 @@ Source ingestion and the review queue.
   sheet payloads, normalized to the canonical units the FIT parser already
   emits; the importer and the backfill share it.
 - `tag_lexicon.py` — the one tag → meaning table: workout sets, illness and
-  recovery, race/trail evidence, rep lengths, sheet area codes, context and
-  ignored notes. The audit, classification, illness and trail proposals read
-  it; an unmapped tag stays unmapped and no rule invents a meaning.
+  recovery, race/trail evidence, geographic places, rep lengths, sheet area
+  codes, context and ignored notes. The audit, classification, illness, trail
+  and place proposals read it; an unmapped tag stays unmapped and no rule
+  invents a meaning. `PLACE_ALIASES` maps geographic tags to one canonical
+  route name.
 - `duplicates.py` — the same-session pair rule (sport/day, distance 2 %,
   duration 5 %, HR 5 bpm, start within ±15 min when both carry one) and the
   stable choice of the weaker copy. A missing start on one side keeps the
@@ -373,14 +375,16 @@ changes.
 - `backfills/workout_classification_evidence_v1.py` — accept specific tag
   evidence on classifier/backfill projections once and close the remaining
   evidence items by policy.
+- `backfills/routes_from_place_tags_v1.py` — create source-scoped routes from
+  geographic tags and link them with `source='tag'`; existing routes win.
 - `recompute/workout_sets_current.py` — `workout_sets_current` (re-derives
   classifier-sourced sets after a rename, refines a classifier/backfill
   projection from a specific tag, unions drills/strides into non-manual sets
   and fills unclassified gaps).
 - `recompute/workout_classification_queue.py` —
-  `workout_classification_queue` (classifier/sheet disagreements; a classified
-  activity is closed, because tag refinement and input precedence happen in
-  `workout_sets_current`).
+  `workout_classification_queue` (classifier/sheet disagreements plus a
+  structured comment that refines a classifier/backfill projection; tag
+  refinement and input precedence happen in `workout_sets_current`).
 - `recompute/evidence_candidates.py` — `illness_candidates_current` (opens
   `period_candidate` items for illness tags outside a stored period) and
   `trail_candidates_current` (opens `consistency` items suggesting
@@ -423,9 +427,9 @@ SQLite, forward-only migrations. Schema version 30.
 - `routes` (v20) + `activity_routes` — a named loop or course and the
   activities that covered it. Route identity is source-scoped: the sheet keys
   by `Streckennummer`, falling back to the name's number when unambiguous and
-  then to the name itself; Runalyze's `recurring_route` id is a different
-  identity and never merges automatically. A run can cover several routes, so
-  the link is a table.
+  then to the name itself; a place tag creates `runalyze:tag:<slug>`; and
+  Runalyze's `recurring_route` id is a different identity and never merges
+  automatically. A run can cover several routes, so the link is a table.
 - `event_activity_links` (v21) — a planned race and the activity that ran it.
   `race_links_current` matches date + sport + distance within 5%; an
   ambiguous match opens an `ambiguous_race` review item instead of guessing.
@@ -554,11 +558,11 @@ Workout classification is set-based and orthogonal:
   never make a session quality by themselves.
 - **Sources and evidence** — importer, sheet and Runalyze-type sets are
   inputs; a classifier/backfill set is a re-derivable projection. A specific
-  tag refines a projection in place (`source='tag'`); a sheet or manual set
-  wins over tag and comment evidence; a comment only fills an empty
-  classification; generic `other` never overrides a specific target. Strides
-  and drills are unioned into any non-manual set, never replacing the run
-  method.
+  tag refines a projection in place (`source='tag'`); a structured comment on
+  a projection opens one review item, while a comment otherwise only fills an
+  empty classification. A sheet or manual set wins over tag and comment
+  evidence; generic `other` never overrides a specific target. Strides and
+  drills are unioned into any non-manual set, never replacing the run method.
 
 Text fields have fixed roles:
 

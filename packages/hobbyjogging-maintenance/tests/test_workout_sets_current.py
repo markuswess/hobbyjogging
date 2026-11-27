@@ -382,6 +382,23 @@ class WorkoutSetsCurrentTests(unittest.TestCase):
             self._sources(activity_id),
         )
 
+    def test_a_social_comment_fills_an_empty_classification(self):
+        activity_id = self._activity("Easy", sheet=False)
+        self.writer.upsert_activity_social(
+            activity_id,
+            source="strava",
+            description="5x1000 interval",
+        )
+        self.conn.commit()
+
+        run = self._run()
+
+        self.assertEqual(1, run.counts["from_comment"])
+        self.assertEqual(
+            (["intervals"], ["other"]),
+            self._sets(activity_id),
+        )
+
     def test_a_ladder_description_is_recognized(self):
         activity_id = self._activity(
             "Easy",

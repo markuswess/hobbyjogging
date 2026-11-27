@@ -266,6 +266,50 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
 }
 
 
+# Geographic tags. The value is the canonical place label and route name;
+# aliases share one route. Keep this beside the lexicon while there is one
+# athlete.
+PLACE_ALIASES: dict[str, str] = {
+    "wienerberg": "Wienerberg",
+    "wienerbergteich": "Wienerberg",
+    "kanal": "Donaukanal",
+    "donaukanal": "Donaukanal",
+    "hauptallee": "Hauptallee",
+    "guntramsdorf-wien": "Guntramsdorf–Wien",
+    "arsenal": "Arsenal",
+    "wien-guntramsdorf": "Wien–Guntramsdorf",
+    "prater": "Prater",
+    "liesingbach": "Liesingbach",
+    "helmut zilk park": "Helmut Zilk Park",
+    "wien-mödling": "Wien–Mödling",
+    "anninger": "Anninger",
+    "bezirk": "Bezirk",
+    "graz": "Graz",
+    "paris": "Paris",
+    "rundumadum": "Rundumadum",
+    "weinberge": "Weinberge",
+    "berlin": "Berlin",
+    "donauinsel": "Donauinsel",
+    "bassin saulx": "Bassin Saulx",
+    "mödling - wien": "Mödling–Wien",
+    "biedermannsdorf": "Biedermannsdorf",
+    "lac du mail": "Lac du Mail",
+    "mödlingbach": "Mödlingbach",
+    "schweizergarten": "Schweizergarten",
+    "schönbrunn": "Schönbrunn",
+    "wiental": "Wiental",
+    "laufbahn": "Laufbahn",
+    "lcc lauf": "LCC Lauf",
+}
+
+TAG_MEANINGS.update(
+    {
+        tag: TagMeaning(label, "place")
+        for tag, label in PLACE_ALIASES.items()
+    }
+)
+
+
 # ``6'``, ``3'30''``, ``30''``, ``400m``, ``1km``, ``1 mile``. Rep lengths
 # are evidence about structure, not a workout type by themselves.
 _REP_MINUTES = re.compile(r"^(\d+)\s*'$")
@@ -375,6 +419,16 @@ def equipment_names_for(tags: Iterable[object]) -> list[str]:
         EQUIPMENT_TAGS[token]
         for tag in tags
         if (token := normalize_tag(tag)) in EQUIPMENT_TAGS
+    }
+    return sorted(names)
+
+
+def place_names_for(tags: Iterable[object]) -> list[str]:
+    """Return the canonical place names for a tag collection, sorted."""
+    names = {
+        PLACE_ALIASES[token]
+        for tag in tags
+        if (token := normalize_tag(tag)) in PLACE_ALIASES
     }
     return sorted(names)
 

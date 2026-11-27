@@ -97,6 +97,15 @@ class QueueTests(unittest.TestCase):
         )
         self.conn.commit()
 
+    def _seed_projection(self, activity_id, methods, targets, source="backfill"):
+        self.writer.replace_activity_workout_methods(
+            activity_id, methods, source=source
+        )
+        self.writer.replace_activity_workout_targets(
+            activity_id, targets, source=source
+        )
+        self.conn.commit()
+
     def test_conflict_creates_one_info_item(self):
         activity_id = self._activity("Long run", code="i")
 
@@ -227,6 +236,76 @@ class QueueTests(unittest.TestCase):
 
         self.assertEqual(0, run.counts["opened"])
         self.assertEqual([], self._items())
+
+    def test_a_comment_on_a_backfill_projection_opens_an_item(self):
+        activity_id = self._activity(
+            "Long run",
+            sheet=False,
+            description="3x1.6 Threshold hopping",
+        )
+        self._seed_projection(activity_id, ["long_run"], ["base"])
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["opened"])
+        item = self._items()[0]
+        context = json.loads(item["context_json"])
+        self.assertEqual("comment", context["evidence_source"])
+        self.assertEqual(["intervals"], context["evidence_methods"])
+        self.assertEqual(["threshold"], context["evidence_targets"])
+        self.assertEqual(["long_run"], context["stored_methods"])
+        self.assertEqual(["base"], context["stored_targets"])
+
+    def test_a_comment_on_a_manual_set_does_not_open(self):
+        activity_id = self._activity(
+            "Long run",
+            sheet=False,
+            description="3x1.6 Threshold hopping",
+        )
+        self._classify_manually(activity_id, ["long_run"], ["base"])
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(0, run.counts["opened"])
+        self.assertEqual([], self._items())
+
+    def test_a_comment_on_a_sheet_set_does_not_open(self):
+        activity_id = self._activity(
+            "Long run",
+            sheet=False,
+            description="3x1.6 Threshold hopping",
+        )
+        self._seed_projection(
+            activity_id,
+            ["long_run"],
+            ["base"],
+            source="sheet",
+        )
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(0, run.counts["opened"])
+        self.assertEqual([], self._items())
+
+    def test_a_social_comment_on_a_projection_opens_an_item(self):
+        activity_id = self._activity("Long run", sheet=False)
+        self._seed_projection(activity_id, ["long_run"], ["base"])
+        self.writer.upsert_activity_social(
+            activity_id,
+            source="strava",
+            description="12x200m in 33-35''",
+        )
+        self.conn.commit()
+
+        with patch(CLASSIFY, return_value=UNKNOWN):
+            run = self._run()
+
+        self.assertEqual(1, run.counts["opened"])
+        context = json.loads(self._items()[0]["context_json"])
+        self.assertEqual(["intervals"], context["evidence_methods"])
 
     def test_evidence_is_ignored_for_a_non_run_sport(self):
         activity_id = self._activity("Ride", tags=["LT1"], sport="ride")

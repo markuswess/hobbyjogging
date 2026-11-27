@@ -12,15 +12,21 @@ from __future__ import annotations
 
 import sqlite3
 
+from hobbyjogging_core.workouts import ADDITIVE_METHODS
 from hobbyjogging_import.quality import WORKOUT_CLASSIFICATION
 
 from ..context import TaskContext
 from ..registry import task
 from ..workouts import (
+    Proposal,
     classifier_proposal,
     conflict_from,
     disagrees,
+    evidence_conflict_from,
+    evidence_conflicts,
+    evidence_proposal,
     fingerprint,
+    is_projection,
     scoped_activities,
     sheet_proposal,
 )
@@ -47,9 +53,59 @@ def workout_classification_queue(context: TaskContext) -> None:
     for activity in activities:
         items = open_items.pop(activity.id, [])
 
-        # A classified activity needs no review item: tag evidence either
-        # refined the classifier set already or lost to a sheet/manual input.
+        # A classified activity takes a review item only for a structured
+        # comment on a derived projection. Tag evidence refines in place, and
+        # a sheet/manual set wins over every comment.
         if activity.quality is not None:
+            evidence, evidence_source = evidence_proposal(
+                activity,
+                context.connection,
+            )
+            stored = Proposal(
+                set(activity.workout_methods),
+                set(activity.workout_targets),
+            )
+            specific = (
+                evidence is not None
+                and bool(
+                    (evidence.methods - ADDITIVE_METHODS - {"other"})
+                    or (evidence.targets - {"other"})
+                )
+            )
+            if (
+                evidence_source == "comment"
+                and specific
+                and is_projection(context.connection, activity.id)
+                and evidence_conflicts(stored, evidence)
+            ):
+                intervals = context.repository.activity_intervals(activity.id)
+                classifier = classifier_proposal(activity, intervals)
+                sheet, _, _, code = sheet_proposal(
+                    context.connection,
+                    activity.id,
+                )
+                conflict = evidence_conflict_from(
+                    activity,
+                    evidence=evidence,
+                    evidence_source=evidence_source,
+                    stored=stored,
+                    classifier=classifier,
+                    sheet=sheet,
+                    sheet_code=code,
+                )
+                wanted = fingerprint(conflict)
+                _supersede(context, items, wanted)
+                _, created = context.writer.record_review_item(
+                    category=WORKOUT_CLASSIFICATION,
+                    detail="comment evidence vs stored classification",
+                    context=conflict.as_dict(),
+                    severity="info",
+                    fingerprint=wanted,
+                    activity_id=activity.id,
+                )
+                context.count("opened" if created else "unchanged")
+                continue
+
             _resolve(context, items, "classified")
             continue
 

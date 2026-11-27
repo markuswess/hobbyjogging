@@ -15,9 +15,7 @@ from datetime import date
 
 from hobbyjogging_core.classify import (
     LT1_WORDS,
-    RACE_WORDS,
     SUBT_WORDS,
-    TEMPO_WORDS,
     classify,
 )
 from hobbyjogging_core.model import Activity
@@ -160,6 +158,72 @@ def stored_provenance(
     return "input"
 
 
+def is_projection(
+    connection: sqlite3.Connection,
+    activity_id: str,
+) -> bool:
+    """Whether the stored set is a classifier/backfill derivation.
+
+    Additive ``drills``/``strides`` tag rows do not turn a projection into an
+    input. A set that equals the sheet proposal is sheet-derived and stays an
+    input.
+    """
+    method_rows = connection.execute(
+        """
+        SELECT method, source, is_manual
+        FROM activity_workout_methods WHERE activity_id = ?
+        """,
+        (activity_id,),
+    ).fetchall()
+    target_rows = connection.execute(
+        """
+        SELECT target, source, is_manual
+        FROM activity_workout_targets WHERE activity_id = ?
+        """,
+        (activity_id,),
+    ).fetchall()
+
+    if not method_rows and not target_rows:
+        return False
+    if any(
+        row["is_manual"] for row in list(method_rows) + list(target_rows)
+    ):
+        return False
+
+    for row in method_rows:
+        if row["source"] in ("classifier", "backfill"):
+            continue
+        if row["source"] == "tag" and row["method"] in ADDITIVE_METHODS:
+            continue
+        return False
+
+    for row in target_rows:
+        if row["source"] not in ("classifier", "backfill"):
+            return False
+
+    sheet, _, _, _ = sheet_proposal(connection, activity_id)
+    if sheet is None or sheet.empty:
+        return True
+
+    stored_methods = {
+        row["method"]
+        for row in connection.execute(
+            "SELECT method FROM activity_workout_methods WHERE activity_id = ?",
+            (activity_id,),
+        )
+    }
+    stored_targets = {
+        row["target"]
+        for row in connection.execute(
+            "SELECT target FROM activity_workout_targets WHERE activity_id = ?",
+            (activity_id,),
+        )
+    }
+    return not (
+        stored_methods == sheet.methods and stored_targets == sheet.targets
+    )
+
+
 def write_tag_refinement(
     writer,
     activity_id: str,
@@ -289,8 +353,31 @@ _FARTLEK_WORDS = ("fartlek", "fahrtspiel", "wechseltempo")
 _MARATHON_WORDS = ("marathontempo", "marathon pace", "marathon-pace")
 _INTERVAL_TEXT = re.compile(
     r"\b\d+\s*[x×]\s*\d+\s*(?:m|km|min|minuten|minute|s|sek|sekunden)\b"
+    r"|\b\d+\s*[x×]\s*\d+[.,]\d+\b"
+    r"|\b\d+\s*[x×]\s*\d+\s*[x×]"
+    r"|\b\d+\s*[x×]\s*\("
     r"|\b\d+(?:\s*-\s*\d+){2,}\s*(?:min|minuten|km|m)\b"
     r"|\b(?:intervalle?|intervals?|serien?|wiederholungen?|wdh)\b",
+    re.IGNORECASE,
+)
+_NEGATION_TEXT = re.compile(
+    r"\b(?:statt|instead of|rather than|not|kein|keine|ohne|nicht)\b"
+    r"|zu hügelig|zu flach|zu warm|zu kalt",
+    re.IGNORECASE,
+)
+_RECAP_TEXT = re.compile(
+    r"\b(?:highlights?|personal best|pb|recap|year in review|season review"
+    r"|race report)\b",
+    re.IGNORECASE,
+)
+_RACE_TEXT = re.compile(r"\b(?:race|wettkampf)\b", re.IGNORECASE)
+_RACE_VERB = re.compile(
+    r"\brace(?:d|s|ing)?\s+your\b",
+    re.IGNORECASE,
+)
+_TEMPO_TEXT = re.compile(
+    r"\b(?:tempo|threshold|schwelle)\b"
+    r"|tempolauf|tempogefühl|tempospiel|temponadel",
     re.IGNORECASE,
 )
 
@@ -332,43 +419,69 @@ def description_proposal(description: str | None) -> Proposal | None:
 
     Only explicit target words and structured interval patterns count. A
     generic note such as "easy run" stays without a proposal; the classifier
-    already uses RPE/intensity for that.
+    already uses RPE/intensity for that. Clauses after a negation or
+    alternative marker ("statt", "instead of", "not", "ohne", "zu hügelig")
+    are ignored, and a recap/PB sentence is not a workout.
     """
     text = str(description or "").lower()
     if not text:
         return None
 
-    if any(word in text for word in LT1_WORDS):
+    positive = _positive_text(text)
+    interval = bool(_INTERVAL_TEXT.search(text))
+
+    if not interval and _RECAP_TEXT.search(text):
+        return None
+
+    if any(word in positive for word in LT1_WORDS):
         return Proposal({"intervals"}, {"lt1"})
-    if any(word in text for word in SUBT_WORDS):
+    if any(word in positive for word in SUBT_WORDS):
         return Proposal({"intervals"}, {"subthreshold"})
-    if any(word in text for word in _MARATHON_WORDS):
+    if any(word in positive for word in _MARATHON_WORDS):
         return Proposal({"continuous"}, {"marathon"})
-    if any(word in text for word in TEMPO_WORDS):
-        return Proposal({"continuous"}, {"threshold"})
-    if any(word in text for word in RACE_WORDS):
-        return Proposal({"race"}, {"other"})
-    if any(word in text for word in _LONG_WORDS):
-        return Proposal({"long_run"}, {"base"})
-    if any(word in text for word in _FARTLEK_WORDS):
+    if any(word in positive for word in _FARTLEK_WORDS):
         return Proposal({"fartlek"}, set())
-    if any(word in text for word in _PROGRESSION_WORDS):
+    if _TEMPO_TEXT.search(positive):
+        return Proposal(
+            {"intervals"} if interval else {"continuous"},
+            {"threshold"},
+        )
+    if _RACE_TEXT.search(positive):
+        if _RACE_VERB.search(positive):
+            return None
+        return Proposal({"race"}, {"other"})
+    if any(word in positive for word in _LONG_WORDS):
+        return Proposal({"long_run"}, {"base"})
+    if any(word in positive for word in _PROGRESSION_WORDS):
         return Proposal({"progression"}, {"base"})
-    if any(word in text for word in _RECOVERY_WORDS):
-        return Proposal({"continuous"}, {"recovery"})
-    if _INTERVAL_TEXT.search(text):
+    if interval:
         return Proposal({"intervals"}, {"other"})
+    if any(word in positive for word in _RECOVERY_WORDS):
+        return Proposal({"continuous"}, {"recovery"})
     return None
+
+
+def _positive_text(text: str) -> str:
+    """Keep the part of each sentence before a negation/alternative marker."""
+    parts = re.split(r"(?<=[.!?;])\s+", text)
+    kept = []
+    for part in parts:
+        match = _NEGATION_TEXT.search(part)
+        kept.append(part[: match.start()] if match else part)
+    return " ".join(kept)
 
 
 def evidence_proposal(
     activity: Activity,
+    connection=None,
 ) -> tuple[Proposal | None, str]:
     """Return the tag/comment proposal and its source label.
 
     Tags are deliberate athlete input, so they win over a description; a
-    description is the fallback when there is no mapped workout tag. Only run
-    sports use the running vocabulary; a swim or ride tag stays context.
+    description is the fallback when there is no mapped workout tag. The
+    canonical description is tried first, then the per-source social
+    descriptions (e.g. Strava) when a connection is supplied. Only run sports
+    use the running vocabulary; a swim or ride tag stays context.
     """
     if activity.type not in RUN_SPORTS:
         return None, ""
@@ -378,10 +491,35 @@ def evidence_proposal(
         return tags, "tag"
 
     comment = description_proposal(activity.description)
+    if comment is None or comment.empty:
+        if connection is not None:
+            comment = social_description_proposal(
+                connection,
+                activity.id,
+            )
     if comment is not None and not comment.empty:
         return comment, "comment"
 
     return None, ""
+
+
+def social_description_proposal(connection, activity_id: str) -> Proposal | None:
+    """Return the first structured per-source social description, if any."""
+    rows = connection.execute(
+        """
+        SELECT description FROM activity_social
+        WHERE activity_id = ?
+          AND description IS NOT NULL
+          AND trim(description) <> ''
+        ORDER BY source
+        """,
+        (activity_id,),
+    ).fetchall()
+    for row in rows:
+        proposal = description_proposal(row["description"])
+        if proposal is not None and not proposal.empty:
+            return proposal
+    return None
 
 
 def _select(values: set[str], priority: tuple[str, ...]) -> str | None:

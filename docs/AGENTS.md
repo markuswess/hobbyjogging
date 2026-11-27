@@ -211,8 +211,9 @@ Cross-package changes must leave all four suites green.
   Intervals already wrote, and never overwrites the first source. Sync treats a
   missing wellness feed as a warning.
 - Route identity is source-scoped: the sheet keys by `Streckennummer` (or the
-  name when there is no single number), and Runalyze's `recurring_route` id is
-  a different identity — the two never merge automatically.
+  name when there is no single number), a place tag creates
+  `runalyze:tag:<slug>`, and Runalyze's `recurring_route` id is a different
+  identity — they never merge automatically.
 - A linked race event gives its activity the `race` method under `race_link`;
   a non-excluded official `race_results` row is evidence too, and the method is
   dropped when neither remains. A manual link or a manual method set wins, and
@@ -234,11 +235,12 @@ Cross-package changes must leave all four suites green.
   and SubThreshold map in `runalyze_types`, existing sets win, and unknown
   types are audited, never guessed.
 - Classification evidence follows one policy: a specific tag refines a
-  classifier/backfill projection in place (`source='tag'`), a sheet or manual
-  set wins over tag and comment evidence, a comment only fills an empty
+  classifier/backfill projection in place (`source='tag'`), a structured
+  comment on a projection opens one review item, a sheet or manual set wins
+  over tag and comment evidence, a comment otherwise only fills an empty
   classification, generic `other` never overrides a specific target, and
   drills/strides are unioned into any non-manual set. `Raceday` is context,
-  not a race method. The queue opens no evidence item.
+  not a race method.
 - Interval sets carry provenance in `activity_intervals.source`: `intervals`
   for measured typed reps, `derived` for reps inferred from device laps. A
   derived set never replaces a measured one, is run-only, and is labelled in

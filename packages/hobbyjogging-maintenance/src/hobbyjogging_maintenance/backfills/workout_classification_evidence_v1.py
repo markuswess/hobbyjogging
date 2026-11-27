@@ -20,7 +20,7 @@ from hobbyjogging_import.tag_lexicon import normalize_tag
 from ..context import TaskContext
 from ..registry import task
 from ..workouts import (
-    sheet_proposal,
+    is_projection,
     stored_provenance,
     write_tag_refinement,
 )
@@ -87,7 +87,7 @@ def workout_classification_evidence(context: TaskContext) -> None:
 
         if (
             evidence_source == "tag"
-            and _is_projection(context, activity_id)
+            and is_projection(context.connection, activity_id)
             and (specific_methods or specific_targets)
         ):
             write_tag_refinement(
@@ -163,78 +163,6 @@ def _policy_note(
     if not specific_methods and not specific_targets:
         return "policy: generic or additive evidence does not override"
     return "policy: evidence does not refine a classifier set"
-
-
-def _is_projection(context: TaskContext, activity_id: str) -> bool:
-    """Whether the stored set is a classifier/backfill derivation.
-
-    The historical ``workout_classification_v1`` wrote its classifier output
-    as ``source='backfill'``; treat that as a projection too. Additive
-    ``drills``/``strides`` tag rows do not turn a projection into an input. A
-    set that equals the sheet proposal is sheet-derived and stays an input.
-    """
-    method_rows = context.connection.execute(
-        """
-        SELECT method, source, is_manual
-        FROM activity_workout_methods WHERE activity_id = ?
-        """,
-        (activity_id,),
-    ).fetchall()
-    target_rows = context.connection.execute(
-        """
-        SELECT target, source, is_manual
-        FROM activity_workout_targets WHERE activity_id = ?
-        """,
-        (activity_id,),
-    ).fetchall()
-
-    if not method_rows and not target_rows:
-        return False
-    if any(
-        row["is_manual"] for row in list(method_rows) + list(target_rows)
-    ):
-        return False
-
-    for row in method_rows:
-        if row["source"] in ("classifier", "backfill"):
-            continue
-        if row["source"] == "tag" and row["method"] in ADDITIVE_METHODS:
-            continue
-        return False
-
-    for row in target_rows:
-        if row["source"] not in ("classifier", "backfill"):
-            return False
-
-    sheet, _, _, _ = sheet_proposal(context.connection, activity_id)
-    if sheet is None or sheet.empty:
-        return True
-
-    methods, targets = _stored_sets(context, activity_id)
-    return not (
-        methods == sheet.methods and targets == sheet.targets
-    )
-
-
-def _stored_sets(
-    context: TaskContext,
-    activity_id: str,
-) -> tuple[set[str], set[str]]:
-    methods = {
-        row["method"]
-        for row in context.connection.execute(
-            "SELECT method FROM activity_workout_methods WHERE activity_id = ?",
-            (activity_id,),
-        )
-    }
-    targets = {
-        row["target"]
-        for row in context.connection.execute(
-            "SELECT target FROM activity_workout_targets WHERE activity_id = ?",
-            (activity_id,),
-        )
-    }
-    return methods, targets
 
 
 def _additive_tag_methods(

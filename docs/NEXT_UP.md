@@ -64,6 +64,21 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   - `workout_classification_evidence_v1` applied the policy once on the copy:
     276 tag refinements accepted, 273 items closed, 0 open
     `workout_classification` items, and a second run is a no-op.
+- **Brush tags/comments block 73/74 (2026-11-27).**
+  - Geographic tags now carry the `place` kind. `routes_from_place_tags_v1`
+    creates one source-scoped route per canonical place
+    (`runalyze:tag:<slug>`) and links it with `source='tag'`; aliases
+    (`kanal`/`donaukanal`, `Wienerberg`/`Wienerbergteich`) merge, and an
+    existing manual or sheet route wins. On the real-DB copy: 387 tagged
+    activities, 439 links, 28 routes, and the session report shows the place.
+  - `description_proposal` ignores recap/PB sentences, negated or alternative
+    clauses, race-as-a-verb and false compounds; Wechseltempo/Fahrtspiel is
+    fartlek, a structured interval with a target is intervals, and a real
+    tempo before `statt` survives.
+  - Comment evidence also reads the per-source `activity_social.description`.
+    A structured comment on a classifier/backfill projection opens one review
+    item; manual and sheet sets are untouched. On the copy the queue opened
+    11 material comment items and kept prior decisions.
 - **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
   `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
   the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
@@ -307,19 +322,19 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
 **48** (field provenance), **57** (corrections export) and **22** (release
 0.3.0) are done, the first brush bug block **67/68/75** is done, the gear
-block **66/69/70** is done, and the classification block **71/72** is done.
-The CLI brush ran on 2026-11-27: every pass in [DATA_BRUSH.md](DATA_BRUSH.md)
-is workable through the CLI, and the gaps it exposed are queued as **73–78**
-(handover below). Phase 3 closes when those land and the pass-9 close (overlay
-export, rebuild proof, baseline, tag 0.3.1) is recorded. The localhost browser
-moved to phase 4 (item 65).
+block **66/69/70** is done, the classification block **71/72** is done, and
+the tags/comments block **73/74** is done. The CLI brush ran on 2026-11-27:
+every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and
+the gaps it exposed are queued as **76–78** (handover below). Phase 3 closes
+when those land and the pass-9 close (overlay export, rebuild proof, baseline,
+tag 0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (run 2026-11-27). The remaining brush follow-ups are
-**73–78**;
+**76–78**;
 the handover block below gives their grouping, dependencies and the manual
 work that stays with the athlete. The metric charts **62** and the pace/HR
 calibration follow-up **64** slot alongside.
@@ -338,8 +353,8 @@ takes these root items:
 3. **Classification (done)**: **72** drills first, then **71** (accept the
    tag-specific refinements, close the rest by policy, and stop the task
    reopening them).
-4. **Tags and comments**: **73** place tags → routes, then **74** Strava
-   comment evidence.
+4. **Tags and comments (done)**: **73** place tags → routes, then **74**
+   Strava comment evidence.
 5. **Sources**: **76** ambient weather, **78** Leistungstests (schema +
    backfill; the largest item, last).
 
@@ -576,49 +591,6 @@ reports item; 28 is the recurring cleanup.
       the CLI and the browser agree on the numbers.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
-
-73. **Place tags become routes** (core + import + maintenance; small-medium,
-    after the brush). 393 active activities (2021–2026) carry one of 30
-    geographic tags — `Wienerberg` 44, `kanal` 43, `hauptallee` 34, `Arsenal`
-    30, `Prater` 27, `donaukanal` 27, … — and **none links a route**;
-    `activity_routes` is sheet-only and stops in 2019 (384 links, 36 routes).
-    Runalyze `recurring_route` is not a substitute: 2,777 payloads carry 2,504
-    mostly-singleton ids.
-    - **Kind**: add `place` to the tag lexicon for the geographic tags; the
-      remaining unmapped tags (people, errands, events) stay unmapped.
-    - **Identity**: a tag-derived route is source-scoped
-      (`runalyze:tag:<slug>`) and never merges with a sheet route; normalize
-      obvious aliases (`kanal`/`donaukanal`, `Wienerberg`/`Wienerbergteich`)
-      in one small map beside the lexicon.
-    - **Backfill** `routes_from_place_tags_v1`: create the route and link the
-      activity with `source='tag'`, idempotent; a manual route link wins.
-    - **Acceptance**: modern route coverage is non-zero and the session report
-      shows the place; the sheet routes are untouched; a re-run is a no-op.
-
-74. **Strava comment evidence** (import + maintenance; small, after the
-    classification policy). The
-    evidence task reads only `activities.description`; the 538 Strava
-    `activity_social` descriptions (2021–2026) are ignored. 83 carry an
-    interval pattern, 22 LT/subT and 19 tempo/threshold; they yield 103
-    proposals, all on activities that already have a stored set, so item 71's
-    "a comment only fills empty" would close every one. 59 proposals are
-    material: 44 on a `backfill`/`classifier` set, 15 on a manual one.
-    Examples: 2023-10-31 stored `long_run/base` vs "3x1.6 Threshold hopping";
-    2024-08-13 `continuous/threshold` vs "12x200m in 33-35''".
-    - **Source**: read the per-source `activity_social.description` for run
-      sports, not only the canonical field.
-    - **Precision first**: fix `description_proposal`'s first-match order
-      (`Wechseltempo`/`Fahrtspiel` hit tempo before fartlek) and ignore
-      alternatives and negations ("statt Wettkampf", "instead of", "not");
-      require an explicit interval pattern or target word. Today it proposes
-      `race` for a music/recap sentence and `threshold` for "zu hügelig für
-      gleichmäßiges Tempo".
-    - **Policy**: a structured comment may refine a `backfill`/`classifier`
-      projection and opens a review item; it never overrides a manual or sheet
-      set, and `other` never overrides a specific target.
-    - **Acceptance**: the material backfill cases are triaged once; no manual
-      or sheet set changes; the known false positives are tests; a re-run is a
-      no-op.
 
 76. **Ambient weather from a historical source** (new source; phase queue,
     after the ambient-temperature fix). Today only 2011–2021 has an ambient
