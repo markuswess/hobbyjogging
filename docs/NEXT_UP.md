@@ -671,6 +671,9 @@ reports item; 28 is the recurring cleanup.
       payload where present (739 rows); clear the device-only rows, so the
       report stops showing the watch value as air temperature. The raw payload
       keeps `average_temp` for diagnostics.
+    - **Decided**: no `device_temp_c` column and no watch line in any report;
+      the device value stays only in the raw Intervals/FIT payload. A weather
+      row without an ambient value is not shown at all.
     - **Report**: no ambient value means no weather line; never fall back to
       the watch.
     - **Acceptance**: no `temp_c` comes from `average_temp`; January rows no
