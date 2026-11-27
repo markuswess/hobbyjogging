@@ -1,6 +1,6 @@
 # Status and next steps
 
-Updated 2026-11-24.
+Updated 2026-11-27.
 
 ## Done
 
@@ -9,6 +9,16 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
 [METRICS.md](METRICS.md), and each package's own list in
 `packages/*/NEXT_UP.md`.
 
+- **Gear pages and body weight (2026-11-27).** Every gear row links to a
+  `gear/<item>.html` page with its totals, target/wear, monthly and
+  cumulative mileage chart, activities and co-used gear;
+  `reports.sh equipment [item]` and `charts.sh equipment --item NAME` share
+  the analysis, so the console and the page agree. The recovery tab gains a
+  body-weight card over all stored weight: points, a 7-day mean, its long
+  gaps left as gaps and no readiness bands; `charts.sh weight` draws the
+  same chart and `recovery-report` adds a weight row. The stored
+  primary/secondary link role is not exposed by `DataSource`, so the item
+  page names the session's other gear instead of claiming a role.
 - **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
   `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
   the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
@@ -748,34 +758,6 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: 2011–2018 races and places appear; existing 2019+ race
       results are unchanged; the splits show in the session report and total the
       block time; broken blocks are skipped and listed; a re-run is a no-op.
-
-79. **Clickable gear pages** (reports; small). The Gear tab lists gear in a
-    table, but the name is plain text; the dashboard already renders
-    per-activity, per-race and per-event pages. Add a `gear/<item>` page,
-    linked from the Gear table, with the totals (sessions, km, km/month, first
-    and last use), a mileage-over-time chart, the activities and their role
-    (primary/secondary, each linking to the activity page), co-used gear (e.g.
-    Bob with Katy), target/wear and retirement status.
-    - **Shape**: reuse `equipment_usage` and `DataSource`; no new SQL; a
-      retired or zero-use item still gets a page with an empty state.
-    - **CLI parity**: `reports.sh equipment [item]` prints the same totals,
-      mileage trend and activity list for one item; nothing is dashboard-only.
-    - **Acceptance**: every gear row links to its page; the totals match the
-      Gear tab; the demo builds; the pages are static files beside `gear.html`.
-
-80. **Weight chart in wellness** (reports; small). `WellnessDay.weight_kg` is
-    stored (358 values: 2012–2013 and 2023–2026, with a nine-year gap), but the
-    recovery page plots only HRV, resting HR and sleep. Add a body-weight card:
-    points and a 7-day mean on their own kg axis, with the gap left as a gap;
-    no readiness bands.
-    - **Surfaces**: the recovery tab and the recovery report summary, with the
-      reports README documenting the card. Weight is descriptive, not a
-      promoted metric.
-    - **CLI parity**: the card's numbers are also in `reports.sh
-      recovery-report`, and the chart is part of `charts.sh recovery`.
-    - **Acceptance**: the points match `wellness_days`; a window without weight
-      shows an empty state; the gap is not interpolated; the HRV/RHR panels
-      keep their scale.
 
 81. **Gear subcategories and target mileage** (core + import + reports;
     schema migration, not small). `equipment.type` is only shoe/bike/other, and

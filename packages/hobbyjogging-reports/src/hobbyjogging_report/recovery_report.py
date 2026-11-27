@@ -44,6 +44,10 @@ def _sleep(value: float | None) -> str:
     return "-" if value is None else f"{value / 3600:.1f} h"
 
 
+def _weight(value: float | None) -> str:
+    return "-" if value is None else f"{value:.1f} kg"
+
+
 def recovery_averages(
     wellness: list[WellnessDay],
     today: date,
@@ -62,6 +66,10 @@ def recovery_averages(
             window: _window_mean(wellness, today, window, "sleep_s")
             for window in WINDOWS
         },
+        "Weight": {
+            window: _window_mean(wellness, today, window, "weight_kg")
+            for window in WINDOWS
+        },
     }
 
 
@@ -71,7 +79,8 @@ def recovery_baselines(
 ) -> dict[str, RobustBaseline | None]:
     """Robust 365-day baselines used by the recovery chart bands.
 
-    Sleep has no baseline: its bands are absolute.
+    Sleep has no baseline: its bands are absolute; weight is descriptive
+    and has none either.
     """
     return {
         "HRV": robust_baseline(
@@ -87,6 +96,7 @@ def recovery_baselines(
             min_values=MIN_BASELINE_VALUES,
         ),
         "Sleep": None,
+        "Weight": None,
     }
 
 
@@ -97,7 +107,7 @@ def _baseline_cell(
     if label == "Sleep":
         return "7–9 h (absolute)"
 
-    if baseline is None:
+    if label == "Weight" or baseline is None:
         return "-"
 
     unit = "ms" if label == "HRV" else "bpm"
@@ -143,9 +153,17 @@ def recovery_report(
         "HRV": _hrv,
         "Resting HR": _rhr,
         "Sleep": _sleep,
+        "Weight": _weight,
     }
+    has_weight = any(
+        day.weight_kg is not None and day.date >= recent_start
+        for day in wellness
+    )
 
     for label, values in table.items():
+        if label == "Weight" and not has_weight:
+            continue
+
         cells = " | ".join(
             formatters[label](values[window]) for window in WINDOWS
         )
@@ -159,7 +177,8 @@ def recovery_report(
         "",
         "The baseline is the robust 365-day median ± 1.4826 × MAD used by "
         "the recovery chart bands. Sleep has no baseline: its bands are "
-        "absolute (7–9 h green).",
+        "absolute (7–9 h green). Weight is descriptive: no baseline and no "
+        "readiness band.",
     ])
     lines.extend(format_nights(wellness))
 

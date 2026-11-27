@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
     cat <<'EOF'
 Usage:
-  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr] [args...]
+  ./charts.sh [overview|volume|subt|vo2max|load|time|recovery|weight|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr] [args...]
   ./charts.sh --source database|intervals [mode] [args...]
 
 With no mode, builds the weekly volume chart. The output file path is
@@ -30,9 +30,11 @@ Examples:
   ./charts.sh time --days 90
   ./charts.sh time --zones 4 --zone-window base
   ./charts.sh recovery --days 90
+  ./charts.sh weight
   ./charts.sh pace-hr --days 365
   ./charts.sh compare --metric load --window 7
   ./charts.sh equipment
+  ./charts.sh equipment --item "Hoka Clifton"
   ./charts.sh devices
   ./charts.sh threshold
   ./charts.sh races
@@ -50,7 +52,9 @@ load, time, and recovery charts include planned workouts and accept
 extension). Their average lines continue through the planned days as dashed
 projections. The load, volume, and time charts also accept --base-days /
 --fitness-days / --fatigue-days. The time chart also accepts --zones and
---zone-window base|fitness|fatigue. The recovery chart accepts --window.
+--zone-window base|fitness|fatigue. The recovery chart accepts --window. The weight chart plots every stored
+measurement and its 7-day mean, with gaps left as gaps. The equipment chart
+accepts --item NAME to draw one item's monthly and cumulative mileage.
 EOF
 }
 
@@ -86,7 +90,7 @@ case "$mode" in
         usage
         exit 0
         ;;
-    volume|overview|subt|vo2max|load|time|recovery|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr)
+    volume|overview|subt|vo2max|load|time|recovery|weight|pace-hr|compare|equipment|devices|threshold|races|pb|compare-vo2max|compare-pace-hr)
         ;;
     *)
         usage >&2

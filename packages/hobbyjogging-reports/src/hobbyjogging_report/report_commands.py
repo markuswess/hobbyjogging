@@ -10,7 +10,7 @@ from .command_support import reviewed_range
 from .compare import compare_report
 from .corrections import corrections_report
 from .daily import daily
-from .equipment_report import equipment_report
+from .equipment_report import equipment_report, gear_report
 from .health_report import health_report
 from .dashboard import build_dashboard
 from .debug import debug
@@ -240,6 +240,13 @@ def run_sickness_command(parsed, source, include_review):
 
 
 def run_equipment_command(parsed, source, include_review):
+    if parsed:
+        return gear_report(
+            source,
+            parsed,
+            include_review=include_review,
+        )
+
     return equipment_report(source, include_review=include_review)
 
 

@@ -1231,6 +1231,10 @@ def _write_wellness(
 
     illness_start = today - timedelta(days=250)
     travel_start = today - timedelta(days=90)
+    # Weekly weight with a deliberate stretch of missing days, so the chart's
+    # gap handling has something to show.
+    weight_gap_start = start + timedelta(days=330)
+    weight_gap_end = weight_gap_start + timedelta(days=140)
     day = start
 
     while day <= today:
@@ -1252,12 +1256,27 @@ def _write_wellness(
             rhr += 2
             sleep -= 0.8 * 3600
 
+        weight = None
+
+        if (
+            day.weekday() == 0
+            and not (weight_gap_start <= day < weight_gap_end)
+        ):
+            offset = (day - start).days
+            drift = (
+                78 - offset * 0.002
+                + ((offset % 90) / 90 - 0.5) * 1.2
+                + rng.gauss(0, 0.25)
+            )
+            weight = round(min(max(drift, 70), 85), 1)
+
         writer.upsert_wellness(
             local_date=day.isoformat(),
             source_record_id=None,
             hrv=round(min(max(hrv, 28), 85), 1),
             resting_hr=round(min(max(rhr, 42), 62), 1),
             sleep_s=round(min(max(sleep, 5.0 * 3600), 9.5 * 3600)),
+            weight_kg=weight,
         )
         day += timedelta(days=1)
 

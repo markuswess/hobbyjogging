@@ -22,8 +22,8 @@ from datetime import date
 
 from hobbyjogging_core.model import WellnessDay
 
-from ..model import RecoveryPoint
-from ..series import rolling_mean_by_date
+from ..model import RecoveryPoint, WeightPoint
+from ..series import date_range, rolling_mean_by_date
 from .baseline import BASELINE_WINDOW_DAYS, robust_baseline
 
 # Bands compare a year of wellness: a short window becomes a long illness
@@ -131,7 +131,6 @@ def recovery_bands(points: list[RecoveryPoint]) -> RecoveryBands:
     )
 
 
-
 def recovery_trends(
     wellness: list[WellnessDay],
     start: date,
@@ -180,3 +179,43 @@ def recovery_trends(
         )
 
     return points
+
+
+WEIGHT_WINDOW_DAYS = 7
+
+
+def weight_points(
+    wellness: list[WellnessDay],
+    *,
+    window_days: int = WEIGHT_WINDOW_DAYS,
+) -> list[WeightPoint]:
+    """Body weight from the first to the last measurement.
+
+    Every calendar day in that span is present: a day without a measurement
+    keeps ``None`` values so the chart draws the gap rather than joining the
+    days around it. The average is the same calendar-window mean as the other
+    wellness series, computed over measured days only.
+    """
+    ordered = sorted(wellness, key=lambda day: day.date)
+    measured = [day for day in ordered if day.weight_kg is not None]
+
+    if not measured:
+        return []
+
+    weight_by_day = {
+        day.date: day.weight_kg for day in measured
+    }
+    days = date_range(measured[0].date, measured[-1].date)
+    averages = rolling_mean_by_date(
+        [(day, weight_by_day.get(day)) for day in days],
+        window_days,
+    )
+
+    return [
+        WeightPoint(
+            date=day,
+            weight_kg=weight_by_day.get(day),
+            average_kg=average,
+        )
+        for day, average in zip(days, averages)
+    ]

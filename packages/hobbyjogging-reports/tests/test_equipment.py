@@ -4,10 +4,12 @@ from datetime import date, timedelta
 from hobbyjogging_core.model import Equipment
 from hobbyjogging_report.analysis import (
     equipment_coverage,
+    equipment_detail,
     equipment_usage,
     retirement_candidates,
+    select_equipment,
 )
-from hobbyjogging_report.equipment_report import equipment_report
+from hobbyjogging_report.equipment_report import equipment_report, gear_report
 from support import FakeSource, activity_factory
 
 D = date(2026, 10, 1)
@@ -182,6 +184,179 @@ class EquipmentReportTests(unittest.TestCase):
         report = equipment_report(FakeSource(), today=D)
 
         self.assertIn("- No equipment records", report)
+
+
+class EquipmentDetailTests(unittest.TestCase):
+
+    def test_monthly_mileage_and_activities_are_newest_first(self):
+        shoe = _shoe()
+        activities = [
+            activity(
+                id="old",
+                date=date(2026, 8, 9),
+                distance_m=8000,
+                equipment=[shoe],
+            ),
+            activity(
+                id="new",
+                date=date(2026, 9, 1),
+                distance_m=5000,
+                equipment=[shoe],
+            ),
+            activity(
+                id="other",
+                date=date(2026, 9, 2),
+                distance_m=9000,
+                equipment=[],
+            ),
+        ]
+        stats = equipment_usage([shoe], activities)
+        detail = equipment_detail(stats[0], activities, [shoe])
+
+        self.assertEqual(
+            [("2026-08-01", 8.0), ("2026-09-01", 5.0)],
+            [(str(month), km) for month, km in detail.monthly],
+        )
+        self.assertEqual(
+            ["new", "old"],
+            [entry.activity.id for entry in detail.activities],
+        )
+        self.assertEqual([], detail.co_used)
+
+    def test_co_used_gear_counts_sessions(self):
+        shoe = _shoe()
+        other = Equipment(id="katy", type="shoe", name="Katy")
+        activities = [
+            activity(
+                id="a",
+                date=D,
+                equipment=[shoe, other],
+            ),
+            activity(
+                id="b",
+                date=D + timedelta(days=1),
+                equipment=[shoe, other],
+            ),
+            activity(
+                id="c",
+                date=D + timedelta(days=2),
+                equipment=[shoe],
+            ),
+        ]
+        detail = equipment_detail(
+            equipment_usage([shoe], activities)[0],
+            activities,
+            [shoe, other],
+        )
+
+        self.assertEqual([("Katy", 2)], [(item.name, n) for item, n in detail.co_used])
+        self.assertEqual(
+            [(), ("katy",), ("katy",)],
+            [
+                tuple(item.id for item in entry.others)
+                for entry in detail.activities
+            ],
+        )
+
+    def test_unused_gear_has_no_monthly_series(self):
+        detail = equipment_detail(
+            equipment_usage([_shoe()], [])[0],
+            [],
+            [_shoe()],
+        )
+
+        self.assertEqual([], detail.monthly)
+        self.assertEqual([], detail.activities)
+
+
+class SelectEquipmentTests(unittest.TestCase):
+
+    def test_id_and_substring_both_resolve(self):
+        shoe = _shoe(id="shoe-1")
+        bike = Equipment(id="bike-1", type="bike", name="Road Bike")
+
+        self.assertIs(shoe, select_equipment([shoe, bike], "shoe-1"))
+        self.assertIs(bike, select_equipment([shoe, bike], "road"))
+
+    def test_an_ambiguous_name_lists_the_candidates(self):
+        first = _shoe(id="shoe-1", name="Daily Shoe")
+        second = _shoe(id="shoe-2", name="Daily Shoe Two")
+
+        with self.assertRaises(ValueError) as caught:
+            select_equipment([first, second], "daily")
+
+        self.assertIn("ambiguous", str(caught.exception))
+        self.assertIn("shoe-1", str(caught.exception))
+        self.assertIn("shoe-2", str(caught.exception))
+
+    def test_an_unknown_name_is_refused(self):
+        with self.assertRaises(ValueError) as caught:
+            select_equipment([_shoe()], "nothing")
+
+        self.assertIn("no gear matches", str(caught.exception))
+
+
+class GearReportTests(unittest.TestCase):
+
+    def _source(self, **overrides):
+        shoe = _shoe(target_distance_m=5000, notes="Retired pair")
+        other = Equipment(id="katy", type="shoe", name="Katy")
+        activities = [
+            activity(
+                id="a",
+                date=date(2026, 8, 9),
+                name="Easy",
+                distance_m=7000,
+                duration_s=2100,
+                equipment=[shoe, other],
+            ),
+            activity(
+                id="b",
+                date=date(2026, 9, 1),
+                name="Tempo",
+                distance_m=5000,
+                duration_s=1200,
+                equipment=[shoe],
+            ),
+        ]
+        values = {
+            "activities": activities,
+            "equipment": [shoe, other],
+        }
+        values.update(overrides)
+        return FakeSource(**values)
+
+    def test_report_matches_the_gear_totals(self):
+        report = gear_report(self._source(), "demo shoe", today=D)
+
+        self.assertIn("# Gear — Demo Shoe", report)
+        self.assertIn("| Sessions | km | km/month |", report)
+        self.assertIn("| 2 | 12 |", report)
+        self.assertIn("| 5 km |", report)
+        self.assertIn("## Monthly mileage", report)
+        self.assertIn("| 2026-08 | 7.0 | 7.0 |", report)
+        self.assertIn("| 2026-09 | 5.0 | 12.0 |", report)
+        self.assertIn("## Activities", report)
+        self.assertIn("| 2026-09-01 | Tempo | 5.0 | 4:00/km | - |", report)
+        self.assertIn("| 2026-08-09 | Easy | 7.0 | 5:00/km | Katy |", report)
+        self.assertIn("## Co-used gear", report)
+        self.assertIn("- Katy: 1 session", report)
+        self.assertIn("## Notes", report)
+
+    def test_report_without_sessions_has_empty_states(self):
+        report = gear_report(
+            self._source(activities=[]),
+            "demo shoe",
+            today=D,
+        )
+
+        self.assertIn("- No sessions recorded.", report)
+        self.assertIn("- No co-used gear.", report)
+        self.assertIn("| 0 | 0 |", report)
+
+    def test_report_refuses_an_unknown_item(self):
+        with self.assertRaises(ValueError):
+            gear_report(self._source(), "nothing", today=D)
 
 
 if __name__ == "__main__":

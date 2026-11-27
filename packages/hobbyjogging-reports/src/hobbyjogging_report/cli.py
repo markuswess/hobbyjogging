@@ -136,6 +136,27 @@ def parse_output_arg(
     return args.output_option or args.output or default_output
 
 
+def parse_equipment_args(argv: list[str]) -> str | None:
+    """Parse the optional gear selector for ``equipment``."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("item", nargs="?")
+    return parser.parse_args(argv).item
+
+
+def parse_equipment_chart_args(
+    argv: list[str],
+    default_output: str = "equipment.png",
+) -> tuple[str, str | None]:
+    """Parse output and the optional one-item filter for the gear chart."""
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--output", dest="output_option")
+    parser.add_argument("--item")
+    args = parser.parse_args(argv)
+    output = args.output_option or args.output or default_output
+    return output, args.item
+
+
 def parse_report_args(
     argv: list[str],
     default_days: int = 30,

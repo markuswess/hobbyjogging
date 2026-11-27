@@ -17,6 +17,7 @@ from hobbyjogging_report.analysis import (
     average_warmup_days,
     planned_workout_dates,
     recovery_trends,
+    weight_points,
     subt_session_point,
     subt_work_points,
     time_averages,
@@ -1297,6 +1298,52 @@ class RecoveryTrendTests(unittest.TestCase):
     def test_rejects_non_positive_window(self):
         with self.assertRaises(ValueError):
             recovery_trends(self.wellness, D, D, window_days=0)
+
+
+class WeightPointTests(unittest.TestCase):
+
+    def test_days_between_measurements_stay_in_the_series(self):
+        points = weight_points(
+            [
+                WellnessDay(date=date(2026, 1, 1), weight_kg=80.0),
+                WellnessDay(date=date(2026, 1, 4), weight_kg=78.0),
+            ]
+        )
+
+        self.assertEqual(4, len(points))
+        self.assertEqual(
+            [date(2026, 1, day) for day in range(1, 5)],
+            [point.date for point in points],
+        )
+        self.assertEqual([80.0, None, None, 78.0], [
+            point.weight_kg for point in points
+        ])
+        # The mean only uses measured days: the first value carries for the
+        # rest of its calendar week and the next one joins it, so nothing is
+        # invented for the missing days themselves.
+        self.assertEqual([80.0, 80.0, 80.0, 79.0], [
+            point.average_kg for point in points
+        ])
+
+    def test_a_long_gap_empties_the_mean(self):
+        points = weight_points(
+            [
+                WellnessDay(date=date(2026, 1, 1), weight_kg=80.0),
+                WellnessDay(date=date(2026, 3, 1), weight_kg=75.0),
+            ]
+        )
+
+        midday = next(
+            point for point in points if point.date == date(2026, 2, 1)
+        )
+        self.assertIsNone(midday.weight_kg)
+        self.assertIsNone(midday.average_kg)
+
+    def test_no_weight_returns_nothing(self):
+        self.assertEqual(
+            [],
+            weight_points([WellnessDay(date=D, hrv=50)]),
+        )
 
 
 class EffectiveVo2maxTests(unittest.TestCase):

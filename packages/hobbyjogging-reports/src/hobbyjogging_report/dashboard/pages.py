@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date
-from urllib.parse import quote
 
 from hobbyjogging_core.model import Activity, Event, ReviewItem
 
@@ -18,34 +17,24 @@ from ..format import (
     pace,
     sport_label,
 )
-from ..charts import plot_overview, plot_recovery
+from ..charts import plot_overview, plot_recovery, plot_weight
 from ..html import card, chart, esc, link, page, stat_grid, table
-from ..model import RecoveryPoint, Vo2maxPoint
+from ..model import RecoveryPoint, Vo2maxPoint, WeightPoint
+from .paths import (
+    activity_filename,
+    activity_href,
+    event_filename,
+    event_href,
+)
 from .analysis import AnalysisSection
 from .compare import CompareSection
 from .docs import DocsSection
-from .gear import GearSection
+from .gear import GearItemPage, GearSection
 from .performance import PerformanceSection
 from .lab import LabSection
 from .health import DataHealth, banner
 from .nsa import NsaSection
 from ..zone_groups import ZoneGroupSeries
-
-
-def activity_filename(activity_id: str) -> str:
-    return f"{quote(str(activity_id), safe='')}.html"
-
-
-def activity_href(activity_id: str) -> str:
-    return f"activity/{activity_filename(activity_id)}"
-
-
-def event_filename(event_id: str) -> str:
-    return f"{quote(str(event_id), safe='')}.html"
-
-
-def event_href(event_id: str) -> str:
-    return f"event/{event_filename(event_id)}"
 
 
 def _km_cell(distance_m: float) -> str:
@@ -325,6 +314,7 @@ def recovery_page(
     baseline_points: list[RecoveryPoint] | None = None,
     periods=None,
     sickness_html: str = "",
+    weight: list[WeightPoint] | None = None,
 ) -> str:
     if points:
         chart_html = chart(
@@ -344,9 +334,25 @@ def recovery_page(
         f"{len(points)} of {total_days} days have wellness data."
     )
 
+    measured_weight = [
+        point for point in (weight or []) if point.weight_kg is not None
+    ]
+
+    if measured_weight:
+        weight_html = chart(
+            plot_weight(weight or [], "", as_html=True)
+        ) + (
+            '<p class="muted">Every stored measurement is shown, so long '
+            "gaps stay gaps; the line is the 7-day mean over measured days. "
+            "Weight is descriptive and has no readiness bands.</p>"
+        )
+    else:
+        weight_html = '<p class="muted">No weight data.</p>'
+
     body = (
         card(None, f'<div class="report">{report_html}</div>')
         + card("Recovery trends", chart_html)
+        + card("Body weight", weight_html)
         + card(None, f'<div class="report">{sickness_html}</div>')
         + card(
             "Data completeness",
@@ -753,6 +759,31 @@ def gear_page(
         ),
         demo_label=demo_label,
         active="gear",
+        plotly=True,
+    )
+
+
+def gear_item_page(
+    *,
+    generated_at: str,
+    health: DataHealth,
+    include_review: bool,
+    item: GearItemPage,
+    demo_label: str | None = None,
+) -> str:
+    """Render one gear item's page beside the Gear tab."""
+    return page(
+        title=item.label,
+        body=item.body_html,
+        generated_at=generated_at,
+        health_html=banner(
+            health,
+            root="../",
+            include_review=include_review,
+        ),
+        demo_label=demo_label,
+        active="gear",
+        root="../",
         plotly=True,
     )
 

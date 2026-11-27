@@ -9,19 +9,32 @@ from hobbyjogging_core.datasource import DataSource
 
 from ..analysis import (
     DEFAULT_SHOE_TARGET_M,
+    RUN_TYPES,
     device_usage,
     equipment_coverage,
+    equipment_detail,
     equipment_usage,
     group_equipment,
     retirement_candidates,
 )
-from ..charts import plot_devices, plot_equipment
+from ..charts import plot_devices, plot_equipment, plot_gear_mileage
 from ..command_support import activity_start
-from ..html import esc, table
+from ..format import activity_display_name, pace
+from ..html import card, esc, link, stat_grid, table
 from ..review import exclude_review
+from .paths import activity_href, gear_filename
 
 NO_GEAR = '<p class="muted">No equipment records.</p>'
 NO_CHART = '<p class="muted">No gear mileage to plot.</p>'
+
+
+@dataclass(frozen=True)
+class GearItemPage:
+    """One gear item's own page, built beside the Gear tab."""
+
+    filename: str
+    label: str
+    body_html: str
 
 
 @dataclass(frozen=True)
@@ -34,6 +47,7 @@ class GearSection:
     coverage_html: str
     devices_html: str
     candidates_html: str
+    items: list[GearItemPage]
 
 
 def _km(value: float) -> str:
@@ -75,13 +89,127 @@ def _devices_html(device_stats) -> str:
     )
 
 
+def _gear_item_page(stat, detail, linked_ids) -> GearItemPage:
+    """One item's totals, mileage chart, sessions and co-used gear."""
+    item = stat.equipment
+    meta = (
+        " ".join(part for part in (item.brand, item.model) if part)
+        or item.type
+    )
+
+    if item.acquired_on:
+        meta += f" · acquired {item.acquired_on}"
+
+    if item.retired_on:
+        meta += f" · retired {item.retired_on}"
+
+    summary_html = f'<p class="muted">{esc(meta)}</p>' + stat_grid([
+        ("Sessions", esc(str(stat.sessions)), ""),
+        ("Distance", esc(f"{stat.distance_m / 1000:,.1f} km"), ""),
+        (
+            "km/month",
+            esc(
+                "-"
+                if stat.km_per_month is None
+                else f"{stat.km_per_month:.1f}"
+            ),
+            "",
+        ),
+        ("First used", esc(stat.first_used or "-"), ""),
+        ("Last used", esc(stat.last_used or "-"), ""),
+        ("Target", esc(_target_cell(stat)), ""),
+        ("Wear", esc("-" if stat.wear is None else f"{stat.wear:.0%}"), ""),
+        ("Status", esc("retired" if stat.retired else "active"), ""),
+    ])
+
+    chart_html = (
+        plot_gear_mileage(detail, "", as_html=True)
+        if detail.monthly
+        else NO_CHART
+    )
+    activities_html = table(
+        ["Date", "Activity", "km", "Pace", "With"],
+        [
+            [
+                esc(str(entry.activity.date)),
+                (
+                    link(
+                        f"../{activity_href(entry.activity.id)}",
+                        activity_display_name(entry.activity),
+                    )
+                    if entry.activity.id in linked_ids
+                    else esc(activity_display_name(entry.activity))
+                ),
+                esc(
+                    "-"
+                    if not entry.activity.distance_m
+                    else f"{entry.activity.distance_m / 1000:.1f}"
+                ),
+                esc(
+                    pace(entry.activity)
+                    if entry.activity.type in RUN_TYPES
+                    else "-"
+                ),
+                (
+                    ", ".join(
+                        link(
+                            f"../gear/{gear_filename(other.id)}",
+                            other.name,
+                        )
+                        for other in entry.others
+                    )
+                    or "-"
+                ),
+            ]
+            for entry in detail.activities
+        ],
+        numeric=(2,),
+        empty="No sessions recorded.",
+        collapse=f"gear-item-{item.id}",
+    )
+    co_used_html = table(
+        ["Gear", "Sessions"],
+        [
+            [
+                link(f"../gear/{gear_filename(other.id)}", other.name),
+                str(count),
+            ]
+            for other, count in detail.co_used
+        ],
+        numeric=(1,),
+        empty="No co-used gear.",
+    )
+
+    body = (
+        card(None, summary_html)
+        + card("Mileage", chart_html)
+        + card("Activities", activities_html)
+        + card("Co-used gear", co_used_html)
+    )
+
+    if item.notes:
+        body += card("Notes", f"<p>{esc(item.notes)}</p>")
+
+    return GearItemPage(
+        filename=gear_filename(item.id),
+        label=stat.label,
+        body_html=body,
+    )
+
+
 def build_gear_section(
     source: DataSource,
     *,
     today: date,
     include_review: bool = False,
+    linked_ids: set[str] | None = None,
 ) -> GearSection:
-    """Build the mileage chart, table, coverage, and candidates."""
+    """Build the gear cards and one page per item.
+
+    ``linked_ids`` are the activity ids that also get a detail page; only
+    those become links, so a gear page cannot point at a page the dashboard
+    did not render.
+    """
     equipment = source.equipment()
     activities, excluded = exclude_review(
         source.activities(activity_start(source, today), today),
@@ -101,6 +229,7 @@ def build_gear_section(
             coverage_html="",
             devices_html=_devices_html(device_stats),
             candidates_html="",
+            items=[],
         )
 
     groups = group_equipment(stats)
@@ -126,7 +255,7 @@ def build_gear_section(
     for key, label, items in groups:
         rows = [
             [
-                esc(stat.label),
+                link(f"gear/{gear_filename(stat.equipment.id)}", stat.label),
                 str(stat.sessions),
                 _km(stat.distance_m),
                 (
@@ -197,6 +326,16 @@ def build_gear_section(
             '<p class="muted">No retirement candidates.</p>'
         )
 
+    linked_ids = linked_ids or set()
+    item_pages = [
+        _gear_item_page(
+            stat,
+            equipment_detail(stat, activities, equipment),
+            linked_ids,
+        )
+        for stat in stats
+    ]
+
     return GearSection(
         summary_html=summary,
         chart_html=(
@@ -208,4 +347,5 @@ def build_gear_section(
         coverage_html=coverage_html,
         devices_html=devices_html,
         candidates_html=candidates_html,
+        items=item_pages,
     )

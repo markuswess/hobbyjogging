@@ -1,6 +1,6 @@
 # Next up: reports package
 
-Updated 2026-11-24.
+Updated 2026-11-27.
 
 Current focus: root item 45's readability baseline is in (charts split by
 family, 34 dead analysis exports removed, a 1,000-line CI budget), and root
@@ -8,6 +8,24 @@ item 55's athlete-2 bugs are fixed; 10 is parked, 12 is behind the lab gate,
 13 is the last CLI-parity follow-up, and 14 is an open idea.
 
 ## Done
+
+- **Gear pages.** The Gear table links every item to `gear/<item>.html`:
+  totals (sessions, km, km/month, first/last use), target and wear, a monthly
+  bar and cumulative mileage chart, the item's activities (linked when the
+  dashboard renders them) with the other gear on the session, and the co-used
+  gear. `reports.sh equipment [item]` prints the same totals, a monthly table,
+  the activity list and co-used gear; `charts.sh equipment --item NAME` draws
+  the chart. `equipment_detail`/`select_equipment` are the shared analysis.
+  Item file names sanitise source-scoped ids (`sheet:equipment:1` →
+  `sheet-equipment-1.html`) because a percent-escaped colon does not survive a
+  browser's URL decoding.
+
+- **Body-weight card.** The recovery tab plots every stored weight measurement
+  over the whole stored period with its 7-day calendar mean on its own kg
+  axis: no readiness bands, and missing days stay in the series as `None` so
+  the 2014–2023 gap is a gap. `weight_points` carries the series,
+  `charts.sh weight` draws the same chart, and `recovery-report` adds a
+  windowed weight row (no baseline) when weight is stored.
 
 - **60 min race-pace dots.** The threshold/official-race-pace chart adds an
   open circle per race with the Riegel-scaled 60 min pace from that result
@@ -571,8 +589,10 @@ per-activity zone config ids (item 4). Item 11 has its data
 (`event_activity_links`, schema v21); 12's series needs the lab gate in root
 item 31. Item 10 stays parked on its page-coverage cost, 9 is recurring
 upkeep, 13 is the event-page parity follow-up, and 14 is an open idea. Item
-15 is retired by the effective-VO2max metric. Root items 79 (gear pages) and
-80 (weight card) are reports-only and unblocked.
+15 is retired by the effective-VO2max metric. Gear link roles are the one
+open gap from the gear pages: `DataSource` exposes the linked equipment rows
+but not the stored primary/secondary role, so the item page names the other
+gear; exposing `activity_equipment` is a core follow-up.
 
 Numbers are stable identifiers and are not reused:
 `docs/ARCHITECTURE.md` and the import queue point at "reports item 15", so a
@@ -588,7 +608,7 @@ pointer. Items 1 and 15 are such gaps.
 3. **Wellness extras.** The columns are exposed on `WellnessDay` (schema v19:
    weight, sleep score and quality, SpO2, steps, floors, CTL/ATL; readiness
    and stress are empty in the payloads), so this is reports-only: a
-   readiness view. The body-weight card is root item 80.
+   readiness view. The weight card has landed.
 
 4. **Era-correct zone times.** Normalizing zone times through each
    activity's own config needs that config id on the model first: the

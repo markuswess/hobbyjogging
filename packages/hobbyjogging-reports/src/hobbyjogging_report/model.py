@@ -148,6 +148,19 @@ class RecoveryPoint:
     sleep_avg: float | None = None
 
 
+@dataclass(frozen=True)
+class WeightPoint:
+    """One calendar day of body weight with its rolling average.
+
+    Days without a measurement stay in the series with ``None`` values so a
+    chart draws a gap instead of interpolating across it.
+    """
+
+    date: date
+    weight_kg: float | None = None
+    average_kg: float | None = None
+
+
 @dataclass
 class TimeZoneWeek:
     """Weekly training seconds split by pace zone, plus unzoned time."""

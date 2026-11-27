@@ -12,6 +12,8 @@ from hobbyjogging_report.cli import (
     parse_compare_args,
     parse_compare_chart_args,
     parse_dashboard_args,
+    parse_equipment_args,
+    parse_equipment_chart_args,
     parse_load_args,
     parse_marathon_builds_args,
     parse_overview_args,
@@ -305,6 +307,38 @@ class ChartArgsTests(unittest.TestCase):
         self.assertEqual("pace.png", output)
         self.assertEqual(date(2026, 1, 1), start)
         self.assertEqual(date(2026, 1, 31), end)
+
+
+class EquipmentArgsTests(unittest.TestCase):
+
+    def test_selector_is_optional(self):
+        self.assertIsNone(parse_equipment_args([]))
+        self.assertEqual("Demo Shoe", parse_equipment_args(["Demo Shoe"]))
+
+    def test_chart_defaults_to_the_all_gear_view(self):
+        self.assertEqual(
+            ("equipment.png", None),
+            parse_equipment_chart_args([]),
+        )
+
+    def test_chart_accepts_output_and_one_item(self):
+        self.assertEqual(
+            ("/tmp/gear.png", "Demo Shoe"),
+            parse_equipment_chart_args(
+                [
+                    "--output", "/tmp/gear.png",
+                    "--item", "Demo Shoe",
+                ],
+            ),
+        )
+
+    def test_chart_positional_output_still_works(self):
+        self.assertEqual(
+            ("/tmp/gear.png", "Demo Shoe"),
+            parse_equipment_chart_args(
+                ["/tmp/gear.png", "--item", "Demo Shoe"],
+            ),
+        )
 
 
 class LoadArgsTests(unittest.TestCase):

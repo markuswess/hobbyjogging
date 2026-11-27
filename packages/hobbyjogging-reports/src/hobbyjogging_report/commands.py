@@ -25,6 +25,7 @@ from .chart_commands import (
     run_time_command,
     run_vo2max_command,
     run_volume_command,
+    run_weight_command,
 )
 from .cli import (
     parse_chart_args,
@@ -34,6 +35,8 @@ from .cli import (
     parse_corrections_args,
     parse_dashboard_args,
     parse_demo_args,
+    parse_equipment_args,
+    parse_equipment_chart_args,
     parse_load_args,
     parse_marathon_builds_args,
     parse_overview_args,
@@ -275,8 +278,12 @@ COMMANDS = {
     "equipment": Command(
         "equipment",
         "Gear mileage, coverage, wear, and retirement candidates",
-        "equipment",
-        ("reports.sh equipment",),
+        "equipment [ITEM]",
+        (
+            "reports.sh equipment",
+            'reports.sh equipment "Demo Shoe"',
+        ),
+        parse=parse_equipment_args,
         run=run_equipment_command,
     ),
     "health": Command(
@@ -373,13 +380,13 @@ COMMANDS = {
     ),
     "equipment-chart": Command(
         "equipment-chart",
-        "Gear mileage chart, grouped by category",
-        "equipment-chart [output.png]",
-        ("charts.sh equipment",),
-        parse=partial(
-            parse_output_arg,
-            default_output="equipment.png",
+        "Gear mileage chart, grouped by category or for one item",
+        "equipment-chart [output.png] [--item NAME]",
+        (
+            "charts.sh equipment",
+            "charts.sh equipment --item \"Demo Shoe\"",
         ),
+        parse=parse_equipment_chart_args,
         run=run_equipment_chart_command,
     ),
     "devices-chart": Command(
@@ -504,6 +511,17 @@ COMMANDS = {
             default_days=90,
         ),
         run=run_recovery_command,
+    ),
+    "weight": Command(
+        "weight",
+        "Body weight over time",
+        "weight [output.png]",
+        ("charts.sh weight",),
+        parse=partial(
+            parse_output_arg,
+            default_output="weight.png",
+        ),
+        run=run_weight_command,
     ),
     "pace-hr": Command(
         "pace-hr",

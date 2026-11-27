@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import date
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from ..analysis import (
     DeviceStat,
     EquipmentStat,
+    GearDetail,
     group_equipment,
     RacePacePoint,
     ThresholdPoint,
@@ -100,6 +102,83 @@ def plot_equipment(
         as_html=as_html,
         width=1650,
         height=1200,
+    )
+
+
+def plot_gear_mileage(
+    detail: GearDetail,
+    output: str = "",
+    title: str | None = None,
+    as_html: bool = False,
+) -> str:
+    """Monthly and cumulative kilometres for one gear item."""
+    _require_data(detail.monthly)
+    months = [month for month, _ in detail.monthly]
+    monthly_km = [km for _, km in detail.monthly]
+    cumulative_km = []
+    total = 0.0
+
+    for km in monthly_km:
+        total += km
+        cumulative_km.append(total)
+
+    color = EQUIPMENT_CATEGORY_COLORS.get(
+        detail.stat.equipment.type,
+        EQUIPMENT_CATEGORY_COLORS["other"],
+    )
+    figure = make_subplots(specs=[[{"secondary_y": True}]])
+    figure.add_trace(
+        go.Bar(
+            x=months,
+            y=monthly_km,
+            name="monthly km",
+            marker={"color": _fade(color, 0.55)},
+            hovertemplate="%{x|%Y-%m}<br>%{y:.1f} km<extra></extra>",
+        ),
+        secondary_y=False,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=months,
+            y=cumulative_km,
+            mode="lines+markers",
+            name="cumulative km",
+            line={"color": color, "width": 2},
+            hovertemplate="%{x|%Y-%m}<br>%{y:.1f} km<extra></extra>",
+        ),
+        secondary_y=True,
+    )
+
+    target = detail.stat.target_distance_m
+
+    if target:
+        figure.add_hline(
+            y=target / 1000,
+            line={"color": "#111111", "width": 1, "dash": "dash"},
+            annotation_text=f"target {target / 1000:.0f} km",
+            annotation_position="top right",
+            secondary_y=True,
+        )
+
+    figure.update_yaxes(title_text="km per month", secondary_y=False)
+    figure.update_yaxes(title_text="cumulative km", secondary_y=True)
+    figure.update_layout(
+        template="plotly_white",
+        title=title if title is not None else detail.stat.label,
+        height=460,
+        margin={"l": 60, "r": 70, "t": 70, "b": 100},
+        legend=_legend_below(),
+        hovermode="x unified",
+        bargap=0.15,
+    )
+    _crosshair(figure, second_y=True)
+
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1650,
+        height=1000,
     )
 
 

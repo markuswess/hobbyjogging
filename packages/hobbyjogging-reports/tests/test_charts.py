@@ -13,6 +13,7 @@ from hobbyjogging_report.charts import (
     compare_color,
     plot_compare,
     plot_equipment,
+    plot_gear_mileage,
     plot_pb_progressions,
     plot_races,
     plot_compare_pace_hr,
@@ -27,10 +28,12 @@ from hobbyjogging_report.charts import (
     plot_time,
     plot_vo2max_methods,
     plot_volume,
+    plot_weight,
 )
 from hobbyjogging_report.analysis import (
     DeviceStat,
     EquipmentStat,
+    GearDetail,
     RacePacePoint,
     ThresholdPoint,
     equivalent_times,
@@ -41,6 +44,7 @@ from hobbyjogging_report.analysis import (
     riegel_reference,
     riegel_time,
 )
+from hobbyjogging_report.model import WeightPoint
 from hobbyjogging_core.model import (
     Activity,
     Device,
@@ -2468,6 +2472,113 @@ class LoadChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 plot_load([], str(Path(tmp) / "load.png"))
+
+
+class WeightChartTests(unittest.TestCase):
+
+    def test_points_and_mean_share_the_kg_axis_with_a_gap(self):
+        points = [
+            WeightPoint(
+                date(2026, 1, 1),
+                weight_kg=80.0,
+                average_kg=80.0,
+            ),
+            WeightPoint(date(2026, 1, 2)),
+            WeightPoint(
+                date(2026, 1, 3),
+                weight_kg=78.0,
+                average_kg=79.0,
+            ),
+        ]
+
+        html = plot_weight(points, "", as_html=True)
+        data = plotly_data(html)
+        traces = {trace.get("name"): trace for trace in data}
+
+        self.assertEqual({"measured", "7-day avg"}, set(traces))
+        self.assertEqual([80.0, None, 78.0], traces["measured"]["y"])
+        self.assertEqual([80.0, None, 79.0], traces["7-day avg"]["y"])
+        self.assertFalse(traces["7-day avg"]["connectgaps"])
+        self.assertEqual("kg", plotly_layout(html)["yaxis"]["title"]["text"])
+        # No readiness bands: one trace pair, no shapes.
+        self.assertEqual(2, len(data))
+        self.assertNotIn("shapes", plotly_layout(html))
+
+    def test_weight_chart_rejects_empty_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_weight(
+                    [WeightPoint(date(2026, 1, 1))],
+                    str(Path(tmp) / "weight.png"),
+                )
+
+    def test_weight_chart_writes_a_file(self):
+        points = [WeightPoint(D, weight_kg=80.0, average_kg=80.0)]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "weight.png"
+            self.assertEqual(
+                str(output),
+                plot_weight(points, str(output)),
+            )
+            self.assertTrue(output.exists())
+
+
+class GearMileageChartTests(unittest.TestCase):
+
+    def _detail(self, target=500000.0):
+        return GearDetail(
+            stat=EquipmentStat(
+                equipment=Equipment(id="shoe", type="shoe", name="Demo Shoe"),
+                sessions=2,
+                distance_m=12000,
+                target_distance_m=target,
+            ),
+            activities=[],
+            co_used=[],
+            monthly=[
+                (date(2026, 8, 1), 7.0),
+                (date(2026, 9, 1), 5.0),
+            ],
+        )
+
+    def test_monthly_bars_and_cumulative_line(self):
+        html = plot_gear_mileage(self._detail(), as_html=True)
+        data = plotly_data(html)
+        traces = {trace.get("name"): trace for trace in data}
+
+        self.assertEqual({"monthly km", "cumulative km"}, set(traces))
+        self.assertEqual([7.0, 5.0], traces["monthly km"]["y"])
+        self.assertEqual([7.0, 12.0], traces["cumulative km"]["y"])
+        self.assertEqual(
+            "cumulative km",
+            plotly_layout(html)["yaxis2"]["title"]["text"],
+        )
+
+    def test_target_line_is_drawn_when_the_item_has_one(self):
+        html = plot_gear_mileage(self._detail(target=10000.0), as_html=True)
+        shapes = plotly_layout(html)["shapes"]
+
+        self.assertTrue(
+            any(
+                shape.get("y1") == 10.0
+                for shape in shapes
+            )
+        )
+        self.assertIn("target 10 km", html)
+
+    def test_empty_gear_has_no_chart(self):
+        detail = GearDetail(
+            stat=EquipmentStat(
+                equipment=Equipment(id="shoe", type="shoe", name="Demo Shoe"),
+            ),
+            activities=[],
+            co_used=[],
+            monthly=[],
+        )
+
+        with self.assertRaises(ValueError):
+            plot_gear_mileage(detail, as_html=True)
 
 
 class RecoveryChartTests(unittest.TestCase):

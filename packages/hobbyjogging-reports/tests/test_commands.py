@@ -44,6 +44,7 @@ EXPECTED = {
     "pace-hr",
     "time",
     "recovery",
+    "weight",
     "subt",
     "vo2max",
     "debug",

@@ -257,6 +257,20 @@ def run_recovery_chart(
     print(path)
 
 
+def run_weight_chart(output: str, source: DataSource) -> None:
+    """Render every stored body-weight measurement and its 7-day mean."""
+    from .analysis import weight_points
+    from .charts import plot_weight
+
+    points = weight_points(source.wellness(date.min, date.today()))
+    print(plot_weight(points, output))
+
+
+def run_weight_command(parsed, source, include_review):
+    run_weight_chart(parsed, source)
+    return None
+
+
 def run_subt_chart(
     output: str,
     start: date,
@@ -478,10 +492,15 @@ def run_equipment_chart(
     source: DataSource,
     *,
     include_review: bool = False,
+    item: str | None = None,
 ) -> None:
-    """Render the gear mileage chart for all history."""
-    from .analysis import equipment_usage
-    from .charts import plot_equipment
+    """Render the gear mileage chart, or one item's mileage over time."""
+    from .analysis import (
+        equipment_detail,
+        equipment_usage,
+        select_equipment,
+    )
+    from .charts import plot_equipment, plot_gear_mileage
 
     today = date.today()
     activities = reviewed_range(
@@ -490,7 +509,20 @@ def run_equipment_chart(
         today,
         include_review,
     )
-    stats = equipment_usage(source.equipment(), activities)
+    equipment = source.equipment()
+
+    if item:
+        chosen = select_equipment(equipment, item)
+        stat = equipment_usage([chosen], activities)[0]
+        print(
+            plot_gear_mileage(
+                equipment_detail(stat, activities, equipment),
+                output,
+            )
+        )
+        return
+
+    stats = equipment_usage(equipment, activities)
     print(plot_equipment(stats, output))
 
 
@@ -617,7 +649,13 @@ def run_compare_pace_hr_chart(
 
 
 def run_equipment_chart_command(parsed, source, include_review):
-    run_equipment_chart(parsed, source, include_review=include_review)
+    output, item = parsed
+    run_equipment_chart(
+        output,
+        source,
+        include_review=include_review,
+        item=item,
+    )
     return None
 
 

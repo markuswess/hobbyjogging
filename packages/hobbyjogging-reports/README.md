@@ -129,7 +129,11 @@ Pages:
   (shoes, bikes, other) with target markers and faded retired bars, one table
   section per category, per-year coverage with and without gear, a device
   timeline with activity counts, and retirement candidates grouped the same
-  way. A device is labelled from its stored name, else from the FIT
+  way. Every gear row links to `gear/<item>.html`: the item's totals
+  (sessions, km, km/month, first and last use), target and wear, a monthly
+  and cumulative mileage chart, its activities (linked when the dashboard
+  also renders that activity) with the other gear worn on the session, and
+  the co-used gear with session counts. A device is labelled from its stored name, else from the FIT
   manufacturer and product (`garmin` + `enduro` → **Garmin Enduro**), so the
   FIT shape and the Intervals/Runalyze name read the same. The hover carries
   the raw device id, because two ids can still describe one watch: the label
@@ -139,7 +143,10 @@ Pages:
   HR, and sleep as interactive plotly panels over the last two years
   (`--recovery-days`, default 730) with 7-day averages, readiness bands,
   illness periods shaded behind each panel, the `sickness` report for the same
-  window, and a data-completeness note.
+  window, a body-weight card, and a data-completeness note. The weight card
+  plots every stored measurement over the whole stored period with its 7-day
+  mean on its own kg axis and no readiness bands; the nine-year gap stays a
+  gap rather than being interpolated.
 - `docs.html` (Docs) — the `hobbyjogging-reports` README, rendered as HTML
   with a table of contents. The overview, daily, planned, recovery, NSA, and
   compare reports are embedded on their own pages, so there is no separate
@@ -349,6 +356,9 @@ stay compact (`1h02`).
   counts and the same device labels as the Gear tab. The chart groups and
   colours the same categories; the summary keeps the overall and per-category
   counts. Shoes without `target_distance_m` use an 800 km default.
+  `equipment <item>` (an id or a name substring, ambiguity refused) prints one
+  item's page as Markdown: the same totals, a monthly/cumulative mileage
+  table, its activities and the co-used gear.
 - **health** — The Data Health tab's numbers as Markdown: activity count,
   open review items, hidden/flagged activities, missing load/pace and HR
   zones/HR/distance, the review queue (with candidate names when the item has
@@ -357,7 +367,8 @@ stay compact (`1h02`).
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout
-  as the daily report. Missing days are skipped.
+  as the daily report. Missing days are skipped. A weight row appears once
+  weight is stored; it has no baseline because weight is descriptive.
 - **subt-ewma-report** — 7/42/182-day EWMAs of the work-interval pace,
   session heart rate, and efficiency (m/excess beat) for short, medium,
   long, and LT1, ending today.
@@ -430,6 +441,10 @@ stay compact (`1h02`).
   the full values.
 - **equipment / devices** — the Gear tab's two charts for all history:
   mileage grouped by gear category, and the recording-device timeline.
+  `equipment --item NAME` draws one item's monthly bars, cumulative line and
+  target instead.
+- **weight** — the body-weight card for every stored measurement: points, the
+  7-day mean, no readiness bands, and gaps left as gaps.
 - **threshold** — the run LTHR/max-HR/threshold-pace steps with official
   race paces and, for each race, the 60 min pace derived from it by Riegel
   scaling (open circles, exponent 1.06), for all history.
@@ -667,6 +682,20 @@ date axis:
 
 Missing values are skipped rather than treated as zero, so a gap in the
 wellness data does not pull an average down.
+
+### Weight chart
+
+`weight` plots body weight over every stored day:
+
+- measurements as points,
+- the 7-day calendar mean as a line,
+- a gap wherever none of the trailing seven days has a measurement.
+
+There are no readiness bands and no shared scale with the recovery panels;
+weight is descriptive. The recovery tab shows the same chart for all stored
+time, so a long gap between measurement periods stays visible.
+
+    ./charts.sh weight
 
 ### VO2max chart
 

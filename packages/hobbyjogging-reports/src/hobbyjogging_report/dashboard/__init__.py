@@ -18,6 +18,7 @@ from ..analysis import (
     recovery_trends,
     vo2max_points,
     vo2max_samples,
+    weight_points,
     yearly_coverage,
 )
 from ..command_support import activity_start, resting_hr_lookup
@@ -53,6 +54,7 @@ from .pages import (
     overview_page,
     recovery_page,
     docs_page,
+    gear_item_page,
     gear_page,
     lab_page,
 )
@@ -217,6 +219,8 @@ def build_dashboard(
         for point in trend_points
         if recovery_start <= point.date <= today
     ]
+    # Weight is shown for all stored time so the long gaps stay visible.
+    weight = weight_points(source.wellness(date.min, today))
     recovery_html = markdown_to_html(
         recovery_report(source, today=today),
         demote=1,
@@ -377,6 +381,7 @@ def build_dashboard(
         source,
         today=today,
         include_review=include_review,
+        linked_ids=detail_ids,
     )
     mark("health+gear", phase)
 
@@ -444,6 +449,7 @@ def build_dashboard(
             sickness_html=sickness_html,
             start=recovery_start,
             end=today,
+            weight=weight,
         ),
         "performance.html": performance_page(
             generated_at=generated_at,
@@ -604,8 +610,22 @@ def build_dashboard(
             ),
         )
 
+    gear_pages = {
+        f"gear/{item.filename}": gear_item_page(
+            generated_at=generated_at,
+            health=health,
+            demo_label=demo_label,
+            include_review=include_review,
+            item=item,
+        )
+        for item in gear_section.items
+    }
+
     target = resolve_output_dir(output)
-    _write_site(target, pages | detail_pages | race_pages | event_pages)
+    _write_site(
+        target,
+        pages | detail_pages | race_pages | event_pages | gear_pages,
+    )
     mark("pages", phase)
 
     return target

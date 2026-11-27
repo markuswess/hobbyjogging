@@ -34,7 +34,7 @@ TODAY = date(2026, 11, 9)
 activity = activity_factory()
 
 
-def _source():
+def _source(*, weight=78.0, retired=False):
     shoe = Equipment(
         id="shoe1",
         type="shoe",
@@ -43,9 +43,20 @@ def _source():
         acquired_on=TODAY - timedelta(days=200),
         target_distance_m=100000,
     )
+    equipment = [shoe]
+
+    if retired:
+        equipment.append(
+            Equipment(
+                id="old-shoe",
+                type="shoe",
+                name="Old Shoe",
+                retired_on=TODAY - timedelta(days=30),
+            )
+        )
 
     return FakeSource(
-        equipment=[shoe],
+        equipment=equipment,
         metrics={
             "run1": ActivityMetrics(
                 cadence=172.0,
@@ -207,12 +218,14 @@ def _source():
                 hrv=60,
                 resting_hr=45,
                 sleep_s=8 * 3600,
+                weight_kg=weight,
             ),
             WellnessDay(
                 date=TODAY - timedelta(days=2),
                 hrv=55,
                 resting_hr=46,
                 sleep_s=7.5 * 3600,
+                weight_kg=None if weight is None else weight + 0.4,
             ),
         ],
         weather={
@@ -442,6 +455,10 @@ class DashboardBuildTests(unittest.TestCase):
                 '"range":["2026-11-07","2026-11-08"]',
                 recovery,
             )
+            self.assertIn("Body weight", recovery)
+            self.assertIn("Every stored measurement", recovery)
+            self.assertIn("7-day avg", recovery)
+            self.assertNotIn("No weight data", recovery)
             self.assertIn("Plotly.newPlot", recovery)
             self.assertNotIn('class="grid"', recovery)
 
@@ -641,6 +658,20 @@ class DashboardBuildTests(unittest.TestCase):
             self.assertIn("No recording devices", gear)
             self.assertIn("Plotly.newPlot", gear)
             self.assertIn("plotly.min.js", gear)
+            self.assertIn('href="gear/shoe1.html"', gear)
+
+            item = (target / "gear" / "shoe1.html").read_text()
+            self.assertIn("Demo Shoe", item)
+            self.assertIn("Sessions", item)
+            self.assertIn("Distance", item)
+            self.assertIn("km/month", item)
+            self.assertIn("Mileage", item)
+            self.assertIn("Activities", item)
+            self.assertIn("Co-used gear", item)
+            self.assertIn('href="../activity/run1.html"', item)
+            self.assertIn('href="../gear.html"', item)
+            self.assertIn("Plotly.newPlot", item)
+            self.assertIn("plotly.min.js", item)
 
     def test_reports_flag_is_a_compatibility_noop(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -689,6 +720,41 @@ class DashboardBuildTests(unittest.TestCase):
             health = (target / "health.html").read_text()
             self.assertIn("bad.html", health)
             self.assertIn("included", health)
+
+    def test_weight_card_has_an_empty_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                _source(weight=None),
+                target,
+                today=TODAY,
+            )
+
+            recovery = (target / "recovery.html").read_text()
+
+        self.assertIn("Body weight", recovery)
+        self.assertIn("No weight data.", recovery)
+
+    def test_retired_gear_without_sessions_still_gets_a_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "site"
+
+            build_dashboard(
+                _source(retired=True),
+                target,
+                today=TODAY,
+            )
+
+            page = (target / "gear" / "old-shoe.html").read_text()
+            gear = (target / "gear.html").read_text()
+
+        self.assertIn("Old Shoe", page)
+        self.assertIn("retired", page)
+        self.assertIn("No sessions recorded.", page)
+        self.assertIn("No co-used gear.", page)
+        self.assertIn("No gear mileage to plot.", page)
+        self.assertIn('href="gear/old-shoe.html"', gear)
 
     def test_recovery_window_can_be_overridden(self):
         with tempfile.TemporaryDirectory() as tmp:

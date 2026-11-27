@@ -674,7 +674,12 @@ class DemoGeneratorTests(unittest.TestCase):
                     "Official race pace",
                     "Race 60 min pace",
                 ),
-                "recovery.html": ("Recovery Report", "Data completeness"),
+                "recovery.html": (
+                    "Recovery Report",
+                    "Data completeness",
+                    "Body weight",
+                    "Every stored measurement",
+                ),
                 "performance.html": (
                     "Upcoming races",
                     "Marathon builds",
@@ -714,6 +719,12 @@ class DemoGeneratorTests(unittest.TestCase):
                 self.assertGreater(len(page), 1000, name)
                 for marker in required:
                     self.assertIn(marker, page, name)
+
+            gear_pages = list((site / "gear").glob("*.html"))
+            self.assertTrue(gear_pages)
+            item_page = gear_pages[0].read_text()
+            self.assertIn("Co-used gear", item_page)
+            self.assertIn("Mileage", item_page)
 
             index = (site / "index.html").read_text()
             self.assertIn("Synthetic demo data", index)

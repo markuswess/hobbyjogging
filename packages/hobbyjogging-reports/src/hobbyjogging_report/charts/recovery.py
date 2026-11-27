@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 from hobbyjogging_core.model import TrainingPeriod
 
 from ..analysis import recovery_bands
-from ..model import RecoveryPoint
+from ..model import RecoveryPoint, WeightPoint
 from ..style import (
     RECOVERY_BAND_COLORS,
     RECOVERY_BAND_MARKERS,
@@ -216,4 +216,64 @@ def plot_recovery(
         as_html=as_html,
         width=1800,
         height=2700,
+    )
+
+
+WEIGHT_COLOR = "#2ca02c"
+
+
+def plot_weight(
+    points: list[WeightPoint],
+    output: str,
+    title: str = "Body weight",
+    as_html: bool = False,
+) -> str:
+    """Body weight points and their 7-day mean, with gaps left as gaps.
+
+    There is one panel and one kg axis: weight is descriptive, so no
+    readiness bands and no shared scale with the recovery panels.
+    """
+    measured = [point for point in points if point.weight_kg is not None]
+    _require_data(measured)
+    figure = go.Figure()
+
+    figure.add_trace(
+        go.Scatter(
+            x=[point.date for point in points],
+            y=[point.weight_kg for point in points],
+            mode="markers",
+            name="measured",
+            marker={"color": WEIGHT_COLOR, "size": 4, "opacity": 0.45},
+            hovertemplate="%{x}<br>%{y:.1f} kg<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=[point.date for point in points],
+            y=[point.average_kg for point in points],
+            mode="lines",
+            name="7-day avg",
+            line={"color": WEIGHT_COLOR, "width": 2},
+            connectgaps=False,
+            hovertemplate="%{x}<br>%{y:.1f} kg<extra></extra>",
+        )
+    )
+
+    figure.update_yaxes(title_text="kg")
+    figure.update_layout(
+        template="plotly_white",
+        title=title,
+        height=420,
+        margin={"l": 60, "r": 30, "t": 70, "b": 90},
+        legend=_legend_below(),
+        hovermode="x unified",
+    )
+    _crosshair(figure)
+
+    return _render(
+        figure,
+        output,
+        as_html=as_html,
+        width=1800,
+        height=1200,
     )

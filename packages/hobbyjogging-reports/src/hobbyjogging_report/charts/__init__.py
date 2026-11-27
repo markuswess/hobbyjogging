@@ -15,9 +15,14 @@ from .load import plot_load
 from .vo2max import plot_vo2max_methods
 from .pace_hr import plot_compare_pace_hr, plot_pace_hr
 from .races import plot_pb_progressions, plot_races
-from .gear import plot_devices, plot_equipment, plot_thresholds
+from .gear import (
+    plot_devices,
+    plot_equipment,
+    plot_gear_mileage,
+    plot_thresholds,
+)
 from .compare import plot_compare, plot_compare_vo2max
-from .recovery import plot_recovery
+from .recovery import plot_recovery, plot_weight
 from .overview import plot_overview
 
 __all__ = [
@@ -37,9 +42,11 @@ __all__ = [
     "plot_races",
     "plot_devices",
     "plot_equipment",
+    "plot_gear_mileage",
     "plot_thresholds",
     "plot_compare",
     "plot_compare_vo2max",
     "plot_recovery",
+    "plot_weight",
     "plot_overview",
 ]

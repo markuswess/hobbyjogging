@@ -21,6 +21,7 @@ Examples:
   ./reports.sh overview --future-days 21
   ./reports.sh recovery-report
   ./reports.sh equipment
+  ./reports.sh equipment "Hoka Clifton"
   ./reports.sh races
   ./reports.sh race <activity-id>
   ./reports.sh streaks

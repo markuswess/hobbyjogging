@@ -27,10 +27,14 @@ from .devices import (
 from .equipment import (
     DEFAULT_SHOE_TARGET_M,
     EquipmentStat,
+    GearActivity,
+    GearDetail,
     equipment_coverage,
+    equipment_detail,
     equipment_usage,
     group_equipment,
     retirement_candidates,
+    select_equipment,
 )
 from .coverage import YearCoverage, yearly_coverage
 from .efficiency import (
@@ -111,7 +115,12 @@ from .races import (
     riegel_time,
     upcoming_races,
 )
-from .recovery import recovery_bands, recovery_trends
+from .recovery import (
+    WEIGHT_WINDOW_DAYS,
+    recovery_bands,
+    recovery_trends,
+    weight_points,
+)
 from .rpe import daily_session_rpe, rpe_metrics
 from .thresholds import (
     RacePacePoint,
@@ -173,6 +182,8 @@ __all__ = [
     "DeviceStat",
     "EFFICIENCY_UNIT",
     "EquipmentStat",
+    "GearActivity",
+    "GearDetail",
     "MARATHON_WEEKS",
     "MIN_STREAK_RUN_S",
     "MarathonBuild",
@@ -192,6 +203,7 @@ __all__ = [
     "ThresholdPoint",
     "VO2MAX_DISPLAY_START",
     "VO2MAX_WARMUP_DAYS",
+    "WEIGHT_WINDOW_DAYS",
     "YearCoverage",
     "activity_efficiency",
     "activity_sort_key",
@@ -217,6 +229,7 @@ __all__ = [
     "distance_averages",
     "effective_vo2max",
     "equipment_coverage",
+    "equipment_detail",
     "equipment_usage",
     "equivalent_times",
     "event_zone_seconds",
@@ -251,6 +264,7 @@ __all__ = [
     "race_vdots",
     "recovery_bands",
     "recovery_trends",
+    "weight_points",
     "resting_hr_baseline",
     "resting_hr_baselines",
     "retirement_candidates",
@@ -262,6 +276,7 @@ __all__ = [
     "run_streaks",
     "runalyze_vo2max_points",
     "running_thresholds",
+    "select_equipment",
     "steady_efficiency",
     "streak_summary",
     "streak_table_rows",

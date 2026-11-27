@@ -167,6 +167,129 @@ def equipment_usage(
     )
 
 
+@dataclass(frozen=True)
+class GearActivity:
+    """One activity that used a piece of gear.
+
+    ``others`` are the item's fellow links on that session. The stored link
+    role (primary/secondary) is not exposed by ``DataSource``, so the report
+    names the other gear instead of claiming a role.
+    """
+
+    activity: Activity
+    others: tuple[Equipment, ...] = ()
+
+
+@dataclass(frozen=True)
+class GearDetail:
+    """Everything one gear item's page or report shows."""
+
+    stat: EquipmentStat
+    activities: list[GearActivity]
+    co_used: list[tuple[Equipment, int]]
+    monthly: list[tuple[date, float]]  # month start -> km
+
+
+def equipment_detail(
+    stat: EquipmentStat,
+    activities: list[Activity],
+    equipment: list[Equipment],
+) -> GearDetail:
+    """Sessions, monthly mileage and co-used gear for one item.
+
+    ``activities`` is the full history, so the monthly series and the
+    cumulative chart match the item's totals.
+    """
+    used: list[GearActivity] = []
+    co_counts: dict[str, int] = {}
+    monthly: dict[date, float] = {}
+
+    for activity in activities:
+        ids = {item.id for item in activity.equipment}
+
+        if stat.equipment.id not in ids:
+            continue
+
+        others = tuple(
+            item
+            for item in activity.equipment
+            if item.id != stat.equipment.id
+        )
+        used.append(GearActivity(activity=activity, others=others))
+
+        for item in others:
+            co_counts[item.id] = co_counts.get(item.id, 0) + 1
+
+        month = date(activity.date.year, activity.date.month, 1)
+        monthly[month] = (
+            monthly.get(month, 0.0) + (activity.distance_m or 0)
+        )
+
+    used.sort(
+        key=lambda entry: (entry.activity.date, entry.activity.id),
+        reverse=True,
+    )
+    by_id = {item.id: item for item in equipment}
+    co_used = sorted(
+        (
+            (
+                by_id.get(
+                    item_id,
+                    Equipment(id=item_id, type="other", name=item_id),
+                ),
+                count,
+            )
+            for item_id, count in co_counts.items()
+        ),
+        key=lambda pair: (-pair[1], pair[0].name),
+    )
+
+    return GearDetail(
+        stat=stat,
+        activities=used,
+        co_used=co_used,
+        monthly=[
+            (month, monthly[month] / 1000)
+            for month in sorted(monthly)
+            if monthly[month]
+        ],
+    )
+
+
+def select_equipment(
+    equipment: list[Equipment],
+    selector: str,
+) -> Equipment:
+    """Resolve a gear selector: an exact id or a name substring.
+
+    An ambiguous selector lists its candidates instead of guessing, matching
+    the other report selectors.
+    """
+    text = str(selector).strip()
+    lowered = text.lower()
+
+    for item in equipment:
+        if item.id == text:
+            return item
+
+    matches = [
+        item
+        for item in equipment
+        if lowered and lowered in item.name.lower()
+    ]
+
+    if len(matches) == 1:
+        return matches[0]
+
+    if not matches:
+        raise ValueError(f"no gear matches {text!r}")
+
+    names = ", ".join(
+        sorted(f"{item.name} ({item.id})" for item in matches)
+    )
+    raise ValueError(f"gear {text!r} is ambiguous: {names}")
+
+
 def equipment_coverage(
     activities: list[Activity],
 ) -> dict[int, tuple[int, int]]:

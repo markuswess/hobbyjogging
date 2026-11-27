@@ -56,6 +56,21 @@ class RecoveryAverageTests(unittest.TestCase):
         self.assertEqual(45.0, averages["Resting HR"][7])
         self.assertAlmostEqual(8.0, averages["Sleep"][7] / 3600)
 
+    def test_weight_uses_the_same_windows(self):
+        wellness = _wellness(30)
+        wellness[0] = WellnessDay(
+            date=TODAY,
+            weight_kg=78.0,
+        )
+        wellness[3] = WellnessDay(
+            date=TODAY - timedelta(days=3),
+            weight_kg=80.0,
+        )
+
+        averages = recovery_averages(wellness, TODAY)
+
+        self.assertEqual(79.0, averages["Weight"][7])
+
     def test_empty_range_returns_no_averages(self):
         averages = recovery_averages([], TODAY)
 
@@ -114,6 +129,26 @@ class RecoveryReportTests(unittest.TestCase):
         self.assertTrue(
             _row(report, "HRV")[-1].startswith("60 ± "),
         )
+
+    def test_weight_row_only_appears_when_weight_is_stored(self):
+        plain = recovery_report(FakeSource(wellness=_wellness(30)), today=TODAY)
+        self.assertNotIn("| Weight |", plain)
+
+        wellness = _wellness(30)
+
+        for offset in (0, 2, 9):
+            wellness[offset] = WellnessDay(
+                date=TODAY - timedelta(days=offset),
+                weight_kg=78.0 + offset * 0.2,
+            )
+
+        report = recovery_report(FakeSource(wellness=wellness), today=TODAY)
+
+        self.assertEqual(
+            ["Weight", "78.2 kg", "78.7 kg", "78.7 kg", "-"],
+            _row(report, "Weight"),
+        )
+        self.assertIn("Weight is descriptive", report)
 
     def test_report_lists_the_last_four_nights(self):
         source = FakeSource(wellness=_wellness(10))
