@@ -519,6 +519,20 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: 1352/1353 are not created, the true surf pair (delta 0)
       is, a sheet row without a start still matches, and the re-run is a no-op.
 
+68. **Shoes are never linked to rides** (import + maintenance; bug, small). The
+    sheet's `Schuhe` column is linked regardless of sport, so Lunge Fis is the
+    primary equipment on two rides (2020-08-07 Afternoon Ride, 2021-03-20
+    Lunch Ride) and its usage includes 36 km of cycling. A hike (2020-08-25)
+    also carries the shoe and is fine: walking wears the shoe.
+    - **Rule**: the sheet importer skips `Schuhe` for the ride sports (`ride`,
+      `mtb_ride`, `gravel_ride`, `virtual_ride`); other sports keep the link.
+    - **Backfill** `drop_ride_shoe_links_v1`: remove the existing source shoe
+      links on rides (two rows) through the writer, dry run first; never touch
+      a manual link.
+    - **Acceptance**: Lunge Fis has no ride links, its usage km is running plus
+      hiking only, a re-enabled sheet import does not recreate them, and the
+      hike link stays.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
