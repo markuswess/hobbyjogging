@@ -286,8 +286,9 @@ Source ingestion and the review queue.
 - `select.py` — the id / ISO date / `last` / name-substring resolver for
   activities, equipment and periods; ambiguity lists candidates and refuses to
   guess.
-- `equipment_cli.py` — `equipment add|list|edit|retire|history`; a manual row
-  is an input and retire sets `retired_on`.
+- `equipment_cli.py` — `equipment add|list|edit|retire|history|link|unlink`;
+  a manual row is an input, retire sets `retired_on`, and `link` appends a
+  primary or secondary manual link without promoting the existing primary.
 - `activity_cli.py` — `activity edit`: the direct human write surface with
   explicit flags, `--clear`, `--dry-run`, `--history` and an interactive mode.
 - `triage.py` — interactive review walk; the `(k)` classification decision
@@ -379,11 +380,14 @@ changes.
 - `recompute/duplicate_candidates_current.py` — opens one `duplicate` item per
   same-session pair and closes stale ones; the sheet cleanup is the separate
   backfill.
+- `recompute/equipment_from_tags_current.py` — links mapped equipment tags
+  (Thule) as secondary when the activity already has gear and primary only
+  when it has none; existing and manual links stay.
 - `cli.py` — `list`, `status`, `run`.
 
 ## Canonical data model
 
-SQLite, forward-only migrations. Schema version 29.
+SQLite, forward-only migrations. Schema version 30.
 
 - `activities` — canonical values: dates, sport, name, description, recording
   time (`duration_s`), elapsed time, moving time (`moving_s`), distance,
@@ -505,7 +509,9 @@ SQLite, forward-only migrations. Schema version 29.
   `equipment_source_links`, `zone_configs` — supporting canonical data. An
   equipment row carries `is_manual` (v29): a hand-created or hand-edited item
   keeps its name, brand, model, dates and notes when a later source links to
-  it.
+  it. The `equipment_usage` view (v30) counts every link, so a secondary
+  trailer contributes its sessions and km; the link role is identity, not a
+  usage filter.
 - `events` — planned workouts and races: local date, type, description,
   planned moving duration (`duration_s`), distance, training load, planned
   zone kind (`zone_kind`), and an exclusion timestamp. Intervals is

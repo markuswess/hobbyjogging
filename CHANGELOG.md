@@ -11,7 +11,7 @@ records its own `PRAGMA user_version`, migrations are forward-only, and
 
 ## Unreleased — 0.3.1
 
-Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
+Schema: **30**. Compatibility: requires schema ≥ 1, migrates to 30.
 
 ### Brush bug fixes
 
@@ -27,6 +27,20 @@ Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
   `weather_ambient_v1` restores the sheet values and clears the device-only
   rows. A weather row without ambient temperature renders no weather line;
   health coverage counts ambient temperature only.
+
+### Gear
+
+- `equipment link <activity> <equipment> [--role primary|secondary]` appends a
+  manual link without promoting the existing primary; `equipment unlink`
+  removes one link. Both accept an activity id/date/`last`/name, write an
+  `edit_log` row and support `--dry-run`.
+- `equipment_from_tags_current` links mapped equipment tags (Thule) as
+  secondary when the activity already has gear and primary only when it has
+  none; existing and manual links are untouched, and the task notes unmapped
+  gear-like tags.
+- Schema 30 drops the `role = 'primary'` filter from the `equipment_usage`
+  view, so a secondary trailer contributes its sessions and km. The gear
+  report already reads all activity links; the view now agrees.
 
 ## 0.3.0 — 2026-11-25 (phase 3: trustworthy data)
 

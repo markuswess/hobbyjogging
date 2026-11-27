@@ -54,6 +54,26 @@ class EquipmentUsageTests(unittest.TestCase):
         self.assertEqual(D + timedelta(days=20), stats[0].last_used)
         self.assertAlmostEqual(12000 / 1000 / 0.69, stats[0].km_per_month, places=1)
 
+    def test_secondary_gear_counts_as_used(self):
+        shoe = _shoe()
+        trailer = Equipment(id="thule", type="other", name="Thule")
+        activities = [
+            activity(
+                id="a",
+                date=D,
+                distance_m=7000,
+                equipment=[shoe, trailer],
+            )
+        ]
+
+        stats = {
+            stat.equipment.id: stat
+            for stat in equipment_usage([shoe, trailer], activities)
+        }
+
+        self.assertEqual(1, stats["thule"].sessions)
+        self.assertEqual(7000, stats["thule"].distance_m)
+
     def test_shoe_gets_the_default_target_unless_overridden(self):
         default = equipment_usage([_shoe()], [])[0]
         custom = equipment_usage(

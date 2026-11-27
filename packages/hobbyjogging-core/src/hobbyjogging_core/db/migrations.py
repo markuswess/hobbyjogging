@@ -6,7 +6,7 @@ import sqlite3
 
 from .schema import INITIAL_SCHEMA_SQL
 
-SCHEMA_VERSION = 29
+SCHEMA_VERSION = 30
 
 MIGRATION_2_SQL = """
 ALTER TABLE activities ADD COLUMN elapsed_s REAL NOT NULL DEFAULT 0;
@@ -588,6 +588,31 @@ ALTER TABLE equipment ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0
 """
 
 
+MIGRATION_30_SQL = """
+-- Usage counts every link: a trailer can be secondary while a bike is
+-- primary, and it was used on the session all the same. Role is identity
+-- (primary/secondary), not a usage filter.
+DROP VIEW IF EXISTS equipment_usage;
+CREATE VIEW equipment_usage AS
+SELECT
+    e.id AS equipment_id,
+    e.name AS equipment_name,
+    e.type AS equipment_type,
+    e.target_distance_m,
+    e.retired_on,
+    COUNT(a.id) AS activity_count,
+    COALESCE(SUM(a.distance_m), 0.0) AS distance_m,
+    COALESCE(SUM(a.duration_s), 0.0) AS duration_s,
+    MIN(a.local_date) AS first_used_on,
+    MAX(a.local_date) AS last_used_on
+FROM equipment e
+LEFT JOIN activity_equipment ae
+    ON ae.equipment_id = e.id
+LEFT JOIN activities a ON a.id = ae.activity_id
+GROUP BY e.id;
+"""
+
+
 MIGRATIONS: dict[int, str] = {
     1: INITIAL_SCHEMA_SQL,
     2: MIGRATION_2_SQL,
@@ -618,6 +643,7 @@ MIGRATIONS: dict[int, str] = {
     27: MIGRATION_27_SQL,
     28: MIGRATION_28_SQL,
     29: MIGRATION_29_SQL,
+    30: MIGRATION_30_SQL,
 }
 
 

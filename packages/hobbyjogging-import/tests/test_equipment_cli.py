@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from hobbyjogging_core import open_database
+from hobbyjogging_core import TrainingWriter, open_database
 from hobbyjogging_import.cli import build_parser
 from hobbyjogging_import.equipment_cli import run_equipment
 
@@ -139,6 +139,205 @@ class EquipmentCliTests(unittest.TestCase):
             "retire", equipment_id,
         )
         self.assertIsNotNone(self._rows()[0]["retired_on"])
+
+
+    def _seed_activity(self, activity_id="ride-1", sport="ride"):
+        connection = open_database(self.database)
+        try:
+            writer = TrainingWriter(connection)
+            writer.upsert_activity(
+                activity_id,
+                {
+                    "local_date": "2026-10-01",
+                    "sport": sport,
+                    "distance_m": 10000,
+                    "duration_s": 3600,
+                },
+                source="fit",
+                source_record_id=None,
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+    def _links(self):
+        connection = open_database(self.database)
+        try:
+            return [
+                tuple(row)
+                for row in connection.execute(
+                    """
+                    SELECT equipment_id, role, source, is_manual
+                    FROM activity_equipment
+                    WHERE activity_id = 'ride-1'
+                    ORDER BY role, equipment_id
+                    """
+                )
+            ]
+        finally:
+            connection.close()
+
+    def test_link_appends_secondary_and_keeps_the_primary(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Katy", "--type", "bike",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Katy", "--role", "primary",
+        )
+
+        code, out = self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("equipment linked", out)
+        self.assertEqual(
+            [
+                ("manual:equipment:katy", "primary", "manual", 1),
+                ("manual:equipment:bob", "secondary", "manual", 1),
+            ],
+            self._links(),
+        )
+
+        code, out = self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob",
+        )
+        self.assertEqual(0, code)
+        self.assertIn("already linked", out)
+        self.assertEqual(2, len(self._links()))
+
+    def test_link_writes_an_activity_edit_log_row(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+
+        self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob",
+        )
+
+        log = self._log()[-1]
+        self.assertEqual("equipment", log["field"])
+        self.assertIn("manual:equipment:bob", log["new_json"])
+        self.assertIn("equipment link", log["note"])
+
+    def test_unlink_removes_only_that_link(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Katy", "--type", "bike",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Katy", "--role", "primary",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob",
+        )
+
+        code, out = self._run(
+            "equipment", "--database", str(self.database),
+            "unlink", "ride-1", "Bob",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("equipment unlinked", out)
+        self.assertEqual(
+            [("manual:equipment:katy", "primary", "manual", 1)],
+            self._links(),
+        )
+
+        code, out = self._run(
+            "equipment", "--database", str(self.database),
+            "unlink", "ride-1", "Bob",
+        )
+        self.assertIn("not linked", out)
+
+    def test_a_dry_run_link_writes_nothing(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+        before = len(self._log())
+
+        code, out = self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob", "--dry-run",
+        )
+
+        self.assertEqual(0, code)
+        self.assertIn("Dry run", out)
+        self.assertEqual([], self._links())
+        self.assertEqual(before, len(self._log()))
+
+    def test_unknown_link_targets_error(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+
+        with self.assertRaises(SystemExit):
+            self._run(
+                "equipment", "--database", str(self.database),
+                "link", "nope", "Bob",
+            )
+        with self.assertRaises(SystemExit):
+            self._run(
+                "equipment", "--database", str(self.database),
+                "link", "ride-1", "nope",
+            )
+
+    def test_a_link_survives_an_activity_reimport(self):
+        self._seed_activity()
+        self._run(
+            "equipment", "--database", str(self.database),
+            "add", "Bob", "--type", "other",
+        )
+        self._run(
+            "equipment", "--database", str(self.database),
+            "link", "ride-1", "Bob",
+        )
+
+        connection = open_database(self.database)
+        try:
+            writer = TrainingWriter(connection)
+            writer.upsert_activity(
+                "ride-1",
+                {
+                    "local_date": "2026-10-01",
+                    "sport": "ride",
+                    "distance_m": 10100,
+                    "duration_s": 3610,
+                },
+                source="intervals",
+                source_record_id=None,
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+        self.assertEqual(
+            [("manual:equipment:bob", "secondary", "manual", 1)],
+            self._links(),
+        )
 
 
 if __name__ == "__main__":

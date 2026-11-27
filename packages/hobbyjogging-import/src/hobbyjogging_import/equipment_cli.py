@@ -16,7 +16,7 @@ from pathlib import Path
 from hobbyjogging_core import TrainingRepository, TrainingWriter, open_database
 
 from .history import history_lines, record_changes
-from .select import SelectionError, resolve_equipment
+from .select import SelectionError, resolve_activity, resolve_equipment
 from .values import parse_distance_m
 
 _TYPES = ("shoe", "bike", "other")
@@ -119,6 +119,46 @@ def add_equipment_parser(subparsers) -> None:
         help="equipment id or a name substring",
     )
 
+    equipment_link = equipment_sub.add_parser(
+        "link",
+        help="link equipment to an activity by hand",
+    )
+    equipment_link.add_argument(
+        "activity",
+        metavar="ACTIVITY",
+        help="activity id, ISO date, 'last', or a name substring",
+    )
+    equipment_link.add_argument(
+        "equipment",
+        metavar="EQUIPMENT",
+        help="equipment id or a name substring",
+    )
+    equipment_link.add_argument(
+        "--role",
+        choices=("primary", "secondary"),
+        default="secondary",
+        help="link role (default: secondary)",
+    )
+    equipment_link.add_argument("--note", help="edit-log note")
+    equipment_link.add_argument("--dry-run", action="store_true")
+
+    equipment_unlink = equipment_sub.add_parser(
+        "unlink",
+        help="remove one equipment link from an activity",
+    )
+    equipment_unlink.add_argument(
+        "activity",
+        metavar="ACTIVITY",
+        help="activity id, ISO date, 'last', or a name substring",
+    )
+    equipment_unlink.add_argument(
+        "equipment",
+        metavar="EQUIPMENT",
+        help="equipment id or a name substring",
+    )
+    equipment_unlink.add_argument("--note", help="edit-log note")
+    equipment_unlink.add_argument("--dry-run", action="store_true")
+
 
 def run_equipment(args, parser: argparse.ArgumentParser) -> int:
     action = args.equipment_action
@@ -132,6 +172,10 @@ def run_equipment(args, parser: argparse.ArgumentParser) -> int:
         return _retire(args, parser)
     if action == "history":
         return _history(args, parser)
+    if action == "link":
+        return _link(args, parser)
+    if action == "unlink":
+        return _unlink(args, parser)
 
     parser.error(f"unknown equipment command: {action}")
     return 1
@@ -312,6 +356,139 @@ def _retire(args, parser: argparse.ArgumentParser) -> int:
     finally:
         connection.close()
     return 0
+
+
+def _link(args, parser: argparse.ArgumentParser) -> int:
+    connection = open_database(args.database)
+    try:
+        activity_id, equipment_id = _resolve_link_targets(
+            connection, args, parser
+        )
+        existing = _link_rows(connection, activity_id, equipment_id)
+        if existing:
+            roles = ", ".join(sorted(row["role"] for row in existing))
+            print(
+                f"{equipment_id} is already linked to {activity_id} "
+                f"({roles})"
+            )
+            return 0
+
+        old = _equipment_ids(connection, activity_id)
+        writer = TrainingWriter(connection)
+        written = writer.link_activity_equipment(
+            activity_id,
+            equipment_id,
+            source=SOURCE,
+            role=args.role,
+            is_manual=True,
+        )
+        if not written:
+            print("no change: the existing link was kept")
+            return 0
+
+        new = _equipment_ids(connection, activity_id)
+        record_changes(
+            writer,
+            entity_kind="activity",
+            entity_id=activity_id,
+            old={"equipment": old},
+            new={"equipment": new},
+            source=SOURCE,
+            note=args.note or f"equipment link ({args.role})",
+        )
+        if args.dry_run:
+            connection.rollback()
+            print(
+                f"Dry run: {equipment_id} not linked to {activity_id}."
+            )
+        else:
+            connection.commit()
+            print(
+                f"equipment linked: {equipment_id} -> {activity_id} "
+                f"({args.role})"
+            )
+    finally:
+        connection.close()
+    return 0
+
+
+def _unlink(args, parser: argparse.ArgumentParser) -> int:
+    connection = open_database(args.database)
+    try:
+        activity_id, equipment_id = _resolve_link_targets(
+            connection, args, parser
+        )
+        existing = _link_rows(connection, activity_id, equipment_id)
+        if not existing:
+            print(f"{equipment_id} is not linked to {activity_id}")
+            return 0
+
+        old = _equipment_ids(connection, activity_id)
+        writer = TrainingWriter(connection)
+        removed = writer.remove_activity_equipment_link(
+            activity_id,
+            equipment_id,
+        )
+        new = _equipment_ids(connection, activity_id)
+        record_changes(
+            writer,
+            entity_kind="activity",
+            entity_id=activity_id,
+            old={"equipment": old},
+            new={"equipment": new},
+            source=SOURCE,
+            note=args.note or "equipment unlink",
+        )
+        if args.dry_run:
+            connection.rollback()
+            print(
+                f"Dry run: {equipment_id} not unlinked from {activity_id}."
+            )
+        else:
+            connection.commit()
+            print(
+                f"equipment unlinked: {equipment_id} -> {activity_id} "
+                f"({removed} link(s))"
+            )
+    finally:
+        connection.close()
+    return 0
+
+
+def _resolve_link_targets(connection, args, parser: argparse.ArgumentParser):
+    try:
+        activity_id = resolve_activity(connection, args.activity)
+    except SelectionError as exc:
+        parser.error(str(exc))
+    try:
+        equipment_id = resolve_equipment(connection, args.equipment)
+    except SelectionError as exc:
+        parser.error(str(exc))
+    return activity_id, equipment_id
+
+
+def _link_rows(connection, activity_id: str, equipment_id: str):
+    return connection.execute(
+        """
+        SELECT role, is_manual FROM activity_equipment
+        WHERE activity_id = ? AND equipment_id = ?
+        ORDER BY role
+        """,
+        (activity_id, equipment_id),
+    ).fetchall()
+
+
+def _equipment_ids(connection, activity_id: str) -> list[str]:
+    return sorted(
+        {
+            row["equipment_id"]
+            for row in connection.execute(
+                "SELECT equipment_id FROM activity_equipment "
+                "WHERE activity_id = ?",
+                (activity_id,),
+            )
+        }
+    )
 
 
 def _list(args, parser: argparse.ArgumentParser) -> int:

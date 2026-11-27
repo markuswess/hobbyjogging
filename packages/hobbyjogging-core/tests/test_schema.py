@@ -392,30 +392,40 @@ class SchemaMigrationTests(unittest.TestCase):
             self.conn.execute("PRAGMA foreign_keys").fetchone()[0],
         )
 
-    def test_equipment_usage_view_aggregates_primary_links(self):
+    def test_equipment_usage_view_aggregates_every_link(self):
         migrate(self.conn)
         self.conn.execute(
             "INSERT INTO equipment (id, type, name, target_distance_m) "
             "VALUES ('shoe-1', 'shoe', 'Pegasus 40', 800000)"
         )
         self.conn.execute(
+            "INSERT INTO equipment (id, type, name) "
+            "VALUES ('trailer-1', 'other', 'Thule')"
+        )
+        self.conn.execute(
             "INSERT INTO activities (id, local_date, sport, distance_m, duration_s) "
             "VALUES ('a1', '2026-10-01', 'run', 10000, 3600)"
         )
-        self.conn.execute(
-            "INSERT INTO activity_equipment (activity_id, equipment_id) "
-            "VALUES ('a1', 'shoe-1')"
+        self.conn.executemany(
+            "INSERT INTO activity_equipment "
+            "(activity_id, equipment_id, role) VALUES (?, ?, ?)",
+            [
+                ("a1", "shoe-1", "primary"),
+                ("a1", "trailer-1", "secondary"),
+            ],
         )
 
-        usage = self.conn.execute(
-            "SELECT * FROM equipment_usage WHERE equipment_id = 'shoe-1'"
-        ).fetchone()
+        for equipment_id in ("shoe-1", "trailer-1"):
+            usage = self.conn.execute(
+                "SELECT * FROM equipment_usage WHERE equipment_id = ?",
+                (equipment_id,),
+            ).fetchone()
 
-        self.assertEqual(1, usage["activity_count"])
-        self.assertEqual(10000, usage["distance_m"])
-        self.assertEqual(3600, usage["duration_s"])
-        self.assertEqual("2026-10-01", usage["first_used_on"])
-        self.assertEqual("2026-10-01", usage["last_used_on"])
+            self.assertEqual(1, usage["activity_count"])
+            self.assertEqual(10000, usage["distance_m"])
+            self.assertEqual(3600, usage["duration_s"])
+            self.assertEqual("2026-10-01", usage["first_used_on"])
+            self.assertEqual("2026-10-01", usage["last_used_on"])
 
     def test_source_records_are_unique_per_source_type_and_external_id(self):
         migrate(self.conn)

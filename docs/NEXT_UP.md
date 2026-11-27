@@ -34,6 +34,21 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
     sheet values, clears the device-only rows and leaves other weather fields
     alone. A weather row without an ambient temperature renders no weather
     line, and the health coverage counts ambient temperature only.
+- **Brush gear block 66/69/70 (2026-11-27).**
+  - `equipment link <activity> <equipment> [--role primary|secondary]`
+    appends a manual secondary link without promoting the existing primary;
+    `equipment unlink` removes one link. Both resolve the activity by
+    id/date/`last`/name, log the equipment change and support `--dry-run`.
+  - `equipment_from_tags_current` resolves the mapped `Thule` /
+    `thule half half` tags to the Thule trailer, links it secondary when the
+    activity already has gear and primary only when it has none, and never
+    displaces a manual or existing link. It also notes unmapped gear-like
+    tags. On the real-DB copy: 122 tagged activities, 50 new links, 72
+    already present, then a no-op re-run.
+  - Schema 30 drops the `role = 'primary'` filter from `equipment_usage`, so
+    a secondary trailer contributes its sessions and km; Thule now shows 125
+    activities and its distance in the gear report. Primary-only gear is
+    unchanged.
 - **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
   `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
   the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
@@ -276,18 +291,19 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
 **21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
 **48** (field provenance), **57** (corrections export) and **22** (release
-0.3.0) are done, and the first brush bug block **67/68/75** is done. The CLI
-brush ran on 2026-11-27: every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is
-workable through the CLI, and the gaps it exposed are queued as **66–78**
-(handover below). Phase 3 closes when those land and the pass-9 close (overlay
-export, rebuild proof, baseline, tag 0.3.1) is recorded. The localhost browser
-moved to phase 4 (item 65).
+0.3.0) are done, the first brush bug block **67/68/75** is done, and the gear
+block **66/69/70** is done. The CLI brush ran on 2026-11-27: every pass in
+[DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and the gaps it
+exposed are queued as **71–78** (handover below). Phase 3 closes when those
+land and the pass-9 close (overlay export, rebuild proof, baseline, tag
+0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
-(done) → the CLI brush (run 2026-11-27). The brush follow-ups are **66–78**;
+(done) → the CLI brush (run 2026-11-27). The remaining brush follow-ups are
+**71–78**;
 the handover block below gives their grouping, dependencies and the manual
 work that stays with the athlete. The metric charts **62** and the pace/HR
 calibration follow-up **64** slot alongside.
@@ -300,8 +316,9 @@ takes these root items:
 
 1. **Bugs first (done)**: **67** duplicate start gate, **68** shoes on rides,
    **75** watch temperature.
-2. **Gear**: **66** secondary link, **69** Thule from tags, **70** usage counts
-   every link; 66 and 68 unblock the manual Bob/bike pass in **77**.
+2. **Gear (done)**: **66** secondary link, **69** Thule from tags, **70**
+   usage counts every link; 66 and 68 unblock the manual Bob/bike pass in
+   **77**.
 3. **Classification**: **72** drills first, then **71** (accept the 303 tag
    refinements, close the 246 noise items, and stop the task reopening them).
    The 11 tag-vs-sheet method differences are the only ones worth a human
@@ -545,49 +562,6 @@ reports item; 28 is the recurring cleanup.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
 
-66. **Secondary equipment link** (import + core; small, any time). `activity
-    edit --equipment` replaces the manual set and makes the first id primary,
-    so a trailer cannot be appended without promoting the bike to a manual
-    link. Add `equipment link <activity> <equipment> [--role secondary|primary]`
-    with `--note` and `--dry-run`, plus `equipment unlink <activity>
-    <equipment>`; a manual link wins, a secondary append leaves the primary
-    untouched, and the role is explicit. Resolve the activity by id, date,
-    `last` or name (item 60).
-    - **Acceptance**: Bob can be appended to a ride that already has Katy
-      primary; the primary is unchanged; a re-run is a no-op; an unknown
-      activity or equipment fails clearly; the link survives a reimport.
-
-69. **Equipment from tags** (core + maintenance; small). 124 activities carry
-    a `Thule` tag (121 `Thule`, 3 `thule half half`), but only 74 link the
-    Thule trailer; 43 have no equipment at all and 7 have only a shoe or bike.
-    The tag is the evidence that the trailer was used, on runs and rides.
-    - **Mapping**: tag → equipment, starting with `Thule` and
-      `thule half half` → the `Thule` trailer (resolved by normalized name),
-      code-level beside the tag lexicon until a second athlete needs it
-      data-driven.
-    - **Recompute** `equipment_from_tags_current`: for each activity carrying a
-      mapped tag, link the equipment as **secondary** when another item exists,
-      **primary** only when it is the only item; source `tag`, idempotent,
-      never displacing a manual or existing primary; skip excluded activities.
-    - **Audit**: list tags that look like gear but have no mapping, so a new
-      trailer or tag is visible.
-    - **Acceptance**: all 124 tagged activities link Thule; a shoe-primary run
-      gets Thule secondary; a no-equipment run gets Thule primary; a manual
-      link is untouched; a re-run is a no-op.
-
-70. **Equipment usage counts every link** (core; bug, small migration). The
-    `equipment_usage` view joins `activity_equipment` with `role='primary'`, so
-    secondary equipment shows zero usage: the Thule trailer has 75 secondary
-    links and Bob 21, both appear with no activities or km in the gear report.
-    - **Fix**: count every link per equipment (the role is identity, not
-      usage); replace the view in a migration (schema v30) and update the
-      tests and gear-report expectations.
-    - **Check**: the only secondary links today are trailers (`other`: Thule
-      75, Bob 21), so no shoe or bike usage changes; a future secondary shoe
-      would count too, which is correct for "times used".
-    - **Acceptance**: Thule and Bob show their activity counts and km; a
-      primary-only equipment is unchanged; `verify_canonical` is unaffected.
-
 71. **Resolve the evidence classification backlog** (maintenance + import;
     small, after the brush). The 549 open `workout_classification` items break
     down as 303 tag evidence refining a **classifier-stored** set (211 a
@@ -700,9 +674,9 @@ reports item; 28 is the recurring cleanup.
       ride stays empty; a rebuild reproduces the rows from the cache.
 
 77. **Manual bike assignment for rides without one** (import + maintenance;
-    small, after 66). 236 active rides have no bike link: 2013 3, 2019 23,
-    2020 61, 2021 11, 2022 15, 2023 53, 2024 60, 2025 5, 2026 5. Two carry
-    only the Lunge Fis shoe (item 68 removes it). The sheet ends 2021, the
+    small, ready now). 236 active rides have no bike link: 2013 3, 2019 23,
+    2020 61, 2021 11, 2022 15, 2023 53, 2024 60, 2025 5, 2026 5. Two carried
+    only the Lunge Fis shoe (item 68 removed it). The sheet ends 2021, the
     Strava gear field is empty for 2022–2023, and Runalyze has no 2023 links,
     so the usual bike is the athlete's knowledge, not a payload.
     - **Command**: `equipment assign <bike> --from <date> --to <date>

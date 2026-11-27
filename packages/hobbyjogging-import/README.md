@@ -897,6 +897,12 @@ ignore (`schlapp`). The audit's tag table lists every stored tag as mapped or
 `unmapped`; an unmapped tag is never guessed. Adding a meaning is one entry in
 `TAG_MEANINGS` plus a test. Unmapped place and person tags are expected.
 
+A separate `EQUIPMENT_TAGS` map turns a gear tag into an equipment name:
+`Thule` and `thule half half` resolve to the `Thule` trailer.
+`equipment_from_tags_current` links it as secondary when the activity already
+has gear and primary only when it has none; it notes gear-like tags that have
+no mapping.
+
 The lexicon feeds the evidence proposals:
 
 - `workout_sets_current` fills an **empty** run classification from a mapped
@@ -921,7 +927,8 @@ decided.
 
 ## Equipment
 
-`equipment add|list|edit|retire|history` is the manual gear surface:
+`equipment add|list|edit|retire|history|link|unlink` is the manual gear
+surface:
 
 ```bash
 uv run --env-file .env hobbyjogging-import equipment add "Pegasus 40" \
@@ -931,13 +938,18 @@ uv run --env-file .env hobbyjogging-import equipment edit "Pegasus 40" \
   --notes "retired from daily"
 uv run --env-file .env hobbyjogging-import equipment retire "Pegasus 40" \
   --on 2026-11-01
+uv run --env-file .env hobbyjogging-import equipment link last Bob \
+  --role secondary
+uv run --env-file .env hobbyjogging-import equipment unlink last Bob
 ```
 
 A manual row is an input (`is_manual=1`): a later sheet, Runalyze or Strava
 import may attach a source link but never rewrites its name, brand, model,
 dates, target or notes. Retire sets `retired_on`; nothing is deleted. Adding a
 normalized duplicate name prints the existing row and refuses to create a
-second one.
+second one. `link` appends a manual primary or secondary link without
+promoting the existing primary; `unlink` removes one link. Both resolve the
+activity by id/date/`last`/name and append an `edit_log` row.
 
 ## Selectors and edit history
 

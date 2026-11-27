@@ -207,7 +207,7 @@ SELECT
     MAX(a.local_date) AS last_used_on
 FROM equipment e
 LEFT JOIN activity_equipment ae
-    ON ae.equipment_id = e.id AND ae.role = 'primary'
+    ON ae.equipment_id = e.id
 LEFT JOIN activities a ON a.id = ae.activity_id
 GROUP BY e.id;
 """

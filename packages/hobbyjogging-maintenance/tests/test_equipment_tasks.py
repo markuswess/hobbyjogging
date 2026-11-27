@@ -141,5 +141,157 @@ class DropRideShoeLinksTests(unittest.TestCase):
         self.assertNotIn("ride2", self._rows())
 
 
+class EquipmentFromTagsTests(unittest.TestCase):
+
+    TASK = "equipment_from_tags_current"
+
+    def setUp(self):
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        migrate(self.conn)
+        self.writer = TrainingWriter(self.conn)
+        self.run_id = self.writer.start_import_run("test")
+        self.writer.upsert_equipment("thule", type="other", name="Thule")
+        self.writer.upsert_equipment("bob", type="other", name="Bob")
+        self.writer.upsert_equipment("shoe", type="shoe", name="Lunge Fis")
+        self.conn.commit()
+
+    def _activity(self, activity_id, *, sport="run", tags=(), excluded=False):
+        self.writer.upsert_activity(
+            activity_id,
+            {
+                "local_date": "2026-10-01",
+                "sport": sport,
+                "distance_m": 10000,
+                "duration_s": 3600,
+            },
+            source="fit",
+            source_record_id=None,
+        )
+        if tags:
+            self.writer.replace_activity_tags(
+                activity_id, list(tags), source="intervals"
+            )
+        if excluded:
+            self.writer.exclude_activity(activity_id)
+        self.conn.commit()
+
+    def _run(self, **kwargs):
+        return run_task(self.conn, get_task(self.TASK), **kwargs)
+
+    def _links(self, activity_id):
+        return [
+            tuple(row)
+            for row in self.conn.execute(
+                """
+                SELECT equipment_id, role, source
+                FROM activity_equipment
+                WHERE activity_id = ?
+                ORDER BY role, equipment_id
+                """,
+                (activity_id,),
+            )
+        ]
+
+    def test_a_no_gear_run_gets_thule_primary(self):
+        self._activity("run", tags=["Thule"])
+
+        result = self._run()
+
+        self.assertEqual(1, result.counts["tagged"])
+        self.assertEqual(1, result.counts["linked"])
+        self.assertEqual(
+            [("thule", "primary", "tag")],
+            self._links("run"),
+        )
+
+    def test_a_shoe_run_gets_thule_secondary(self):
+        self._activity("run", tags=["thule half half"])
+        self.writer.link_activity_equipment(
+            "run", "shoe", source="fit"
+        )
+        self.conn.commit()
+
+        self._run()
+
+        self.assertEqual(
+            [
+                ("shoe", "primary", "fit"),
+                ("thule", "secondary", "tag"),
+            ],
+            self._links("run"),
+        )
+
+    def test_a_manual_link_is_untouched(self):
+        self._activity("run", tags=["Thule"])
+        self.writer.link_activity_equipment(
+            "run", "bob", source="manual", is_manual=True
+        )
+        self.conn.commit()
+
+        self._run()
+
+        self.assertEqual(
+            [
+                ("bob", "primary", "manual"),
+                ("thule", "secondary", "tag"),
+            ],
+            self._links("run"),
+        )
+
+    def test_a_second_run_is_a_no_op(self):
+        self._activity("run", tags=["Thule"])
+        self._run()
+
+        result = self._run()
+
+        self.assertEqual(0, result.counts.get("linked", 0))
+        self.assertEqual(1, result.counts["already"])
+        self.assertEqual(
+            [("thule", "primary", "tag")],
+            self._links("run"),
+        )
+
+    def test_an_excluded_activity_is_skipped(self):
+        self._activity("gone", tags=["Thule"], excluded=True)
+
+        result = self._run()
+
+        self.assertEqual(0, result.counts.get("tagged", 0))
+        self.assertEqual([], self._links("gone"))
+
+    def test_missing_equipment_is_counted(self):
+        self.writer.connection.execute(
+            "DELETE FROM equipment WHERE id = 'thule'"
+        )
+        self.conn.commit()
+        self._activity("run", tags=["Thule"])
+
+        result = self._run()
+
+        self.assertEqual(1, result.counts["missing_equipment"])
+        self.assertEqual([], self._links("run"))
+
+    def test_an_ambiguous_name_is_not_guessed(self):
+        self.writer.upsert_equipment("thule-2", type="other", name="thule")
+        self.conn.commit()
+        self._activity("run", tags=["Thule"])
+
+        result = self._run()
+
+        self.assertEqual(1, result.counts["ambiguous_equipment"])
+        self.assertEqual([], self._links("run"))
+
+    def test_an_unmapped_gear_tag_is_noted(self):
+        self._activity("run", tags=["Thule 2"])
+
+        result = self._run()
+
+        self.assertEqual(0, result.counts.get("tagged", 0))
+        self.assertTrue(
+            any("thule 2" in note for note in result.notes)
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

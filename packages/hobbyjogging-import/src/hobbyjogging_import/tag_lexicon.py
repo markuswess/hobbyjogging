@@ -199,6 +199,7 @@ TAG_MEANINGS: dict[str, TagMeaning] = {
     "rucksack": _context("backpack"),
     "kinderwagen": _context("stroller"),
     "thule": _context("trailer"),
+    "thule half half": _context("trailer (half half)"),
     "supertrainers": _context("training shoes"),
     "supershoes": _context("racing shoes"),
     "barfußschuhe": _context("barefoot shoes"),
@@ -350,6 +351,39 @@ def meaning_label(tag: object) -> str:
     """Human label for the audit: the meaning or ``unmapped``."""
     meaning = lookup_tag(tag)
     return meaning.label if meaning is not None else "unmapped"
+
+
+# Tag -> equipment name, matched by normalized equipment name. Keep this
+# code-level while there is one athlete; a table is justified only when a
+# second athlete's tags must be mapped without a release.
+EQUIPMENT_TAGS: dict[str, str] = {
+    "thule": "Thule",
+    "thule half half": "Thule",
+}
+
+_GEAR_TAG_HINTS = ("thule", "anhänger", "anhanger", "trailer")
+
+
+def equipment_names_for(tags: Iterable[object]) -> list[str]:
+    """Return the mapped equipment names for a tag collection, sorted."""
+    names = {
+        EQUIPMENT_TAGS[token]
+        for tag in tags
+        if (token := normalize_tag(tag)) in EQUIPMENT_TAGS
+    }
+    return sorted(names)
+
+
+def unmapped_equipment_tags(tags: Iterable[object]) -> list[str]:
+    """Return gear-like tags that do not map to equipment yet."""
+    candidates = {
+        token
+        for tag in tags
+        if (token := normalize_tag(tag))
+        and token not in EQUIPMENT_TAGS
+        and any(hint in token for hint in _GEAR_TAG_HINTS)
+    }
+    return sorted(candidates)
 
 
 def meanings_for(tags: Iterable[object]) -> list[TagMeaning]:

@@ -1750,6 +1750,25 @@ class TrainingWriter:
         )
         return True
 
+    def remove_activity_equipment_link(
+        self,
+        activity_id: str,
+        equipment_id: str,
+        *,
+        role: str | None = None,
+    ) -> int:
+        """Remove one equipment link from an activity, in every role by default."""
+        clauses = ["activity_id = ?", "equipment_id = ?"]
+        params: list[object] = [activity_id, equipment_id]
+        if role is not None:
+            clauses.append("role = ?")
+            params.append(role)
+        cursor = self.connection.execute(
+            f"DELETE FROM activity_equipment WHERE {' AND '.join(clauses)}",
+            params,
+        )
+        return cursor.rowcount
+
     def unlink_activity_equipment(
         self,
         activity_id: str,

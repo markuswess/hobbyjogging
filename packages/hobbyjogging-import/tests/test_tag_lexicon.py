@@ -1,10 +1,12 @@
 import unittest
 
 from hobbyjogging_import.tag_lexicon import (
+    equipment_names_for,
     lookup_tag,
     meaning_label,
     normalize_tag,
     tags_with_kind,
+    unmapped_equipment_tags,
     workout_meanings,
 )
 
@@ -48,6 +50,19 @@ class TagLexiconTests(unittest.TestCase):
     def test_unmapped_tags_stay_unmapped(self):
         self.assertIsNone(lookup_tag("Wienerberg"))
         self.assertEqual("unmapped", meaning_label("Wienerberg"))
+
+    def test_equipment_tags_resolve_to_the_trailer(self):
+        self.assertEqual(
+            ["Thule"],
+            equipment_names_for(["Thule", "thule half half"]),
+        )
+        self.assertEqual([], equipment_names_for(["LT1"]))
+
+    def test_unmapped_gear_like_tags_are_listed(self):
+        self.assertEqual(
+            ["thule 2"],
+            unmapped_equipment_tags(["Thule", "Thule 2", "Wienerberg"]),
+        )
 
     def test_workout_meanings_and_kind_filters(self):
         tags = ["Longjog", "strides", "verkühlt", "Trail", "w"]
