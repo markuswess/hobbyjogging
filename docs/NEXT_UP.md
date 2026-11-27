@@ -571,6 +571,8 @@ reports item; 28 is the recurring cleanup.
     (`other`), 37 tag-vs-sheet and 192 comment evidence. Only the first group
     is a real improvement; the rest are noise because a comment or a generic
     tag cannot outrank a stored set.
+    - **Order**: after item 72 (the drills mapping), so the LTT evidence is
+      not resolved as threshold.
     - **Policy**: a specific tag refines a **classifier projection** (write
       `source='tag'`); a sheet or manual input wins over tag and comment
       evidence; a comment only fills an empty classification; `other` evidence
@@ -582,6 +584,28 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: open `workout_classification` is 0; only
       classifier-stored activities change; sheet/manual sets are untouched; a
       re-run is a no-op.
+
+72. **Drills method and running-technique tags** (core + import + maintenance;
+    small, before 71). The live tags `LTT` (28, 2021–2025) and `Lauftechnik`
+    (5) describe running drills, but `LTT` is currently mapped to
+    `continuous` + `threshold` in the tag lexicon, and there is no `drills`
+    method. `Lauf-ABC` is not in the data yet but belongs to the same family.
+    - **Vocabulary**: add `drills` to `WORKOUT_METHODS` beside `strides`; it is
+      not a quality method by itself (a drills-only session stays non-quality;
+      drills plus intervals stays intervals). Include the aliases `drill`,
+      `lauf-abc`, `lauf abc`, `lauftechnik` and fix `ltt`.
+    - **Additive**: drills (and strides) are additions to a session, never a
+      replacement. The evidence proposal unions them into the stored methods
+      and opens no conflict item for the additive method alone; a manual set is
+      left for the human.
+    - **Backfill** `drills_from_tags_v1`: add the method to the 33 tagged
+      activities with non-manual sets (28 LTT + 5 Lauftechnik; the one manual
+      set is skipped), source `tag`, idempotent; the LTT tag must no longer
+      propose threshold.
+    - **Acceptance**: the LTT/Lauftechnik runs carry `drills` plus their run
+      method, the category is unchanged (easy/interval), the reports show
+      `Drills`, a re-run is a no-op, and the 549 queue no longer contains a
+      threshold proposal from `LTT`.
 
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
