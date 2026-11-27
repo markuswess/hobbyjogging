@@ -56,6 +56,20 @@ Schema: **30**. Compatibility: requires schema ≥ 1, migrates to 30.
   projection opens one review item; a manual or sheet set never changes. On
   the copy the queue opened 11 material comment items and kept prior decisions.
 
+### Ambient weather
+
+- New keyless `open-meteo` source and `hobbyjogging-import weather
+  [--from|--to|--days] [--dry-run] [--refresh]` command. The start coordinate
+  comes from the FIT session (the archive is re-read for old payloads),
+  rounded to ~1 km and the UTC hour; one response is cached as an `open-meteo`
+  `weather` source record and serves every activity in that cell.
+- It writes temperature, feels-like, humidity, wind/gust/direction, pressure,
+  cloud cover, condition and the day/night flag. Open-Meteo owns the ambient
+  fields; the sheet and Intervals are the fallback, an indoor sport stays
+  empty, and a missing coordinate is a reported gap. A 2026 dry run on the
+  real-DB copy found 396 outdoor activities, 385 cells to fetch and 2 missing
+  coordinates.
+
 ### Gear
 
 - `equipment link <activity> <equipment> [--role primary|secondary]` appends a

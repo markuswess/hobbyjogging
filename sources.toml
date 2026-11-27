@@ -18,6 +18,7 @@
 # Capability keys:
 #   [sources.runalyze]  tags, gear, races, vo2max, workout_type, trimp
 #   [sources.garmin]    wellness
+#   [sources.open-meteo] enabled only (the `weather` command does the fetch)
 #
 # A capability switch selects a step; it never changes field precedence. The
 # four axes are capability (the source profile), selection (this file),
@@ -36,6 +37,9 @@ enabled = true
 [sources.garmin]
 enabled = true
 wellness = true
+
+[sources.open-meteo]
+enabled = true
 
 [sources.runalyze]
 create = "review"

@@ -248,9 +248,10 @@ Cross-package changes must leave all four suites green.
   is steps/min, ride cadence is rpm, FIT owns device-measured dynamics,
   Intervals owns altitude, and Runalyze fills the gaps. Per-second streams
   stay in the FIT archive, never in SQLite. `activity_weather.temp_c` is
-  ambient air (sheet first, Intervals `average_weather_temp` second); a watch
-  temperature stays in the raw payload and a row without ambient temperature
-  renders no weather line.
+  ambient air: Open-Meteo owns the ambient fields when fetched, with the sheet
+  (and Intervals `average_weather_temp`) as the fallback; a watch temperature
+  stays in the raw payload and a row without ambient temperature renders no
+  weather line.
 - `started_at_utc` is UTC, `tz_offset_min` is the recorded local offset and
   `local_date` the local day. Reports display local time; never label a UTC
   value as local.

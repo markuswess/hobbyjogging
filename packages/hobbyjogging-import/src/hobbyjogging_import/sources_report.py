@@ -62,7 +62,7 @@ def format_sources(config: SourcesConfig) -> str:
                 f"  capabilities={enabled} disabled={disabled}"
             )
         if not profile.yields_activities:
-            lines[-1] += "  (files only)"
+            lines[-1] += "  (no activity rows)"
     return "\n".join(lines)
 
 

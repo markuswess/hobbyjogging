@@ -744,6 +744,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_equipment_parser(subparsers)
 
+    weather = subparsers.add_parser(
+        "weather",
+        help="fetch historical ambient weather from Open-Meteo",
+    )
+    weather.add_argument("--days", type=int, default=30)
+    weather.add_argument("--from", dest="start", type=date_arg)
+    weather.add_argument("--to", dest="end", type=date_arg)
+    weather.add_argument("--database", type=Path)
+    weather.add_argument("--limit", type=int)
+    weather.add_argument("--dry-run", action="store_true")
+    weather.add_argument(
+        "--refresh",
+        action="store_true",
+        help="refetch a cached coordinate/hour instead of using the cache",
+    )
+
     review = subparsers.add_parser(
         "review",
         help="list and resolve import conflicts and quality review items",

@@ -55,6 +55,8 @@ class FitSession:
     elapsed_s: float
     duration_s: float
     distance_m: float
+    start_latitude: float | None = None
+    start_longitude: float | None = None
     moving_s: float | None = None
     avg_hr: float | None = None
     max_hr: float | None = None
@@ -119,6 +121,7 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
     laps: list[dict[str, Any]] = []
     vo2max_values: list[float] = []
     record_count = 0
+    first_record_position: tuple[float, float] | None = None
 
     with fitdecode.FitReader(str(file_path)) as fit:
         for frame in fit:
@@ -137,6 +140,11 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
                 laps.append(values)
             elif frame.name == "record":
                 record_count += 1
+                if first_record_position is None:
+                    first_record_position = _position(
+                        values.get("position_lat"),
+                        values.get("position_long"),
+                    )
             elif frame.global_mesg_num == VO2MAX_MESSAGE:
                 vo2max = _vo2max_from_message(values)
                 if vo2max is not None:
@@ -150,6 +158,7 @@ def parse_fit_file(path: str | Path) -> FitFileSummary:
         laps,
         vo2max_garmin=vo2max_values,
         record_count=record_count,
+        first_record_position=first_record_position,
     )
 
 
@@ -162,6 +171,7 @@ def summarize_fit_messages(
     *,
     vo2max_garmin: list[float] | None = None,
     record_count: int = 0,
+    first_record_position: tuple[float, float] | None = None,
 ) -> FitFileSummary:
     """Build normalized summaries from decoded FIT messages."""
     tz_offset = _tz_offset_min(activity)
@@ -199,6 +209,10 @@ def summarize_fit_messages(
         sub_sport = str(session.get("sub_sport") or "")
         canonical = canonical_sport(sport, sub_sport)
         profile_name = str(session.get("sport_profile_name") or "").strip()
+        position = _position(
+            session.get("start_position_lat"),
+            session.get("start_position_long"),
+        ) or first_record_position
 
         summary.sessions.append(
             FitSession(
@@ -206,6 +220,8 @@ def summarize_fit_messages(
                 start_time_utc=_iso_utc(start),
                 local_start=_local_start(start, tz_offset),
                 tz_offset_min=tz_offset,
+                start_latitude=position[0] if position else None,
+                start_longitude=position[1] if position else None,
                 sport=sport,
                 sub_sport=sub_sport,
                 canonical_sport=canonical,
@@ -543,6 +559,27 @@ def _number(value: object) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _position(
+    latitude: object,
+    longitude: object,
+) -> tuple[float, float] | None:
+    """Convert FIT semicircles to WGS84 degrees, rejecting 0/0 and junk."""
+    lat = _number(latitude)
+    lon = _number(longitude)
+    if lat is None or lon is None:
+        return None
+
+    lat_deg = lat * 180.0 / 2**31
+    lon_deg = lon * 180.0 / 2**31
+    if not -90.0 <= lat_deg <= 90.0:
+        return None
+    if not -180.0 <= lon_deg <= 180.0:
+        return None
+    if abs(lat_deg) < 1e-6 and abs(lon_deg) < 1e-6:
+        return None
+    return round(lat_deg, 6), round(lon_deg, 6)
 
 
 def _cadence(sport: str, value: object) -> float | None:

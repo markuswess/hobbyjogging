@@ -2938,6 +2938,60 @@ class TrainingWriter:
         )
         return True
 
+    def replace_activity_weather(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        source_record_id: int | None = None,
+        **fields: object,
+    ) -> bool:
+        """Replace the ambient weather fields from an authoritative source.
+
+        Open-Meteo owns ambient weather; it replaces a sheet or device row.
+        A reimport refreshes the same fields. Returns ``True`` when written.
+        """
+        unknown = set(fields) - set(self.WEATHER_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown weather fields: {sorted(unknown)}")
+
+        values = {
+            key: value
+            for key, value in fields.items()
+            if value is not None and value != ""
+        }
+        if not values:
+            return False
+
+        row = self.connection.execute(
+            "SELECT 1 FROM activity_weather WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            columns = ["activity_id", "source", "source_record_id", *values]
+            placeholders = ", ".join("?" for _ in columns)
+            self.connection.execute(
+                f"INSERT INTO activity_weather ({', '.join(columns)}) "
+                f"VALUES ({placeholders})",
+                (activity_id, source, source_record_id, *values.values()),
+            )
+            return True
+
+        assignments = ", ".join(f"{key} = ?" for key in values)
+        self.connection.execute(
+            f"UPDATE activity_weather SET {assignments}, "
+            "source = ?, source_record_id = ?, "
+            "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
+            (
+                *values.values(),
+                source,
+                source_record_id,
+                activity_id,
+            ),
+        )
+        return True
+
     def set_activity_ambient_temperature(
         self,
         activity_id: str,
@@ -2969,6 +3023,9 @@ class TrainingWriter:
                 (activity_id, source, source_record_id, temp_c),
             )
             return True
+
+        if row["source"] == "open-meteo" and source != "open-meteo":
+            return False
 
         if temp_c is None:
             if row["temp_c"] is None:

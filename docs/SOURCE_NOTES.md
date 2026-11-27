@@ -221,6 +221,25 @@ no API app, OAuth token or Strava subscription.
   1,000 per day. The summary list plus per-activity detail is the shape, and
   `suffer_score` must not be mapped to `training_load`.
 
+## Open-Meteo
+
+The keyless archive is the historical ambient-weather source.
+
+- The command is `hobbyjogging-import weather [--from DATE --to DATE]
+  [--days N] [--limit N] [--dry-run] [--refresh]`.
+- The start coordinate comes from the linked FIT session
+  (`start_position_lat/long` or the first GPS record); the FIT archive is
+  re-read for payloads written before the coordinate was stored. A missing
+  coordinate is reported, never guessed.
+- The coordinate is rounded to two decimals (~1 km) and the UTC start to the
+  hour. One response serves every activity in that cell and hour; it is stored
+  as `source_records(source='open-meteo', record_type='weather')`.
+- `temp_c`, feels-like, humidity, wind/gust/direction, pressure, cloud cover,
+  condition and the day/night flag are written to `activity_weather`.
+  Open-Meteo owns the ambient fields; a later sheet or Intervals import only
+  fills an empty row or keeps its value as the fallback.
+- An indoor sport is skipped even when its file carries a stale coordinate.
+
 ## Code references
 
 - `packages/hobbyjogging-import/src/hobbyjogging_import/fit.py` — FIT parsing

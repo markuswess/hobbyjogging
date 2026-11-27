@@ -20,7 +20,7 @@ localhost UI (phase 4, item 65) automates the same passes and adds no new ones.
 | 1 | duplicates | a sheet row mirrors a device row; keep the device row, copy the description, exclude the sheet row | duplicate items, `sheet_duplicates_v1` output, triage | the duplicate count is zero or the rest are accepted |
 | 2 | conflicts | advisory causes resolve in bulk; `duration_estimate`, `sport_vocabulary`, `hr_sensor_anomaly` need a per-activity decision | `review triage`, `review causes`, `review resolve --cause` | no open `field_conflict` |
 | 3 | classification | tag/comment/type suggestions where the evidence is clear; fix renamed or stale sets | evidence proposals, triage `(k)`, `activity edit` | the sampled sessions have a believable category |
-| 4 | coverage | per year: HR, pace zones, elevation, weather, gear, distance | health coverage table, audit | every gap is filled or deliberately accepted |
+| 4 | coverage | per year: HR, pace zones, elevation, weather, gear, distance | health coverage table, audit, `weather` | every gap is filled or deliberately accepted |
 | 5 | tags | map or retire the unmapped tags; the mapped ones already drive rules | tag lexicon audit | no needed tag is unmapped |
 | 6 | races and periods | official results, PBs, race methods, seasons, illness ranges | `races`, `race-result`, `period` | the race/PB pages and season bands are right |
 | 7 | gear | retire old shoes, fix names, link missing activities | `equipment add / edit / retire` | gear coverage is sane and nothing is unlinked |

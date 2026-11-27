@@ -886,6 +886,29 @@ the row's first source cannot undo a higher-authority value.
 Metrics: cadence 172, stride 1.29 m, VO 94 mm, GCT 239 ms (35 %), balance 48.2 %, VR 7.4 %, respiration 33.7, TE 3.7
 ```
 
+## Weather
+
+`hobbyjogging-import weather` fills the keyless historical ambient weather
+from Open-Meteo:
+
+```bash
+uv run --env-file .env hobbyjogging-import weather --from 2022-01-01 \
+  --to 2026-12-31
+uv run --env-file .env hobbyjogging-import weather --days 30 --dry-run
+```
+
+- The start coordinate comes from the linked FIT session; a payload written
+  before coordinates were stored is re-read from the FIT archive. A missing
+  coordinate is reported, never guessed.
+- The coordinate is rounded to two decimals (~1 km) and the UTC start to the
+  hour. One request serves every activity in that cell and hour and is stored
+  as an `open-meteo` `weather` source record, so a rebuild never needs the
+  network.
+- `--dry-run` makes no request and writes nothing; `--refresh` refetches a
+  cached cell/hour.
+- Open-Meteo owns the ambient fields; the sheet and Intervals ambient values
+  are the fallback, and an indoor activity stays empty.
+
 ## Tags and evidence
 
 `hobbyjogging_import.tag_lexicon` is the one table that turns a stored tag into

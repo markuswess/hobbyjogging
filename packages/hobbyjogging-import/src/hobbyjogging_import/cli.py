@@ -902,6 +902,11 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_activity(args, parser)
 
+    if args.command == "weather":
+        from .open_meteo import run_weather
+
+        return run_weather(args, parser)
+
     if args.command == "equipment":
         from .equipment_cli import run_equipment
 

@@ -63,6 +63,8 @@ The canonical database consolidates data that used to live in several places:
 - **Intervals.icu** — intervals, names, zones, and the planned calendar.
 - **Strava** — CSV bulk export: titles, social descriptions and gear; not used
   for training data. The API is optional and deferred.
+- **Open-Meteo** — keyless historical ambient weather by rounded coordinate
+  and UTC hour; the response is cached as a source record.
 
 Each source keeps its raw payload in `source_records`, so canonical values can
 always be re-derived or audited.
@@ -253,6 +255,9 @@ Source ingestion and the review queue.
 - `fit_import.py` — file discovery, matching, activity/lap persistence.
 - `garmin.py` — Garmin Personal API client: key → bearer token, activity list,
   original FIT download into the archive, fetch manifest.
+- `open_meteo.py` — keyless Open-Meteo archive client and ambient-weather
+  importer: one request per rounded coordinate cell and UTC hour, cached in
+  `source_records`; coordinates come from the FIT session start.
 - `client.py`, `intervals.py` — Intervals.icu API access and import, including
   the planned-event horizon.
 - `links.py` — Intervals/Garmin activity URL resolution for triage and
@@ -475,11 +480,12 @@ SQLite, forward-only migrations. Schema version 30.
   sums lap zone times; an Intervals config and its times win where present.
 - `activity_weather` (v13) — one row per activity: ambient temperature,
   feels-like, humidity, wind speed/degree/gust, wind chill, heat index,
-  pressure, UV, clouds, condition and a night flag, in metric units. The first
-  source owns the row; a later source only fills the fields it left empty.
-  `temp_c` is air temperature, never the watch reading; a device-only value
-  stays in the raw payload, and a row without ambient temperature renders no
-  weather line.
+  pressure, UV, clouds, condition and a night flag, in metric units.
+  Open-Meteo owns the ambient fields when fetched; the sheet (and Intervals
+  `average_weather_temp`) is the fallback, and a later source fills only an
+  empty field. `temp_c` is air temperature, never the watch reading; a
+  device-only value stays in the raw payload, and a row without ambient
+  temperature renders no weather line.
 - `activity_metrics` (v27/v28) — one nullable row per activity for session
   averages: cadence (steps/min for runs, rpm for rides), stride (m), vertical
   oscillation (mm), stance time (ms and %), stance balance (%), vertical ratio

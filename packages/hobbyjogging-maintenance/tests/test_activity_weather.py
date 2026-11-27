@@ -367,6 +367,21 @@ class ActivityWeatherWriterTests(unittest.TestCase):
             )
         )
 
+    def test_a_sheet_temperature_does_not_overwrite_open_meteo(self):
+        self.writer.replace_activity_weather(
+            "a1", source="open-meteo", temp_c=10.0
+        )
+
+        changed = self.writer.set_activity_ambient_temperature(
+            "a1", temp_c=8.0, source="sheet"
+        )
+
+        self.assertFalse(changed)
+        row = self.conn.execute(
+            "SELECT source, temp_c FROM activity_weather"
+        ).fetchone()
+        self.assertEqual(("open-meteo", 10.0), tuple(row))
+
     def test_an_empty_payload_writes_nothing(self):
         self.assertFalse(
             self.writer.upsert_activity_weather("a1", source="intervals")

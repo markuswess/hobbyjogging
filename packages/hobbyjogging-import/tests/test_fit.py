@@ -497,6 +497,8 @@ class FitSampleTests(unittest.TestCase):
         self.assertEqual("2020-09-09T09:39:48+02:00", session.local_start)
         self.assertEqual(11, len(session.laps))
         self.assertEqual(125, session.avg_hr)
+        self.assertAlmostEqual(48.185733, session.start_latitude, places=6)
+        self.assertAlmostEqual(16.36302, session.start_longitude, places=5)
         self.assertEqual(10624.38, session.distance_m)
 
 

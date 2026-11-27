@@ -298,6 +298,18 @@ SOURCES: dict[str, SourceProfile] = {
         request_budget="garmin",
         notes="Downloads FIT files and the daily wellness feed.",
     ),
+    "open-meteo": SourceProfile(
+        name="open-meteo",
+        label="Open-Meteo archive",
+        entities=frozenset({"weather"}),
+        yields_activities=False,
+        match="none",
+        request_budget="open_meteo",
+        notes=(
+            "Historical ambient weather by rounded coordinate and hour; "
+            "no key."
+        ),
+    ),
     "sheet": SourceProfile(
         name="sheet",
         label="Training sheet",
