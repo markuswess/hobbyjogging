@@ -719,6 +719,36 @@ reports item; 28 is the recurring cleanup.
     - **Acceptance**: a dry run lists the rides per period; only gaps change;
       `is_manual=1`; a re-run is a no-op; a trailer ride keeps Bob secondary.
 
+78. **Import the Leistungstests sheet** (core + import + maintenance; schema +
+    backfill, not small). The sheet importer supports only `Rohdaten`,
+    `Alternativtraining` and `Material`. The `Leistungstests` tab is unused and
+    holds 37 test/race blocks (2011–2021): 538 per-km splits, 143 with HR, and
+    18 blocks with a place/result comment ("Gesamt 5.", "Gesamt 173."). The
+    general comments already sit in `activities.description` from `Rohdaten`;
+    the new value is the pre-2019 race history, the places and the splits. 27
+    blocks match an activity by date/distance; 10 need a manual mapping (a test
+    inside a longer activity). The tab is uneven: 16 blocks have date cells, the
+    rest text dates, one relay block is a 5-row placeholder, and two blocks have
+    broken formulas (`#DIV/0!`, `/`, zero times).
+    - **Input**: store each block as a `sheet` source record
+      (`performance_test`) with the raw date, distance, target, comments and
+      splits, so the sheet stays an input and a rebuild reproduces it.
+    - **Race results**: for a race block, create or complete a `race_results`
+      row (source `sheet`, `officially_measured=0`), with the official
+      distance/time from the block, the place from "Gesamt N." and the result
+      comment as notes; never overwrite a Runalyze row. This fills 2011–2018,
+      where `race_results` is empty (the 37 rows start in 2019-04-07).
+    - **Splits**: project the per-km rows as laps with `source='sheet_test'`.
+      `activity_laps` is device-only and `replace_activity_laps` deletes all
+      rows, so make the lap write source-scoped (add `source`, migration) or
+      use a separate test-splits table; the session report already renders a
+      lap table.
+    - **Tests**: tag a non-race block `leistungstest` (context) so it stays out
+      of race stats; a block that matches no activity is reported, not guessed.
+    - **Acceptance**: 2011–2018 races and places appear; existing 2019+ race
+      results are unchanged; the splits show in the session report and total the
+      block time; broken blocks are skipped and listed; a re-run is a no-op.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
