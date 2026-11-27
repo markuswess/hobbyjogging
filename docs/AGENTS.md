@@ -211,9 +211,8 @@ Cross-package changes must leave all four suites green.
   Intervals already wrote, and never overwrites the first source. Sync treats a
   missing wellness feed as a warning.
 - Route identity is source-scoped: the sheet keys by `Streckennummer` (or the
-  name when there is no single number), a place tag creates
-  `runalyze:tag:<slug>`, and Runalyze's `recurring_route` id is a different
-  identity — they never merge automatically.
+  name when there is no single number), and Runalyze's `recurring_route` id is
+  a different identity — the two never merge automatically.
 - A linked race event gives its activity the `race` method under `race_link`;
   a non-excluded official `race_results` row is evidence too, and the method is
   dropped when neither remains. A manual link or a manual method set wins, and

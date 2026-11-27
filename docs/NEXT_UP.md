@@ -64,13 +64,7 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   - `workout_classification_evidence_v1` applied the policy once on the copy:
     276 tag refinements accepted, 273 items closed, 0 open
     `workout_classification` items, and a second run is a no-op.
-- **Brush tags/comments block 73/74 (2026-11-27).**
-  - Geographic tags now carry the `place` kind. `routes_from_place_tags_v1`
-    creates one source-scoped route per canonical place
-    (`runalyze:tag:<slug>`) and links it with `source='tag'`; aliases
-    (`kanal`/`donaukanal`, `Wienerberg`/`Wienerbergteich`) merge, and an
-    existing manual or sheet route wins. On the real-DB copy: 387 tagged
-    activities, 439 links, 28 routes, and the session report shows the place.
+- **Brush comment evidence 74 (2026-11-27).**
   - `description_proposal` ignores recap/PB sentences, negated or alternative
     clauses, race-as-a-verb and false compounds; Wechseltempo/Fahrtspiel is
     fartlek, a structured interval with a target is intervals, and a real
@@ -323,18 +317,19 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **48** (field provenance), **57** (corrections export) and **22** (release
 0.3.0) are done, the first brush bug block **67/68/75** is done, the gear
 block **66/69/70** is done, the classification block **71/72** is done, and
-the tags/comments block **73/74** is done. The CLI brush ran on 2026-11-27:
-every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and
-the gaps it exposed are queued as **76–78** (handover below). Phase 3 closes
-when those land and the pass-9 close (overlay export, rebuild proof, baseline,
-tag 0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
+comment evidence **74** is done; place tags **73** are back in planning. The
+CLI brush ran on 2026-11-27: every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is
+workable through the CLI, and the gaps it exposed are queued as **73, 76–78**
+(handover below). Phase 3 closes when those land and the pass-9 close (overlay
+export, rebuild proof, baseline, tag 0.3.1) is recorded. The localhost browser
+moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
 write surface (done) → **38/35** (session metrics, done; charts are item 62) →
 **21** sheet leftovers (done) → **43** tag lexicon (done) → **42** duplicates
 (done) → the CLI brush (run 2026-11-27). The remaining brush follow-ups are
-**76–78**;
+**73, 76–78**;
 the handover block below gives their grouping, dependencies and the manual
 work that stays with the athlete. The metric charts **62** and the pace/HR
 calibration follow-up **64** slot alongside.
@@ -353,8 +348,8 @@ takes these root items:
 3. **Classification (done)**: **72** drills first, then **71** (accept the
    tag-specific refinements, close the rest by policy, and stop the task
    reopening them).
-4. **Tags and comments (done)**: **73** place tags → routes, then **74**
-   Strava comment evidence.
+4. **Tags and comments**: **73** place tags → routes (needs a plan first),
+   then **74** Strava comment evidence (done).
 5. **Sources**: **76** ambient weather, **78** Leistungstests (schema +
    backfill; the largest item, last).
 
@@ -591,6 +586,30 @@ reports item; 28 is the recurring cleanup.
       the CLI and the browser agree on the numbers.
     - **Not first**: a generic activity form, charts, planning, or write-back
       to platforms.
+
+73. **Place tags become routes** (core + import + maintenance; needs a plan).
+    393 active activities (2021–2026) carry one of 30 geographic tags —
+    `Wienerberg` 44, `kanal` 43, `hauptallee` 34, `Arsenal` 30, `Prater` 27,
+    `donaukanal` 27, … — and **none links a route**; `activity_routes` is
+    sheet-only and stops in 2019 (384 links, 36 routes). Runalyze
+    `recurring_route` is not a substitute: 2,777 payloads carry 2,504
+    mostly-singleton ids.
+    - **Why it is back in planning**: a tag can name a *place*, a *route*, a
+      *surface* or an *event*; `kanal`/`donaukanal` and
+      `Wienerberg`/`Wienerbergteich` may or may not be the same loop. Decide
+      the identity (place vs route), who curates aliases, whether a route may
+      have several places, and whether a tag route may coexist with a sheet or
+      manual route before building the backfill.
+    - **Kind**: add `place` to the tag lexicon for the geographic tags; the
+      remaining unmapped tags (people, errands, events) stay unmapped.
+    - **Identity**: a tag-derived route is source-scoped
+      (`runalyze:tag:<slug>`) and never merges with a sheet route; normalize
+      only the aliases that are explicitly accepted, in one small map beside
+      the lexicon.
+    - **Backfill** `routes_from_place_tags_v1`: create the route and link the
+      activity with `source='tag'`, idempotent; a manual route link wins.
+    - **Acceptance**: modern route coverage is non-zero and the session report
+      shows the place; the sheet routes are untouched; a re-run is a no-op.
 
 76. **Ambient weather from a historical source** (new source; phase queue,
     after the ambient-temperature fix). Today only 2011–2021 has an ambient
