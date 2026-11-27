@@ -444,7 +444,11 @@ class IntervalsImporter:
             activity_id,
             source=SOURCE,
             source_record_id=source_record_id,
-            temp_c=_float(raw.get("average_temp")),
+            temp_c=(
+                _float(raw.get("average_weather_temp"))
+                if raw.get("has_weather")
+                else None
+            ),
         )
         self.writer.upsert_activity_metrics(
             activity_id,

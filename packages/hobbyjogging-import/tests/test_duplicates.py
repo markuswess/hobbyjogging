@@ -42,14 +42,40 @@ class DuplicateRuleTests(unittest.TestCase):
         self.assertEqual(("a", "b"), pair.ids)
         self.assertEqual(0.0, pair.distance_delta_m)
 
-    def test_a_start_difference_is_recorded_but_not_a_gate(self):
+    def test_a_start_difference_beyond_fifteen_minutes_is_not_a_pair(self):
         pair = same_session(
             activity("a", start="2026-10-01T08:00:00Z"),
-            activity("b", start="2026-10-01T10:00:00Z"),
+            activity("b", start="2026-10-01T08:16:00Z"),
+        )
+
+        self.assertIsNone(pair)
+
+    def test_a_start_difference_within_fifteen_minutes_is_a_pair(self):
+        pair = same_session(
+            activity("a", start="2026-10-01T08:00:00Z"),
+            activity("b", start="2026-10-01T08:15:00Z"),
         )
 
         self.assertIsNotNone(pair)
-        self.assertEqual(7200.0, pair.start_delta_s)
+        self.assertEqual(900.0, pair.start_delta_s)
+
+    def test_a_missing_start_keeps_the_same_day_fallback(self):
+        pair = same_session(
+            activity("a", start="2026-10-01T08:00:00Z"),
+            activity("b", start=""),
+        )
+
+        self.assertIsNotNone(pair)
+        self.assertIsNone(pair.start_delta_s)
+
+    def test_two_missing_starts_still_pair(self):
+        pair = same_session(
+            activity("a", start=""),
+            activity("b", start=""),
+        )
+
+        self.assertIsNotNone(pair)
+        self.assertIsNone(pair.start_delta_s)
 
     def test_sport_day_distance_duration_and_hr_must_agree(self):
         base = activity("a", hr=150)
@@ -82,6 +108,27 @@ class DuplicateRuleTests(unittest.TestCase):
 
         self.assertEqual(1, len(pairs))
         self.assertEqual(("a", "b"), pairs[0].ids)
+
+    def test_find_duplicates_skips_a_far_apart_same_day_pair(self):
+        pairs = find_duplicates(
+            [
+                activity("morning", start="2026-10-01T06:00:00Z"),
+                activity("evening", start="2026-10-01T18:00:00Z"),
+            ]
+        )
+
+        self.assertEqual([], pairs)
+
+    def test_find_duplicates_keeps_a_sheet_row_without_a_start(self):
+        pairs = find_duplicates(
+            [
+                activity("device", start="2026-10-01T08:00:00Z"),
+                activity("sheet", start=""),
+            ]
+        )
+
+        self.assertEqual(1, len(pairs))
+        self.assertEqual(("device", "sheet"), pairs[0].ids)
 
     def test_preferred_activity_is_the_sheet_only_copy(self):
         pair = same_session(activity("device"), activity("sheet"))

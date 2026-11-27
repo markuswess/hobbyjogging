@@ -95,7 +95,10 @@ def health_report(
         {
             activity.id
             for activity in activities
-            if source.activity_weather(activity.id) is not None
+            if (
+                (weather := source.activity_weather(activity.id)) is not None
+                and weather.temp_c is not None
+            )
         },
     )
     review_items = source.review_items(status="open")

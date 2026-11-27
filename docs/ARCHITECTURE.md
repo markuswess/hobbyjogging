@@ -274,8 +274,10 @@ Source ingestion and the review queue.
   ignored notes. The audit, classification, illness and trail proposals read
   it; an unmapped tag stays unmapped and no rule invents a meaning.
 - `duplicates.py` — the same-session pair rule (sport/day, distance 2 %,
-  duration 5 %, HR 5 bpm) and the stable choice of the weaker copy. Detection
-  opens a review item; resolution is exclusion, never merge.
+  duration 5 %, HR 5 bpm, start within ±15 min when both carry one) and the
+  stable choice of the weaker copy. A missing start on one side keeps the
+  same-day fallback. Detection opens a review item; resolution is exclusion,
+  never merge.
 - `editing.py` — shared manual-edit application used by `review edit`,
   `activity edit` and triage: scalar values, whole sets, clears, conflict and
   classification closure, the `edit_log` row and the quality re-check.
@@ -347,7 +349,11 @@ changes.
 - `workouts.py` — classifier, sheet, Runalyze-type, tag and comment proposals
   shared by the classification tasks.
 - `backfills/activity_weather_v1.py` — `activity_weather` from the stored
-  payloads.
+  payloads; `backfills/weather_ambient_v1.py` then keeps only ambient
+  temperature (sheet first, Intervals `average_weather_temp` second) and
+  clears the device-only rows.
+- `backfills/drop_ride_shoe_links_v1.py` — remove the sheet's source shoe
+  links from rides, keeping manual links and every other sport.
 - `backfills/activity_metrics_v1.py` — `activity_metrics` from the stored
   payloads and the FIT archive (the archive is re-read for the old FIT rows).
 - `backfills/sheet_duplicates_v1.py` — copy a sheet-only duplicate's
@@ -455,10 +461,13 @@ SQLite, forward-only migrations. Schema version 29.
   thing across years. A local config derives from the manual threshold
   snapshot (80/89/100/110 % of LTHR, 75/85/100/110 % of threshold speed) and
   sums lap zone times; an Intervals config and its times win where present.
-- `activity_weather` (v13) — one row per activity: temperature, feels-like,
-  humidity, wind speed/degree/gust, wind chill, heat index, pressure, UV,
-  clouds, condition and a night flag, in metric units. The first source owns
-  the row; a later source only fills the fields it left empty.
+- `activity_weather` (v13) — one row per activity: ambient temperature,
+  feels-like, humidity, wind speed/degree/gust, wind chill, heat index,
+  pressure, UV, clouds, condition and a night flag, in metric units. The first
+  source owns the row; a later source only fills the fields it left empty.
+  `temp_c` is air temperature, never the watch reading; a device-only value
+  stays in the raw payload, and a row without ambient temperature renders no
+  weather line.
 - `activity_metrics` (v27/v28) — one nullable row per activity for session
   averages: cadence (steps/min for runs, rpm for rides), stride (m), vertical
   oscillation (mm), stance time (ms and %), stance balance (%), vertical ratio

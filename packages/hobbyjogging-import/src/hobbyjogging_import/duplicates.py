@@ -2,9 +2,9 @@
 
 The pairwise rule is dataset-wide and source-independent: the same sport on
 the same local day, distance within 2 %, duration within 5 % and average HR
-within 5 bpm when both carry it. The start time is recorded but is not a gate:
-the historical sheet's minute-precision start is often approximate and can
-differ by hours even when the distance and duration match exactly.
+within 5 bpm when both carry it. When both rows carry a start time it must be
+within 15 minutes; a missing start on one side (a historical sheet row) keeps
+the same-day fallback, because there is no precise time to compare.
 
 A pair is a review candidate, never a merge. The sheet-specific cleanup task
 uses the same rule to remove a sheet-only row after keeping its text on the
@@ -21,6 +21,7 @@ from hobbyjogging_core.model import Activity
 DISTANCE_TOLERANCE = 0.02
 DURATION_TOLERANCE = 0.05
 HR_TOLERANCE = 5.0
+START_TOLERANCE_S = 15 * 60
 
 
 @dataclass(frozen=True)
@@ -108,10 +109,14 @@ def same_session(first: Activity, second: Activity) -> DuplicatePair | None:
         if hr_delta > HR_TOLERANCE:
             return None
 
+    start_delta = _start_delta(first, second)
+    if start_delta is not None and start_delta > START_TOLERANCE_S:
+        return None
+
     return DuplicatePair(
         first=first,
         second=second,
-        start_delta_s=_start_delta(first, second),
+        start_delta_s=start_delta,
         distance_delta_m=distance_delta,
         duration_delta_s=duration_delta,
         hr_delta=hr_delta,

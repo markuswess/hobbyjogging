@@ -57,9 +57,10 @@ Pages:
 - `analysis.html` — the weekly volume, weekly time-by-pace-zone, and load/RPE
   charts, plus the pace-vs-heart-rate scatter with its two regression halves
   and two dashed efficiency lines, over the last two years
-  (`--analysis-days`, default 731). Runs with stored weather carry the
+  (`--analysis-days`, default 731). Runs with stored ambient weather carry the
   temperature and wind in their hover and the chart notes how many runs have
-  it and the range those cover. The next 42 days are drawn as well: planned
+  it and the range those cover. A row without an ambient temperature is not
+  drawn, so the watch reading never becomes a weather point. The next 42 days are drawn as well: planned
   weeks as faded, hatched bars in the running-volume colour (stacked on the
   current week's actual bar), planned zone bars in the same faded zone colours
   as the actuals in both the time and share panels (the current week's plan
@@ -157,9 +158,9 @@ Pages:
 - `health.html` (Data Health) — the open review queue (severity, category,
   detail, the item's activity or candidate activities as links, reported
   date), the activities hidden by review, missing-data counts, and a per-year
-  data-coverage table (activities and how many carry stored weather or a
-  session max HR). Review candidates outside the recent list get an activity
-  page too, so the links never dangle. The tab's counts cover **all
+  data-coverage table (activities and how many carry stored ambient weather
+  or a session max HR). Review candidates outside the recent list get an
+  activity page too, so the links never dangle. The tab's counts cover **all
   history**, while the banner on every other page uses the short dashboard
   window.
 
@@ -362,8 +363,8 @@ stay compact (`1h02`).
 - **health** — The Data Health tab's numbers as Markdown: activity count,
   open review items, hidden/flagged activities, missing load/pace and HR
   zones/HR/distance, the review queue (with candidate names when the item has
-  no activity) and per-year weather and max-HR coverage. Covers all history,
-  like the tab.
+  no activity) and per-year ambient-weather and max-HR coverage. Covers all
+  history, like the tab.
 - **recovery-report** — HRV, resting HR, and sleep with simple 7/42/182-day
   moving averages ending today, plus the robust 365-day baseline used by the
   recovery chart bands, and the last four nights' values in the same layout

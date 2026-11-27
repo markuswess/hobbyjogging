@@ -1750,6 +1750,34 @@ class TrainingWriter:
         )
         return True
 
+    def unlink_activity_equipment(
+        self,
+        activity_id: str,
+        *,
+        source: str,
+        equipment_type: str | None = None,
+    ) -> int:
+        """Remove non-manual equipment links written by one source.
+
+        A manual link always survives. ``equipment_type`` limits the removal
+        to one kind (for example, shoes on a ride). Returns the row count.
+        """
+        clauses = ["activity_id = ?", "source = ?", "is_manual = 0"]
+        params: list[object] = [activity_id, source]
+
+        if equipment_type is not None:
+            clauses.append(
+                "equipment_id IN "
+                "(SELECT id FROM equipment WHERE type = ?)"
+            )
+            params.append(equipment_type)
+
+        cursor = self.connection.execute(
+            f"DELETE FROM activity_equipment WHERE {' AND '.join(clauses)}",
+            params,
+        )
+        return cursor.rowcount
+
     def set_manual_activity_equipment(
         self,
         activity_id: str,
@@ -2888,6 +2916,76 @@ class TrainingWriter:
             f"UPDATE activity_weather SET {assignments}, "
             "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
             (*values.values(), activity_id),
+        )
+        return True
+
+    def set_activity_ambient_temperature(
+        self,
+        activity_id: str,
+        *,
+        temp_c: float | None,
+        source: str,
+        source_record_id: int | None = None,
+    ) -> bool:
+        """Set or clear the ambient temperature, leaving other fields alone.
+
+        ``temp_c`` is air temperature, never a device reading. A cleared row
+        whose other weather fields are all empty is removed. Returns ``True``
+        when anything changed.
+        """
+        row = self.connection.execute(
+            "SELECT * FROM activity_weather WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+
+        if row is None:
+            if temp_c is None:
+                return False
+            self.connection.execute(
+                """
+                INSERT INTO activity_weather (
+                    activity_id, source, source_record_id, temp_c
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (activity_id, source, source_record_id, temp_c),
+            )
+            return True
+
+        if temp_c is None:
+            if row["temp_c"] is None:
+                return False
+            self.connection.execute(
+                "UPDATE activity_weather SET temp_c = NULL, "
+                "updated_at = CURRENT_TIMESTAMP WHERE activity_id = ?",
+                (activity_id,),
+            )
+            others = [
+                field
+                for field in self.WEATHER_FIELDS
+                if field != "temp_c" and row[field] not in (None, "")
+            ]
+            if not others:
+                self.connection.execute(
+                    "DELETE FROM activity_weather WHERE activity_id = ?",
+                    (activity_id,),
+                )
+            return True
+
+        if (
+            row["temp_c"] == temp_c
+            and row["source"] == source
+            and row["source_record_id"] == source_record_id
+        ):
+            return False
+
+        self.connection.execute(
+            """
+            UPDATE activity_weather
+            SET temp_c = ?, source = ?, source_record_id = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE activity_id = ?
+            """,
+            (temp_c, source, source_record_id, activity_id),
         )
         return True
 

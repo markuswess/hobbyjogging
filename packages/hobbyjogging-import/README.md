@@ -137,7 +137,8 @@ ISO-duration times, booleans, strings, cached formula results).
 | `d. Hf` | `avg_hr` |
 | `Beschreibung` | `description` |
 | `Trainigstyp`, `Trainingsgebiet` | `activity_tags` (source `sheet`) |
-| `Schuhe` | equipment link (Material id or name) |
+| `Temperatur in °C` | `activity_weather.temp_c` (ambient, source `sheet`) |
+| `Schuhe` | equipment link (Material id or name; skipped on rides) |
 
 `Startzeit` is minute-precision. It is used to match an existing FIT/Intervals
 activity temporally; a matched activity keeps its second-precision start time,
@@ -162,7 +163,9 @@ Upserts equipment keyed by the sheet id (`sheet:equipment:<id>`), parses
 mileage, and remarks in `equipment.notes`. These stay provenance text rather
 than typed columns: no report or rule consumes them, and the canonical
 mileage is derived from linked activities; the sheet's `gesamt km` is only a
-legacy total. Usage is derived from linked activities.
+legacy total. Usage is derived from linked activities. A `Schuhe` value on a
+ride is ignored: shoes are running/walking gear, and the ride's stored sport
+decides even when the sheet row itself says run.
 
 Activity ids are stable: date + start time + route, with a content-hash suffix
 for duplicate keys. Reimports update the same source records and follow the

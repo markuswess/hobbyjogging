@@ -360,7 +360,10 @@ def build_dashboard(
         {
             activity.id
             for activity in coverage_activities
-            if source.activity_weather(activity.id) is not None
+            if (
+                (weather := source.activity_weather(activity.id)) is not None
+                and weather.temp_c is not None
+            )
         },
     )
     # The health tab reports data completeness over all history; the banner

@@ -642,8 +642,8 @@ def health_page(
                 ],
                 numeric=(1, 2, 3,),
             )
-            + '<p class="muted">Activities with stored weather or a session '
-            "max HR, by year.</p>",
+            + '<p class="muted">Activities with stored ambient weather or a '
+            "session max HR, by year.</p>",
         )
 
     body = (

@@ -463,6 +463,74 @@ class RohdatenImportTests(SheetImportTestCase):
         )
         self.assertEqual(0, second.review_recorded)
 
+    def test_a_sheet_temperature_replaces_a_device_temperature(self):
+        self._seed_fit_activity()
+        self.writer.upsert_activity_weather(
+            "fit-uuid", source="intervals", temp_c=25.0
+        )
+        self.connection.commit()
+        self._write(
+            [
+                (
+                    "Rohdaten",
+                    _rohdaten_rows(
+                        [
+                            {
+                                "Datum": date(2019, 1, 23),
+                                "Startzeit": timedelta(hours=17),
+                                "Distanz in m": 14500.0,
+                                "Zeit": timedelta(minutes=65),
+                                "Temperatur in °C": 8.0,
+                            }
+                        ]
+                    ),
+                )
+            ]
+        )
+
+        self.importer.import_sheet(self.path, "Rohdaten")
+
+        row = self.connection.execute(
+            "SELECT temp_c, source FROM activity_weather"
+        ).fetchone()
+        self.assertEqual((8.0, "sheet"), tuple(row))
+
+    def test_a_sheet_shoe_is_not_linked_to_a_ride(self):
+        self._seed_fit_activity(sport="ride")
+        self._write(
+            [
+                ("Material", MATERIAL_ROWS),
+                (
+                    "Rohdaten",
+                    _rohdaten_rows(
+                        [
+                            {
+                                "Datum": date(2019, 1, 23),
+                                "Startzeit": timedelta(hours=17),
+                                "Distanz in m": 14500.0,
+                                "Zeit": timedelta(minutes=65),
+                                "d. Hf": 142.0,
+                                "Schuhe": 7.0,
+                            }
+                        ]
+                    ),
+                ),
+            ]
+        )
+
+        self.importer.import_sheet(self.path, "Material")
+        summary = self.importer.import_sheet(self.path, "Rohdaten")
+
+        self.assertEqual(1, summary.activities_matched)
+        self.assertEqual(0, summary.equipment_linked)
+        self.assertEqual(
+            0,
+            self.connection.execute(
+                "SELECT COUNT(*) FROM activity_equipment"
+            ).fetchone()[0],
+        )
+        self.assertEqual("ride", self._activities()[0]["sport"])
+
     def test_missing_equipment_is_reported(self):
         self._write(
             [

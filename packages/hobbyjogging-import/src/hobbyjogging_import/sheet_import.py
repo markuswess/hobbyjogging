@@ -22,6 +22,7 @@ from pathlib import Path
 
 from hobbyjogging_core import TrainingWriter
 from hobbyjogging_core.import_rules import CONFLICT_FIELDS
+from hobbyjogging_core.sports import RIDE_SPORTS
 
 from .matching import ActivityMatcher, MatchCandidate, linked_activity
 from .metrics import derive_metrics
@@ -409,12 +410,14 @@ class SheetImporter:
                     - {conflict.field_name for conflict in conflicts}
                 ),
             )
-            self.writer.upsert_activity_weather(
-                activity_id,
-                source=SOURCE,
-                source_record_id=source_record_id,
-                temp_c=as_float(record.get("Temperatur in °C")),
-            )
+            sheet_temp = as_float(record.get("Temperatur in °C"))
+            if sheet_temp is not None:
+                self.writer.set_activity_ambient_temperature(
+                    activity_id,
+                    temp_c=sheet_temp,
+                    source=SOURCE,
+                    source_record_id=source_record_id,
+                )
             self.writer.upsert_activity_metrics(
                 activity_id,
                 source=SOURCE,
@@ -477,16 +480,22 @@ class SheetImporter:
                 tz_offset_min=values.get("tz_offset_min"),
             )
             if shoe is not None:
-                equipment = self._resolve_equipment(shoe)
-                if equipment is None:
-                    summary.equipment_missing += 1
-                elif self.writer.link_activity_equipment(
-                    activity_id,
-                    equipment,
-                    source=SOURCE,
-                    source_record_id=source_record_id,
-                ):
-                    summary.equipment_linked += 1
+                stored = self.connection.execute(
+                    "SELECT sport FROM activities WHERE id = ?",
+                    (activity_id,),
+                ).fetchone()
+                # A shoe row on a ride is a historical sheet mistake.
+                if stored is None or stored["sport"] not in RIDE_SPORTS:
+                    equipment = self._resolve_equipment(shoe)
+                    if equipment is None:
+                        summary.equipment_missing += 1
+                    elif self.writer.link_activity_equipment(
+                        activity_id,
+                        equipment,
+                        source=SOURCE,
+                        source_record_id=source_record_id,
+                    ):
+                        summary.equipment_linked += 1
 
     def _resolve_activity(
         self,

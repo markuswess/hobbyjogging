@@ -32,10 +32,10 @@ def yearly_coverage(
 ) -> list[YearCoverage]:
     """Coverage per calendar year, newest first.
 
-    ``weather_ids`` is the set of activities with a stored weather row; the
-    caller owns the lookup, because only it knows whether an extra query is
-    affordable. Max HR is stored on the activity itself, so it is counted
-    here.
+    ``weather_ids`` is the set of activities with a stored ambient
+    temperature; the caller owns the lookup, because only it knows whether an
+    extra query is affordable. Max HR is stored on the activity itself, so it
+    is counted here.
     """
     totals: dict[int, list[int]] = {}
 

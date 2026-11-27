@@ -147,8 +147,10 @@ Cross-package changes must leave all four suites green.
 - Imports write; reports read only (`DataSource` + canonical model).
 - "Delete" means durable soft delete via `excluded_at`, never a hard delete.
 - Duplicate detection is review-only; resolution is exclusion, never a merge.
-  The sheet-pair cleanup copies the sheet text to the device row before
-  excluding the sheet row.
+  A pair needs a same-day start within ±15 min when both rows carry one; a
+  missing start on one side keeps the same-day fallback. The sheet-pair
+  cleanup copies the sheet text to the device row before excluding the sheet
+  row.
 - A hand-created or hand-edited equipment row is `is_manual=1`; a later sheet,
   Runalyze or Strava import links to it but never rewrites its fields. Retire
   sets `retired_on`; nothing is hard-deleted.
@@ -236,7 +238,10 @@ Cross-package changes must leave all four suites green.
 - Session averages live in `activity_metrics` (one nullable row); run cadence
   is steps/min, ride cadence is rpm, FIT owns device-measured dynamics,
   Intervals owns altitude, and Runalyze fills the gaps. Per-second streams
-  stay in the FIT archive, never in SQLite.
+  stay in the FIT archive, never in SQLite. `activity_weather.temp_c` is
+  ambient air (sheet first, Intervals `average_weather_temp` second); a watch
+  temperature stays in the raw payload and a row without ambient temperature
+  renders no weather line.
 - `started_at_utc` is UTC, `tz_offset_min` is the recorded local offset and
   `local_date` the local day. Reports display local time; never label a UTC
   value as local.

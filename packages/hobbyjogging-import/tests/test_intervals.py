@@ -1176,6 +1176,43 @@ class EventSyncTests(unittest.TestCase):
         self.assertEqual(2000, event.duration_s)
         self.assertEqual(55, event.training_load)
 
+    def test_a_device_temperature_is_not_stored(self):
+        self.client.activity_payloads[0].update(
+            {"average_temp": 25.0, "has_weather": False}
+        )
+
+        self.importer.import_range(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+            include_intervals=False,
+        )
+
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT temp_c FROM activity_weather"
+            ).fetchone()
+        )
+
+    def test_ambient_intervals_weather_is_stored(self):
+        self.client.activity_payloads[0].update(
+            {
+                "average_temp": 25.0,
+                "average_weather_temp": 12.0,
+                "has_weather": True,
+            }
+        )
+
+        self.importer.import_range(
+            date(2026, 10, 1),
+            date(2026, 10, 2),
+            include_intervals=False,
+        )
+
+        row = self.conn.execute(
+            "SELECT temp_c, source FROM activity_weather"
+        ).fetchone()
+        self.assertEqual((12.0, "intervals"), tuple(row))
+
 
 class IntervalsCliTests(unittest.TestCase):
 

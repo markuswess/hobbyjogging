@@ -751,22 +751,20 @@ def format_interval_table(intervals: list[Interval]):
 def format_weather(weather: ActivityWeather | None) -> str:
     """One line of conditions: ``12 °C, wind 3 m/s``.
 
-    Temperature is the anchor; feels-like appears only when it differs by
-    3 °C or more, and missing pieces are simply left out.
+    ``temp_c`` is ambient air, never the device reading. Without it there is
+    no weather line at all: wind or condition alone is not a temperature and
+    must not keep a watch value on the session.
     """
-    if weather is None:
+    if weather is None or weather.temp_c is None:
         return ""
 
-    parts = []
+    parts = [f"{weather.temp_c:.0f} °C"]
 
-    if weather.temp_c is not None:
-        parts.append(f"{weather.temp_c:.0f} °C")
-
-        if (
-            weather.feels_like_c is not None
-            and abs(weather.feels_like_c - weather.temp_c) >= 3
-        ):
-            parts.append(f"feels {weather.feels_like_c:.0f} °C")
+    if (
+        weather.feels_like_c is not None
+        and abs(weather.feels_like_c - weather.temp_c) >= 3
+    ):
+        parts.append(f"feels {weather.feels_like_c:.0f} °C")
 
     if weather.wind_speed_ms:
         parts.append(f"wind {weather.wind_speed_ms:.0f} m/s")

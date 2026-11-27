@@ -319,6 +319,17 @@ class WeatherTests(unittest.TestCase):
         self.assertEqual("", format_weather(None))
         self.assertEqual("", format_weather(ActivityWeather()))
 
+    def test_weather_without_an_ambient_temperature_is_blank(self):
+        self.assertEqual(
+            "",
+            format_weather(
+                ActivityWeather(
+                    wind_speed_ms=3.2,
+                    condition="rain",
+                )
+            ),
+        )
+
 
 class FieldProvenanceTests(unittest.TestCase):
 

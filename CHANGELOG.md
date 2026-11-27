@@ -9,6 +9,25 @@ Compatibility is stated as "requires schema ≥ N, migrates to M". The database
 records its own `PRAGMA user_version`, migrations are forward-only, and
 `migrate()` refuses a database newer than the code.
 
+## Unreleased — 0.3.1
+
+Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.
+
+### Brush bug fixes
+
+- Duplicate detection requires starts within ±15 min when both rows carry
+  one; a missing start on one side keeps the same-day fallback. The
+  eight-hour-apart pairs no longer open.
+- The sheet importer skips `Schuhe` when the stored activity is a ride;
+  `drop_ride_shoe_links_v1` removes the existing source shoe links on rides
+  and keeps manual links and every other sport.
+- `activity_weather.temp_c` is ambient air only. Intervals writes
+  `average_weather_temp` when `has_weather` and never `average_temp`; the sheet
+  writes its value through `set_activity_ambient_temperature`, and
+  `weather_ambient_v1` restores the sheet values and clears the device-only
+  rows. A weather row without ambient temperature renders no weather line;
+  health coverage counts ambient temperature only.
+
 ## 0.3.0 — 2026-11-25 (phase 3: trustworthy data)
 
 Schema: **29**. Compatibility: requires schema ≥ 1, migrates to 29.

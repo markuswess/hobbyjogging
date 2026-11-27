@@ -20,6 +20,8 @@ KNOWN_KEYS = {
         "pace_zone_times",
         "tags",
         "average_temp",
+        "average_weather_temp",
+        "has_weather",
     },
     "runalyze": {
         "type",

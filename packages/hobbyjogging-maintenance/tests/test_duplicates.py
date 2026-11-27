@@ -47,8 +47,9 @@ class DuplicateTasksTests(unittest.TestCase):
             "sport": sport,
             "distance_m": distance,
             "duration_s": duration,
-            "started_at_utc": start,
         }
+        if start is not None:
+            values["started_at_utc"] = start
         if avg_hr is not None:
             values["avg_hr"] = avg_hr
         if description:
@@ -138,6 +139,32 @@ class DuplicateTasksTests(unittest.TestCase):
         result = self._run(DETECT)
 
         self.assertEqual(0, result.counts["pairs"])
+
+    def test_two_same_day_sessions_hours_apart_are_not_duplicates(self):
+        self._activity(
+            "morning",
+            source="fit",
+            start="2026-10-01T06:00:00Z",
+        )
+        self._activity(
+            "evening",
+            source="intervals",
+            start="2026-10-01T16:00:00Z",
+        )
+
+        result = self._run(DETECT)
+
+        self.assertEqual(0, result.counts["pairs"])
+        self.assertEqual([], self._items())
+
+    def test_a_sheet_row_without_a_start_still_matches(self):
+        self._activity("sheet", source="sheet", start=None)
+        self._activity("device", source="fit")
+
+        result = self._run(DETECT)
+
+        self.assertEqual(1, result.counts["pairs"])
+        self.assertEqual("sheet", self._items()[0]["activity_id"])
 
     # -- sheet cleanup ---------------------------------------------------
 

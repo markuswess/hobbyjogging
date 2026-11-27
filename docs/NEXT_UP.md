@@ -19,6 +19,21 @@ live in [ARCHITECTURE.md](ARCHITECTURE.md), metric cards in
   same chart and `recovery-report` adds a weight row. The stored
   primary/secondary link role is not exposed by `DataSource`, so the item
   page names the session's other gear instead of claiming a role.
+- **Brush bug block 67/68/75 (2026-11-27).**
+  - Duplicate detection now requires starts within ±15 min when both rows
+    carry one; a missing start on one side keeps the same-day fallback. The
+    live 8-hour-apart pairs (1352/1353) no longer open, the true surf pair
+    stays, and a sheet row without a start still matches.
+  - The sheet importer skips `Schuhe` when the stored activity is a ride
+    (`ride`, `mtb_ride`, `gravel_ride`, `virtual_ride`); `drop_ride_shoe_links_v1`
+    removes the two existing source shoe links on rides and keeps manual
+    links, the hike and every other sport.
+  - `temp_c` is ambient air only. Intervals writes `average_weather_temp` when
+    `has_weather` and never `average_temp`; the sheet writes its value through
+    the new ambient-temperature writer. `weather_ambient_v1` restores the
+    sheet values, clears the device-only rows and leaves other weather fields
+    alone. A weather row without an ambient temperature renders no weather
+    line, and the health coverage counts ambient temperature only.
 - **Release 0.3.0 (2026-11-25).** All five `pyproject.toml` files and
   `uv.lock` say `0.3.0`; the changelog names schema 29, the new data tasks and
   the new CLI/report surface, and an annotated `v0.3.0` tag marks the phase-3
@@ -261,11 +276,12 @@ Phase 3 is current (since 2026-11-24). **45** (readability baseline), **34**
 **43**'s tag lexicon, the CLI write surface, **38/35** (session metrics),
 **21** (sheet leftovers), **42** (duplicates), **47** (time-zone integrity),
 **48** (field provenance), **57** (corrections export) and **22** (release
-0.3.0) are done. The CLI brush ran on 2026-11-27: every pass in
-[DATA_BRUSH.md](DATA_BRUSH.md) is workable through the CLI, and the gaps it
-exposed are queued as **66–78** (handover below). Phase 3 closes when those
-land and the pass-9 close (overlay export, rebuild proof, baseline, tag
-0.3.1) is recorded. The localhost browser moved to phase 4 (item 65).
+0.3.0) are done, and the first brush bug block **67/68/75** is done. The CLI
+brush ran on 2026-11-27: every pass in [DATA_BRUSH.md](DATA_BRUSH.md) is
+workable through the CLI, and the gaps it exposed are queued as **66–78**
+(handover below). Phase 3 closes when those land and the pass-9 close (overlay
+export, rebuild proof, baseline, tag 0.3.1) is recorded. The localhost browser
+moved to phase 4 (item 65).
 
 Order: **45** (readability baseline, done) → **34** (manual overlay + rebuild
 proof, the safety gate, done) → **37** audit and evidence (done) → the CLI
@@ -278,14 +294,12 @@ calibration follow-up **64** slot alongside.
 
 **Data brush handover (2026-11-27).** The brush baseline is recorded, the
 coverage/weather/gear/illness decisions are accepted in the private curation
-list, and the Intervals zones for 2019–2022 were updated. Before the code
-items, sync that zone update: re-import 2019–2022, then run
-`athlete_thresholds_current`, `activity_zone_configs_current` and
-`derived_zone_configs_current`. The cross-package coding session then takes
-these root items:
+list, and the Intervals zones for 2019–2022 were updated (the re-import and
+the threshold/zone tasks are done). The cross-package coding session then
+takes these root items:
 
-1. **Bugs first**: **67** duplicate start gate, **68** shoes on rides, **75**
-   watch temperature (clear the device-only rows, keep the 739 sheet values).
+1. **Bugs first (done)**: **67** duplicate start gate, **68** shoes on rides,
+   **75** watch temperature.
 2. **Gear**: **66** secondary link, **69** Thule from tags, **70** usage counts
    every link; 66 and 68 unblock the manual Bob/bike pass in **77**.
 3. **Classification**: **72** drills first, then **71** (accept the 303 tag
@@ -543,30 +557,6 @@ reports item; 28 is the recurring cleanup.
       primary; the primary is unchanged; a re-run is a no-op; an unknown
       activity or equipment fails clearly; the link survives a reimport.
 
-67. **Duplicate start-time gate** (import + maintenance; after the brush). The
-    detector pairs same-day activities within the distance/duration/HR
-    tolerances without requiring close starts, so a morning and an evening
-    commute can pair. Live examples: item 1353 (two rides 8 h apart) and 1352
-    (two runs 8.6 h apart). Require a start within ±15 min, or a missing
-    precise start on one side (sheet rows), before an item opens; keep the
-    same-day fallback only for the missing-start case.
-    - **Acceptance**: 1352/1353 are not created, the true surf pair (delta 0)
-      is, a sheet row without a start still matches, and the re-run is a no-op.
-
-68. **Shoes are never linked to rides** (import + maintenance; bug, small). The
-    sheet's `Schuhe` column is linked regardless of sport, so Lunge Fis is the
-    primary equipment on two rides (2020-08-07 Afternoon Ride, 2021-03-20
-    Lunch Ride) and its usage includes 36 km of cycling. A hike (2020-08-25)
-    also carries the shoe and is fine: walking wears the shoe.
-    - **Rule**: the sheet importer skips `Schuhe` for the ride sports (`ride`,
-      `mtb_ride`, `gravel_ride`, `virtual_ride`); other sports keep the link.
-    - **Backfill** `drop_ride_shoe_links_v1`: remove the existing source shoe
-      links on rides (two rows) through the writer, dry run first; never touch
-      a manual link.
-    - **Acceptance**: Lunge Fis has no ride links, its usage km is running plus
-      hiking only, a re-enabled sheet import does not recreate them, and the
-      hike link stays.
-
 69. **Equipment from tags** (core + maintenance; small). 124 activities carry
     a `Thule` tag (121 `Thule`, 3 `thule half half`), but only 74 link the
     Thule trailer; 43 have no equipment at all and 7 have only a shoe or bike.
@@ -687,39 +677,12 @@ reports item; 28 is the recurring cleanup.
       or sheet set changes; the known false positives are tests; a re-run is a
       no-op.
 
-75. **Weather temperature is the watch, not the air** (core + import +
-    maintenance; bug, small). `activity_weather.temp_c` comes from Intervals
-    `average_temp` on 2,834 of 2,988 activities and from the sheet
-    `Temperatur in °C` on 154. `average_temp` is the device/watch
-    temperature: on the 585 activities that also carry a sheet value it is
-    warmer on 571 (+6.3 °C mean, up to +25.8 °C); the winter bias is +9…+11 °C
-    (Dec–Feb) against +3 °C in summer, and the device `max_temp` reaches
-    27–30 °C on December runs. The sheet has 739 ambient values (2011–2021),
-    but `activity_weather_v1` orders Intervals first and the writer keeps the
-    first source, so the watch value wins on all 585 overlaps. FIT
-    temperature is not read at all; Runalyze weather is not implemented.
-    - **Rule**: `temp_c` is ambient air only. The Intervals importer writes
-      `average_weather_temp` when `has_weather` and never `average_temp`; the
-      sheet writes its manual value.
-    - **Backfill** `weather_ambient_v1`: rewrite `temp_c` from the sheet
-      payload where present (739 rows); clear the device-only rows, so the
-      report stops showing the watch value as air temperature. The raw payload
-      keeps `average_temp` for diagnostics.
-    - **Decided**: no `device_temp_c` column and no watch line in any report;
-      the device value stays only in the raw Intervals/FIT payload. A weather
-      row without an ambient value is not shown at all.
-    - **Report**: no ambient value means no weather line; never fall back to
-      the watch.
-    - **Acceptance**: no `temp_c` comes from `average_temp`; January rows no
-      longer read ~13 °C; the 739 sheet values survive; the health coverage
-      shows the truthful share; a re-run is a no-op.
-
 76. **Ambient weather from a historical source** (new source; phase queue,
-    after 75). After 75 only 2011–2021 has an ambient temperature (the sheet);
-    2022+ has none. Intervals' own `average_weather_temp` is the cheapest
-    path: it is in the payload schema but `has_weather` is false on all 2,862
-    rows today, so first check the account's weather feature; if it stays
-    empty, fetch a historical archive.
+    after the ambient-temperature fix). Today only 2011–2021 has an ambient
+    temperature (the sheet); 2022+ has none. Intervals' own
+    `average_weather_temp` is the cheapest path: it is in the payload schema
+    but `has_weather` is false on all 2,862 rows today, so first check the
+    account's weather feature; if it stays empty, fetch a historical archive.
     - **Source**: one request per outdoor activity at its start coordinate
       and hour (Open-Meteo archive is free, no key), stored as a source record
       so a rebuild reproduces it; round the coordinate (~1 km) and hour to
