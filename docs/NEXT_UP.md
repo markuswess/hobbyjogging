@@ -577,6 +577,10 @@ reports item; 28 is the recurring cleanup.
       `source='tag'`); a sheet or manual input wins over tag and comment
       evidence; a comment only fills an empty classification; `other` evidence
       never overrides a specific target.
+    - **Race-day tags are context**: `Raceday` is used on 28 of its 29
+      activities as the warm-up or cool-down around a race, not on the race
+      itself; the race session gets `race` from the event/result link
+      (`race_link`), so a race-day tag must not set `race` on a warm-up.
     - **One-time task** `workout_classification_evidence_v1`: accept the 303
       tag-specific sets, close the 246 with a policy note, dry run first.
     - **Rule fix**: the evidence task stops opening these items — a specific
@@ -606,6 +610,48 @@ reports item; 28 is the recurring cleanup.
       method, the category is unchanged (easy/interval), the reports show
       `Drills`, a re-run is a no-op, and the 549 queue no longer contains a
       threshold proposal from `LTT`.
+
+73. **Place tags become routes** (core + import + maintenance; small-medium,
+    after the brush). 393 active activities (2021–2026) carry one of 30
+    geographic tags — `Wienerberg` 44, `kanal` 43, `hauptallee` 34, `Arsenal`
+    30, `Prater` 27, `donaukanal` 27, … — and **none links a route**;
+    `activity_routes` is sheet-only and stops in 2019 (384 links, 36 routes).
+    Runalyze `recurring_route` is not a substitute: 2,777 payloads carry 2,504
+    mostly-singleton ids.
+    - **Kind**: add `place` to the tag lexicon for the geographic tags; the
+      remaining unmapped tags (people, errands, events) stay unmapped.
+    - **Identity**: a tag-derived route is source-scoped
+      (`runalyze:tag:<slug>`) and never merges with a sheet route; normalize
+      obvious aliases (`kanal`/`donaukanal`, `Wienerberg`/`Wienerbergteich`)
+      in one small map beside the lexicon.
+    - **Backfill** `routes_from_place_tags_v1`: create the route and link the
+      activity with `source='tag'`, idempotent; a manual route link wins.
+    - **Acceptance**: modern route coverage is non-zero and the session report
+      shows the place; the sheet routes are untouched; a re-run is a no-op.
+
+74. **Strava comment evidence** (import + maintenance; small, after 71). The
+    evidence task reads only `activities.description`; the 538 Strava
+    `activity_social` descriptions (2021–2026) are ignored. 83 carry an
+    interval pattern, 22 LT/subT and 19 tempo/threshold; they yield 103
+    proposals, all on activities that already have a stored set, so item 71's
+    "a comment only fills empty" would close every one. 59 proposals are
+    material: 44 on a `backfill`/`classifier` set, 15 on a manual one.
+    Examples: 2023-10-31 stored `long_run/base` vs "3x1.6 Threshold hopping";
+    2024-08-13 `continuous/threshold` vs "12x200m in 33-35''".
+    - **Source**: read the per-source `activity_social.description` for run
+      sports, not only the canonical field.
+    - **Precision first**: fix `description_proposal`'s first-match order
+      (`Wechseltempo`/`Fahrtspiel` hit tempo before fartlek) and ignore
+      alternatives and negations ("statt Wettkampf", "instead of", "not");
+      require an explicit interval pattern or target word. Today it proposes
+      `race` for a music/recap sentence and `threshold` for "zu hügelig für
+      gleichmäßiges Tempo".
+    - **Policy**: a structured comment may refine a `backfill`/`classifier`
+      projection and opens a review item; it never overrides a manual or sheet
+      set, and `other` never overrides a specific target.
+    - **Acceptance**: the material backfill cases are triaged once; no manual
+      or sheet set changes; the known false positives are tests; a re-run is a
+      no-op.
 
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
