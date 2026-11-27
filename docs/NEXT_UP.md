@@ -653,6 +653,52 @@ reports item; 28 is the recurring cleanup.
       or sheet set changes; the known false positives are tests; a re-run is a
       no-op.
 
+75. **Weather temperature is the watch, not the air** (core + import +
+    maintenance; bug, small). `activity_weather.temp_c` comes from Intervals
+    `average_temp` on 2,834 of 2,988 activities and from the sheet
+    `Temperatur in °C` on 154. `average_temp` is the device/watch
+    temperature: on the 585 activities that also carry a sheet value it is
+    warmer on 571 (+6.3 °C mean, up to +25.8 °C); the winter bias is +9…+11 °C
+    (Dec–Feb) against +3 °C in summer, and the device `max_temp` reaches
+    27–30 °C on December runs. The sheet has 739 ambient values (2011–2021),
+    but `activity_weather_v1` orders Intervals first and the writer keeps the
+    first source, so the watch value wins on all 585 overlaps. FIT
+    temperature is not read at all; Runalyze weather is not implemented.
+    - **Rule**: `temp_c` is ambient air only. The Intervals importer writes
+      `average_weather_temp` when `has_weather` and never `average_temp`; the
+      sheet writes its manual value.
+    - **Backfill** `weather_ambient_v1`: rewrite `temp_c` from the sheet
+      payload where present (739 rows); clear the device-only rows, so the
+      report stops showing the watch value as air temperature. The raw payload
+      keeps `average_temp` for diagnostics.
+    - **Report**: no ambient value means no weather line; never fall back to
+      the watch.
+    - **Acceptance**: no `temp_c` comes from `average_temp`; January rows no
+      longer read ~13 °C; the 739 sheet values survive; the health coverage
+      shows the truthful share; a re-run is a no-op.
+
+76. **Ambient weather from a historical source** (new source; phase queue,
+    after 75). After 75 only 2011–2021 has an ambient temperature (the sheet);
+    2022+ has none. Intervals' own `average_weather_temp` is the cheapest
+    path: it is in the payload schema but `has_weather` is false on all 2,862
+    rows today, so first check the account's weather feature; if it stays
+    empty, fetch a historical archive.
+    - **Source**: one request per outdoor activity at its start coordinate
+      and hour (Open-Meteo archive is free, no key), stored as a source record
+      so a rebuild reproduces it; round the coordinate (~1 km) and hour to
+      cache and deduplicate.
+    - **Fields**: temperature, feels-like, humidity, wind speed/gust/degree,
+      pressure, cloud cover, condition and is-day; metric units in
+      `activity_weather`.
+    - **Identity**: source-scoped (`open-meteo` or `intervals`); it owns the
+      ambient fields, the sheet is the fallback, the device value is not
+      ambient.
+    - **Scope**: outdoor sports with a start coordinate; an indoor activity
+      stays empty; a missing coordinate reports a gap.
+    - **Acceptance**: 2019–2021 station values agree with the sheet within a
+      few degrees; a January run reads a plausible ambient value; an indoor
+      ride stays empty; a rebuild reproduces the rows from the cache.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
