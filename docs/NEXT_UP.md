@@ -749,6 +749,51 @@ reports item; 28 is the recurring cleanup.
       results are unchanged; the splits show in the session report and total the
       block time; broken blocks are skipped and listed; a re-run is a no-op.
 
+79. **Clickable gear pages** (reports; small). The Gear tab lists gear in a
+    table, but the name is plain text; the dashboard already renders
+    per-activity, per-race and per-event pages. Add a `gear/<item>` page,
+    linked from the Gear table, with the totals (sessions, km, km/month, first
+    and last use), a mileage-over-time chart, the activities and their role
+    (primary/secondary, each linking to the activity page), co-used gear (e.g.
+    Bob with Katy), target/wear and retirement status.
+    - **Shape**: reuse `equipment_usage` and `DataSource`; no new SQL; a
+      retired or zero-use item still gets a page with an empty state; the page
+      shows the subcategory once item 81 lands.
+    - **Acceptance**: every gear row links to its page; the totals match the
+      Gear tab; the demo builds; the pages are static files beside `gear.html`.
+
+80. **Weight chart in wellness** (reports; small). `WellnessDay.weight_kg` is
+    stored (358 values: 2012–2013 and 2023–2026, with a nine-year gap), but the
+    recovery page plots only HRV, resting HR and sleep. Add a body-weight card:
+    points and a 7-day mean on their own kg axis, with the gap left as a gap;
+    no readiness bands.
+    - **Surfaces**: the recovery tab and the recovery report summary; add a
+      reference-catalogue row in `docs/METRICS.md` (definition, source, gap),
+      not a promoted card unless weight becomes a metric.
+    - **Acceptance**: the points match `wellness_days`; a window without weight
+      shows an empty state; the gap is not interpolated; the HRV/RHR panels
+      keep their scale.
+
+81. **Gear subcategories and target mileage** (core + import + reports;
+    schema migration, not small). `equipment.type` is only shoe/bike/other, and
+    every shoe without an explicit target gets the single 800 km
+    `DEFAULT_SHOE_TARGET_M`. Add a subcategory — race, trail, daily,
+    supertrainer, barefoot, hiking, … — with a default target per subcategory
+    and `target_distance_m` as the per-item override.
+    - **Schema**: additive `category TEXT NOT NULL DEFAULT ''` on `equipment`
+      (migration); an empty category keeps today's single default.
+    - **Vocabulary**: one small map in core (labels and default targets), like
+      `sports`; the athlete's numbers live there, not in the report code.
+    - **Writer/CLI**: `equipment add/edit --category`; a manual category is
+      never overwritten by a later sheet or Runalyze gear import; `equipment
+      list` groups by it.
+    - **Reports**: the Gear tab groups shoes by subcategory, colours the
+      mileage chart by it, and marks a default target versus an explicit one.
+      The usage view still counts every link (item 70).
+    - **Acceptance**: a race shoe with the race default shows that target; an
+      explicit target wins; a reimport keeps a manual category; the Gear tab
+      groups by subcategory; existing totals do not change.
+
 23. **Portability for a second user** (core + import + reports + CI; phase 2 —
     the acceptance checklist for the phase-2 exit test). The model is portable
     already: canonical activity, owner-based fields with ranked exceptions, the
